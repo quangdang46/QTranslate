@@ -513,6 +513,9 @@ Each user action = a `Task` object posted to a worker thread:
   modifiers) → `FUN_0040ABC3` builds the hotkey word → double-press arm via
   `GetDoubleClickTime` timer with bit-15 `0x8000` "second press" flag
   (mirrors `FUN_00417DCE` matching).
+- **`FUN_0040AA48` = hotkey display refresh** (`__fastcall`): format word
+  (`FUN_00403B48`) → `SetWindowTextW` → `EM_SETSEL (0xB1)` select-all —
+  updates the capture box after each key event.
 - **`FUN_00408AA2` = hotkey resolver** (`__thiscall`): posts `0x45F`
   (HKM_SETHOTKEY-family) with the hotkey word struct — feeds both the
   display builder and the test runner.
