@@ -312,6 +312,13 @@ for _th in _T2.list_themes():
                 _ok = False
 check("themes-6digit", _ok)
 
+# 19. result-pane auto-URL tags (qtdp: + http, FUN_004266C6)
+app.render("see qtdp:world and https://example.com now")
+check("render-links",
+      app.out.tag_ranges("link") != ())
+app.render("plain text")
+check("render-no-links", app.out.tag_ranges("link") == ())
+
 root.destroy()
 print(f"\n{len(PASS)} passed, {len(FAIL)} failed")
 sys.exit(1 if FAIL else 0)
