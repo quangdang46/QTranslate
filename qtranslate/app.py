@@ -541,8 +541,10 @@ def do_translate(service, text, target, src="auto", auto_detect=False,
             src = detect_language(text)
         out = fn(text[:5000], src, target)
         if not out:
-            # native string from Locales/English/lang.json
-            return "No data returned (timeout while sending data)."
+            # native error string id 190 (vi: "Không có dữ liệu trả về
+            # (quá thời gian chờ..."; canonical English verified)
+            return _T("Strings", 190,
+                      "No data returned (timeout while sending data).")
         if back_translate and not out.startswith("No data"):
             try:
                 back = fn(out[:5000], target,
@@ -553,7 +555,8 @@ def do_translate(service, text, target, src="auto", auto_detect=False,
                 pass
         return out
     except Exception:
-        return "No data returned (timeout while sending data)."
+        return _T("Strings", 190,
+                  "No data returned (timeout while sending data).")
 
 
 # ------------------------------------------------------------------ UI
