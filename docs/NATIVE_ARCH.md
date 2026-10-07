@@ -1096,6 +1096,9 @@ Each user action = a `Task` object posted to a worker thread:
 - **`FUN_00462F8E` = mode lookup** (`__thiscall`): linear scan matching
   both strings (`FUN_00401FC2` ×2, `FUN_0041E45F` element read) —
   `0xFFFFFFFF` when absent. Backs both enable variants.
+- **`FUN_0041E3A3` = string-vector push** (`__thiscall`, reserve via
+  `FUN_0041FABE` + `FUN_00401F21` assign + count): appends UI strings
+  (menu labels, combo items, history rows).
 - **`FUN_00420870` = range default-construct** (`__fastcall`, called
   from reserve): N× in-place init after calloc — completes the
   reserve path (alloc + construct, mirroring vector::reserve).
