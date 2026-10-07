@@ -471,6 +471,9 @@ Each user action = a `Task` object posted to a worker thread:
   switch): walks all services, keeps `caps & mask` (`+4` field), rebuilds
   the active list (`RemoveAll` + push-back) — drives which providers show
   in translate vs dictionary UI.
+- **`FUN_004024F2` = observer accessor** (`__thiscall`, bounds-checked
+  vector index into `DAT_00549580`): iterates `ServicesFactoryObserver`s
+  in the switcher notify loop.
 - **`FUN_0045CDBA` = service switcher** (dispatcher service-select branch):
   id lookup (`FUN_0045CC50`) → capability gate (`TRANSLATE 1` /
   `DICTIONARY 8` at `+0x10`) → move-to-front (`FUN_0041E559`) → notify
