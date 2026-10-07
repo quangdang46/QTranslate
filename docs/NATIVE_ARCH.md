@@ -231,6 +231,10 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## String literal loader (decompiled)
 
+- **`CheckImplicitLoad` = ATL resource-string load** (library,
+  `CStringT::CheckImplicitLoad`): id `< 0x10000` loads from string-table
+  resources (`FUN_0040218A`) — how `0xB0–0xCF` error ids and menu labels
+  resolve at runtime.
 - **`FUN_00401F21` = literal loader** (`__thiscall`, highest call count in
   the binary): fresh string + `CheckImplicitLoad` + `FUN_00401EA9` copy —
   every `L"..."` literal in decompile flows through here (hence its
