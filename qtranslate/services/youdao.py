@@ -34,8 +34,14 @@ def make_sign(text: str, salt: str) -> str:
     return hashlib.md5(raw.encode("utf-8")).hexdigest()
 
 
-def translate(text: str, sl: str = "AUTO", tl: str = "en") -> str:
-    """Port of serviceTranslateRequest/Response: POST /translate_o."""
+def translate(text: str, sl: str = "AUTO", tl: str = "en",
+              opener=None) -> str:
+    """Port of serviceTranslateRequest/Response: POST /translate_o.
+
+    Pass a shared-jar opener (qtranslate.session._jar_opener after GETting
+    the landing page) so the live OUTFOX_SEARCH_USER_ID cookie is used
+    instead of the hardcoded placeholder — mirrors the engine cookie jar.
+    """
     text = (text or "").replace("\r\n", "\n").replace("\r", "\n")[:5000]
     salt = str(int(time.time() * 1000) + int(random.random() * 10))
     sign = make_sign(text, salt)
@@ -52,11 +58,16 @@ def translate(text: str, sl: str = "AUTO", tl: str = "en") -> str:
             "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
             "Accept": "*/*",
             "Referer": "https://fanyi.youdao.com",
-            "Cookie": "OUTFOX_SEARCH_USER_ID=1@100.1.1.1;",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
         },
     )
-    with urllib.request.urlopen(req, timeout=20) as resp:
-        obj = json.loads(resp.read().decode("utf-8"))
+    if opener is None:
+        req.add_header("Cookie", "OUTFOX_SEARCH_USER_ID=1@100.1.1.1;")
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            obj = json.loads(resp.read().decode("utf-8"))
+    else:
+        with opener.open(req, timeout=20) as resp:
+            obj = json.loads(resp.read().decode("utf-8"))
     out = ""
     for block in obj.get("translateResult", []) or []:
         for item in block:
