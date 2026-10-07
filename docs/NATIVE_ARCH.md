@@ -394,6 +394,10 @@ Each user action = a `Task` object posted to a worker thread:
   (`FUN_0042A10A` substring) → internal re-lookup (`FUN_00426966`) with
   history sync (`this+0x19C = this+0x18C`). Non-qtdp links fall through to
   `ShellExecute` browser open.
+- **`FUN_004084C9` = display teardown** (`__fastcall`, 6 callers): flag 2
+  → unsubclass (`+0x4C`), flag 4 → unhighlight (`+0x58`,
+  `0xFF676986`), flag 8 → HKM clear (`0x445`) — symmetric undo of
+  `FUN_00408456` builder, called on every refresh/rebuild path.
 - **`FUN_00409EC0` = test-box refresh** (`__thiscall`): rebuild display
   (`FUN_00408456`) → show-layout (`FUN_00408ADE`) → `HKM_SETHOTKEY
   (0x447)` with a zeroed key struct + flag — re-arms the capture box
