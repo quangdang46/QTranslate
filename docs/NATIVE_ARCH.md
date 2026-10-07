@@ -471,6 +471,9 @@ Each user action = a `Task` object posted to a worker thread:
   switch): walks all services, keeps `caps & mask` (`+4` field), rebuilds
   the active list (`RemoveAll` + push-back) — drives which providers show
   in translate vs dictionary UI.
+- **`FUN_0040335D` = string grow** (`__thiscall`, fail-fast on negative):
+  ensures capacity (`FUN_004032CC` realloc when short) — behind every
+  `CString` append/format in the app.
 - **`FUN_004031AA`/`FUN_004C0200` = copy helpers** (`__fastcall`):
   bounded `memcpy` wrapper with errno paths — the raw copy under string
   assign, DOM moves, and FLAC chunk copies.
