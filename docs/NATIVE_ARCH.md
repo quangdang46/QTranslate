@@ -776,6 +776,9 @@ Each user action = a `Task` object posted to a worker thread:
   → `FUN_00450A0E` (shell-open document) else → `FUN_00450AC2` (URL →
   default browser). Shared by `serviceLink` opens, About links, and help
   file display.
+- **`FUN_0045AB74` = service-map singleton** (thread-safe once:
+  `FUN_0045ABD2` init + `_atexit` cleanup + lazy `DAT_00549834` flag) —
+  the global provider registry all lookups share.
 - **`FUN_0041FC4A` = shared hash lookup** (`__thiscall`, used by link
   lookup + named-item paths): DJB2 (`FUN_00420824`) → bucket → chain
   (`FUN_004207F3`, hash field at `+5`, next at `+4`) — the generic map
