@@ -232,6 +232,10 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Capture exclusions (from real Options.json)
 
+- Enforcement = `FUN_004631DE` (called from hotkey setup `FUN_00418E1A`):
+  `GetForegroundWindow` → class name (`FUN_00450C50`, skipping own
+  `QTranslate_HotKeyControl`) → match each `Exceptions.Disabled` entry via
+  `FUN_004470B7` (app-name and class-name compare) → capture suppressed on hit.
 - `Exceptions` section = per-app / per-window-class blocklist consulted before
   capture: `{Disabled: [["", "SysListView32"], ["", "SysTreeView32"],
   ["", "ListBox"], ["", "ScrollBar"], ["", "ComboBox"],
