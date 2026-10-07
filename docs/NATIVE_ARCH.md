@@ -114,6 +114,10 @@ Each user action = a `Task` object posted to a worker thread:
   marshalling through `FUN_0043B8CE`/`FUN_0043B9BE`). This is
   `TaskTranslateInMainWindow`'s core: JS result → native language-code
   resolution → render.
+- **Service file loader = `FUN_00428096` → `FUN_0043DF32`**: `GetFileAttributesW`
+  existence check on `Services/<name>/Service.js` → `FUN_0043E004` read file →
+  BOM detect/strip (UTF-16LE `FF FE` vs UTF-8) → hand text to `FUN_0043B777`.
+  This is how the 17 JS plugins enter the engine at startup/service-switch.
 
 ## TTS playback path (decompiled, verified, reimplemented)
 
