@@ -411,7 +411,9 @@ Each user action = a `Task` object posted to a worker thread:
   palettes ported to `qtranslate/theme.py` (`window_colors` per state;
   8 themes verified loadable).
 - **`FUN_0044B4F4` = popup layout engine**: walks child windows
-  (`GetWindow GW_CHILD`), classifies Button vs Static via class-name compare,
+  (`GetWindow GW_CHILD`), classifies Button vs Static vs
+  `QTranslate_HotKeyControl` (custom key-capture control, class refs at
+  `0044B676/0044B8B5` — skipped during resize like buttons) via class-name compare,
   resizes/repositions each (`FUN_0044BD0F`/`FUN_0044BECE`) — the auto-fit
   logic that sizes the popup to content length.
 
