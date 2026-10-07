@@ -2615,10 +2615,29 @@ class App:
         self.history.clear()
 
     def on_export_history(self):
+        try:
+            from qtranslate import config as _C
+            _app = _C.load().get("Application", {})
+            _init = _app.get("SaveHistoryPath", "") or None
+        except Exception:
+            _init, _app = None, {}
         path = filedialog.asksavefilename(title="Export history",
-                                          defaultextension=".html")
+                                          defaultextension=".html",
+                                          initialdir=_init,
+                                          initialfile=_init)
         if not path:
             return
+        try:
+            import os as _o
+            from qtranslate import config as _C2
+            import json as _j
+            full = _C2.load()
+            full.setdefault("Application", {})["SaveHistoryPath"] = path
+            with open(_C2.DEFAULT_PATH, "w",
+                      encoding="utf-8") as f:
+                _j.dump(full, f, ensure_ascii=False, indent=1)
+        except Exception:
+            pass
         try:
             from qtranslate import history as H
             data = H.html_export([(s, src, "auto", res, self.target)
