@@ -1367,8 +1367,17 @@ class App:
             with open(self._history_path(),
                       encoding="utf-8") as f:
                 items = _j.load(f)
-            return [(str(s), str(a), str(b)) for s, a, b in items
-                    if isinstance(items, list)][:500]
+            out = []
+            if isinstance(items, list):
+                for it in items[:500]:
+                    try:
+                        s, a, b, *rest = it
+                        fav = bool(rest[0]) if rest else False
+                        out.append((str(s), str(a), str(b), fav)
+                                   if fav else (str(s), str(a), str(b)))
+                    except Exception:
+                        pass
+            return out
         except Exception:
             return []
 
