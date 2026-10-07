@@ -282,6 +282,10 @@ Each user action = a `Task` object posted to a worker thread:
 - **`FUN_004661D1` = dispatch-get helper** (`__thiscall`, used by both
   validators): `IDispatchEx::GetDispID (+0x14, grfdex 0x400)` + invoke
   (`FUN_00466181`) — single choke point for all JS field reads.
+- **`FUN_0043BB64` = HRESULT error mapper** (`__thiscall`, in the
+  method-call funnel): builds `"Called function: %s\n\n"` +
+  `FormatMessageW` → `"0x%08X: %s"` (HRESULT→system text, `GetLastError`
+  fallback) — surfaces JS engine failures as readable diagnostics.
 - **`FUN_0043E51E` = 0-arg invoker** (`__thiscall`): same GetDispID +
   Invoke shape but through the child engine (`this+8`) — used for
   `serviceHeader`/`serviceHost` (no-arg metadata calls).
