@@ -31,6 +31,7 @@ def bing_session() -> dict:
     ig = re.search(r'IG:"(\w+)"', html)
     abuse = re.search(
         r'params_AbusePreventionHelper\s*=\s*\[(\d+),"([^"]+)",(\d+)', html)
+    iid = re.search(r'data-iid="(translator\.\d+\.\d+)"', html)
     if not ig or not abuse:
         raise RuntimeError("Could not scrape Bing session (page layout changed?)")
     return {
@@ -38,6 +39,7 @@ def bing_session() -> dict:
         "key": abuse.group(1),
         "token": abuse.group(2),
         "cookie": cookie,
+        "iid": iid.group(1) if iid else "translator.5023.3",
     }
 
 

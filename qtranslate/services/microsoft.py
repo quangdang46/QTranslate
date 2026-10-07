@@ -47,22 +47,39 @@ def _service_request(
     token: str = "",
     key: str = "",
     cookie: str = "",
+    iid: str = "translator.5023.3",
+    _retried: bool = False,
 ) -> list:
-    """Port of serviceRequest(a,b,c): POST /ttranslatev3."""
-    path = "/ttranslatev3?isVertical=1&IG={}&IID=translator.5023.3".format(ig)
-    body = "text={}&fromLang={}&to={}&token={}&key={}".format(
+    """Port of serviceRequest(a,b,c): POST /ttranslatev3.
+
+    Fixes researched 2026-10-07 (bing hardened since 2021 JS):
+    - dynamic IID scraped from page data-iid (was hardcoded translator.5023.x)
+    - body gains tryFetchingGenderDebiasedTranslations=true
+    - short lang codes required (zh-Hans not zh-Hans-longform)
+    - body.statusCode 205 = token expired -> caller must rescrape + retry once
+    """
+    path = "/ttranslatev3?isVertical=1&IG={}&IID={}".format(ig, iid)
+    body = ("text={}&fromLang={}&to={}&token={}&key={}"
+            "&tryFetchingGenderDebiasedTranslations=true").format(
         urllib.parse.quote(text[:1000], safe=""),
         sl,
         tl,
         token,
         key,
     )
-    return _post(path, body, cookie)
+    obj = _post(path, body, cookie)
+    if (isinstance(obj, dict) and obj.get("statusCode") == 205
+            and not _retried):
+        from qtranslate import session as _sess
+        s = _sess.bing_session()
+        return _service_request(text, sl, tl, s["IG"], s["token"], s["key"],
+                                s["cookie"], s.get("iid", iid), _retried=True)
+    return obj
 
 
-def detect(text: str, ig: str = "", token: str = "", key: str = "", cookie: str = "") -> str:
+def detect(text: str, ig: str = "", token: str = "", key: str = "", cookie: str = "", iid: str = "translator.5023.3") -> str:
     """Port of serviceDetectLanguageRequest/Response."""
-    obj = _service_request(text, ig=ig, token=token, key=key, cookie=cookie)
+    obj = _service_request(text, ig=ig, token=token, key=key, cookie=cookie, iid=iid)
     try:
         return obj[0]["detectedLanguage"]["language"]
     except (KeyError, IndexError, TypeError):
@@ -77,9 +94,10 @@ def translate(
     token: str = "",
     key: str = "",
     cookie: str = "",
+    iid: str = "translator.5023.3",
 ) -> str:
     """Port of serviceTranslateRequest/Response: POST /ttranslatev3."""
-    obj = _service_request(text, sl, tl, ig, token, key, cookie)
+    obj = _service_request(text, sl, tl, ig, token, key, cookie, iid)
     try:
         return obj[0]["translations"][0]["text"]
     except (KeyError, IndexError, TypeError):

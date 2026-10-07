@@ -64,43 +64,73 @@ def make_chunks(text: str) -> list[str]:
     return chunks
 
 
+_ANDROID_UA = ("User-Agent", "ru.yandex.translate/3.20.2024 "
+                "(Android 13; SDK 33; armeabi-v7a)")
+
+
 def detect(text: str, app_id: str = "") -> str:
-    """Port of serviceDetectLanguageRequest/Response: GET /api/v1/tr.json/detect."""
+    """Port of serviceDetectLanguageRequest/Response: GET /api/v1/tr.json/detect.
+
+    The original srv=tr-text variant is dead (HTTP 403 since ~2024). Falls back
+    to the still-alive Android client variant (researched 2026-10-07, used by
+    translatepy/pot-desktop).
+    """
     query = urllib.parse.quote(text[:256], safe="")
-    path = "/api/v1/tr.json/detect?sid={}&srv=tr-text&text={}".format(app_id, query)
-    req = urllib.request.Request(
-        HOST + path, headers={"Accept": "*/*", "Referer": "https://translate.yandex.com"}
-    )
-    with urllib.request.urlopen(req, timeout=20) as resp:
-        obj = json.loads(resp.read().decode("utf-8"))
-    if obj.get("code") == 200:
-        return obj.get("lang", "")
+    variants = [
+        "/api/v1/tr.json/detect?sid={}&srv=tr-text&text={}".format(app_id, query),
+        "/api/v1/tr.json/detect?srv=android&text={}".format(query),
+    ]
+    for path in variants:
+        try:
+            req = urllib.request.Request(
+                HOST + path,
+                headers={"Accept": "*/*",
+                         "Referer": "https://translate.yandex.com",
+                         _ANDROID_UA[0]: _ANDROID_UA[1]} if "android" in path
+                else {"Accept": "*/*",
+                      "Referer": "https://translate.yandex.com"})
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                obj = json.loads(resp.read().decode("utf-8"))
+            if obj.get("code") == 200:
+                return obj.get("lang", "")
+        except Exception:
+            continue
     return ""
 
 
 def translate(text: str, sl: str = "", tl: str = "en", app_id: str = "") -> str:
-    """Port of serviceTranslateRequest/Response: POST /api/v1/tr.json/translate."""
+    """Port of serviceTranslateRequest/Response: POST /api/v1/tr.json/translate.
+
+    Primary: original srv=tr-text (kept for fidelity). Fallback: Android
+    variant with ucid guid (researched 2026-10-07).
+    """
+    import uuid
     chunks = make_chunks(text)
     out_lines: list[str] = []
     for chunk in chunks:
-        path = (
-            "/api/v1/tr.json/translate?id={}-0-0&srv=tr-text&lang={}-{}"
-            "&reason=auto&format=text&yu=2210680511641235828"
-        ).format(app_id, sl, tl)
-        body = "text=" + urllib.parse.quote(chunk, safe="")
-        req = urllib.request.Request(
-            HOST + path,
-            data=body.encode("utf-8"),
-            headers={
-                "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
-                "Accept": "*/*",
-                "Referer": "https://translate.yandex.com",
-            },
-        )
-        with urllib.request.urlopen(req, timeout=20) as resp:
-            obj = json.loads(resp.read().decode("utf-8"))
-        if obj.get("code") == 200:
-            out_lines.append("\n".join(obj.get("text", [])))
+        body_tr = "text=" + urllib.parse.quote(chunk, safe="")
+        paths = [
+            ("/api/v1/tr.json/translate?id={}-0-0&srv=tr-text&lang={}-{}"
+             "&reason=auto&format=text&yu=2210680511641235828"
+             .format(app_id, sl, tl),
+             {"Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
+              "Accept": "*/*", "Referer": "https://translate.yandex.com"}),
+            ("/api/v1/tr.json/translate?ucid={}&srv=android&format=text&lang={}-{}"
+             .format(str(uuid.uuid4()).replace("-", "")[:32], sl, tl),
+             {"Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
+              "Accept": "*/*", _ANDROID_UA[0]: _ANDROID_UA[1]}),
+        ]
+        for path, headers in paths:
+            try:
+                req = urllib.request.Request(
+                    HOST + path, data=body_tr.encode("utf-8"), headers=headers)
+                with urllib.request.urlopen(req, timeout=20) as resp:
+                    obj = json.loads(resp.read().decode("utf-8"))
+                if obj.get("code") == 200:
+                    out_lines.append("\n".join(obj.get("text", [])))
+                    break
+            except Exception:
+                continue
     return "\n".join(out_lines)
 
 
