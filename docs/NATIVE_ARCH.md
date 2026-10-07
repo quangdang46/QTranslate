@@ -528,6 +528,9 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## MainWindow WndProc (decompiled)
 
+- **`FUN_00450A0E` = file opener** (`__fastcall`): full
+  `SHELLEXECUTEINFOW` (`fMask 0x900400`, verb default `open`, `nShow 1`)
+  → `ShellExecuteExW` — opens local docs/help/history exports with params.
 - **`FUN_00450AC2` = URL opener** (`__fastcall`): `ShellExecuteW("open",
   "rundll32.exe", "url.dll,FileProtocolHandler <url>")` — legacy-compatible
   browser launch (works back to WinXP era, no default-browser registry walk).
