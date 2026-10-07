@@ -282,6 +282,10 @@ Each user action = a `Task` object posted to a worker thread:
 - **`FUN_004661D1` = dispatch-get helper** (`__thiscall`, used by both
   validators): `IDispatchEx::GetDispID (+0x14, grfdex 0x400)` + invoke
   (`FUN_00466181`) — single choke point for all JS field reads.
+- **`FUN_0043E950` = named-item hash table** (`__thiscall`, fallback in
+  `FUN_0043E471`): `FUN_00420824` string hash → bucket (`% capacity`) →
+  chain compare (`FUN_004207F3`) — caches JS function DISPIDs so repeat
+  `serviceTranslateRequest` calls skip `GetIDsOfNames`.
 - **`FUN_0043BB64` = HRESULT error mapper** (`__thiscall`, in the
   method-call funnel): builds `"Called function: %s\n\n"` +
   `FormatMessageW` → `"0x%08X: %s"` (HRESULT→system text, `GetLastError`
