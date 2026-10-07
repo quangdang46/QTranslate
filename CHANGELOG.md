@@ -75,6 +75,15 @@ All entries are clean-room RE of QTranslate 6.10.0 for education.
 - Full native defaults in config.py; stale 18s fixed
 - 20/20 Options.json sections wired end to end
 
+## Flags coverage (2026-10-08, all General keys audited)
+
+- Wired: panes, tray, startup, cleanup, langs, services, detect,
+  instant, spell, slow-TTS, OCR key/lang/archive, proxy, browser,
+  mouse, phonetic (flag), favorites, history, placements, fonts
+- Noted limits: cursor-hook mouse icon, DnD (tkinterdnd2),
+  Extended (absent in modern Options.json), TTS phonetic (no API)
+- `tests/ui_match.py` 71/71
+
 ## Services (`qtranslate/services/`)
 
 - google_translate.py — `tk()` token + `/translate_a/single?client=gtx`,
