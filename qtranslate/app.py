@@ -732,6 +732,30 @@ class App:
         m.add_checkbutton(label="Back translation",
                           variable=self.opt_backtr,
                           command=_toggle_backtr)
+
+        def _toggle_instant():
+            try:
+                from qtranslate import config as _C
+                import json as _j
+                full = _C.load()
+                cur = not full.setdefault("General", {}).get(
+                    "InstantTranslation", False)
+                full["General"]["InstantTranslation"] = cur
+                with open(_C.DEFAULT_PATH, "w",
+                          encoding="utf-8") as f:
+                    _j.dump(full, f, ensure_ascii=False, indent=1)
+            except Exception:
+                pass
+
+        try:
+            from qtranslate import config as _CI
+            _inst = bool(_CI.load().get("General", {}).get(
+                "InstantTranslation", False))
+        except Exception:
+            _inst = False
+        _inst_v = tk.BooleanVar(value=_inst)
+        m.add_checkbutton(label="Instant translation",
+                          variable=_inst_v, command=_toggle_instant)
         m.add_separator()
         m.add_command(label="Options...", command=self.open_options)
         m.add_command(label="About", command=self.show_about)
@@ -885,15 +909,30 @@ class App:
 
     def on_type(self):
         # Suggest menu (Ctrl+Space shows it; auto-fill honors
-        # General.SpellChecking like the native edit control).
+        # General.SpellChecking like the native edit control) +
+        # Instant translation (General.InstantTranslation, native
+        # 0x802C): debounced re-translate on every keystroke.
         try:
             from qtranslate import config as _C
-            if not _C.load().get("General",
-                                 {}).get("SpellChecking", True):
-                return
+            _g = _C.load().get("General", {})
+            _spell_on = _g.get("SpellChecking", True)
+            _instant = _g.get("InstantTranslation", False)
         except Exception:
-            pass
+            _spell_on, _instant = True, False
         cur = self.src.get("1.0", "end").strip()
+        if _instant and len(cur) >= 2:
+            try:
+                if getattr(self, "_instant_after", None):
+                    self.root.after_cancel(self._instant_after)
+            except Exception:
+                pass
+            try:
+                self._instant_after = self.root.after(
+                    600, self.on_go)
+            except Exception:
+                pass
+        if not _spell_on:
+            return
         if len(cur) < 3 or len(cur) > 60:
             return
         try:
