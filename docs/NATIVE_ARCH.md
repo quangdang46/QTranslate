@@ -198,6 +198,10 @@ Each user action = a `Task` object posted to a worker thread:
   (`FUN_00460354`) → error wrap (`FUN_004047D6`) → cleanup (`FUN_00404B7B`).
   This single function is the native equivalent of our Python
   `translate()` wrappers — service select → request → fallback chain.
+- **`FUN_00460354` = detect-retry loop** (`__thiscall`): alternates
+  `FUN_00460467` (detect request) + `FUN_00460580` (apply result) until
+  non-empty (error 6 = all providers exhausted) — the `AlwaysDetectLanguage`
+  engine behind auto-detect.
 - **`FUN_004606BA` = back-translation runner** (`__thiscall`): swaps
   sl/tl (`param_1+8` ↔ `param_1+10`, lang-index range check `< 0x4A`),
   validates both via `FUN_0045FF70`, re-runs translate (`FUN_0045FDE8`).
