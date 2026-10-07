@@ -124,6 +124,11 @@ Each user action = a `Task` object posted to a worker thread:
   `FUN_00462A82` walks entries filtering `type == 2` (real crashes, skipping
   breadcrumbs) and forwards them → `DeleteFileW` consumes the file so each
   crash reports exactly once.
+- `History.json` record layout (from a real entry): `[service,
+  [[srcLangIdx, trLangIdx, text]], flag]` — e.g. `["Classify",
+  [[1, 17, 57, "…"]], false]` with `LanguagePairs [[57,17],[17,57]]`
+  (indices into the shared `SupportedLanguages` table: 1=auto, 17=en, 57=vi).
+  `DictionaryHistory.json` absent on this machine (no offline lookups yet).
 - File layout (from a real install, 20 sections): Application, Exceptions,
   Contents, Advanced, Appearance, Internet, HotKeys, OfflineDictionaries, Ocr,
   Update, DisabledServices, Proxy, DictionariesOrder, DisabledLanguages,
