@@ -432,9 +432,30 @@ class App:
 
     def __init__(self, root):
         self.root = root
-        self.service = SERVICE if SERVICE in TRANSLATORS else "google"
-        self.target = TARGET
-        self.source = "auto"
+        # ActiveServices[0]/LanguageTo/LanguageFrom restore the last
+        # session (native saves them into General on switch/exit).
+        try:
+            from qtranslate import config as _CA
+            _ga = _CA.load().get("General", {})
+            _act = (_ga.get("ActiveServices", []) or [None])[0]
+            _aname = _CA.SERVICE_NAMES.get(_act)
+        except Exception:
+            _aname = None
+        self.service = _aname if _aname in TRANSLATORS else (
+            SERVICE if SERVICE in TRANSLATORS else "google")
+        try:
+            _table = list(__import__(
+                "qtranslate.services.google_translate",
+                fromlist=["SUPPORTED_LANGS"]).SUPPORTED_LANGS)
+            _lt = _ga.get("LanguageTo", 57)
+            TARGET_EFF = _table[_lt] if 0 <= _lt < len(_table) \
+                else TARGET
+            _lf = _ga.get("LanguageFrom", 1)
+            self.source = _table[_lf] if 0 <= _lf < len(_table) \
+                else "auto"
+        except Exception:
+            TARGET_EFF, self.source = TARGET, "auto"
+        self.target = TARGET_EFF
         self.history = self._load_history()  # (service, src, result)
         root.protocol("WM_DELETE_WINDOW", self.on_close)
         root.bind("<Unmap>", self._on_minimize)
@@ -842,6 +863,19 @@ class App:
         """FUN_0045CDBA + FUN_0043A121: switch provider, re-run."""
         self.service = name
         self._mark_service()
+        # persist ActiveServices (native keeps last service)
+        try:
+            from qtranslate import config as _C
+            import json as _j
+            _inv = {v: k for k, v in _C.SERVICE_NAMES.items()}
+            full = _C.load()
+            full.setdefault("General", {})["ActiveServices"] = [
+                _inv.get(name, 1)]
+            with open(_C.DEFAULT_PATH, "w",
+                      encoding="utf-8") as f:
+                _j.dump(full, f, ensure_ascii=False, indent=1)
+        except Exception:
+            pass
         text = self.src.get("1.0", "end").strip()
         if text:
             self.on_go()
