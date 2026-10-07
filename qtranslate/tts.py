@@ -57,3 +57,13 @@ def baidu_tts(text, lang, slow=False):
     if slow:
         url += "&spd=1"
     return _fetch_bytes(url)
+
+
+def naver_tts(text, lang="en", gender=0, speed=0, locale="en"):
+    """Naver Papago TTS via current web API — verified live 2026-10-07.
+
+    makeID then GET /api/tts/{id}; returns MP3 bytes. Speaker auto-picked
+    per language (TTS_SPEAKERS map in services/naver.py).
+    """
+    from qtranslate.services import naver as _naver
+    return _naver.tts(text, lang, gender, speed, locale)
