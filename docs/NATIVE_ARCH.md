@@ -471,6 +471,9 @@ Each user action = a `Task` object posted to a worker thread:
   switch): walks all services, keeps `caps & mask` (`+4` field), rebuilds
   the active list (`RemoveAll` + push-back) — drives which providers show
   in translate vs dictionary UI.
+- **`FUN_004031AA`/`FUN_004C0200` = copy helpers** (`__fastcall`):
+  bounded `memcpy` wrapper with errno paths — the raw copy under string
+  assign, DOM moves, and FLAC chunk copies.
 - **`FUN_004B3DF0` = object alloc** (`__cdecl` new-handler loop:
   `FUN_004D56B9` malloc → `__callnewh` retry → `std::bad_alloc` throw):
   most-called allocator, twin of `FUN_004B3DE2` free.
