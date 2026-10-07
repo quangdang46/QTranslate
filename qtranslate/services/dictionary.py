@@ -724,9 +724,28 @@ def wikipedia_article_url(word, sl, tl) -> str:
 
 
 # ------------------------------------------------------------- Google Search
-# Services/Google Search/Service.js
+# Services/Google Search/Service.js (SERVICE_ID=10, DICTIONARY only)
 
+GSEARCH_ID = 10
+GSEARCH_NAME = "Google Search"
 GSEARCH_HOST = "https://www.google.com"
+GSEARCH_STYLE = (".main>div{padding-bottom:1em}"
+                 ".main>div:first-child,img,button{display:none}")
+
+
+def gsearch_host() -> str:
+    """Port of serviceHost(): always https://www.google.com."""
+    return "https://www.google.com"
+
+
+def gsearch_link(word) -> str:
+    """Port of serviceLink(): host + /?q=<word>."""
+    return gsearch_host() + "/?q=" + _q(word)
+
+
+def gsearch_build_uri(word, tl) -> str:
+    """Port of buildUri(): /search?q=<word>&ie=UTF-8&hl=<target code>."""
+    return "/search?q={0}&ie=UTF-8&hl={1}".format(_q(word), tl)
 GSEARCH_LANGS = [None, "", "af", "az", "sq", "ar", "hy", "eu", "be", "bg",
                  "ca", "zh-CN", "zh-TW", "hr", "cs", "da", "nl", "en", "et",
                  "fi", "tl", "fr", "gl", "de", "el", "ht", "iw", "hi", "hu",
@@ -738,7 +757,15 @@ GSEARCH_LANGS = [None, "", "af", "az", "sq", "ar", "hy", "eu", "be", "bg",
 
 
 def google_search_lookup(word, sl, tl):
-    url = GSEARCH_HOST + "/search?q={0}&ie=UTF-8&hl={1}".format(_q(word), tl)
+    """Port of serviceDictionaryRequest/Response (main-div slice).
+
+    Faithful to native: main slice -> remove style/script/svg ->
+    strip id/name/style/class -> remove h3-h6 -> absolutize links ->
+    .main style wrap. The ResponseData link is host + buildUri.
+    (Current Google markup is JS-rendered; slice returns "" — port
+    kept faithful, not hidden.)
+    """
+    url = GSEARCH_HOST + gsearch_build_uri(word, tl)
     page = _get(url)
     frag = _sub(page, '<div id="main">', False, "<footer>", False)
     if not frag:
@@ -747,7 +774,8 @@ def google_search_lookup(word, sl, tl):
     frag = _remove_attributes(frag, ["id", "name", "style", "class"])
     frag = _remove_tags(frag, ["h[3-6]"])
     frag = _update_links(frag, GSEARCH_HOST)
-    return frag
+    return ('<style>' + GSEARCH_STYLE + '</style><div class="main">'
+            + frag + "</div>")
 
 
 PROVIDERS = {
