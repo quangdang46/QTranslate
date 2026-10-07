@@ -173,6 +173,13 @@ Each user action = a `Task` object posted to a worker thread:
   DWMWA_EXTENDED_FRAME_BOUNDS)` → else `GetWindowRect` minus borders
   (skipped when zoomed on Win7+) — correct popup rect under Aero.
 
+## String format core (decompiled)
+
+- **`FUN_004023F1` = sprintf-style formatter** (`__cdecl`, varargs):
+  length-probe (`FUN_00402723`) → grow (`FUN_0040335D`) → format
+  (`FUN_004026F0`) — backs every `"%s %s"`, `"Called function: %s"`,
+  error-message build in the app.
+
 ## String refcount core (decompiled)
 
 - **`FUN_004021DE`/`FUN_004033D1` = addref/release pair** (`__fastcall`,
