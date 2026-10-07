@@ -2110,12 +2110,14 @@ class App:
                 except Exception:
                     pass
 
-            tk.Label(body, text="Connection", bg=_COLORS["back"],
+            tk.Label(body, text=_Cw(11, 1049, "Connection"), bg=_COLORS["back"],
                      fg=_COLORS["text"],
                      font=("Segoe UI", 10, "bold")).pack(anchor="w")
             r = tk.Frame(body, bg=_COLORS["back"])
             r.pack(fill="x", pady=1)
-            tk.Label(r, text="Timeout (ms):", width=18, anchor="w",
+            # Native label shows seconds (1084) but Options.json
+            # stores ms (10000) — entry edits ms like the value.
+            tk.Label(r, text=_Cw(11, 1084, "Timeout (ms):"), width=18, anchor="w",
                      bg=_COLORS["back"],
                      fg=_COLORS["text"]).pack(side="left")
             _te = tk.Entry(r, width=10)
@@ -2124,7 +2126,7 @@ class App:
             _te.bind("<FocusOut>", lambda e: (
                 _inet.__setitem__("Timeout",
                                   int(_te.get() or 10000)), _save_n()))
-            tk.Label(body, text="Proxy", bg=_COLORS["back"],
+            tk.Label(body, text=_Cw(11, 1048, "Proxy"), bg=_COLORS["back"],
                      fg=_COLORS["text"],
                      font=("Segoe UI", 10, "bold")).pack(anchor="w",
                                                          pady=(8, 0))
