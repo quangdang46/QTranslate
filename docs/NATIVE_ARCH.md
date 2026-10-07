@@ -157,7 +157,8 @@ Each user action = a `Task` object posted to a worker thread:
   `GetProcAddress(DwmIsCompositionEnabled/GetWindowAttribute/
   SetWindowAttribute)` — dynamic (not linked) for XP compat; Aero glass
   popup frames when composition is on. Siblings: `msftedit.dll`
-  (RichEdit), `mscoree.dll`, `iphlpapi.dll` (proxy route lookup).
+  (RichEdit), `iphlpapi.dll` (proxy route lookup). (`mscoree.dll` string
+  is CRT-only — `try_cor_exit_process` mixed-mode exit, not a .NET host.)
 - **`FUN_00437D22` = glass frame measurer** (via lazy singleton
   `FUN_00435636`): if composition on → `DwmGetWindowAttribute(
   DWMWA_EXTENDED_FRAME_BOUNDS)` → else `GetWindowRect` minus borders
