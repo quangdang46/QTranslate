@@ -87,7 +87,11 @@ Each user action = a `Task` object posted to a worker thread:
    `0x2D` (Insert → Ctrl+Ins alternate path).
 5. **Key synthesizer = `FUN_0043BD5C` → `FUN_0043BDB4`**: Ctrl-down
    (`0x11`) → key-down → `Sleep(0x20)` → key-up → Ctrl-up, via zeroed
-   `tagINPUT` + `SendInput(1, &input, 0x1C)`.
+   `tagINPUT` + `SendInput(1, &input, 0x1C)` (IAT `0x50D504`).
+6. **Keyboard/layout cluster** (`FUN_0042AADC/0042AB07/0042AB33/0042AB5F`,
+   `FUN_0042AEC9/0042AEF2`, `FUN_0042B935` — all `SendInput` callers via same
+   IAT slot): single-key inject helper `FUN_0042AADC(key, up/down)` — the
+   `TaskConvertTextLayout` engine that retypes text in the fixed layout.
 4. OCR: `OcrProvider`/`OcrSpaceProvider` (`common::`) — screenshot from `ScreenCaptureWindow` → upload to OCR API.
 
 ## JS engine hosting (decompiled, verified)
