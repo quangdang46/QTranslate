@@ -312,7 +312,14 @@ def multitran_lookup(word, sl, tl, ui_lang="en"):
     if ui_lang != "ru":
         url += "&SHL=1"
     page = _get(url)
-    frag = _sub(page, '<table width="100%">', True, "</table>", True)
+    # Current markup: first width=100% table is a header shell; real
+    # entries live in the following width=100% tables containing
+    # <a name="..."> anchors (noun/verb/...). Collect those.
+    blocks = re.findall(r'<table width="100%">.*?</table>', page,
+                        flags=re.S | re.I)
+    entries = [b for b in blocks if "<a name=" in b]
+    frag = "\n".join(entries) if entries else _sub(
+        page, '<table width="100%">', True, "</table>", True)
     if not frag:
         return ""
     frag = re.sub(r'href="/m\.exe', 'href="https://www.multitran.com/m.exe',
