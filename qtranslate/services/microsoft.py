@@ -202,7 +202,22 @@ def translate_full(text, sl=AUTO_DETECT_LANGUAGE, tl=ENGLISH_LANGUAGE,
 
 def dictionary(text, sl, tl, ig="", token="", key="", cookie="",
                opener=None) -> str:
-    """Port of dictionaryRequest/dictionaryResponse: POST /tlookupv3."""
+    """Port of dictionaryRequest/dictionaryResponse: POST /tlookupv3.
+
+    SERVER WALL (verified 2026-10-08): tlookupv3 returns 401 for every
+    IID/header combo (old .2 suffix, live data-iid, get/post headers)
+    while ttranslatev3 on the same session is 200 — Bing retired the
+    standalone dictionary endpoint. translate_full() chaining still
+    routes short texts here; returns "" so callers fall through.
+    Kept faithful for when/if the endpoint reopens."""
+    if not (ig and token and key):
+        try:
+            from qtranslate.session import bing_session as _bs
+            _s = _bs()
+            ig, token, key = _s["IG"], _s["token"], _s["key"]
+            cookie, opener = _s["cookie"], _s["opener"]
+        except Exception:
+            pass
     text = limit_source(text, 1000)
     sl_code = code_from_language(sl, SUPPORTED_LANGS) \
         if isinstance(sl, int) else sl

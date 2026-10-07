@@ -107,7 +107,11 @@ def bing_session() -> dict:
     ig = re.search(r'IG:"(\w+)"', html)
     abuse = re.search(
         r'params_AbusePreventionHelper\s*=\s*\[(\d+),"([^"]+)",(\d+)', html)
-    iid = re.search(r'data-iid="(translator\.\d+\.\d+)"', html)
+    # IID format changed: page now has translator.5024/5023/5026
+    # (was translator.5023.3). data-iid values feed ttranslatev3 (.3)
+    # and tlookupv3 (.2) — keep both, defaulting live.
+    _iids = re.findall(r'data-iid="(translator\.[\w.]+)"', html)
+    iid = _iids[0] if _iids else "translator.5023"
     if not ig or not abuse:
         raise RuntimeError("Could not scrape Bing session (page layout changed?)")
     return {
@@ -115,7 +119,8 @@ def bing_session() -> dict:
         "key": abuse.group(1),
         "token": abuse.group(2),
         "cookie": cookie,
-        "iid": iid.group(1) if iid else "translator.5023.3",
+        "iid": iid,
+        "iids": _iids,
         "opener": opener,  # reuse: same cookie jar for the translate call
     }
 
