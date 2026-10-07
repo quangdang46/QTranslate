@@ -131,6 +131,17 @@ Each user action = a `Task` object posted to a worker thread:
   AutoDetection. Ported to `qtranslate/config.py` (hotkey word decode matching
   `FUN_00405A17`, default `ServicesOrder = [1,5,12,13,11,26,28,30,31]`).
 
+## Translate orchestrator (decompiled)
+
+- **`FUN_00404A12` = central dispatch** (called by ReplaceSelection and all
+  translate tasks): picks service by id (`FUN_0045CC50`) or default
+  (`FUN_0045CEDE`), checks enabled flag → runs task executor
+  (`FUN_0045F6C1`) → on success stores result; on empty result tries
+  back-translation (`FUN_004606BA`) then language-detect retry
+  (`FUN_00460354`) → error wrap (`FUN_004047D6`) → cleanup (`FUN_00404B7B`).
+  This single function is the native equivalent of our Python
+  `translate()` wrappers — service select → request → fallback chain.
+
 ## Replace-selection path (decompiled)
 
 - **`FUN_0043BE56` = clipboard writer** (`__fastcall`): open-with-retry
