@@ -616,6 +616,9 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Clipboard viewer chain (decompiled)
 
+- **Message-only windows**: 17 `PUSH -3` (`HWND_MESSAGE`) sites in
+  `.text` — clipboard viewer (`FUN_0043EBE0`) + hotkey receiver windows
+  (WM_HOTKEY needs no visible window) + worker notification sinks.
 - **`FUN_0043EBE0` = viewer setup**: registers `QTranslateClipboardWindowClass`
   with WndProc `FUN_0043EBA1`, creates a message-only window
   (`HWND_MESSAGE = 0xFFFFFFFD`) stored at `DAT_005491B0` — the classic
