@@ -471,6 +471,10 @@ Each user action = a `Task` object posted to a worker thread:
   switch): walks all services, keeps `caps & mask` (`+4` field), rebuilds
   the active list (`RemoveAll` + push-back) — drives which providers show
   in translate vs dictionary UI.
+- **Observer notify = vtable `+4(param_2)`** (in the switcher loop over
+  `DAT_00549580`/`DAT_00549584`): each `ServicesFactoryObserver`
+  (ServicesMenu, LanguagesMenu, popup lists) refreshes on service switch
+  with the translate/dict flag.
 - **`FUN_004024F2` = observer accessor** (`__thiscall`, bounds-checked
   vector index into `DAT_00549580`): iterates `ServicesFactoryObserver`s
   in the switcher notify loop.
