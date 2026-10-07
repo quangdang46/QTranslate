@@ -881,6 +881,12 @@ Each user action = a `Task` object posted to a worker thread:
   (1→`+0x14C`, 3→`+0x164`, 4→`+0x17C`, else→`+0x134`, stride `0x18`) —
   palettes ported to `qtranslate/theme.py` (`window_colors` per state;
   8 themes verified loadable).
+- **`FUN_0044D008` = themed custom dispatcher** (`__fastcall`):
+  `WM_PAINT (0xF)` → `FUN_0044D1AC`; `WM_ERASEBKGND (0x14)` skip;
+  `WM_MOUSEMOVE (0x200)` hover-set + invalidate; `0x2A3`
+  (`WM_MOUSELEAVE`-family) hover-clear; NC range `0xF1–0xF7` +
+  `0x47` via pre/post (`FUN_0044CF07/0044CF52`) + invalidate — full
+  hover-aware themed paint for subclassed controls.
 - **`FUN_0044BFB6` = subclass proc** (SetWindowSubclass callback):
   custom dispatch (`FUN_0044D008`, handled-flag) → `WM_NCDESTROY (0x82)`
   cleanup (`FUN_0044BCC1`) → `DefSubclassProc` fallback.
