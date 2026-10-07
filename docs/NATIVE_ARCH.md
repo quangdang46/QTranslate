@@ -268,6 +268,10 @@ Each user action = a `Task` object posted to a worker thread:
 - **`FUN_0040E961` = highlight toggle**: `GetWindowDC` + `SetROP2(R2_NOTXORPEN)`
   + 3px pen `Rectangle` — XOR draw means calling it twice on the same window
   erases the highlight (why the tracker calls it on both old and new).
+- **`FUN_00403506` = app-name resolver**: `GetWindowThreadProcessId` →
+  `OpenProcess(PROCESS_QUERY_INFORMATION)` → `FUN_004036CE`
+  (`QueryFullProcessImageNameW`) → `PathFindFileNameW` basename — exactly
+  the `exe_name` our Python `exclusions.py::_fg_class_and_exe()` computes.
 
 ## Clipboard viewer chain (decompiled)
 
