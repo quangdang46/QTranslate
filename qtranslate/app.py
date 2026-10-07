@@ -948,13 +948,49 @@ def on_layout_hotkey():
     print(f"layout-fixed {len(text)} chars -> clipboard: {fixed[:80]}")
 
 
+def on_dict_hotkey(app):
+    """Ctrl+Shift+Q => Show dictionary window (per help.txt)."""
+    if not _HAS_KEYS:
+        return
+    try:
+        text = pyperclip.paste().strip()
+    except Exception:
+        return
+    if text:
+        app.src.delete("1.0", "end")
+        app.src.insert("1.0", text[:2000])
+    app.open_dict_window()
+
+
+def on_listen_hotkey(app):
+    """Ctrl+E => Listen to selected text (per help.txt)."""
+    if not _HAS_KEYS:
+        return
+    try:
+        text = pyperclip.paste().strip()
+    except Exception:
+        return
+    if not text:
+        return
+    _, _, tgt, _ = app.current()
+    threading.Thread(target=speak, args=(text[:500], tgt),
+                     daemon=True).start()
+
+
 def main():
     root = tk.Tk()
     app = App(root)
     print(f"qtranslate-re main window running "
           f"(services: {len(TRANSLATORS)} translate + {len(DICTS)} dict)")
-    print("  Ctrl+Alt+Q: translate clipboard | Ctrl+Alt+L: fix layout")
+    print("  Ctrl+Q: popup translate | Ctrl+Shift+Q: dictionary | "
+          "Ctrl+E: listen | Ctrl+Alt+L: fix layout")
     if _HAS_KEYS:
+        # Global hotkeys mirror help.txt (Ctrl combos; Double-Ctrl and
+        # Ctrl+Alt variants kept as fallback where Ctrl is taken)
+        keyboard.add_hotkey("ctrl+q", lambda: on_hotkey(app))
+        keyboard.add_hotkey("ctrl+shift+q",
+                            lambda: on_dict_hotkey(app))
+        keyboard.add_hotkey("ctrl+e", lambda: on_listen_hotkey(app))
         keyboard.add_hotkey("ctrl+alt+q", lambda: on_hotkey(app))
         keyboard.add_hotkey("ctrl+alt+l", on_layout_hotkey)
     else:
