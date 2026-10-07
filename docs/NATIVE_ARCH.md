@@ -407,6 +407,10 @@ Each user action = a `Task` object posted to a worker thread:
   sub-layout (`+0x48/+0x54`) → hotkey-test refresh (`FUN_00409EC0`) +
   show-layout (`FUN_00408ADE`). Service ids 5/`0x1A`/`0x2A`/`0x38`/`0x3B`
   take a flag variant.
+- **`FUN_00422DDD` = placement writer** (`__thiscall`):
+  `GetWindowPlacement` + iconic→`SW_SHOW` fix + DPI flag
+  (`FUN_00450B4D`) — produces the hex blobs stored as
+  `WindowMainPlacement`/`WindowPopupPlacement`/… in Options.json.
 - **`FUN_0042EC6C` = UI state snapshotter** (`__fastcall`): saves window
   placement (`FUN_00422DDD` + `DAT_005492D0`) + service/lang selections
   (`+0x440/+0x46C` vtable) + head-lines of 2–3 edits (`FUN_004099F3` into
