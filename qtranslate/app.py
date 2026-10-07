@@ -25,6 +25,13 @@ except ImportError:
 
 SERVICE = sys.argv[1] if len(sys.argv) > 1 else "google"
 TARGET = sys.argv[2] if len(sys.argv) > 2 else "vi"
+THEME = sys.argv[3] if len(sys.argv) > 3 else "Flat Dark"
+
+try:
+    from qtranslate.theme import load_theme, window_colors
+    _COLORS = window_colors(load_theme(THEME))
+except Exception:
+    _COLORS = {"back": "#202020", "text": "#bbbbbb", "border": "#333333"}
 
 
 def speak(text, lang):
@@ -39,10 +46,12 @@ def show_popup(source, result):
     win = tk.Tk()
     win.title(f"QTranslate-re [{SERVICE} -> {TARGET}] (Ctrl+Alt+Q to re-capture)")
     win.attributes("-topmost", True)
+    win.configure(bg=_COLORS["back"])
     tk.Label(win, text=source, wraplength=480, justify="left",
-             fg="gray").pack(padx=12, pady=(12, 4))
+             fg="gray", bg=_COLORS["back"]).pack(padx=12, pady=(12, 4))
     tk.Label(win, text=result, wraplength=480, justify="left",
-             font=("Segoe UI", 13)).pack(padx=12, pady=4)
+             font=("Segoe UI", 13),
+             fg=_COLORS["text"], bg=_COLORS["back"]).pack(padx=12, pady=4)
     frm = tk.Frame(win)
     frm.pack(pady=(0, 12))
     tk.Button(frm, text="🔊 Listen",
