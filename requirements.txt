@@ -11,5 +11,9 @@ pyperclip==1.11.0
 # Optional (system-tray icon mirroring the native tray states;
 # skipped silently when absent):
 # pystray
-# Pillow (for Service.ico strip images + tray icon)
+# Pillow (Service.ico strip + tray icon + OCR region capture)
 # Pillow
+
+# Optional (offline speech-input via Windows SAPI shared recognizer;
+# app explains when absent):
+# comtypes
