@@ -37,9 +37,9 @@ python -I qtranslate/tts.py "Xin chào" vi google.mp3
 | Youdao | ✅ | — | — | ✅ | **live OK** (`jsonapi_s` translate + `/w/` dictionary, no sign needed, 2026-10-07) |
 | Reverso | ✅ | — | — | ✅ | ported; site 403 (bot-wall) |
 | ImTranslator | ✅ | — | — | — | ported; endpoint 404 (retired) |
-| WordReference | — | — | — | ✅ | ported; markup changed (empty) |
+| WordReference | — | — | — | ✅ | ported; Anubis bot-wall (needs headless) |
 | Oxford Learner | — | — | — | ✅ | **live OK** |
-| Multitran | — | — | — | ✅ | ported; markup changed (empty) |
+| Multitran | — | — | — | ✅ | **live OK** (anchor-table slice fix, 2026-10-07) |
 | Babylon / Babylon Dict | — | — | — | ✅ | ported; translate 404 + dict TLS-handshake-fail (servers retired) |
 | ABBYY Lingvo Live | — | — | — | ✅ | **live OK** |
 | Urban Dictionary | — | — | — | ✅ | **live OK** |

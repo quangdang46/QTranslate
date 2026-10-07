@@ -39,6 +39,12 @@ def main():
     check("naver.translate EN->VI", lambda: n.translate("Hello world", "en", "vi")[0])
     check("naver.dict", lambda: len(n.dictionary_search("hello", "en", "ko").get("items", [])) > 0 and "dict-items")
     check("naver.tts", lambda: len(n.tts("Hello", "en")) > 1000 and "mp3-bytes")
+    from qtranslate.services import dictionary as dd
+    check("dict.oxford", lambda: dd.oxford_lookup("hello"))
+    check("dict.lingvo", lambda: dd.lingvo_lookup("hello", "en", "ru"))
+    check("dict.urban", lambda: dd.urban_lookup("hello"))
+    check("dict.wikipedia", lambda: dd.wikipedia_lookup("hello", "en", "en"))
+    check("dict.multitran", lambda: dd.multitran_lookup("hello", 1, 2))
 
     for name, status, detail in results:
         print(f"{status:8} {name:28} {detail}")

@@ -43,7 +43,9 @@ verified non-empty. Total live-verified endpoints: 12.)
 | Reverso | 403 Forbidden (Cloudflare/bot-wall since ~2020) |
 | ImTranslator | 404 (endpoint `/translation/dictionary/DicService.asmx` retired) |
 | Babylon | SSL verify fail (host cert chain broken/retired) |
-| Wikipedia / WordReference / Multitran | return empty — target sites redesigned markup since 2018–2022 JS; slicing regexes no longer match (logic faithful to original, needs re-slicing against current HTML) |
+| Wikipedia | **LIVE-OK** (Vector-skin fallback slice, 2026-10-07) |
+| Multitran | **LIVE-OK** (anchor-table slice fix, 2026-10-07) |
+| WordReference | Anubis bot-wall ("Making sure you're not a bot!") — needs headless |
 
 ## Known-dead / blocked endpoints (as of 2026-10-07)
 
