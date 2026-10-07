@@ -349,12 +349,24 @@ def reverso_translate(text, sl="en", tl="fr"):
 
 
 def reverso_lookup(word, sl, tl):
-    url = reverso_host(True) + reverso_build_uri(word, sl, tl)
-    page = _get(url)
+    try:
+        url = reverso_host(True) + reverso_build_uri(word, sl, tl)
+        page = _get(url)
+    except Exception:
+        page = ""
     frag = _sub(page, '<div id="TableHTMLResult">', False,
-                "<!--Center section end", False)
+                "<!--Center section end", False) if page else ""
     if not frag:
-        return ""
+        # Legacy HTML walled (403) — fall back to the live context API
+        # translation + context examples as the dictionary fragment.
+        try:
+            tr = reverso_translate(word, sl, tl)
+            if tr:
+                frag = f"<div><b>{word}</b> — {tr}</div>"
+        except Exception:
+            pass
+        if not frag:
+            return ""
     frag = re.sub(r"font-size:\s\d+px;?", "", frag)
     frag = _remove_elements(frag, ["script", "iframe"])
     frag = _remove_attributes(
