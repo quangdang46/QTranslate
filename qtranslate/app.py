@@ -961,6 +961,16 @@ class App:
                            self.opt_detect.get(), self.opt_backtr.get())
         self.render(res)
         self.push_hist(svc, text[:120], res[:200])
+        # AutoCleanupOfTranslation: clear the source pane after a
+        # successful translate (native 0x8077).
+        try:
+            from qtranslate import config as _C
+            if _C.load().get("General", {}).get(
+                    "AutoCleanupOfTranslation", False) and res \
+                    and not res.startswith("No data"):
+                self.src.delete("1.0", "end")
+        except Exception:
+            pass
 
     def on_clear(self):
         """Ctrl+N => Clear current translation (per help.txt)."""
@@ -2687,6 +2697,21 @@ def main():
     _seed_service_options()
     root = tk.Tk()
     app = App(root)
+    # MainWindowStartupAction (0=normal, 1=minimized, 2=tray) +
+    # MainWindowShowOnLoad=false (start hidden, tray shows it).
+    try:
+        from qtranslate import config as _C
+        _g = _C.load().get("General", {})
+        _act = int(_g.get("MainWindowStartupAction", 0))
+        if not _g.get("MainWindowShowOnLoad", True) or _act == 2:
+            root.withdraw()
+        elif _act == 1:
+            try:
+                root.iconify()
+            except Exception:
+                pass
+    except Exception:
+        pass
     print(f"qtranslate-re main window running "
           f"(services: {len(TRANSLATORS)} translate + {len(DICTS)} dict)")
     print("  Ctrl+Q: popup translate | Ctrl+Shift+Q: dictionary | "
