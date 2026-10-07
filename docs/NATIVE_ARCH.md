@@ -264,6 +264,15 @@ Each user action = a `Task` object posted to a worker thread:
   (dozens of call sites). Distinct from `FUN_004207F3` (hash-chain
   equality-bool) — this one orders, that one tests.
 
+## Synchronization (verified)
+
+- Critical sections guard the WndClass list (`DAT_00544BD8`), the global
+  once-epoch (`DAT_00547DDC`), and per-object state; `Initialize` at
+  startup/singleton-init, `Delete` in teardown twins
+  (`FUN_00422215`-style). `LOCK()`-prefixed Interlocked ops guard
+  refcounts. No SRWLOCKs/condition variables in app code (libcurl/BASS
+  manage their own internally).
+
 ## Process model (verified)
 
 - **No child processes**: zero `CreateProcess*` imports — everything runs
