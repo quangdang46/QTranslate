@@ -82,8 +82,9 @@ scrape + translate (`session.bing_translate()`) returns live translations.
 
 Probed 2026-10-07 with shared-jar sessions — tokens absent from static HTML:
 
-- Baidu: `token`/`gtk` not in page source (SPA-injected at runtime).
-  `Session.get(baidu.com)` cookie-first flow done, still no tokens.
-- Youdao: `OUTFOX_SEARCH_USER_ID`/`fanyideskweb` not in static HTML.
-- Promt: `aft` value + `XSRF` not in static HTML (markup redesigned).
+- Baidu: fresh BAIDUID/BIDUPSID/PSTM cookies OK, but v2transapi → errno
+  1022 (anti-bot: needs live `gtk`+`token` from the JS bundle).
+- Youdao: live OUTFOX cookie plumbed through (was hardcoded), but
+  translate_o → `errorCode 50` (new `bv`/`mysticTime` fields required).
+- Promt: Antiforgery cookies OK, `paft` absent → API 400. ghcs() verified.
 - Naver: `/apis/*` 404 (migrated off the old stack entirely).
