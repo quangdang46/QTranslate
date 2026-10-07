@@ -905,9 +905,33 @@ class App:
         self.render("Hotkeys (from Locales/English/help.txt):\n" + doc)
 
     def show_about(self):
-        self.render("QTranslate-re — clean-room RE of QTranslate 6.10.0\n"
-                    f"providers: {len(TRANSLATORS)} translate + "
-                    f"{len(DICTS)} dict (see README provider table)")
+        # DLG 133: About + OK + 2 SysLinks (homepage, services credit).
+        w = tk.Toplevel(self.root)
+        w.title("About")
+        w.configure(bg=_COLORS["back"])
+        w.geometry("360x200")
+        tk.Label(w, text="QTranslate Version 6.10.0",
+                 bg=_COLORS["back"], fg=_COLORS["text"],
+                 font=("Segoe UI", 11, "bold")).pack(pady=(12, 2))
+        tk.Label(w, text="qtranslate-re — clean-room RE\n"
+                         f"{len(TRANSLATORS)} translate + {len(DICTS)} "
+                         "dictionary providers",
+                 bg=_COLORS["back"], fg=_COLORS["text"],
+                 justify="center").pack(pady=2)
+
+        def _link(url, text):
+            lb = tk.Label(w, text=text, fg="blue", cursor="hand2",
+                          bg=_COLORS["back"],
+                          font=("Segoe UI", 9, "underline"))
+            lb.pack()
+            lb.bind("<Button-1>", lambda e: _open_url(url))
+
+        _link("https://quest-app.appspot.com/",
+              "QTranslate homepage")
+        _link("https://quest-app.appspot.com/services",
+              "Translation services")
+        tk.Button(w, text="OK",
+                  command=w.destroy).pack(pady=10)
 
     # -- Options dialog (DLG 154 + pages; Basics page mirrors screenshot) --
     def open_options(self):
@@ -1592,13 +1616,65 @@ class App:
                     lb.delete(s[0])
                     _save_x()
 
+                def _modify():
+                    # DLG 176 Modify: edit selected entry in place
+                    s = lb.curselection()
+                    if not s:
+                        return
+                    i = s[0]
+                    exe = er.get().strip()
+                    cls = cr.get().strip()
+                    if exe in ("", "exe or empty"):
+                        exe = pairs[i][0] if er.get().strip() in (
+                            "", "exe or empty") else ""
+                    if cls in ("", "class or empty"):
+                        cls = pairs[i][1] if cr.get().strip() in (
+                            "", "class or empty") else ""
+                    pairs[i] = [exe, cls]
+                    lb.delete(i)
+                    lb.insert(i, f"{exe or '*'}  |  {cls or '*'}")
+                    lb.selection_set(i)
+                    _save_x()
+
                 tk.Button(fr, text="Add",
                           command=_add).pack(side="left", padx=2)
+                tk.Button(fr, text="Modify",
+                          command=_modify).pack(side="left", padx=2)
                 tk.Button(fr, text="Remove",
                           command=_dele).pack(side="left", padx=2)
 
             _mk_xlist(body, "Blocked (Disabled)", _dis_list)
             _mk_xlist(body, "Allowed (Enabled)", _en_list)
+            # DLG 176 "Enable smart detection" (General.UseSmartDetection)
+            try:
+                _genx = cfg.get("General", {})
+            except Exception:
+                _genx = {}
+            _sv = tk.BooleanVar(
+                value=bool(_genx.get("UseSmartDetection", True)))
+            self._opt_vars = getattr(self, "_opt_vars", {})
+            self._opt_vars["UseSmartDetection_x"] = _sv
+
+            def _save_smart():
+                try:
+                    from qtranslate import config as C3
+                    import json as _j
+                    full = C3.load()
+                    full.setdefault("General", {})[
+                        "UseSmartDetection"] = _sv.get()
+                    with open(C3.DEFAULT_PATH, "w",
+                              encoding="utf-8") as f:
+                        _j.dump(full, f, ensure_ascii=False, indent=1)
+                    cfg.setdefault("General", {})[
+                        "UseSmartDetection"] = _sv.get()
+                except Exception:
+                    pass
+
+            tk.Checkbutton(body, text="Enable smart detection",
+                           variable=_sv, bg=_COLORS["back"],
+                           fg=_COLORS["text"], selectcolor=_COLORS["back"],
+                           command=_save_smart).pack(anchor="w",
+                                                     pady=(6, 0))
 
         def show_advanced():
             # Full Advanced section, live where implemented.
