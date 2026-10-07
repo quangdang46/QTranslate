@@ -248,6 +248,12 @@ Each user action = a `Task` object posted to a worker thread:
   (`MS Shell Dlg 2`, weight 700/Bold, `lfHeight = -MulDiv(pt*20,
   LOGPIXELSY, 72)` DPI-scaled) — popup/dialog font creation path.
 
+## Tooltip + balloon (decompiled)
+
+- **`FUN_00403E00` = tooltip creator** (`__thiscall`): `CreateWindowExW(
+  "tooltips_class32", style 0x80000002 = TTS_ALWAYSTIP|TTS_NOPREFIX)` —
+  hover hints on popup controls.
+
 ## Tray icon + layout keys (decompiled)
 
 - **`FUN_00405C42` = tray add** (`__thiscall`, `Shell_NotifyIconW(NIM_ADD)`
