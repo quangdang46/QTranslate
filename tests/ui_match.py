@@ -177,6 +177,19 @@ check("langs-codes-rt",
       and A.LANG_CODES.get("Auto-Detect") == "auto")
 check("langs-no-auto-target", "auto" not in A.TO_LANGS)
 
+# 11b. Babylon translate port (ID 13, 1:1 Service.js)
+from qtranslate.services import babylon as _B
+check("babylon-id", _B.SERVICE_ID == 13)
+check("babylon-langs",
+      len(_B.SUPPORTED_LANGS) == 76 and _B.SUPPORTED_LANGS[21] == 1
+      and _B.SUPPORTED_LANGS[5] == 15)
+check("babylon-host",
+      _B.service_host() == "https://translation.babylon-software.com")
+check("babylon-error-path",
+      A.do_translate("babylon", "hello", "fr")
+      == "No data returned (timeout while sending data).")
+check("translators-10", len(A.TRANSLATORS) == 10)
+
 # 12. i18n helper (lang.json Id maps; English falls back to default)
 check("i18n-en-fallback",
       A._T("Menus", 20, "Copy translation", menu=3)
