@@ -185,6 +185,11 @@ Each user action = a `Task` object posted to a worker thread:
 - **Dictionary pair = `FUN_00465EF7` / `FUN_00465FAB`**: same 3-arg/4-arg
   IDispatch pattern for `serviceDictionaryRequest/Response` — the dictionary
   render fork (HTML into `DictionaryWindow` instead of plain text).
+- **Link opener = `FUN_0045FCCD`** (`__thiscall`): invokes
+  `serviceLink(text, sl, tl, flag)` (4 args via `FUN_0043B9BE`)
+  → URL string → `ShellExecute` opens the provider page in the browser
+  ("open in browser" context action). `serviceHost` refs at
+  `FUN_00465BD3`/`FUN_00460006` (base URL for fetch + Referer header).
 - **Listen invoker = `FUN_0046606C`** (`__thiscall`): invokes
   `serviceListenRequest(text, lang, slowFlag)` (3 args, `param_3` = slow
   playback toggle) → `RequestData` parse (`FUN_0046578F`) → curl fetch mp3 →
