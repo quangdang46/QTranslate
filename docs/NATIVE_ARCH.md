@@ -114,6 +114,18 @@ Each user action = a `Task` object posted to a worker thread:
   AutoDetection. Ported to `qtranslate/config.py` (hotkey word decode matching
   `FUN_00405A17`, default `ServicesOrder = [1,5,12,13,11,26,28,30,31]`).
 
+## Auto-update + proxy (decompiled, probed)
+
+- **`FUN_00461A26` = update checker** (`CheckForUpdateRunnable`'s worker):
+  GET `https://quest-app.appspot.com/update?v=6.10.0` via `FUN_0045BCED`
+  (curl wrapper, timeout flag `0xFDE9`, retry 2) → `FUN_00461ADE` parses
+  response. **Probed 2026-10-07: HTTP 404** — update server retired along
+  with the app (last release 2022); updater is dead code path now.
+- Proxy modes (from strings + `PageInternet`): No proxy / system settings
+  (`WinHttpGetIEProxyConfigForCurrentUser`) / auto-detect / manual
+  (Scheme/Host/Port/Username/Password in `Options.json Proxy` section).
+  libcurl honors `http_proxy`/`all_proxy` env as fallback.
+
 ## Popup render path (decompiled, verified)
 
 - **`FUN_0040C393` = popup content+position setter** (`__fastcall`, calls
