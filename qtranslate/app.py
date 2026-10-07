@@ -1660,6 +1660,22 @@ class App:
             def work():
                 from qtranslate import dict_render as DR
                 cards = []
+                # Offline XDXF first (native OfflineDictionaries list;
+                # empty on this machine, but honored when configured).
+                try:
+                    from qtranslate import xdxf as _X
+                    _off = _C.load().get("OfflineDictionaries", []) or []
+                    for _xp in _off:
+                        try:
+                            _frag = _X.lookup(word_q, _xp)
+                            if _frag:
+                                cards.append(("xdxf", _xp.split(
+                                    "/")[-1].split("\\")[-1],
+                                    _frag[:8000]))
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
                 for sid in sids:
                     key = {_v: _k for _k, _v in _disp.items()
                            }.get(_disp.get(sid, ""), "")
