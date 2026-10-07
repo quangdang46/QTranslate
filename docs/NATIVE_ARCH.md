@@ -697,6 +697,15 @@ Each user action = a `Task` object posted to a worker thread:
   `0x8077`, Save-on-exit `0x8075`, Show panes `0x8071/0x8064/0x8065`
   (Ctrl+F1/F2/F3), Minimize-to-tray `0x806F/0x8070`. Sibling
   `FUN_0042DC18`: Reset (`Shift+Esc`), Edit `0x8052`, Always-detect `0x808E`.
+- **Menu resources** (6× `RT_MENU` in `.rsrc`, extracted from PE): `131` =
+  tray main (QTranslate/Dictionary/Text Recognition/History/Keyboard/Options/
+  About/Enable global hotkeys/Mouse Mode/Enabled/Show Icon); `179` =
+  history-item (Open/Listen to text/Copy text/Copy translation/Delete);
+  `181` = options toggles (Spell checking/Instant translation/Back translation/
+  Extended/Read phonetically/Clear input on DnD/Auto-cleanup/Save on exit/
+  Show top-middle-services panes); `189` = edit (Reset/Shift+Esc/Edit.../
+  Always detect language); `200` = Show Full History; `206` = dictionary
+  item (Show info/Remove dictionary).
 
 ## Capture exclusions (from real Options.json)
 
