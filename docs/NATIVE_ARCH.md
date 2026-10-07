@@ -407,6 +407,10 @@ Each user action = a `Task` object posted to a worker thread:
   sub-layout (`+0x48/+0x54`) → hotkey-test refresh (`FUN_00409EC0`) +
   show-layout (`FUN_00408ADE`). Service ids 5/`0x1A`/`0x2A`/`0x38`/`0x3B`
   take a flag variant.
+- **`FUN_00408B4B` = full-text reader** (`__thiscall`): `EM_GETLINECOUNT
+  (0x434)` → `FUN_004099F3` range read — grabs the whole edit content for
+  copy-translation and template expansion. Siblings `FUN_00408D01/
+  00409ABF/00408A83/0042EC6C` (8 line-getter call sites total).
 - **`FUN_004099F3` = RichEdit line getter** (`__thiscall`):
   `EM_GETLINE (1099)` range read into a fresh buffer — feeds the template
   expander and the copy-translation path with source lines.
