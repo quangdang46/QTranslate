@@ -3,6 +3,14 @@
 All entries are clean-room RE of QTranslate 6.10.0 for education.
 `LIVE-OK` = verified against the real provider endpoint.
 
+## Keys loop (2026-10-08, help.txt 100% bound)
+
+- Ctrl+K virtual keyboard; Ctrl+Space suggestion accept (label
+  clickable); toolbar New (id1021)
+- Right-click multi-select translate (fan-out + groove marks)
+- All 17 main-window hotkeys bound; global registrar from Options.json
+- `tests/ui_match.py` 82/82
+
 ## Babylon translate (2026-10-08, ID 13 ported 1:1)
 
 - `services/babylon.py`: header/host/link, SupportedLanguages (76),
