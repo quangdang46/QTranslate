@@ -18,7 +18,7 @@ def list_locales(locales_dir: str = LOCALES_DIR) -> list:
             d = json.load(open(p, encoding="utf-8-sig"))
             out.append((d.get("LanguageName", "?"), d.get("LanguageCode", "?")))
         except (OSError, ValueError):
-            pass
+            pass  # e.g. English/lang.json is truncated upstream (ends at Id:10)
     return sorted(out)
 
 
