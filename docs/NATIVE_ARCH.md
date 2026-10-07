@@ -471,6 +471,9 @@ Each user action = a `Task` object posted to a worker thread:
   switch): walks all services, keeps `caps & mask` (`+4` field), rebuilds
   the active list (`RemoveAll` + push-back) — drives which providers show
   in translate vs dictionary UI.
+- **`FUN_004B3DF0` = object alloc** (`__cdecl` new-handler loop:
+  `FUN_004D56B9` malloc → `__callnewh` retry → `std::bad_alloc` throw):
+  most-called allocator, twin of `FUN_004B3DE2` free.
 - **`FUN_004B3DE2` = object free** (`__cdecl` free wrapper, most-called
   deallocator): bottoms out at CRT free — closes the free chain
   (linked → object → heap).
