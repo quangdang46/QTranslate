@@ -12,6 +12,13 @@ LIVE-OK  baidu.detect                 en
 5/5 live OK
 ```
 
+## Dictionary providers (probed 2026-10-07)
+
+| Provider | Status |
+|---|---|
+| Urban Dictionary | **LIVE-OK** (old `/define.php?term=` markup intact) |
+| Wikipedia / WordReference / Multitran | return empty — target sites redesigned markup since 2018–2022 JS; slicing regexes no longer match (logic faithful to original, needs re-slicing against current HTML) |
+
 ## Known-dead / blocked endpoints (as of 2026-10-07)
 
 | Provider | Endpoint | Status |

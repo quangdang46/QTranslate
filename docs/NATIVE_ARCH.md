@@ -16,6 +16,11 @@ Symbols stripped, but **RTTI intact** — full class map recovered from `.rdata`
 - → **`FUN_00455061` = message loop**: `GetMessageW` → pre-translate hook
   chain (`DAT_005491EC` filter array — hotkey handling lives here) →
   `TranslateMessage` → `DispatchMessageW`.
+- **`FUN_004551D6` = pretranslate-hook registrar** (vector push_back with
+  `realloc` doubling at `DAT_005491F4` capacity, count at `DAT_005491F0`;
+  10 registered callers `FUN_00455024`…`FUN_004552AB` + unregister at
+  `FUN_004552DC`). This is WTL's `PreTranslateMessage` chain — every window
+  (MainWindow, popups, hotkey window) filters messages here before dispatch.
 - **`FUN_0043527D` = WTL CreateWindow wrapper**: `AtlThunk` alloc + `CreateWindowExW`
   (thunk converts `__thiscall` WndProc → `__stdcall`).
 - **`FUN_00416470` = app-object ctor**: lays out the whole window tree by
