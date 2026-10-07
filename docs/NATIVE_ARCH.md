@@ -920,6 +920,10 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Auto-update + proxy (decompiled, probed)
 
+- **`FUN_0043FDA1` = JSON array parser** (`__fastcall`): `[` →
+  recursive `FUN_0043FBF8` elements (`, `-separated, appended via
+  `FUN_0043F25B`) → `]` — backs `translateResult`/`ParsedResults` arrays
+  in provider responses.
 - **`FUN_0043F865` = JSON string parser** (`__fastcall`): quote-delimited
   scan with backslash-escape decoding (`\\`, `\b`, …) — standard-compliant
   string unescaping for provider responses and config files.
