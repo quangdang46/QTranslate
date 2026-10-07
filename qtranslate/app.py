@@ -352,6 +352,19 @@ def _save_placement(key: str, widget):
         pass
 
 
+def _pane_font(size_delta: int = 0):
+    """Main-pane font from General.FontName/TextSize (native dialog
+    font; empty FontName = MS Shell Dlg ~ Tahoma)."""
+    try:
+        from qtranslate import config as _C
+        _g = _C.load().get("General", {})
+        name = (_g.get("FontName", "") or "").strip() or "Tahoma"
+        size = int(_g.get("TextSize", 9)) + size_delta
+    except Exception:
+        name, size = "Tahoma", 9 + size_delta
+    return (name, max(6, size))
+
+
 def _open_url(url: str):
     """Open URL honoring Advanced.DefaultBrowserId (native browser pick).
 
@@ -533,7 +546,7 @@ class App:
         # "Ctrl+N => Clear current translation")
         self.src = tk.Text(srcfrm, height=12, wrap="word", bg="white",
                            fg="black", insertbackground="black",
-                           font=("Tahoma", 9), borderwidth=0,
+                           font=_pane_font(), borderwidth=0,
                            highlightthickness=0)
         self.src.pack(side="left", fill="x", expand=True)
         self.src.insert("1.0", self.default_source_text())
@@ -587,7 +600,7 @@ class App:
             pass
         self.out = tk.Text(outfrm, height=6, wrap="word", bg="white",
                            fg="black", insertbackground="black",
-                           font=("Tahoma", 9), borderwidth=0,
+                           font=_pane_font(), borderwidth=0,
                            highlightthickness=0)
         self.out.pack(side="left", fill="both", expand=True)
         self.out.bind("<Button-3>", self.show_result_menu)
