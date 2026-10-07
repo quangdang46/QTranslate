@@ -158,6 +158,10 @@ Each user action = a `Task` object posted to a worker thread:
   SetWindowAttribute)` — dynamic (not linked) for XP compat; Aero glass
   popup frames when composition is on. Siblings: `msftedit.dll`
   (RichEdit), `mscoree.dll`, `iphlpapi.dll` (proxy route lookup).
+- **`FUN_00437D22` = glass frame measurer** (via lazy singleton
+  `FUN_00435636`): if composition on → `DwmGetWindowAttribute(
+  DWMWA_EXTENDED_FRAME_BOUNDS)` → else `GetWindowRect` minus borders
+  (skipped when zoomed on Win7+) — correct popup rect under Aero.
 
 ## Process model (verified)
 
