@@ -31,7 +31,7 @@ python -I qtranslate/tts.py "Xin chào" vi google.mp3
 | DeepL | ✅ | ✅ | — | — | **live OK** (detect + translate, 2026-10-07) |
 | Microsoft (Bing) | ✅ | ✅ | — | — | **live OK** (shared cookie jar — decompile insight from `FUN_00465A92`) |
 | Yandex | ✅ | ✅ | ✅ | — | **live OK via Android variant** (`srv=android` + ucid, researched 2026-10-07) |
-| Baidu | ✅ | ✅ | ✅ | — | detect live OK; translate needs page token (web API locked, 2026-10-07) |
+| Baidu | ✅ | ✅ | ✅ | Suggest ✅ | detect + `/sug` suggest live OK; `/transapi` needs `acsToken` (JS challenge); AIT endpoint needs per-session auth (995) |
 | Naver (Papago) | ✅ | ✅ | ✅ | ✅ | **live OK** (new `/api/text/*`, `/api/tts/*`, `/api/dictionary/*` — no auth, 2026-10-07) |
 | Promt | ✅ | — | — | — | signing verified; API 400 (needs JS `paft`) |
 | Youdao | ✅ | — | — | ✅ | **live OK** (`jsonapi_s` translate + `/w/` dictionary, no sign needed, 2026-10-07) |

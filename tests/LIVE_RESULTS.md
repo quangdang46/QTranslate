@@ -100,6 +100,11 @@ Probed 2026-10-07 with shared-jar sessions — tokens absent from static HTML:
 
 - Baidu: fresh BAIDUID/BIDUPSID/PSTM cookies OK, but v2transapi → errno
   1022 (anti-bot: needs live `gtk`+`token` from the JS bundle).
+  `/sug` suggest + `/langdetect` are **LIVE-OK with no auth** (reversed
+  2026-10-07 from headless traffic capture). New `/transapi` goes through
+  `v2Fetch` with `acsToken` (per-session JS challenge); the AIT endpoint
+  `/ait/text/translateIncognitoAi` returns errno 995 (not authorized)
+  even in-browser.
 - Youdao: live OUTFOX cookie plumbed through (was hardcoded), but
   translate_o → `errorCode 50` (new `bv`/`mysticTime` fields required).
 - Promt: Antiforgery cookies OK, `paft` absent → API 400. ghcs() verified.
