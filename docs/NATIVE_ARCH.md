@@ -920,6 +920,10 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Auto-update + proxy (decompiled, probed)
 
+- **`FUN_00461ADE` = update parser** (called from the checker):
+  JSON-parse (`FUN_0043F71A`) → `urls` array (`FUN_00440A08`) → per-URL
+  download jobs. Dead path now (server 404), but documents the
+  self-update protocol.
 - **`FUN_00461A26` = update checker** (`CheckForUpdateRunnable`'s worker):
   GET `https://quest-app.appspot.com/update?v=6.10.0` via `FUN_0045BCED`
   (curl wrapper, timeout flag `0xFDE9`, retry 2) → `FUN_00461ADE` parses
