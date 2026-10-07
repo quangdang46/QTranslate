@@ -279,6 +279,11 @@ Each user action = a `Task` object posted to a worker thread:
   called from dispatcher): builds `TaskShowPopupWindow` (vftable +
   `DAT_0051DE64/68` params) + `PostMessageW(0x812C)` — re-translates with
   the newly selected service without re-capture.
+- **`FUN_0046592D` = ResponseData validator** (called after every
+  `*Response` invoke): dispatch-reads `translation`, `sourceLanguage`,
+  `translationLanguage`, `data`, optional `nextRequestHandler` (chained
+  multi-request services like Yandex chunking) — mirrors our Python
+  `ResponseData` dataclass field-for-field.
 - **`FUN_0046578F` = RequestData validator** (called after every
   `*Request` invoke): dispatch-reads 6 fields (`method`, `uri`
   [`DAT_0052D1C0`, verified bytes], `data`, `headers`, `codepage`,
