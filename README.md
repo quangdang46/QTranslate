@@ -28,22 +28,22 @@ python -I qtranslate/tts.py "Xin chào" vi google.mp3
 |----------|-----------|--------|--------|------------|--------|
 | Google Translate | ✅ | ✅ | ✅ | — | live-tested (gtx 429 → dict-chrome-ex fallback) |
 | Google TTS | — | — | ✅ | — | live-tested (MP3 downloads) |
-| DeepL | ✅ | ✅ | — | — | ported (needs live test) |
+| DeepL | ✅ | ✅ | — | — | **live OK** (detect + translate, 2026-10-07) |
 | Microsoft (Bing) | ✅ | ✅ | — | — | **live OK** (shared cookie jar — decompile insight from `FUN_00465A92`) |
 | Yandex | ✅ | ✅ | ✅ | — | **live OK via Android variant** (`srv=android` + ucid, researched 2026-10-07) |
 | Baidu | ✅ | ✅ | ✅ | — | detect live OK; translate needs page token (web API locked, 2026-10-07) |
 | Naver (Papago) | ✅ | ✅ | ✅ | — | ported, **endpoint dead (/apis/* → 404, 2026-10-07)** |
-| Promt | ✅ | — | — | — | ported |
-| Youdao | ✅ | — | — | — | ported |
-| Reverso | ✅ | — | — | ✅ | ported |
-| ImTranslator | ✅ | — | — | — | ported |
-| WordReference | — | — | — | ✅ | ported |
-| Oxford Learner | — | — | — | ✅ | ported |
-| Multitran | — | — | — | ✅ | ported |
-| Babylon / Babylon Dict | — | — | — | ✅ | ported |
-| ABBYY Lingvo Live | — | — | — | ✅ | ported |
-| Urban Dictionary | — | — | — | ✅ | ported |
-| Wikipedia / Google Search | — | — | — | ✅ | ported |
+| Promt | ✅ | — | — | — | signing verified; API 400 (needs JS `paft`) |
+| Youdao | ✅ | — | — | — | signing verified; API errorCode 50 (needs `mysticTime`) |
+| Reverso | ✅ | — | — | ✅ | ported; site 403 (bot-wall) |
+| ImTranslator | ✅ | — | — | — | ported; endpoint 404 (retired) |
+| WordReference | — | — | — | ✅ | ported; markup changed (empty) |
+| Oxford Learner | — | — | — | ✅ | ported (needs live test) |
+| Multitran | — | — | — | ✅ | ported; markup changed (empty) |
+| Babylon / Babylon Dict | — | — | — | ✅ | ported; SSL chain broken |
+| ABBYY Lingvo Live | — | — | — | ✅ | **live OK** |
+| Urban Dictionary | — | — | — | ✅ | **live OK** |
+| Wikipedia / Google Search | — | — | — | ✅ | ported; markup changed (empty) |
 
 ## Disclaimer
 
