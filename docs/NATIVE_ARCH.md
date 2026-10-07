@@ -407,6 +407,9 @@ Each user action = a `Task` object posted to a worker thread:
   sub-layout (`+0x48/+0x54`) → hotkey-test refresh (`FUN_00409EC0`) +
   show-layout (`FUN_00408ADE`). Service ids 5/`0x1A`/`0x2A`/`0x38`/`0x3B`
   take a flag variant.
+- **`FUN_004088ED` = display-text resolver** (`__thiscall`):
+  `FUN_004088A9` resolve → show (`+4`) → get text (`+0x48`) → hide (`+8`)
+  — reads any id's display string without leaving UI visible.
 - **`FUN_004088A9` = shared id resolver** (`__thiscall`): `-1` args
   resolve via `FUN_00408AA2` (hotkey word lookup) → vtable `+0x60`
   dispatch on the resolved pair. Central fan-in for item activation,
