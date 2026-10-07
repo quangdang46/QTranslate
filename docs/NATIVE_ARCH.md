@@ -920,6 +920,9 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Auto-update + proxy (decompiled, probed)
 
+- **`FUN_00440DD1` = DOM lookup** (`__thiscall`): same DJB2 + bucket +
+  chain shape as `FUN_0043E950` (hash field `+3`, next `+2`) — one shared
+  hash idiom across JS named-items, options, and JSON DOM.
 - **`FUN_00440893` = DOM object insert** (`__thiscall`, used by the
   object parser + options saver): lookup (`FUN_00440DD1`) or create
   (`FUN_00440C4A` grow + `FUN_00440F7D` node) then set value — the same
