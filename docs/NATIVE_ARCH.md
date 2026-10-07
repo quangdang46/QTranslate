@@ -231,6 +231,9 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## String literal loader (decompiled)
 
+- **`FUN_004B5F7E` = trie child step** (`__cdecl`, 16-byte node stride,
+  page-boundary-aware + SSE path behind `DAT_00548148` CPU-feature flag):
+  single step of the prefix-tree walk in `FUN_0041B992`.
 - **`FUN_0041B992` = trie lookup** (`__thiscall`, `FUN_004B5F7E` child
   walk over `FUN_004214DA`-measured segments): prefix-tree search behind
   locale/service-name resolution (errno-checked copy inside).
