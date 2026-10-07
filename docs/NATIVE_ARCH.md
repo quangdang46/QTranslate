@@ -75,6 +75,10 @@ Each user action = a `Task` object posted to a worker thread:
    17 hotkeys from consecutive option words (`DAT_00549466 + i*2`, matching
    the 17 `HotKey*` names in `Options.json`) when enabled (`param_1` = global
    toggle, `DAT_00549464` = EnableHotKeys).
+- **`FUN_00418B69` = tray state sync** (called after bulk register):
+  picks tray icon by hotkey state (199 = off, `0x8A` = partial,
+  `0x84` = on, via `FUN_00454396` icon loader) + `"%s %s"` tooltip →
+  add (`FUN_00405C42`) or modify (`FUN_00405CB2`) tray icon.
 1. **`FUN_00405A17` = hotkey registrar** (`__thiscall`, calls `RegisterHotKey`
    via IAT slot `0x50D658`): parses hotkey word — `id = low byte`,
    `modifiers = (word >> 8) & 0xF`, `vk = low byte`; on success appends the id
