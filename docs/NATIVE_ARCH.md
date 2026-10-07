@@ -471,6 +471,11 @@ Each user action = a `Task` object posted to a worker thread:
   switch): walks all services, keeps `caps & mask` (`+4` field), rebuilds
   the active list (`RemoveAll` + push-back) — drives which providers show
   in translate vs dictionary UI.
+- **`FUN_0040345B` = fail-fast core** (called from OOM + all contract
+  violations): raises `0xC000001D` (illegal-instruction, default) or
+  `0xC0000017` (no-memory, for `-0x7FF8FFF2`) via `FUN_00403446` — the
+  single death point behind every `WARNING: Subroutine does not return`
+  in our decompiles.
 - **`FUN_00403289` = OOM fail-fast** (called from every allocator on
   failure): `FUN_0040345B(-0x7FF8FFF2)` — no graceful OOM anywhere;
   allocation failure = instant terminate (consistent with the
