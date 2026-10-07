@@ -1063,7 +1063,7 @@ class App:
             idx = getattr(self, "_hist_pos", len(self.history)) - 1
             if 0 <= idx < len(self.history):
                 self._hist_pos = idx
-                _, src, res = self.history[idx]
+                _, src, res = self.history[idx][:3]
                 self.src.delete("1.0", "end")
                 self.src.insert("1.0", src)
                 self.render(res)
@@ -1077,7 +1077,7 @@ class App:
                            len(self.history) - 1) + 1
             if 0 <= idx < len(self.history):
                 self._hist_pos = idx
-                _, src, res = self.history[idx]
+                _, src, res = self.history[idx][:3]
                 self.src.delete("1.0", "end")
                 self.src.insert("1.0", src)
                 self.render(res)
@@ -2669,19 +2669,42 @@ class App:
         w.title(_W(3, "History"))
         w.configure(bg=_COLORS["back"])
         _place_aux(w, "WindowHistoryPlacement", "500x280")
-        tv = ttk.Treeview(w, columns=("svc",), show="tree headings",
-                          height=12)
+        # Favorites: 4th tuple slot (native strings 201/202 +
+        # Application.HistoryFilterFavorites filter toggle).
+        tv = ttk.Treeview(w, columns=("fav", "svc"),
+                          show="tree headings", height=12)
         tv.heading("#0", text="Translation")
+        tv.heading("fav", text="★")
         tv.heading("svc", text="Service")
+        tv.column("fav", width=30, stretch=False)
         tv.pack(fill="both", expand=True, padx=8, pady=8)
-        for svc, src, _ in self.history:
-            tv.insert("", "end", text=src[:70], values=(svc,))
+
+        def _paint():
+            for i in tv.get_children():
+                tv.delete(i)
+            try:
+                from qtranslate import config as _C
+                _fav_only = bool(_C.load().get(
+                    "Application", {}).get("HistoryFilterFavorites",
+                                           False))
+            except Exception:
+                _fav_only = False
+            for idx, (svc, src, *_) in enumerate(self.history):
+                fav = len(self.history[idx]) > 3 \
+                    and self.history[idx][3]
+                if _fav_only and not fav:
+                    continue
+                tv.insert("", "end", iid=str(idx),
+                          text=src[:70],
+                          values=("★" if fav else "", svc))
+
+        _paint()
 
         def load_sel(_e=None):
             try:
                 sel = tv.selection()[0]
-                idx = tv.index(sel)
-                _, src, res = self.history[idx]
+                idx = int(sel)
+                _, src, res = self.history[idx][:3]
                 self.src.delete("1.0", "end")
                 self.src.insert("1.0", src)
                 self.render(res)
@@ -2690,6 +2713,20 @@ class App:
 
         tv.bind("<Double-1>", load_sel)
 
+        def toggle_fav():
+            # Strings 201/202: Add/Remove favorites
+            try:
+                sel = tv.selection()[0]
+                idx = int(sel)
+                svc, src, res = self.history[idx][:3]
+                fav = not (len(self.history[idx]) > 3
+                           and self.history[idx][3])
+                self.history[idx] = (svc, src, res, fav)
+                _paint()
+                tv.selection_set(str(idx))
+            except Exception:
+                pass
+
         def clear():
             self.history.clear()
             for i in tv.get_children():
@@ -2697,6 +2734,8 @@ class App:
 
         frm = tk.Frame(w, bg=_COLORS["back"])
         frm.pack(pady=(0, 8))
+        tk.Button(frm, text=_T("Strings", 201, "Favorite"),
+                  command=toggle_fav).pack(side="left", padx=4)
         tk.Button(frm, text=_Cw(3, 1067, "Clear"),
                       command=clear).pack(side="left", padx=4)
         tk.Button(frm, text=_Cw(3, 1160, "Save as..."),
@@ -2732,7 +2771,7 @@ class App:
         try:
             from qtranslate import history as H
             data = H.html_export([(s, src, "auto", res, self.target)
-                                  for (s, src, res) in self.history])
+                                  for (s, src, res, *_) in self.history])
             with open(path, "w", encoding="utf-8") as f:
                 f.write(data if isinstance(data, str) else str(data))
             self.render(f"exported {len(self.history)} items -> {path}")
