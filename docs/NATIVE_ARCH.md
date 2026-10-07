@@ -34,6 +34,10 @@ Symbols stripped, but **RTTI intact** — full class map recovered from `.rdata`
   `WindowPopupIcons`, `ProgressWindow`, RichEdit init) — offsets give the
   member layout for a future C++ reconstruction.
 - **`FUN_00403057` = ATL thunk allocator** (`AtlThunk_AllocateData/InitData`).
+- **`FUN_00422215` = class unregister** (`__fastcall`,
+  `UnregisterClassW` via IAT `0x50D6E0`): loops registered names with
+  bounds-check (`0xC000008C` on OOB) → free list → `DeleteCriticalSection`
+  — teardown twin of the guard+register pair (exit path).
 - **`FUN_00421677` = WndClass guard+register** (`0xC0000005` on null):
   stores WndProc + creating-thread id, inserts into the
   critical-section-guarded class list (`DAT_00544BF0`) — every custom
