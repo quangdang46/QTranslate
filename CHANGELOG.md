@@ -49,6 +49,16 @@ All entries are clean-room RE of QTranslate 6.10.0 for education.
 - Verified: vi strings resolve (Chép bản dịch/Từ điển), en fallback
 - Native orders kept: pages Ids 10-18, ProxyType 0-3, PopupIcons bits
 
+## Render loop (2026-10-08, dict template + XSLT + links)
+
+- `dict_template.html` byte-identical to RT_HTML-192 (3062 bytes,
+  tested); XSLT k/tr/kref/iref/ex templates verified by test
+- Result + dict panes: auto-URL tags (qtdp: internal re-lookup,
+  http browser, FUN_004266C6); shared `tag_links` helper
+- History CSV order fixed [a,c,b,e,d]; JSON `ensure_ascii=False`
+  (native escapeStr keeps unicode)
+- `tests/ui_match.py` 68/68
+
 ## Services (`qtranslate/services/`)
 
 - google_translate.py — `tk()` token + `/translate_a/single?client=gtx`,
