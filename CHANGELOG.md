@@ -19,6 +19,18 @@ All entries are clean-room RE of QTranslate 6.10.0 for education.
   net stack honors Timeout+Proxy; OCR uses real OcrApiKey
 - Suites: live 21/21, `tests/ui_match.py` 35/35, smoke 9/9
 
+## Full-fidelity loop 2 (2026-10-08, 66 commits, all suites green)
+
+- Hotkeys registrar from Options.json (Alt+W replace, Ctrl+Q popup,
+  clipboard monitor, Ctrl+C+C, 17-action routing) + in-window keys
+  (Shift+Esc, Ctrl+Tab, slots, Alt+Left/Right, Ctrl+Up, F11, panes)
+- Net stack honors Timeout+Proxy; OCR region overlay + real key;
+  SAPI speech fallback; TTS slow flag; spell gate
+- History.json + placements (main/aux) + session restore + Cancel
+  snapshot; 75-language table; tray states; crash hook
+- All 19 DLGs mapped; dead services verified unrevivable with cause
+- Suites: live 21/21, `tests/ui_match.py` 40/40, smoke 9/9
+
 ## Services (`qtranslate/services/`)
 
 - google_translate.py — `tk()` token + `/translate_a/single?client=gtx`,
