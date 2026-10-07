@@ -177,6 +177,12 @@ Each user action = a `Task` object posted to a worker thread:
   (source vs translation row). 9 sibling menu builders share the
   `FUN_00451F6D`-string + `FUN_004040BA`-append + `TrackPopupMenu` pattern
   (`FUN_004041D7`, `00408FDB`, `0040BE65`, `0042DC18`, `0042DF28`, …).
+- **Options menu = `FUN_0042DF28`** (main-window menu, IDs verified):
+  Spell checking `0x802B`, Instant translation `0x802C`, Back translation
+  `0x8034` (Ctrl+B), Extended `0x802D`, Clear-on-DnD `0x8063`, Auto-cleanup
+  `0x8077`, Save-on-exit `0x8075`, Show panes `0x8071/0x8064/0x8065`
+  (Ctrl+F1/F2/F3), Minimize-to-tray `0x806F/0x8070`. Sibling
+  `FUN_0042DC18`: Reset (`Shift+Esc`), Edit `0x8052`, Always-detect `0x808E`.
 
 ## Tray icon + layout keys (decompiled)
 
