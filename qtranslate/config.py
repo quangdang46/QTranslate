@@ -60,14 +60,23 @@ HOTKEY_NAMES = [
     "HotKeyDictionary", "HotKeyHistory",
     "HotKeyPopupWindow", "HotKeyMainWindow",
 ]
+# Full defaults verified vs real Options.json (missing keys fall back
+# via .get at use sites; these document the true native defaults).
 DEFAULT_APPEARANCE = {
-    "PopupAutoSize": True, "PopupAutoPos": True, "PopupTimeout": 5,
-    "Transparency": 217, "PopupPinWhenDragging": True,
-    "ColorBack": 15790320, "ColorText": 0, "ColorFrame": 8023133,
+    "EnableWindowStyle": False, "PopupAutoSize": True,
+    "ColorFrame": 8023133, "PopupPinWhenDragging": True,
+    "PopupWindowFrameThickness": 2, "Transparency": 217,
+    "PopupIcons": 30, "ColorText": 0, "PopupAutoFocus": False,
+    "ThemeName": "", "PopupAutoPos": True, "PopupTimeout": 5,
+    "ColorBack": 15790320,
 }
 DEFAULT_ADVANCED = {
-    "PreferredDomain": "com", "EnableSlowerListening": True,
-    "OcrApiKey": "", "RemoveLineBreaks": False,
+    "EnableSlowerListening": True, "OcrApiKey": "",
+    "LayoutIndicator": 0, "EnableGuiTranslation": False,
+    "CopyAction": 0, "SwitchMouseModeOnTrayClick": True,
+    "DefaultBrowserId": "", "EnableMouseModeOnCtrl": False,
+    "RemoveLineBreaks": False, "PreferredDomain": "com",
+    "GoogleDomain": "com",
 }
 DEFAULT_INTERNET = {"Timeout": 10000}
 DEFAULT_PROXY = {"ProxyType": 0, "Scheme": 0, "Host": "", "Port": 0,
