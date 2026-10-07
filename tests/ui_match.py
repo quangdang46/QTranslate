@@ -340,6 +340,17 @@ app.switch_service("google")
 check("switch-link-back", app.svc_link.cget("text") == "Google",
       app.svc_link.cget("text"))
 
+# 19d. offline modules (no network): xdxf/history/txt/theme/layout
+from qtranslate import xdxf as _X2, history as _H2
+check("offline-xdxf",
+      "xin chào" in _X2.render_article(
+          "<ar><k>hello</k><def><dtrn>xin chào</dtrn></def></ar>"))
+_items = [("google", "hello", "en", "xin chào", "vi")]
+check("offline-csv", "hello" in _H2.csv_export(_items))
+check("offline-json", "xin chào" in _H2.json_export(_items))
+check("offline-txt", "[google > en to vi]" in _H2.txt_export(_items))
+check("offline-html", "<table>" in _H2.html_export(_items))
+
 # 19c. multi-select toggle + Ctrl+K binding (help.txt Actions)
 app.toggle_multi_service("deepl")
 app.toggle_multi_service("yandex")
