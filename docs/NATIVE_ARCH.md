@@ -471,6 +471,9 @@ Each user action = a `Task` object posted to a worker thread:
   switch): walks all services, keeps `caps & mask` (`+4` field), rebuilds
   the active list (`RemoveAll` + push-back) — drives which providers show
   in translate vs dictionary UI.
+- **`FUN_004641AA` = list drain** (called when count hits zero): walks
+  all nodes recycling each (`FUN_004643DC`) + frees the extra array
+  (`FUN_00421378`) — full teardown behind clear-all paths.
 - **`FUN_004643DC` = count fix + freelist push** (`__thiscall`, called
   from unlink): decrement + recycle node + empty-callback
   (`FUN_004641AA` when zero) — keeps counts exact across edits.
