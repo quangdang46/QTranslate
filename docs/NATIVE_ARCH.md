@@ -461,6 +461,9 @@ Each user action = a `Task` object posted to a worker thread:
   dispatcher listen branch): sets `TaskListenText::vftable` + fields
   (service, text, sl/tl, slow flag, extra) — the task object later run by
   `FUN_0046606C` (listen invoker) → mp3 fetch → `FUN_00461642` BASS play.
+- **`FUN_00427922` = record copy** (`__thiscall`, used by the filter):
+  grow (`FUN_0042025F`) + store — pointer-vector append twin of
+  `FUN_0041E559`.
 - **`FUN_0045CF26` = capability filter** (rebuild on translate/dict mode
   switch): walks all services, keeps `caps & mask` (`+4` field), rebuilds
   the active list (`RemoveAll` + push-back) — drives which providers show
