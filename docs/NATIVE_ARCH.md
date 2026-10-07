@@ -961,6 +961,15 @@ Each user action = a `Task` object posted to a worker thread:
 - **`FUN_0042CF8E` = spell request runner** (`__thiscall`): ctor
   (`FUN_0042C844`) + optional ref (`FUN_004B3DE2`) — fire-and-forget
   suggestion fetch feeding `SuggestionsListCtrl`.
+- **Spell/OCR endpoints** (from `.rdata` strings, all live-verified
+  2026-10-07): `GoogleSuggest` (`common::GoogleSuggest`) GET
+  `google.com/complete/search?client=firefox&q=<text>` → suggestion
+  list; `SpellYandexProvider` (`common::SpellYandexProvider`) GET
+  `speller.yandex.net/services/spellservice.json/checkText?text=<text>`
+  → corrections; `OcrSpaceProvider` (`common::OcrSpaceProvider`) POST
+  multipart `api.ocr.space/parse/image` (key from
+  `Options.json > Advanced > OcrApiKey`, demo key `helloworld` works).
+  Ported 1:1 in `qtranslate/services/spell.py` + `ocr.py`.
 - **`FUN_0042C844` = SpellProvider ctor** (`__fastcall`): sets
   `common::SpellProvider::vftable` → init (`FUN_0043AFDB`/`FUN_0043AEEA`) →
   clears suggestion list (`FUN_00408010`) → base `Runnable::vftable`. Sibling
