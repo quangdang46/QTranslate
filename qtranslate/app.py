@@ -613,7 +613,12 @@ class App:
         try:
             from qtranslate import config as C
             ids = C.services_order(None)
-            names = [C.SERVICE_NAMES.get(i) for i in ids]
+            try:
+                dis = set(C.load().get("DisabledServices", []))
+            except Exception:
+                dis = set()
+            names = [C.SERVICE_NAMES.get(i) for i in ids
+                     if i not in dis]
             # exactly the native strip — no extras appended
             return [n for n in names if n in TRANSLATORS]
         except Exception:
