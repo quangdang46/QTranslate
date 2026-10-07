@@ -1050,6 +1050,149 @@ class App:
             _mk_list(body, "Translation services", _order, _dis, _names)
             _mk_list(body, "Dictionary services", _dorder, _ddis, _dnames)
 
+        def show_languages():
+            # Index <-> code via Google SupportedLanguages (canonical
+            # table: 1=auto, 17=en, 57=vi). Pairs + per-slot defaults +
+            # disabled list + detect flags; writes Options.json/General.
+            for c in body.winfo_children():
+                c.destroy()
+            try:
+                from qtranslate.services import google_translate as _G
+                # SUPPORTED_LANGS[0] is -1 placeholder; native table
+                # is indexed with it (1=auto, 17=en, 57=vi)
+                _table = list(_G.SUPPORTED_LANGS)
+            except Exception:
+                _table = [-1, "auto", "en", "vi"]
+            _names_l = [("auto (auto-detect)" if c == "auto" else c)
+                        for c in _table]
+            _gen = cfg.get("General", {})
+            _dis_l = set(cfg.get("DisabledLanguages", []))
+            _pairs = [list(p) for p in cfg.get("LanguagePairs",
+                                               [[57, 17], [17, 57]])]
+            self._opt_vars = getattr(self, "_opt_vars", {})
+
+            def _save_l():
+                try:
+                    from qtranslate import config as C3
+                    import json as _j
+                    full = C3.load()
+                    full["LanguagePairs"] = _pairs
+                    full["DisabledLanguages"] = sorted(_dis_l)
+                    full["General"].update(_gen)
+                    with open(C3.DEFAULT_PATH, "w",
+                              encoding="utf-8") as f:
+                        _j.dump(full, f, ensure_ascii=False, indent=1)
+                    cfg["LanguagePairs"] = _pairs
+                    cfg["DisabledLanguages"] = sorted(_dis_l)
+                    cfg["General"].update(_gen)
+                except Exception:
+                    pass
+
+            def _idx_combo(parent, lab, idx):
+                r = tk.Frame(parent, bg=_COLORS["back"])
+                r.pack(fill="x", pady=1)
+                tk.Label(r, text=lab, width=18, anchor="w",
+                         bg=_COLORS["back"],
+                         fg=_COLORS["text"]).pack(side="left")
+                cb = ttk.Combobox(r, values=_names_l, width=26,
+                                  state="readonly")
+                cb.pack(side="left")
+                try:
+                    cb.set(_names_l[idx])
+                except Exception:
+                    pass
+                return cb
+
+            tk.Label(body, text="Default languages",
+                     bg=_COLORS["back"], fg=_COLORS["text"],
+                     font=("Segoe UI", 10, "bold")).pack(anchor="w")
+            _cb = {}
+            for lab, key in (("Translate from:", "LanguageFrom"),
+                             ("Translate to:", "LanguageTo"),
+                             ("Dictionary:", "LanguageDictionary"),
+                             ("Virtual keyboard:", "LanguageKeyboard")):
+                _cb[key] = _idx_combo(body, lab,
+                                      _gen.get(key, 17) or 0)
+                _cb[key].bind("<<ComboboxSelected>>",
+                              lambda e, k=key: (
+                                  _gen.__setitem__(
+                                      k, _names_l.index(_cb[k].get())),
+                                  _save_l()))
+            for lab, key in (("Always detect language",
+                              "AlwaysDetectLanguage"),
+                             ("Smart detection", "UseSmartDetection")):
+                vv = tk.BooleanVar(value=bool(_gen.get(key, False)))
+                self._opt_vars[key] = vv
+                tk.Checkbutton(
+                    body, text=lab, variable=vv, bg=_COLORS["back"],
+                    fg=_COLORS["text"], selectcolor=_COLORS["back"],
+                    command=lambda k=key: (
+                        _gen.__setitem__(k, self._opt_vars[k].get()),
+                        _save_l())).pack(anchor="w")
+            tk.Label(body, text="Language pairs", bg=_COLORS["back"],
+                     fg=_COLORS["text"],
+                     font=("Segoe UI", 10, "bold")).pack(anchor="w",
+                                                         pady=(8, 0))
+            _plb = tk.Listbox(body, height=4, bg="white", fg="black")
+            _plb.pack(fill="x", pady=2)
+
+            def _paint_pairs():
+                _plb.delete(0, "end")
+                for a, b in _pairs:
+                    try:
+                        _plb.insert("end",
+                                    f"{_table[a]} > {_table[b]}")
+                    except Exception:
+                        _plb.insert("end", f"{a} > {b}")
+
+            _paint_pairs()
+            _pr = tk.Frame(body, bg=_COLORS["back"])
+            _pr.pack(fill="x")
+
+            def _add_pair():
+                try:
+                    a = _names_l.index(_cb["LanguageFrom"].get())
+                    b = _names_l.index(_cb["LanguageTo"].get())
+                except Exception:
+                    return
+                if [a, b] not in _pairs:
+                    _pairs.append([a, b])
+                    _paint_pairs()
+                    _save_l()
+
+            def _del_pair():
+                s = _plb.curselection()
+                if not s:
+                    return
+                _pairs.pop(s[0])
+                _paint_pairs()
+                _save_l()
+
+            tk.Button(_pr, text="Add pair",
+                      command=_add_pair).pack(side="left", padx=2)
+            tk.Button(_pr, text="Remove",
+                      command=_del_pair).pack(side="left", padx=2)
+            tk.Label(body, text="Disabled languages",
+                     bg=_COLORS["back"], fg=_COLORS["text"],
+                     font=("Segoe UI", 10, "bold")).pack(anchor="w",
+                                                         pady=(8, 0))
+            _dlb = tk.Listbox(body, height=4, selectmode="multiple",
+                              bg="white", fg="black")
+            _dlb.pack(fill="x", pady=2)
+            for i, n in enumerate(_names_l):
+                _dlb.insert("end", n)
+                if i in _dis_l:
+                    _dlb.selection_set(i)
+                    _dlb.itemconfig(i, fg="gray")
+
+            def _save_dis():
+                _dis_l.clear()
+                _dis_l.update(_dlb.curselection())
+                _save_l()
+
+            tk.Button(body, text="Apply disabled",
+                      command=_save_dis).pack(anchor="w", pady=2)
+
         def on_select(_e=None):
             if not left.curselection():
                 return
@@ -1062,6 +1205,8 @@ class App:
                 show_hotkeys()
             elif page == "Services":
                 show_services()
+            elif page == "Languages":
+                show_languages()
             else:
                 for c in body.winfo_children():
                     c.destroy()
