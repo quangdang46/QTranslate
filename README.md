@@ -40,7 +40,7 @@ python -I tests/smoke_dict.py      # 9/9 (dict + config + hotkeys)
 | Google Translate | ✅ | ✅ | ✅ | — | live-tested (gtx 429 → dict-chrome-ex fallback) |
 | Google TTS | — | — | ✅ | — | live-tested (MP3 downloads) |
 | DeepL | ✅ | ✅ | — | — | **live OK** (detect + translate, 2026-10-07) |
-| Microsoft (Bing) | ✅ | ✅ | — | — | **live OK** (shared cookie jar — decompile insight from `FUN_00465A92`) |
+| Microsoft (Bing) | ✅ | ✅ | — | — | **live OK** (shared jar + live data-iid; standalone tlookupv3 dict 401-walled, translate chaining unaffected) |
 | Yandex | ✅ | ✅ | ✅ | — | **live OK via Android variant** (`srv=android` + ucid, researched 2026-10-07) |
 | Baidu | ✅ | ✅ | ✅ | Suggest ✅ | detect + `/sug` suggest live OK; `/transapi` needs `acsToken` (JS challenge); AIT endpoint needs per-session auth (995) |
 | Naver (Papago) | ✅ | ✅ | ✅ | ✅ | **live OK** (new `/api/text/*`, `/api/tts/*`, `/api/dictionary/*` — no auth, 2026-10-07) |
