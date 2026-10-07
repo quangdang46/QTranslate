@@ -282,6 +282,11 @@ Each user action = a `Task` object posted to a worker thread:
 - **`FUN_004661D1` = dispatch-get helper** (`__thiscall`, used by both
   validators): `IDispatchEx::GetDispID (+0x14, grfdex 0x400)` + invoke
   (`FUN_00466181`) — single choke point for all JS field reads.
+- **`FUN_0043B8CE`/`FUN_0043B942` = method-call pair** (`__thiscall`,
+  the single funnel for all 9 `service*` invokes): engine-ready gate
+  (`this+0x40 == 2`) → 0-arg `FUN_0043E51E` vs N-arg `FUN_00427AD4` →
+  HRESULT error map (`FUN_0043BB64`); `FUN_0043B942` wraps with
+  VARIANT-out (`VT_DISPATCH` check) + `VariantClear`.
 - **`FUN_00466181` = invoke helper** (`__thiscall`): null-guards
   (`E_INVALIDARG/E_INVALIDPTR`) + `IDispatch::Invoke (+0x18,
   DISPATCH_PROPERTYGET)` — every JS property get funnels here.
