@@ -40,7 +40,7 @@ python -I qtranslate/tts.py "Xin chào" vi google.mp3
 | WordReference | — | — | — | ✅ | ported; markup changed (empty) |
 | Oxford Learner | — | — | — | ✅ | **live OK** |
 | Multitran | — | — | — | ✅ | ported; markup changed (empty) |
-| Babylon / Babylon Dict | — | — | — | ✅ | ported; SSL chain broken |
+| Babylon / Babylon Dict | — | — | — | ✅ | ported; translate 404 + dict TLS-handshake-fail (servers retired) |
 | ABBYY Lingvo Live | — | — | — | ✅ | **live OK** |
 | Urban Dictionary | — | — | — | ✅ | **live OK** |
 | Wikipedia / Google Search | — | — | — | ✅ | ported; markup changed (empty) |
