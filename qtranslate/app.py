@@ -865,35 +865,42 @@ class App:
         tk.Button(frm, text="Apply",
                   command=w.destroy).pack(side="left", padx=4)
 
-    # -- History window (DLG 164: SysTreeView32 + Clear + Save as) --
+    # -- History window (DLG 164, 316x177: SysTreeView32 id83 +
+    # Clear id1067 + Save as... id1160; NO Open button. Double-click
+    # loads the item back into the main window.)
     def open_history_window(self):
         w = tk.Toplevel(self.root)
         w.title("History")
         w.configure(bg=_COLORS["back"])
-        lb = tk.Listbox(w, width=70, height=15, bg=_COLORS["back"],
-                        fg=_COLORS["text"])
-        lb.pack(fill="both", expand=True, padx=8, pady=8)
+        w.geometry("500x280")
+        tv = ttk.Treeview(w, columns=("svc",), show="tree headings",
+                          height=12)
+        tv.heading("#0", text="Translation")
+        tv.heading("svc", text="Service")
+        tv.pack(fill="both", expand=True, padx=8, pady=8)
         for svc, src, _ in self.history:
-            lb.insert("end", f"[{svc}] {src[:70]}")
+            tv.insert("", "end", text=src[:70], values=(svc,))
 
-        def load_sel():
+        def load_sel(_e=None):
             try:
-                i = lb.curselection()[0]
-                _, src, res = self.history[i]
+                sel = tv.selection()[0]
+                idx = tv.index(sel)
+                _, src, res = self.history[idx]
                 self.src.delete("1.0", "end")
                 self.src.insert("1.0", src)
                 self.render(res)
             except Exception:
                 pass
 
+        tv.bind("<Double-1>", load_sel)
+
         def clear():
             self.history.clear()
-            lb.delete(0, "end")
+            for i in tv.get_children():
+                tv.delete(i)
 
         frm = tk.Frame(w, bg=_COLORS["back"])
         frm.pack(pady=(0, 8))
-        tk.Button(frm, text="Open", command=load_sel).pack(side="left",
-                                                           padx=4)
         tk.Button(frm, text="Clear", command=clear).pack(side="left",
                                                         padx=4)
         tk.Button(frm, text="Save as...",
