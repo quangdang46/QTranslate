@@ -44,8 +44,14 @@ Aux: Tray (00405C42), Options saver (004561F0), crash-once reporter (00462C03),
 | FUN_00404A12 orchestrator | `services/google_translate.translate()` + siblings | ✅ |
 | FUN_00461642 BASS playback | `player.py` (ctypes bass.dll) | ✅ real audio |
 | TaskConvertTextLayout | `layout.py` + app Ctrl+Alt+L | ✅ |
-| Hotkey+clipboard+popup+Listen | `app.py` (Ctrl+Alt+Q) | ✅ |
+| Hotkey+clipboard+popup+Listen | `app.py` (Options.json registrar + monitor + Ctrl+C+C) | ✅ |
 | Options.json 20 sections | `config.py` | ✅ (reads real file) |
-| History Csv/Html/Json/Txt.js | `history.py` | ✅ |
-| XdxfArticle.xslt | `xdxf.py` | ✅ |
+| History Csv/Html/Json/Txt.js | `history.py` | ✅ (col order + unicode fixed) |
+| XdxfArticle.xslt | `xdxf.py` | ✅ (templates tested) |
 | Session bootstrap (Chakra page loads) | `session.py` (cookie-jar opener) | ✅ Bing unblocked |
+| 19 DLGs + menus/accels/icons | `app.py` windows + Options 9/9 | ✅ screenshot-verified |
+| lang.json 36 strings + 14 windows | `locale.py` + `_T/_W/_Cw` | ✅ vi verified |
+| RT_HTML-192 dict template | `dict_template.html` | ✅ byte-identical |
+| RichEdit links (FUN_004266C6) | `tag_links` (result + dict) | ✅ |
+| Tray states 199/0x84/0x8A | `_make_tray` + `_sync_icon` | ✅ (pystray optional) |
+| Crash once-reporter (00462C03) | hook + consume | ✅ |
