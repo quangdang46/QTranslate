@@ -920,6 +920,9 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Auto-update + proxy (decompiled, probed)
 
+- **`FUN_0042133C` = freelist chunk allocator** (`__fastcall`,
+  overflow-checked `count*size`): backs the DOM node pool + hash buckets —
+  single allocator behind all container growth (no raw new[] in hot paths).
 - **`FUN_00440C4A`/`FUN_00440F7D` = DOM grow + node create**
   (`__thiscall` pair): bucket realloc (overflow-guarded) + freelist node
   pool — completes the DOM container behind JSON/options/history.
