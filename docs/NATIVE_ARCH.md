@@ -331,7 +331,8 @@ Each user action = a `Task` object posted to a worker thread:
   GET `https://translate.google.<PreferredDomain>/translate_a/element.js`,
   extract the TKK substring between two markers, cache hourly
   (`GetSystemTime` compare at `DAT_0054977C`, `_atexit` cleanup, second
-  fallback URL on empty). Only the *slot* is exposed to JS via `Options`.
+  fetch with a different timestamp query on empty). Only the *slot* is
+  exposed to JS via `Options`.
   Our Python port defaults `tkk="0.0"` and relies on the `dict-chrome-ex`
   fallback when `gtx` is rate-limited — same net effect (live-verified);
   a faithful `refresh_tkk()` would port `FUN_0040FB54` 1:1 (fetch element.js
