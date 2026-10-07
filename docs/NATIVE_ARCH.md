@@ -282,6 +282,9 @@ Each user action = a `Task` object posted to a worker thread:
 - **`FUN_004661D1` = dispatch-get helper** (`__thiscall`, used by both
   validators): `IDispatchEx::GetDispID (+0x14, grfdex 0x400)` + invoke
   (`FUN_00466181`) — single choke point for all JS field reads.
+- **`FUN_00420824` = DJB2 string hash** (`__fastcall`, `h*0x21 + c` over
+  UTF-16): backs the named-item cache + option hash-maps. Verified in
+  Python: `serviceTranslateRequest→0x943703A8`, `serviceHeader→0x6A645CBA`.
 - **`FUN_0043E950` = named-item hash table** (`__thiscall`, fallback in
   `FUN_0043E471`): `FUN_00420824` string hash → bucket (`% capacity`) →
   chain compare (`FUN_004207F3`) — caches JS function DISPIDs so repeat
