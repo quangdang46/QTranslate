@@ -91,3 +91,21 @@ try:
 finally:
     _uuid.uuid4, _time.time = _ru, _rt
 print("OK: naver HMAC deterministic")
+
+# deepl payload determinism (timestamp formula with mocked time)
+import time as _t2
+from qtranslate.services import deepl as _dl
+_real_post, _real_time = _dl._post_jsonrpc, _t2.time
+captured = {}
+def _fake_post(payload):
+    captured.update(payload["params"])
+    return {"result": {"translations": [{"beams": [{"postprocessed_sentence": "X"}]} for _ in payload["params"]["jobs"]]}}
+_dl._post_jsonrpc = _fake_post
+_t2.time = lambda: 1700000.0
+try:
+    _dl.translate("Hi there", "EN", "VI")
+    _ts = captured["timestamp"]
+    assert _ts % 1 == 0 and _ts >= 1700000000
+finally:
+    _dl._post_jsonrpc, _t2.time = _real_post, _real_time
+print("OK: deepl payload")
