@@ -280,6 +280,10 @@ Each user action = a `Task` object posted to a worker thread:
   reuses the same JSON writer as the options saver; the Csv/Html/Json/Txt
   *export* formats are JS plugins (`Plugins/History/*.js`, ported to
   `qtranslate/history.py`).
+- **Filter registration**: `SetUnhandledExceptionFilter` (IAT `0x50D2C0`)
+  armed in CRT startup (`FUN_004B46C6`, beside `entry`) — writes the
+  minidump list consumed as `Exceptions.json` on next launch by
+  `FUN_00462C03`.
 - **`FUN_00462C03` = crash-report on next launch**: same path-builder +
   file-reader + JSON-parse pipeline reads `Exceptions.json` (minidump list
   written by the unhandled-exception filter during the *previous* run) →
