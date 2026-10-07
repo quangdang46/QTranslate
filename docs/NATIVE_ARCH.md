@@ -124,6 +124,9 @@ Each user action = a `Task` object posted to a worker thread:
   per-service validate (`FUN_0045A77B`, drops bad via `FUN_0041E559`) →
   commit slot vector (`FUN_0045CC98`). This is what turns `Services/*/`
   folders into the runtime provider list at startup.
+- **`FUN_0045A77B` = service-id validator**: linear scan of the slot vector
+  for a duplicate id (`FUN_0045AFDD` element read), returns index or 0 —
+  keeps `ServicesOrder` duplicate-free across reloads.
 - **`FUN_00418F81` = startup sequencer**: init service slots
   (`FUN_0045CC98`), validate language-pair defaults (`FUN_0045A867`) →
   first-run (no `Options.json`): show setup wizard (`FUN_00419DA6`) →
