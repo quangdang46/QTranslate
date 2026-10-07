@@ -119,6 +119,11 @@ Each user action = a `Task` object posted to a worker thread:
   lookup `FUN_0043CF37`): `allow-multiple-instances`, `startup-show`,
   `startup-minimized` (refs in `FUN_00435175` singleton + `FUN_00418F81`
   startup placement).
+- **`FUN_0045AA11` = service-slot init** (called twice from the sequencer,
+  translate + dictionary slots): enumerate service dirs (`FUN_0045CE4F`) →
+  per-service validate (`FUN_0045A77B`, drops bad via `FUN_0041E559`) →
+  commit slot vector (`FUN_0045CC98`). This is what turns `Services/*/`
+  folders into the runtime provider list at startup.
 - **`FUN_00418F81` = startup sequencer**: init service slots
   (`FUN_0045CC98`), validate language-pair defaults (`FUN_0045A867`) →
   first-run (no `Options.json`): show setup wizard (`FUN_00419DA6`) →
