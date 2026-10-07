@@ -461,6 +461,10 @@ Each user action = a `Task` object posted to a worker thread:
   dispatcher listen branch): sets `TaskListenText::vftable` + fields
   (service, text, sl/tl, slow flag, extra) — the task object later run by
   `FUN_0046606C` (listen invoker) → mp3 fetch → `FUN_00461642` BASS play.
+- **`FUN_0045CF26` = capability filter** (rebuild on translate/dict mode
+  switch): walks all services, keeps `caps & mask` (`+4` field), rebuilds
+  the active list (`RemoveAll` + push-back) — drives which providers show
+  in translate vs dictionary UI.
 - **`FUN_0045CDBA` = service switcher** (dispatcher service-select branch):
   id lookup (`FUN_0045CC50`) → capability gate (`TRANSLATE 1` /
   `DICTIONARY 8` at `+0x10`) → move-to-front (`FUN_0041E559`) → notify
