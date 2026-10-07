@@ -1506,7 +1506,7 @@ class App:
                 _startup = False
             _sv = tk.BooleanVar(value=_startup)
             self._opt_vars["startup"] = _sv  # keep ref: no GC-uncheck
-            tk.Checkbutton(body, text="Start with Windows",
+            tk.Checkbutton(body, text=_Cw(10, 1045, "Start with Windows"),
                            variable=_sv,
                            bg=_COLORS["back"], fg=_COLORS["text"],
                            selectcolor=_COLORS["back"]).pack(anchor="w")
@@ -1524,9 +1524,9 @@ class App:
             if _cur_lang not in _langs:
                 _cur_lang = "English"
             for lab, vals, default in (
-                    ("Interface language:", _langs, _cur_lang),
-                    ("Font name:", ["--- Default ---"], "--- Default ---"),
-                    ("Text size:", ["9"], str(_gen.get("TextSize", 9)))):
+                    (_Cw(10, 1070, "Interface language:"), _langs, _cur_lang),
+                    (_Cw(10, 1075, "Font name:"), ["--- Default ---"], "--- Default ---"),
+                    (_Cw(10, 1074, "Text size:"), ["9"], str(_gen.get("TextSize", 9)))):
                 r = tk.Frame(body, bg=_COLORS["back"])
                 r.pack(fill="x", pady=1)
                 tk.Label(r, text=lab, width=18, anchor="w",
@@ -1536,14 +1536,14 @@ class App:
                                   state="readonly")
                 cb.pack(side="left")
                 cb.set(default)
-            tk.Label(body, text="Auto-detect languages",
+            tk.Label(body, text=_Cw(10, 1063, "Auto-detect languages"),
                      bg=_COLORS["back"], fg=_COLORS["text"],
                      font=("Segoe UI", 10, "bold")).pack(anchor="w",
                                                          pady=(8, 0))
             _IDX2NAME = {57: "Vietnamese", 17: "English"}
-            for lab, key in (("First language:", "LanguageFirst"),
-                             ("Second language:", "LanguageSecond"),
-                             ("Speech input:",
+            for lab, key in ((_Cw(10, 1068, "First language:"), "LanguageFirst"),
+                             (_Cw(10, 1069, "Second language:"), "LanguageSecond"),
+                             (_Cw(10, 1071, "Speech input:"),
                               "LanguageSpeechRecognition")):
                 r = tk.Frame(body, bg=_COLORS["back"])
                 r.pack(fill="x", pady=1)
@@ -1554,16 +1554,16 @@ class App:
                                   state="readonly")
                 cb.pack(side="left")
                 cb.set(_IDX2NAME.get(_ad.get(key, 17), "English"))
-            tk.Label(body, text="History", bg=_COLORS["back"],
+            tk.Label(body, text=_Cw(10, 1064, "History"), bg=_COLORS["back"],
                      fg=_COLORS["text"],
                      font=("Segoe UI", 10, "bold")).pack(anchor="w",
                                                          pady=(8, 0))
             for lab, default in (
-                    ("Enable history",
+                    (_Cw(10, 1122, "Enable history"),
                      _gen.get("EnableHistory", True)),
-                    ("Clear history on exit",
+                    (_Cw(10, 1124, "Clear history on exit"),
                      _gen.get("ClearHistoryOnExit", True)),
-                    ("Expand items",
+                    (_Cw(10, 1123, "Expand items"),
                      _gen.get("ExpandHistoryItems", False))):
                 v = tk.BooleanVar(value=bool(default))
                 self._opt_vars[lab] = v  # keep ref: no GC-uncheck
