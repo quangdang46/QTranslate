@@ -59,6 +59,15 @@ All entries are clean-room RE of QTranslate 6.10.0 for education.
   (native escapeStr keeps unicode)
 - `tests/ui_match.py` 68/68
 
+## Session loop (2026-10-08, panes + langs + options roundtrip)
+
+- Contents.Edit*/SaveOnExit pane cache; SaveHistoryPath export dir;
+  OptionsPageIndex last page; ActiveServices/DictionaryServices +
+  LanguageFrom/To restore + persist (swap/combo/switch)
+- CLI args override session; source combo shows LanguageFrom
+- Full native defaults in config.py; stale 18s fixed
+- 20/20 Options.json sections wired end to end
+
 ## Services (`qtranslate/services/`)
 
 - google_translate.py — `tk()` token + `/translate_a/single?client=gtx`,
