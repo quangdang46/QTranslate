@@ -666,7 +666,7 @@ class App:
                                 width=13, state="readonly")
         self.tgt.set(LANG_DISPLAY.get(self.target, self.target))
         self.tgt.pack(side="left", padx=2)
-        tk.Button(bar, text="Translate",
+        tk.Button(bar, text=_Cw(1, 1004, "Translate"),
                   command=self.on_go).pack(side="left", padx=4)
         self.suggest = tk.Label(self.root, text="", bg=bg, fg="gray",
                                 anchor="w", font=("Tahoma", 7))
