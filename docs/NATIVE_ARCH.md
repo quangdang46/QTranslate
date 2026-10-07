@@ -75,6 +75,10 @@ Each user action = a `Task` object posted to a worker thread:
 2. **Mouse-mode capture = `FUN_00404901`**: `GetCursorPos` →
    `AccessibleObjectFromPoint` (IAT `0x50D3D0`) → `IAccessible::get_accName`,
    fallback `get_accValue` when name empty. This is the "hover a word" path.
+   Dispatched by **`FUN_004052E4` = capture-mode switch** (`this+8` =
+   `MouseMode` from Options): 1 = reuse supplied text, 2 = OLEACC mouse
+   (`FUN_00404901` guarded by `FUN_004543C6` modifier check), 3 = clipboard
+   read (`FUN_0043BEB2`). Sibling dispatcher at `FUN_0040558F`.
 3. **Clipboard open = `FUN_0043BE07`** (`__thiscall`): `OpenClipboard(hwnd)`
    with 5× retry (`Sleep(5)` between attempts) — the Ctrl+C+C path's
    front door. Related readers: `FUN_0043BF30` (sequence-number poll),
