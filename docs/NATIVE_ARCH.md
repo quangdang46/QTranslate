@@ -920,6 +920,8 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Auto-update + proxy (decompiled, probed)
 
+- **`FUN_0043F7DB` = comment parser** (`__fastcall`): both `//` line
+  (to `\n`/`\r`) and `/* */` block comments — full JSONC support.
 - **`FUN_0043F7D3` = whitespace+comment skipper** (`__fastcall` thunk,
   called before every token): skips `\t\n\r space` + `//` line comments
   (`FUN_0043F7DB`) — the parser accepts JSONC (defensive; the shipped
