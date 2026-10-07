@@ -686,6 +686,15 @@ class App:
         for _i in range(1, 10):
             self.root.bind(f"<Control-Alt-Key-{_i}>",
                            lambda e, i=_i: self.dict_with_service(i))
+        # Shift+1..9 = dictionary with n-th service (accel 0x8082-0x808A)
+        for _i in range(1, 10):
+            self.root.bind(f"<Shift-Key-{_i}>",
+                           lambda e, i=_i: self.dict_with_service(i))
+        # Ctrl+Left/Right = prev/next service (accel 0x8069/0x806A)
+        self.root.bind("<Control-Left>",
+                       lambda e: self.cycle_service(-1))
+        self.root.bind("<Control-Right>",
+                       lambda e: self.cycle_service(1))
 
     def toggle_backtr(self):
         try:
