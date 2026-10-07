@@ -426,6 +426,10 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Suggestions list paint (decompiled)
 
+- **`FUN_00465610` = language field resolver** (`__fastcall`, used by
+  suggestions paint): record `[?, +4 default, +8, +0xC]` — mode 1 → `+8`
+  else `+0xC`, fallback `+4`, null → 0. Picks the display language string
+  per UI mode.
 - **`FUN_0046563C` = service record lookup**: linear scan of 29 × `0x10`
   records at `DAT_005240D0` by service id — backs suggestions paint,
   menus, and the executor's display names. Dumped ids:
