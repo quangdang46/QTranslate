@@ -25,6 +25,24 @@ SERVICE_NAMES = {
 # table (57=vi, 17=en in the Google ordering used as canonical).
 LANG_INDEX = {57: "vi", 17: "en"}
 
+# Defaults scraped from a real Options.json (Contents/Appearance/Advanced).
+DEFAULT_HOTKEY_DOC = (
+    "Double Ctrl => Show main window; Ctrl+Q => popup translate; "
+    "Ctrl+Shift+Q => dictionary; Ctrl+E => listen; "
+    "Ctrl+Enter => translate; Ctrl+N => clear")
+DEFAULT_APPEARANCE = {
+    "PopupAutoSize": True, "PopupAutoPos": True, "PopupTimeout": 5,
+    "Transparency": 217, "PopupPinWhenDragging": True,
+    "ColorBack": 15790320, "ColorText": 0, "ColorFrame": 8023133,
+}
+DEFAULT_ADVANCED = {
+    "PreferredDomain": "com", "EnableSlowerListening": True,
+    "OcrApiKey": "", "RemoveLineBreaks": False,
+}
+DEFAULT_INTERNET = {"Timeout": 10000}
+DEFAULT_PROXY = {"ProxyType": 0, "Scheme": 0, "Host": "", "Port": 0,
+                 "Username": "", "Password": ""}
+
 
 def decode_hotkey(code: int) -> dict:
     """Split a HotKey* dword the way FUN_00405A17 does."""
