@@ -79,6 +79,9 @@ Each user action = a `Task` object posted to a worker thread:
   picks tray icon by hotkey state (199 = off, `0x8A` = partial,
   `0x84` = on, via `FUN_00454396` icon loader) + `"%s %s"` tooltip →
   add (`FUN_00405C42`) or modify (`FUN_00405CB2`) tray icon.
+- **`FUN_00454396` = icon loader**: `LoadImageW(hInstance, resId,
+  IMAGE_ICON, size, size, LR_SHARED)` — all icons (tray states 199/`0x84`/
+  `0x8A`, service icons) come from the exe's own `.rsrc` section.
 1. **`FUN_00405A17` = hotkey registrar** (`__thiscall`, calls `RegisterHotKey`
    via IAT slot `0x50D658`): parses hotkey word — `id = low byte`,
    `modifiers = (word >> 8) & 0xF`, `vk = low byte`; on success appends the id
