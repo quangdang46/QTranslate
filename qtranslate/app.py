@@ -696,11 +696,42 @@ class App:
             self.render(f"[error] {e}")
 
     def show_nav_menu(self):
+        # Main-window options menu (native FUN_0042DF28 IDs): toggles
+        # write back to General so hotkeys/popup honor them too.
+        def _set_general(key, value):
+            try:
+                from qtranslate import config as _C
+                import json as _j
+                full = _C.load()
+                full.setdefault("General", {})[key] = bool(value)
+                with open(_C.DEFAULT_PATH, "w",
+                          encoding="utf-8") as f:
+                    _j.dump(full, f, ensure_ascii=False, indent=1)
+            except Exception:
+                pass
+
+        def _toggle_detect():
+            v = not self.opt_detect.get()
+            self.opt_detect.set(v)
+            _set_general("AlwaysDetectLanguage", v)
+
+        def _toggle_backtr():
+            v = not self.opt_backtr.get()
+            self.opt_backtr.set(v)
+            _set_general("BackTranslation", v)
+
         m = tk.Menu(self.root, tearoff=False)
         m.add_command(label="Show dictionary window",
                       command=self.open_dict_window)
         m.add_command(label="Show history window",
                       command=self.open_history_window)
+        m.add_separator()
+        m.add_checkbutton(label="Always detect language",
+                          variable=self.opt_detect,
+                          command=_toggle_detect)
+        m.add_checkbutton(label="Back translation",
+                          variable=self.opt_backtr,
+                          command=_toggle_backtr)
         m.add_separator()
         m.add_command(label="Options...", command=self.open_options)
         m.add_command(label="About", command=self.show_about)
