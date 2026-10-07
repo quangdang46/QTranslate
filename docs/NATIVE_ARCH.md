@@ -103,6 +103,11 @@ Each user action = a `Task` object posted to a worker thread:
    8 resize handles (`FUN_00449B08/00449B9C` frame/fill, `FUN_00437367` label).
    Sibling blitters: `FUN_0044A611/0044A201/00437FE4/00449901/004498A0`.
 
+- **`FUN_0042F2CC` = help/about text loader**: resolves `\help.txt`
+  (`FUN_0045B716`) → reads via shared `FUN_0043DF32` file pipeline →
+  formats `"%s %s %s\n\n"` header (version line) for the About dialog.
+  Called from the startup sequencer on first run.
+
 ## Single-instance guard (decompiled)
 
 - **`FUN_00435175` = singleton check** (called from WinMain before COM init):
