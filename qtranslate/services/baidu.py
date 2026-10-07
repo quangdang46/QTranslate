@@ -75,6 +75,25 @@ def sign(text: str, gtk: str = "0.0") -> str:
     return "{}.{}".format(c, c ^ e)
 
 
+def suggest(text: str) -> list:
+    """Autocomplete via POST /sug {kw} — verified live 2026-10-07.
+
+    Reversed from headless traffic capture (per-keystroke POSTs while
+    typing in the Baidu input box). Returns [{k, v}] entries. No auth.
+    """
+    body = "kw=" + urllib.parse.quote((text or "")[:100], safe="")
+    req = urllib.request.Request(
+        HOST + "/sug", data=body.encode("utf-8"),
+        headers={"Content-Type":
+                 "application/x-www-form-urlencoded; charset=utf-8",
+                 "Accept": "*/*",
+                 "Referer": "https://fanyi.baidu.com/",
+                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        obj = json.loads(resp.read().decode("utf-8", errors="replace"))
+    return obj.get("data", []) if isinstance(obj, dict) else []
+
+
 def detect(text: str, cookie: str = "") -> str:
     """Port of serviceDetectLanguageRequest/Response: POST /langdetect."""
     body = "query=" + urllib.parse.quote((text or "")[:100], safe="")

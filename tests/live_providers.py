@@ -29,6 +29,7 @@ def main():
     check("deepl.detect", lambda: d.detect("Hello world"))
     check("deepl.translate EN->VI", lambda: d.translate("Good morning", "EN", "VI"))
     check("baidu.detect", lambda: b.detect("Hello world"))
+    check("baidu.suggest", lambda: b.suggest("Hello") and "suggest-entries")
     check("yandex.translate EN->RU", lambda: y.translate("Good morning", "en", "ru"))
     check("bing.translate EN->VI", lambda: bing_translate("Good morning", "en", "vi"))
     from qtranslate.services import youdao as yd
