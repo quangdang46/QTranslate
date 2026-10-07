@@ -159,8 +159,9 @@ Each user action = a `Task` object posted to a worker thread:
   from the enumerator): frees or grows (`FUN_0041FABE` + `FUN_00420870`)
   the per-scan match list.
 - **`FUN_0045B81B` = file enumerator** (`__fastcall`, `FindFirst/NextFileW`;
-  skips `.`/`..` by inline compare; no `FindClose` in-function — handle
-  either leaks per-scan or closes in the caller),
+  skips `.`/`..` by inline compare; `FindClose` (IAT `0x50D258`) is only
+  referenced by CRT wildcard code — the app enumerator **leaks one find
+  handle per scan** (harmless: scans run at startup/service-switch)).
   `FindFirstFileW` loop): walks `Services/*/`, `Locales/*/` dirs feeding
   the discovery pipeline (`FUN_0045D6A9`).
 - **`FUN_0045B9D9` = path append** (`__fastcall`): grow + `PathAppendW`
