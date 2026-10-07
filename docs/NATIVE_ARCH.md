@@ -66,7 +66,11 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Capture path (hotkey → text) — decompiled, verified
 
-0. **`FUN_00418C23` = hotkey bulk registrar**: unregisters all existing
+0. **`FUN_00418DA0`/`FUN_004059CF` = raw-input pre-step**: registers mouse
+   RawInput (`UsagePage 1 / Usage 2`, `RIDEV_INPUTSINK 0x100` when enabling)
+   so mouse-mode capture receives movement even unfocused; then
+   `FUN_00418B69` state sync.
+0b. **`FUN_00418C23` = hotkey bulk registrar**: unregisters all existing
    (`UnregisterHotKey` loop over the id vector at `this+0x17D8`) → registers
    17 hotkeys from consecutive option words (`DAT_00549466 + i*2`, matching
    the 17 `HotKey*` names in `Options.json`) when enabled (`param_1` = global
