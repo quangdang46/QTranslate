@@ -118,6 +118,9 @@ Each user action = a `Task` object posted to a worker thread:
   (`FUN_0045CC98`), validate language-pair defaults (`FUN_0045A867`) →
   first-run (no `Options.json`): show setup wizard (`FUN_00419DA6`) →
   else honor `startup-show` / `startup-minimized` / saved window placements.
+- **`FUN_00419DA6` = first-show/wizard**: creates Static control + app icon
+  (`WM_SETICON 0x80`, icon id `0x84`) → virtual show/focus/restore sequence
+  (`+0x10/+0x14/+0x18` vtable) with `IsIconic`-aware `ShowWindow`.
 
 ## Settings persistence (decompiled, verified)
 
