@@ -407,6 +407,9 @@ Each user action = a `Task` object posted to a worker thread:
   sub-layout (`+0x48/+0x54`) → hotkey-test refresh (`FUN_00409EC0`) +
   show-layout (`FUN_00408ADE`). Service ids 5/`0x1A`/`0x2A`/`0x38`/`0x3B`
   take a flag variant.
+- **`FUN_00408A83` = head-lines reader** (`__thiscall`): resolve count
+  (`FUN_00408AA2`) → `FUN_004099F3(0, count)` first-N-lines read — preview
+  text for tooltips and history excerpts.
 - **`FUN_00409ABF` = combo dropdown reader** (`__fastcall`): count
   (`0x434`), show-dropdown (`0xBB`), limit (`0xC1`) → line reads
   (`FUN_004099F3`) walking the dropdown items — feeds language/service
