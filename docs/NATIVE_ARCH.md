@@ -471,6 +471,9 @@ Each user action = a `Task` object posted to a worker thread:
   switch): walks all services, keeps `caps & mask` (`+4` field), rebuilds
   the active list (`RemoveAll` + push-back) — drives which providers show
   in translate vs dictionary UI.
+- **`FUN_0040321E` = COW split** (`__thiscall`, called from realloc when
+  shared): alloc-via-manager + copy (`FUN_004031AA`) + release-old
+  (`FUN_004033D1`) — the write side of copy-on-write.
 - **`FUN_004032CC` = string realloc** (`__thiscall`): 1.5x growth
   (capped `0x40000001`) when exclusive, COW split (`FUN_0040321E`) when
   shared — the allocator behind every `CString` mutation.
