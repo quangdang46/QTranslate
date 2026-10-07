@@ -151,6 +151,14 @@ Each user action = a `Task` object posted to a worker thread:
   formats `"%s %s %s\n\n"` header (version line) for the About dialog.
   Called from the startup sequencer on first run.
 
+## Process model (verified)
+
+- **No child processes**: zero `CreateProcess*` imports — everything runs
+  in-process (UI thread + worker threads + thread pool + BASS/curl callback
+  threads). External interaction is only via `ShellExecute[Ex]` (open
+  docs/URLs) and COM out-of-proc (SAPI). This is why the whole app reverses
+  cleanly through one binary's worth of decompile.
+
 ## Single-instance guard (decompiled)
 
 - **`FUN_00435175` = singleton check** (called from WinMain before COM init):
