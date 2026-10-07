@@ -244,6 +244,9 @@ Each user action = a `Task` object posted to a worker thread:
   `0044D282`; low-level blit via `ExtTextOutW` (`FUN_00449B9C`, IAT
   `0x50D0E4`). Used by ScreenCapture labels, tray balloon text, and
   keyboard-window keys.
+- **`FUN_00439F08` = dialog font setup** (`__thiscall`): builds `LOGFONTW`
+  (`MS Shell Dlg 2`, weight 700/Bold, `lfHeight = -MulDiv(pt*20,
+  LOGPIXELSY, 72)` DPI-scaled) — popup/dialog font creation path.
 
 ## Tray icon + layout keys (decompiled)
 
