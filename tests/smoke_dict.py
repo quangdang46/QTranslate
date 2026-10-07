@@ -63,10 +63,11 @@ _chs = _ch(_long)
 assert sum(map(len, _chs)) == len(_long[:10000]) and max(map(len, _chs)) <= 700
 print("OK: yandex chunks")
 
-# google tk() determinism (same input -> same token)
+# google tk() known-answer (TKK seed 0.0 -> a.a^0 form)
 from qtranslate.services.google_translate import tk as _tk
-assert _tk("Hello world") == _tk("Hello world")
-print("OK: google tk deterministic")
+assert _tk("Hello world") == "24324.24324"
+assert _tk("test") == "209966.209966"
+print("OK: google tk known-answer")
 
 # signing known-answer vectors (cross-checked vs node 2026-10-08;
 # endpoints dead/walled, algorithms must still be bit-exact)
