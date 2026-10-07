@@ -394,6 +394,10 @@ Each user action = a `Task` object posted to a worker thread:
   (`FUN_0042A10A` substring) → internal re-lookup (`FUN_00426966`) with
   history sync (`this+0x19C = this+0x18C`). Non-qtdp links fall through to
   `ShellExecute` browser open.
+- **`FUN_004088A9` = shared id resolver** (`__thiscall`): `-1` args
+  resolve via `FUN_00408AA2` (hotkey word lookup) → vtable `+0x60`
+  dispatch on the resolved pair. Central fan-in for item activation,
+  layout, and display paths.
 - **`FUN_00408ADE` = show-layout-hide helper** (`__thiscall`):
   `FUN_004088A9` resolve → vtable show (`+4`) → layout (`+0x80`) → hide
   (`+8`). Shared tail for history-item activation and hotkey-display
