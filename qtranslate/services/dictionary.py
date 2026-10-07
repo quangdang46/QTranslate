@@ -224,6 +224,47 @@ REVERSO_LANGS = [None, None, None, None, None, "arabic", None, None, None,
                  None, None, None, None, None, None, None, None, None]
 
 
+REVERSO_API_HOST = "https://api.reverso.net"
+REVERSO_API_LANGS = {
+    "en": "eng", "english": "eng", "fr": "fra", "french": "fra",
+    "de": "ger", "german": "ger", "es": "spa", "spanish": "spa",
+    "it": "ita", "italian": "ita", "ru": "rus", "russian": "rus",
+    "pt": "por", "portuguese": "por", "zh": "chi", "chinese": "chi",
+    "zh-CHS": "chi", "ja": "jpn", "japanese": "jpn", "ar": "ara",
+    "arabic": "ara", "he": "heb", "hebrew": "heb", "nl": "dut",
+    "dutch": "dut", "pl": "pol", "polish": "pol", "ro": "rum",
+    "romanian": "rum", "tr": "tur", "turkish": "tur", "uk": "ukr",
+    "ukrainian": "ukr", "hi": "hin", "ko": "kor", "sv": "swe",
+    "da": "dan", "fi": "fin", "el": "ell", "cs": "cze", "sk": "slo",
+    "hu": "hun", "th": "tha", "vi": "vie",
+}
+
+
+def reverso_translate(text, sl="en", tl="fr"):
+    """Translate via Reverso context API — verified live 2026-10-07.
+
+    POST api.reverso.net/translate/v1/translation, no auth. The legacy
+    dictionary.reverso.net HTML path is Cloudflare-walled (403); this
+    JSON API replaces it for translate. Returns the joined translation.
+    """
+    src = REVERSO_API_LANGS.get(sl, sl)
+    dst = REVERSO_API_LANGS.get(tl, tl)
+    import json as _json
+    body = _json.dumps({
+        "format": "text", "from": src, "to": dst, "input": text[:5000],
+        "options": {"sentenceSplitter": True, "origin": "translation.web",
+                    "contextResults": True, "languageDetection": True},
+    }).encode()
+    req = urllib.request.Request(
+        REVERSO_API_HOST + "/translate/v1/translation", data=body,
+        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+                 "Content-Type": "application/json",
+                 "Referer": "https://www.reverso.net/"})
+    with urllib.request.urlopen(req, timeout=20) as r:
+        obj = _json.loads(r.read().decode("utf-8", errors="replace"))
+    return " ".join(obj.get("translation", []) or [])
+
+
 def reverso_lookup(word, sl, tl):
     url = REVERSO_HOST + "/{0}-{1}/{2}".format(sl, tl, _q(word))
     page = _get(url)

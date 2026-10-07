@@ -99,6 +99,10 @@ def _t_bing(t, sl, tl):
     return _bing_tr(t, "en" if sl == "auto" else sl, tl)
 
 
+def _t_reverso(t, sl, tl):
+    return _dict.reverso_translate(t, "en" if sl == "auto" else sl, tl)
+
+
 def _t_promt(t, sl, tl):
     try:
         paft, xsrf, op = _promt.session(sl, tl)
@@ -118,6 +122,7 @@ TRANSLATORS = {
     "bing": _t_bing,
     "microsoft": _t_bing,
     "promt": _t_promt,
+    "reverso": _t_reverso,
 }
 
 DICTS = {

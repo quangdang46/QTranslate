@@ -35,7 +35,7 @@ python -I qtranslate/tts.py "Xin chào" vi google.mp3
 | Naver (Papago) | ✅ | ✅ | ✅ | ✅ | **live OK** (new `/api/text/*`, `/api/tts/*`, `/api/dictionary/*` — no auth, 2026-10-07) |
 | Promt | ✅ | — | — | — | signing verified; API 400 (needs JS `paft`) |
 | Youdao | ✅ | — | — | ✅ | **live OK** (`jsonapi_s` translate + `/w/` dictionary, no sign needed, 2026-10-07) |
-| Reverso | ✅ | — | — | ✅ | ported; site 403 (bot-wall) |
+| Reverso | ✅ | — | — | ✅ | **live OK** (context JSON API, no auth; legacy HTML path 403) |
 | ImTranslator | ✅ | — | — | — | ported; endpoint 404 (retired) |
 | WordReference | — | — | — | ✅ | ported; Anubis bot-wall (needs headless) |
 | Oxford Learner | — | — | — | ✅ | **live OK** |

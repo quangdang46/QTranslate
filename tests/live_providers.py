@@ -45,6 +45,8 @@ def main():
     check("dict.urban", lambda: dd.urban_lookup("hello"))
     check("dict.wikipedia", lambda: dd.wikipedia_lookup("hello", "en", "en"))
     check("dict.multitran", lambda: dd.multitran_lookup("hello", 1, 2))
+    check("reverso.translate EN->FR",
+          lambda: dd.reverso_translate("Hello world", "en", "fr"))
 
     for name, status, detail in results:
         print(f"{status:8} {name:28} {detail}")
