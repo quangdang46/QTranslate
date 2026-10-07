@@ -99,8 +99,11 @@ _VK_NAMES = {0x08: "Backspace", 0x09: "Tab", 0x0D: "Enter", 0x1B: "Esc",
 def format_hotkey(code: int) -> str:
     """Port of FUN_00403B48: hotkey word -> 'Double Ctrl + Q' display string.
 
-    Native: 'Double ' prefix if bit15, then Ctrl/Shift/Alt/Win names joined
-    with ' + ', vk name via MapVirtualKeyW (special-cased nav keys here).
+    Verified decompile 2026-10-08: 'Double ' prefix if bit15 (short<0);
+    modifier names in fixed order Ctrl(0x11)/Shift(0x10)/Alt(0x12)/Win
+    via FUN_00403D3C string resources, joined with ' + ' (0x2B0020);
+    vk name via GetKeyNameText-style lookup FUN_00403D3C(vk).
+    Special-cased nav keys here (same visible output).
     """
     if not code or not (code & 0xFFF):
         return ""
