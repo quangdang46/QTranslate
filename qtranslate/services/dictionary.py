@@ -388,6 +388,11 @@ def wikipedia_lookup(word, sl, tl):
     frag = _sub(page, '<div id="bodyContent"', True,
                 '<div class="post-content"', True)
     if not frag:
+        # Fallback for current Vector skin (post-content retired):
+        # slice bodyContent up to the footer block.
+        frag = _sub(page, '<div id="bodyContent"', True,
+                    '<div id="catlinks"', False)
+    if not frag:
         return ""
     frag = _remove_attributes(frag + "></div>", ["id", "name", "class"])
     frag = _update_links(frag, host)
