@@ -198,6 +198,10 @@ Each user action = a `Task` object posted to a worker thread:
   (`FUN_00460354`) → error wrap (`FUN_004047D6`) → cleanup (`FUN_00404B7B`).
   This single function is the native equivalent of our Python
   `translate()` wrappers — service select → request → fallback chain.
+- **`FUN_004606BA` = back-translation runner** (`__thiscall`): swaps
+  sl/tl (`param_1+8` ↔ `param_1+10`, lang-index range check `< 0x4A`),
+  validates both via `FUN_0045FF70`, re-runs translate (`FUN_0045FDE8`).
+  Error codes: `0xC/0xD/0xE` = rerun/validate/fetch failures.
 - **Service picker = `FUN_0045CEDE` / `FUN_0045CC50`**: default = first id
   of the `ServicesOrder` vector (`FUN_0045AFDD` head read on
   `DAT_005495C0`); by-id = hash lookup (`FUN_0045DAF5` on `DAT_00549590`).
