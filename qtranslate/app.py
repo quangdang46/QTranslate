@@ -189,6 +189,75 @@ _SERVICE_LINKS = {
 }
 
 
+def _decode_placement(hexs: str):
+    """Decode a WINDOWPLACEMENT hex blob -> (x, y, w, h, showCmd).
+
+    Layout: length, flags, showCmd, ptMin(2), ptMax(2), rcNormal(4)
+    little-endian LONGs. Verified vs real WindowMainPlacement
+    (526x366 at 876,292, show=1).
+    """
+    try:
+        import struct
+        b = bytes.fromhex((hexs or "").strip())
+        if len(b) < 44:
+            return None
+        _, _, show, _, _, _, _, l, t, r, bo = struct.unpack("<11i", b[:44])
+        if r > l and bo > t:
+            return (l, t, r - l, bo - t, show)
+    except Exception:
+        pass
+    return None
+
+
+def _encode_placement(x: int, y: int, w: int, h: int,
+                      show: int = 1) -> str:
+    """Tk geometry -> WINDOWPLACEMENT hex blob (length=44, flags=0,
+    min/max (-1,-1))."""
+    import struct
+    return struct.pack("<11i", 44, 0, show, -1, -1, -1, -1,
+                       x, y, x + w, y + h).hex().upper()
+
+
+def _place_main(root):
+    """Restore main-window geometry from General.WindowMainPlacement;
+    fall back to the native default size."""
+    try:
+        from qtranslate import config as _C
+        hexs = _C.load().get("General", {}).get("WindowMainPlacement",
+                                                "")
+        rc = _decode_placement(hexs)
+    except Exception:
+        rc = None
+    if rc:
+        x, y, w, h, _ = rc
+        try:
+            root.geometry(f"{w}x{h}+{x}+{y}")
+            return
+        except Exception:
+            pass
+    root.geometry("526x366")
+
+
+def _save_placement(key: str, widget):
+    """Persist a window's geometry into General.<key> blob."""
+    try:
+        from qtranslate import config as _C
+        import json as _j
+        g = widget.geometry()  # WxH+X+Y
+        import re as _re
+        m = _re.match(r"(\d+)x(\d+)\+(-?\d+)\+(-?\d+)", g)
+        if not m:
+            return
+        w, h, x, y = map(int, m.groups())
+        full = _C.load()
+        full.setdefault("General", {})[key] = _encode_placement(x, y, w,
+                                                                h)
+        with open(_C.DEFAULT_PATH, "w", encoding="utf-8") as f:
+            _j.dump(full, f, ensure_ascii=False, indent=1)
+    except Exception:
+        pass
+
+
 def _open_url(url: str):
     """Open URL honoring Advanced.DefaultBrowserId (native browser pick).
 
@@ -309,8 +378,9 @@ class App:
         root.protocol("WM_DELETE_WINDOW", self.on_close)
         root.title("QTranslate")
         root.configure(bg=_COLORS["back"])
-        # native main-window rect measured on screen: 526x352
-        root.geometry("526x352")
+        # native rect decoded from General.WindowMainPlacement
+        # WINDOWPLACEMENT blob (526x366 at 876,292 on this machine)
+        _place_main(root)
         self._build_main()
 
     # -- main window body: mirrors the real QTranslate main window --
@@ -689,6 +759,7 @@ class App:
 
     def on_close(self):
         self._save_history()
+        _save_placement("WindowMainPlacement", self.root)
         try:
             self.root.destroy()
         except Exception:
