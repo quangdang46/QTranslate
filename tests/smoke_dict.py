@@ -117,5 +117,6 @@ _real = _os.path.expanduser("~/AppData/Roaming/QTranslate/Options.json")
 _cfg.load(_real)
 assert _cfg.decode_hotkey(593)["vk"] == 0x51, "Ctrl+Q decode"
 assert "Ctrl" in _cfg.format_hotkey(593) and "Q" in _cfg.format_hotkey(593)
-assert len(_cfg.HOTKEY_NAMES) == 18
+assert len(_cfg.HOTKEY_NAMES) == 17, "17 real HotKey* in Options.json"
+assert len(set(_cfg.HOTKEY_NAMES)) == 17, "no duplicate hotkey names"
 print("OK: config real Options.json + hotkey round-trip")
