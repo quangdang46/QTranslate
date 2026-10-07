@@ -20,6 +20,8 @@ def main():
     from qtranslate.services import google_translate as g
     from qtranslate.services import deepl as d
     from qtranslate.services import baidu as b
+    from qtranslate.services import yandex as y
+    from qtranslate.session import bing_translate
     from qtranslate import tts
 
     check("google.translate EN->VI", lambda: g.translate("Good morning", "auto", "vi"))
@@ -27,6 +29,8 @@ def main():
     check("deepl.detect", lambda: d.detect("Hello world"))
     check("deepl.translate EN->VI", lambda: d.translate("Good morning", "EN", "VI"))
     check("baidu.detect", lambda: b.detect("Hello world"))
+    check("yandex.translate EN->RU", lambda: y.translate("Good morning", "en", "ru"))
+    check("bing.translate EN->VI", lambda: bing_translate("Good morning", "en", "vi"))
 
     for name, status, detail in results:
         print(f"{status:8} {name:28} {detail}")
