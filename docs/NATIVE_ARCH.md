@@ -175,6 +175,13 @@ Each user action = a `Task` object posted to a worker thread:
   (same `serviceDetectLanguageRequest` string ref — dictionary-window path).
 - Options driving it: `AlwaysDetectLanguage`, `BackTranslation`,
   `BackTranslationSplitterPos` (refs in `FUN_004561F0`/`FUN_0045869F` savers).
+- **Request/response pair = `FUN_00465D82` / `FUN_00465E36`** (`__thiscall`):
+  request side invokes `serviceTranslateRequest(text, sl, tl)` (3 VARIANT
+  args via `FUN_0043B942`) and validates the returned `RequestData` with
+  `FUN_0046578F`; response side invokes `serviceTranslateResponse(...)`
+  (4 args) and parses the `ResponseData` with `FUN_0046592D`. The Python
+  `RequestData`/`ResponseData` dataclasses in `qtranslate/common.py` mirror
+  exactly these two native parse functions' field layouts.
 
 ## Popup render path (decompiled, verified)
 
