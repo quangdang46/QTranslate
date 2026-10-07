@@ -403,6 +403,10 @@ Each user action = a `Task` object posted to a worker thread:
   (`FUN_0043AF94`) → content refresh (`FUN_00409D1C` + `FUN_00408010`) →
   1s `SetTimer` re-arm. Live preview behind service list / hotkey test
   buttons in `OptionsWindow`.
+- **`FUN_00408456` = HotKeyCtrl display builder** (`__thiscall`): subclass
+  wiring + `HKM_* (0x43B/0x445)` hotkey set/get + highlight
+  (`0xFF676985`) on flag 4 + dropdown (`+0x48`) on flag 2 — the
+  "press keys" capture box (`QTranslate_HotKeyControl` class).
 - **`FUN_00409D1C` = hotkey test runner**: resolve hotkey (`FUN_00408AA2`)
   → build display string (`FUN_00408456`) → vtable show (`+4`), live test
   (`+0xEC`), hide (`+8`) — the "press keys to test" box in Hotkeys options.
