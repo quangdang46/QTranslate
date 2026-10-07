@@ -1786,6 +1786,71 @@ def on_hotkey(app):
         pass
 
 
+def start_clipboard_monitor(app, interval_ms: int = 800,
+                            popup: bool = False):
+    """Port of TaskTranslateClipboard: poll GetClipboardSequenceNumber,
+    translate new text clipped copies into main (or popup) window.
+
+    Native mouse-mode variants (show icon/translation/translation+read)
+    need the cursor hook; this covers the clipboard-monitor core:
+    Ctrl+C anywhere -> auto-translate, with the exclusion gate.
+    """
+    if not _HAS_KEYS:
+        return None
+    try:
+        from ctypes import windll
+        _seq = windll.user32.GetClipboardSequenceNumber
+    except Exception:
+        return None
+    try:
+        last = [_seq()]
+    except Exception:
+        return None
+    _active = [True]
+
+    def _poll():
+        if not _active[0]:
+            return
+        try:
+            cur = _seq()
+        except Exception:
+            cur = last[0]
+        if cur != last[0]:
+            last[0] = cur
+            try:
+                from qtranslate.exclusions import foreground_excluded
+                if foreground_excluded():
+                    raise RuntimeError("excluded")
+                import pyperclip as _pc
+                text = _pc.paste().strip()
+            except Exception:
+                text = ""
+            if text and len(text) < 5000:
+                svc, _, tgt, _ = app.current()
+                try:
+                    res = do_translate(svc, text[:5000], tgt, "auto",
+                                       app.opt_detect.get(),
+                                       app.opt_backtr.get())
+                    app.src.delete("1.0", "end")
+                    app.src.insert("1.0", text[:2000])
+                    app.render(res)
+                    app.push_hist(svc, text[:120], res[:200])
+                    if popup:
+                        show_popup(text[:300], res, svc, tgt)
+                except Exception:
+                    pass
+        try:
+            app.root.after(interval_ms, _poll)
+        except Exception:
+            pass
+
+    try:
+        app.root.after(interval_ms, _poll)
+    except Exception:
+        return None
+    return _active
+
+
 def on_layout_hotkey():
     # TaskConvertTextLayout: retype clipboard text in the other layout.
     if not _HAS_KEYS:
@@ -1929,6 +1994,28 @@ def _register_native_hotkeys(app) -> list:
     def _ocr():
         app.root.after(0, app.on_ocr)
 
+    _monitors = {"main": None, "popup": None}
+
+    def _mon_main():
+        if _monitors["main"] is None:
+            _monitors["main"] = start_clipboard_monitor(app,
+                                                        popup=False)
+            print("clipboard monitor -> main window: on")
+        else:
+            _monitors["main"][0] = False
+            _monitors["main"] = None
+            print("clipboard monitor -> main window: off")
+
+    def _mon_popup():
+        if _monitors["popup"] is None:
+            _monitors["popup"] = start_clipboard_monitor(app,
+                                                         popup=True)
+            print("clipboard monitor -> popup: on")
+        else:
+            _monitors["popup"][0] = False
+            _monitors["popup"] = None
+            print("clipboard monitor -> popup: off")
+
     _actions = {
         "HotKeyPopupWindow": lambda: on_hotkey(app),
         "HotKeyMainWindow": _show_main,
@@ -1946,9 +2033,8 @@ def _register_native_hotkeys(app) -> list:
         "HotKeyCopyTranslation": _copy_result,
         "HotKeyTextRecognition": _ocr,
         "HotKeyTranslateClipboard": lambda: on_hotkey(app),
-        "HotKeyTranslateClipboardInMainWindow": lambda: on_hotkey(app),
-        "HotKeyTranslateClipboardInPopupWindow":
-            lambda: on_hotkey(app),
+        "HotKeyTranslateClipboardInMainWindow": _mon_main,
+        "HotKeyTranslateClipboardInPopupWindow": _mon_popup,
         "HotKeySpeechInput": lambda: app.root.after(0, app.on_mic),
         "HotKeySwitchMouseMode": lambda: print(
             "mouse mode toggle (not ported: needs cursor hook)"),
