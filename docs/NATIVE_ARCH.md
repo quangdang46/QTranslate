@@ -480,6 +480,10 @@ Each user action = a `Task` object posted to a worker thread:
   wiring + `HKM_* (0x43B/0x445)` hotkey set/get + highlight
   (`0xFF676985`) on flag 4 + dropdown (`+0x48`) on flag 2 — the
   "press keys" capture box (`QTranslate_HotKeyControl` class).
+- **`FUN_0040ABC3` = hotkey word builder**: mods from live `GetKeyState`
+  (Ctrl=2, Shift=4, Alt=1, Win=8, current key counts as held) + vk; bare
+  modifier press → vk=0; packs `(mods << 8) | vk` — byte-exact with our
+  Python `config.decode_hotkey()`.
 - **`FUN_0040AA88` = key-capture proc** (`__thiscall`, `HotKeyControl`
   WndProc): ignores bare navigation keys (Del/BS/Enter/Esc with no
   modifiers) → `FUN_0040ABC3` builds the hotkey word → double-press arm via
