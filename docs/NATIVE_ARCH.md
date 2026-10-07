@@ -457,6 +457,13 @@ Each user action = a `Task` object posted to a worker thread:
   draw via service name (`FUN_0046563C`) + language (`FUN_00465610`) +
   theme colors (`FUN_0044C4CA`).
 
+## Font enumeration (decompiled)
+
+- **`FUN_0044C645` = font enumerator** (`__fastcall`,
+  `EnumFontFamiliesExW` via IAT `0x50D134`, callback `FUN_0044C636`):
+  fills the font dropdown in Appearance options. Callers at
+  `FUN_0040A037/0040A89C` (dialog init paths).
+
 ## Tooltip + balloon (decompiled)
 
 - **`FUN_00403E00` = tooltip creator** (`__thiscall`): `CreateWindowExW(
