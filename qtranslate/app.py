@@ -88,6 +88,14 @@ _COLORS = _default_colors()
 
 LANGS = ["auto", "en", "ru", "fr", "de", "es", "zh-CHS", "vi", "ja", "ko"]
 TO_LANGS = ["vi", "en", "ru", "fr", "de", "es", "zh-CHS", "ja", "ko"]
+# Display names exactly as the native language combos show them
+LANG_DISPLAY = {"auto": "Auto-Detect", "en": "English", "ru": "Russian",
+                "fr": "French", "de": "German", "es": "Spanish",
+                "zh-CHS": "Chinese (Simplified)", "vi": "Vietnamese",
+                "ja": "Japanese", "ko": "Korean"}
+LANG_CODES = {v: k for k, v in LANG_DISPLAY.items()}
+SRC_LANG_NAMES = [LANG_DISPLAY[c] for c in LANGS]
+TO_LANG_NAMES = [LANG_DISPLAY[c] for c in TO_LANGS]
 
 
 def _strip_html(h):
@@ -261,11 +269,9 @@ class App:
         self.target = TARGET
         self.source = "auto"
         self.history = []  # (service, src, result)
-        root.title("QTranslate-re")
-        root.attributes("-topmost", True)
+        root.title("QTranslate")
         root.configure(bg=_COLORS["back"])
-        root.geometry("680x420")
-        self._build_menu()
+        root.geometry("540x430")
         self._build_main()
 
     # -- main window body: mirrors the real QTranslate main window --
@@ -291,9 +297,10 @@ class App:
         tk.Button(nav, text="⋮", width=3,
                   command=self.show_nav_menu).pack(side="right", padx=1)
         # source pane (id1017) — default text like the original
-        self.src = tk.Text(self.root, height=7, wrap="word", bg=bg,
-                           fg=_COLORS["text"],
-                           insertbackground=_COLORS["text"])
+        # font mirrors the native dialog font (MS Shell Dlg ~ Tahoma 9)
+        self.src = tk.Text(self.root, height=7, wrap="word", bg="white",
+                           fg="black", insertbackground="black",
+                           font=("Tahoma", 9))
         self.src.pack(fill="x", padx=4)
         self.src.insert("1.0", self.default_source_text())
         self.src.bind("<KeyRelease>", lambda e: self.on_type())
@@ -304,13 +311,15 @@ class App:
                   command=self.on_paste).pack(side="left", padx=1)
         tk.Button(bar, text="⋮", width=3,
                   command=self.show_nav_menu).pack(side="left", padx=1)
-        self.src_lang = ttk.Combobox(bar, values=LANGS, width=11)
-        self.src_lang.set("auto")
+        self.src_lang = ttk.Combobox(bar, values=SRC_LANG_NAMES,
+                                     width=13, state="readonly")
+        self.src_lang.set(LANG_DISPLAY.get("auto", "auto"))
         self.src_lang.pack(side="left", padx=2)
         tk.Button(bar, text="⇄", width=3,
                   command=self.on_swap).pack(side="left", padx=1)
-        self.tgt = ttk.Combobox(bar, values=TO_LANGS, width=11)
-        self.tgt.set(self.target)
+        self.tgt = ttk.Combobox(bar, values=TO_LANG_NAMES,
+                                width=13, state="readonly")
+        self.tgt.set(LANG_DISPLAY.get(self.target, self.target))
         self.tgt.pack(side="left", padx=2)
         tk.Button(bar, text="Translate",
                   command=self.on_go).pack(side="left", padx=4)
@@ -322,28 +331,38 @@ class App:
                                 anchor="w")
         self.suggest.pack(fill="x", padx=4)
         # result pane (id1018)
-        self.out = tk.Text(self.root, height=10, wrap="word", bg=bg,
-                           fg=_COLORS["text"],
-                           insertbackground=_COLORS["text"],
-                           font=("Segoe UI", 11))
+        self.out = tk.Text(self.root, height=10, wrap="word", bg="white",
+                           fg="black", insertbackground="black",
+                           font=("Tahoma", 9))
         self.out.pack(fill="both", expand=True, padx=4)
         # service icon strip at the bottom (icons from Services/*/Service.ico,
         # click = switch + re-translate like FUN_0045CDBA; middle-click =
-        # browser, right-click = multi-select per help.txt Actions)
+        # browser, right-click = multi-select per help.txt Actions).
+        # Native shows icon above a short name (Go.., Mi.., Pr.., ...).
         strip = tk.Frame(self.root, bg=bg)
         strip.pack(fill="x", padx=4, pady=(2, 4))
         self.svc_btns = {}
         self.svc_icons = {}
         for name in self.ordered_services():
-            b = tk.Button(strip, width=34, height=26,
+            cell = tk.Frame(strip, bg=bg)
+            cell.pack(side="left", padx=1)
+            b = tk.Button(cell, width=34, height=26,
                           command=lambda n=name: self.switch_service(n))
-            b.pack(side="left", padx=1)
+            b.pack()
             b.bind("<Button-2>",
                    lambda e, n=name: self.open_service_page_n(n))
+            tk.Label(cell, text=name[:4].title(), bg=bg, fg="black",
+                     font=("Tahoma", 7)).pack()
             self.svc_btns[name] = b
             self._load_svc_icon(name, b)
         self._mark_service()
+        # key bindings mirror help.txt Main window hotkeys
         self.root.bind("<Control-Return>", lambda e: self.on_go())
+        self.root.bind("<Control-n>", lambda e: self.on_clear())
+        self.root.bind("<Control-d>", lambda e: self.open_dict_window())
+        self.root.bind("<Control-h>", lambda e: self.open_history_window())
+        self.root.bind("<Control-i>", lambda e: self.on_swap())
+        self.root.bind("<F1>", lambda e: self.show_hotkeys())
 
     def open_service_page_n(self, name):
         import webbrowser
@@ -530,8 +549,8 @@ class App:
     def current(self):
         return (self.service,
                 self.src.get("1.0", "end").strip(),
-                self.tgt.get().strip() or "vi",
-                self.src_lang.get().strip() or "auto")
+                LANG_CODES.get(self.tgt.get().strip(), "vi"),
+                LANG_CODES.get(self.src_lang.get().strip(), "auto"))
 
     def render(self, text):
         self.out.delete("1.0", "end")
@@ -542,9 +561,9 @@ class App:
 
     def on_swap(self):
         a, b = self.src_lang.get(), self.tgt.get()
-        if a != "auto":
+        if LANG_CODES.get(a, "auto") != "auto":
             self.tgt.set(a)
-        self.src_lang.set(b if b else "auto")
+        self.src_lang.set(b if b else LANG_DISPLAY.get("auto", "auto"))
 
     def on_go(self):
         svc, text, tgt, src = self.current()
@@ -552,6 +571,10 @@ class App:
                            self.opt_detect.get(), self.opt_backtr.get())
         self.render(res)
         self.push_hist(svc, text[:120], res[:200])
+
+    def on_clear(self):
+        """Ctrl+N => Clear current translation (per help.txt)."""
+        self.render("")
 
     def on_listen(self):
         txt = self.out.get("1.0", "end").strip()
