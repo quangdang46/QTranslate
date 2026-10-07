@@ -2404,13 +2404,18 @@ class App:
 
             vv = tk.BooleanVar(value=bool(_up.get("CheckForUpdates",
                                                   False)))
-            tk.Checkbutton(body, text="Check for updates on startup",
+            tk.Checkbutton(body, text=_Cw(18, 1188,
+                                          "Check for updates on startup"),
                            variable=vv, bg=_COLORS["back"],
                            fg=_COLORS["text"], selectcolor=_COLORS["back"],
                            command=lambda: (
                                _up.__setitem__("CheckForUpdates",
                                                vv.get()),
                                _save_u())).pack(anchor="w")
+            tk.Button(body, text=_Cw(18, 1190, "Check now"),
+                      command=lambda: self.render(
+                          "update server offline (checker 404s)")).pack(
+                              anchor="w", pady=2)
             tk.Label(body, text="QTranslate 6.10.0 — update server is "
                                 "offline (update checker 404s; nothing to "
                                 "fetch).", bg=_COLORS["back"],
