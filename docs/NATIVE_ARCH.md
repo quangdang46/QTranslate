@@ -280,6 +280,9 @@ Each user action = a `Task` object posted to a worker thread:
   reuses the same JSON writer as the options saver; the Csv/Html/Json/Txt
   *export* formats are JS plugins (`Plugins/History/*.js`, ported to
   `qtranslate/history.py`).
+- **No VEH**: zero `RtlAddVectoredExceptionHandler` imports — SEH
+  (`__try/__except` in decompile) + the one unhandled filter cover all
+  crash paths; fail-fast is separate. Crash/exception surface fully mapped.
 - **`FUN_004B46C6` = fail-fast handler** (`__report_gsfailure`): clears
   the filter, runs default `UnhandledExceptionFilter`, `TerminateProcess(
   0xC0000409/STATUS_STACK_BUFFER_OVERRUN)` — stack-cookie death path,
