@@ -275,6 +275,10 @@ Each user action = a `Task` object posted to a worker thread:
   of the `ServicesOrder` vector (`FUN_0045AFDD` head read on
   `DAT_005495C0`); by-id = hash lookup (`FUN_0045DAF5` on `DAT_00549590`).
   Mirrored 1:1 by `qtranslate/config.py::services_order()`.
+- **`FUN_0043A121` = re-run after service switch** (`__fastcall`,
+  called from dispatcher): builds `TaskShowPopupWindow` (vftable +
+  `DAT_0051DE64/68` params) + `PostMessageW(0x812C)` — re-translates with
+  the newly selected service without re-capture.
 - **`FUN_00405553` = TaskListenText ctor** (`__thiscall`, called from
   dispatcher listen branch): sets `TaskListenText::vftable` + fields
   (service, text, sl/tl, slow flag, extra) — the task object later run by
