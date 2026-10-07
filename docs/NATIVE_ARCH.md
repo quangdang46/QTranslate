@@ -182,6 +182,13 @@ Each user action = a `Task` object posted to a worker thread:
   (4 args) and parses the `ResponseData` with `FUN_0046592D`. The Python
   `RequestData`/`ResponseData` dataclasses in `qtranslate/common.py` mirror
   exactly these two native parse functions' field layouts.
+- **Dictionary pair = `FUN_00465EF7` / `FUN_00465FAB`**: same 3-arg/4-arg
+  IDispatch pattern for `serviceDictionaryRequest/Response` — the dictionary
+  render fork (HTML into `DictionaryWindow` instead of plain text).
+- **Listen invoker = `FUN_0046606C`** (`__thiscall`): invokes
+  `serviceListenRequest(text, lang, slowFlag)` (3 args, `param_3` = slow
+  playback toggle) → `RequestData` parse (`FUN_0046578F`) → curl fetch mp3 →
+  `FUN_00461642` BASS playback. `TaskListenText`'s entry point.
 
 ## Popup render path (decompiled, verified)
 
