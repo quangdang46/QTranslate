@@ -411,7 +411,8 @@ Each user action = a `Task` object posted to a worker thread:
   text on `\r`, finds `[...]` spans (`FUN_0041BBB9` bracket match) →
   resolves each id (`FUN_004088ED`) → applies (`+0x54`) — expands
   hotkey/service references inside help/about text. (`FUN_0041BBB9` is
-  just bounds-checked `CString::operator[]`, not a parser.)
+  just bounds-checked `CString::operator[]`, not a parser;
+  `FUN_004333AC` is the `wcsspn/wcscspn` line tokenizer underneath.)
 - **`FUN_004088ED` = display-text resolver** (`__thiscall`):
   `FUN_004088A9` resolve → show (`+4`) → get text (`+0x48`) → hide (`+8`)
   — reads any id's display string without leaving UI visible.
