@@ -175,7 +175,7 @@ def _strip_html(h):
 
 # ------------------------------------------------------- service registry
 def _t_google(t, sl, tl):
-    return _google.translate(t, "auto", tl)
+    return _google.translate(t, sl, tl)
 
 
 def _t_deepl(t, sl, tl):
@@ -494,7 +494,9 @@ def detect_language(text):
     code strings), so normalize everything to a code string here.
     """
     candidates = (
+        lambda t: _google.detect(t),
         lambda t: _deepl.detect_code(t),
+        lambda t: _ms.detect_code(t),
         lambda t: _naver.detect_code(t),
         lambda t: _baidu.detect_code(t),
         lambda t: _yandex.detect_code(t),

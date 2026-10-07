@@ -357,6 +357,15 @@ check("offline-json", "xin chào" in _H2.json_export(_items))
 check("offline-txt", "[google > en to vi]" in _H2.txt_export(_items))
 check("offline-html", "<table>" in _H2.html_export(_items))
 
+# 19f. logic: explicit source honored + 6-provider detect loop
+import inspect as _insp
+_src = _insp.getsource(A.do_translate)
+check("logic-no-hardcode-auto", '"auto", tl)' not in _src)
+_dsrc = _insp.getsource(A.detect_language)
+check("logic-detect-6",
+      all(p in _dsrc for p in
+          ("_google", "_deepl", "_ms", "_naver", "_baidu", "_yandex")))
+
 # 19e. double-click time from Windows (native double-press matcher)
 try:
     from ctypes import windll as _wd2
