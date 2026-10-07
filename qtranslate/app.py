@@ -1193,6 +1193,89 @@ class App:
             tk.Button(body, text="Apply disabled",
                       command=_save_dis).pack(anchor="w", pady=2)
 
+        def show_internet():
+            # Internet.Timeout (ms) + full Proxy section; live: the
+            # net stack (session._net_open) already honors these.
+            for c in body.winfo_children():
+                c.destroy()
+            _inet = cfg.get("Internet", {})
+            _px = cfg.get("Proxy", {})
+            self._opt_vars = getattr(self, "_opt_vars", {})
+
+            def _save_n():
+                try:
+                    from qtranslate import config as C3
+                    import json as _j
+                    full = C3.load()
+                    full["Internet"] = _inet
+                    full["Proxy"] = _px
+                    with open(C3.DEFAULT_PATH, "w",
+                              encoding="utf-8") as f:
+                        _j.dump(full, f, ensure_ascii=False, indent=1)
+                    cfg["Internet"] = _inet
+                    cfg["Proxy"] = _px
+                except Exception:
+                    pass
+
+            tk.Label(body, text="Connection", bg=_COLORS["back"],
+                     fg=_COLORS["text"],
+                     font=("Segoe UI", 10, "bold")).pack(anchor="w")
+            r = tk.Frame(body, bg=_COLORS["back"])
+            r.pack(fill="x", pady=1)
+            tk.Label(r, text="Timeout (ms):", width=18, anchor="w",
+                     bg=_COLORS["back"],
+                     fg=_COLORS["text"]).pack(side="left")
+            _te = tk.Entry(r, width=10)
+            _te.pack(side="left")
+            _te.insert(0, str(_inet.get("Timeout", 10000)))
+            _te.bind("<FocusOut>", lambda e: (
+                _inet.__setitem__("Timeout",
+                                  int(_te.get() or 10000)), _save_n()))
+            tk.Label(body, text="Proxy", bg=_COLORS["back"],
+                     fg=_COLORS["text"],
+                     font=("Segoe UI", 10, "bold")).pack(anchor="w",
+                                                         pady=(8, 0))
+            _pt = ttk.Combobox(body, values=["None", "HTTP", "SOCKS4",
+                                             "SOCKS5"], width=26,
+                               state="readonly")
+            _pt.pack(anchor="w", pady=1)
+            try:
+                _pt.set(["None", "HTTP", "SOCKS4", "SOCKS5"][
+                    int(_px.get("ProxyType", 0))])
+            except Exception:
+                _pt.set("None")
+            _entries = {}
+            for lab, key in (("Host:", "Host"), ("Port:", "Port"),
+                             ("Username:", "Username"),
+                             ("Password:", "Password")):
+                rr = tk.Frame(body, bg=_COLORS["back"])
+                rr.pack(fill="x", pady=1)
+                tk.Label(rr, text=lab, width=18, anchor="w",
+                         bg=_COLORS["back"],
+                         fg=_COLORS["text"]).pack(side="left")
+                ee = tk.Entry(rr, width=26,
+                              show="*" if key == "Password" else "")
+                ee.pack(side="left")
+                ee.insert(0, str(_px.get(key, "")))
+                _entries[key] = ee
+            _sch = ttk.Combobox(body, values=["http", "https"], width=26,
+                                state="readonly")
+            _sch.pack(anchor="w", pady=1)
+            _sch.set("https" if int(_px.get("Scheme", 0)) else "http")
+
+            def _apply_px():
+                _names = {"None": 0, "HTTP": 1, "SOCKS4": 2, "SOCKS5": 3}
+                _px["ProxyType"] = _names.get(_pt.get(), 0)
+                _px["Scheme"] = 1 if _sch.get() == "https" else 0
+                for k, ee in _entries.items():
+                    v = ee.get()
+                    _px[k] = int(v) if k == "Port" and v.isdigit() \
+                        else v
+                _save_n()
+
+            tk.Button(body, text="Apply",
+                      command=_apply_px).pack(anchor="w", pady=4)
+
         def on_select(_e=None):
             if not left.curselection():
                 return
@@ -1207,6 +1290,8 @@ class App:
                 show_services()
             elif page == "Languages":
                 show_languages()
+            elif page == "Internet":
+                show_internet()
             else:
                 for c in body.winfo_children():
                     c.destroy()
