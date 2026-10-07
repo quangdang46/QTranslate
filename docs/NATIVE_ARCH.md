@@ -426,6 +426,10 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Suggestions list paint (decompiled)
 
+- **`FUN_0046563C` = service record lookup**: linear scan of 29 × `0x10`
+  records at `DAT_005240D0` by service id — backs suggestions paint,
+  menus, and the executor's display names. Mirrors our
+  `SERVICE_NAMES` dict in `config.py` (ids 1/5/11/12/13/18/26/28/30/31 + dict ids).
 - **`FUN_0042B485` = suggestions painter** (`__thiscall`, `DrawTextW` ×2):
   theme fill (`FUN_00449B9C`) → `CB_GETCOUNT (0x146)`; empty →
   `"Selected languages (in options) are not implemented."`; else per-item
