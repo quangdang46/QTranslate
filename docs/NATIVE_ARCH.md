@@ -545,7 +545,9 @@ Each user action = a `Task` object posted to a worker thread:
   `FUN_00432082` = Show Full History (`0x806D`); all use
   `FUN_00451F6D`-build + `FUN_004040BA`-patch + `TrackPopupMenu`.
 - **`FUN_00401530` = main-window init**: RichEdit subclass (`0x4AE` via
-  `FUN_004030AE`) + 50ms debounce `SetTimer` + format text
+  `FUN_004030AE`) + 50ms debounce `SetTimer` (IAT `0x50D498`, 10 sites:
+  instant-translate delay, popup auto-hide `PopupTimeout`, OCR region
+  settle) + format text
   (`DAT_0051C490`) into `0x3ED` + layout (`FUN_0044B4F4`) + pretranslate
   register (`FUN_004551D6`) — the full MainWindow bring-up sequence.
 - **`FUN_004030AE` = RichEdit subclasser**: ATL thunk alloc + `SetWindowLongW(GWL_WNDPROC)`
