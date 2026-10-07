@@ -676,6 +676,10 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Popup positioning (decompiled)
 
+- **`FUN_004072AA` = cursor-follow clamp** (`__thiscall`):
+  `MonitorFromPoint` + `GetMonitorInfoW` work area → clamps the popup rect
+  on all 4 sides (in/out-place adjust of `*param_1/*param_2`) — keeps
+  cursor-following popups fully on-screen across monitors.
 - **`FUN_00434025` = dialog launcher** (`__fastcall`): disables Apply
   (`0x419`) → saved placement? custom pos (`FUN_004072AA`) : default
   (`FUN_00402E7F`) → thunk allocs → `CreateDialogParamW(0xAB)` modeless.
