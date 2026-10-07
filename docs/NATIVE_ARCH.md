@@ -309,6 +309,14 @@ Each user action = a `Task` object posted to a worker thread:
   `0x493` → `ShowWindow(0x4AA, SHOW/HIDE)` — dependent-option visibility
   (e.g. proxy fields only when manual proxy selected).
 
+## Dictionary cross-links (decompiled)
+
+- **`FUN_00465574` = qtdp: link check**: prefix-match `qtdp:`
+  (`FUN_00454482` starts-with) — internal dictionary cross-references
+  (from XDXF `<kref>` and online-dict HTML) route back into lookup instead
+  of the browser. Siblings `FUN_004655A9` (resolve) / `FUN_004266C6`
+  (click handler in RichEdit subclass WndProc).
+
 ## Tooltip + balloon (decompiled)
 
 - **`FUN_00403E00` = tooltip creator** (`__thiscall`): `CreateWindowExW(
