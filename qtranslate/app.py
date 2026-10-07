@@ -1716,19 +1716,37 @@ class App:
                         _save_a())).pack(anchor="w")
             for lab, key in (("OCR API key:", "OcrApiKey"),
                              ("Preferred domain:", "PreferredDomain"),
+                             ("Google domain:", "GoogleDomain"),
                              ("Default browser id:", "DefaultBrowserId"),
+                             ("Open links with:", "DefaultBrowserId"),
                              ("Layout indicator:", "LayoutIndicator"),
-                             ("Copy action:", "CopyAction")):
+                             ("Keyboard layout indicator:",
+                              "LayoutIndicator"),
+                             ("Copy action:", "CopyAction"),
+                             ("Mouse mode:", "MouseMode")):
                 r = tk.Frame(body, bg=_COLORS["back"])
                 r.pack(fill="x", pady=1)
-                tk.Label(r, text=lab, width=20, anchor="w",
+                tk.Label(r, text=lab, width=22, anchor="w",
                          bg=_COLORS["back"],
                          fg=_COLORS["text"]).pack(side="left")
                 ee = tk.Entry(r, width=26)
                 ee.pack(side="left")
-                ee.insert(0, str(_ad2.get(key, "")))
+                try:
+                    _cur = _ad2.get(key, "")
+                    if _cur is None:
+                        _cur = ""
+                except Exception:
+                    _cur = ""
+                ee.insert(0, str(_cur))
                 ee.bind("<FocusOut>", lambda e, k=key, w=ee: (
                     _ad2.__setitem__(k, w.get()), _save_a()))
+            # DLG 185 API-keys SysLink -> ocr.space key docs
+            _api = tk.Label(body, text="Get OCR API keys at ocr.space",
+                            fg="blue", cursor="hand2", bg=_COLORS["back"],
+                            font=("Segoe UI", 9, "underline"))
+            _api.pack(anchor="w", pady=4)
+            _api.bind("<Button-1>",
+                      lambda e: _open_url("https://ocr.space/ocrapi"))
 
         def show_updates():
             for c in body.winfo_children():
