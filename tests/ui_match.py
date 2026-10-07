@@ -144,6 +144,16 @@ check("hotkey-decode-593",
       repr(C.format_hotkey(593)))
 check("hotkey-decode-0", C.format_hotkey(0) == "")
 
+# 9. global combo decoder (FUN_00405A17 bits -> keyboard lib combo)
+check("combo-593", A._hotkey_to_combo(593) == "ctrl+q",
+      A._hotkey_to_combo(593))
+check("combo-343", A._hotkey_to_combo(343) == "alt+w",
+      A._hotkey_to_combo(343))
+check("combo-0", A._hotkey_to_combo(0) == "")
+# ctrl+shift+q = vk 0x51, mods 6
+check("combo-shift", A._hotkey_to_combo(0x51 | (6 << 8)) == "ctrl+shift+q",
+      A._hotkey_to_combo(0x51 | (6 << 8)))
+
 root.destroy()
 print(f"\n{len(PASS)} passed, {len(FAIL)} failed")
 sys.exit(1 if FAIL else 0)

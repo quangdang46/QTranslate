@@ -637,6 +637,15 @@ class App:
             pyperclip.copy(fixed)
 
     def on_type(self):
+        # Suggest menu (Ctrl+Space shows it; auto-fill honors
+        # General.SpellChecking like the native edit control).
+        try:
+            from qtranslate import config as _C
+            if not _C.load().get("General",
+                                 {}).get("SpellChecking", True):
+                return
+        except Exception:
+            pass
         cur = self.src.get("1.0", "end").strip()
         if len(cur) < 3 or len(cur) > 60:
             return
