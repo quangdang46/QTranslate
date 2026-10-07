@@ -155,6 +155,9 @@ Each user action = a `Task` object posted to a worker thread:
 - **`FUN_0045B9FE` = path combine** (`__fastcall`): clone base
   (`FUN_004021DE` addref) + `FUN_0045B9D9` append — builds each enumerated
   `Services/<name>/Service.js` full path.
+- **`FUN_0041E5D5` = vector index-access** (`__thiscall`, bounds-checked,
+  fail-fast on OOB): element read behind service slots, match lists, and
+  the `ServicesOrder` head read.
 - **`FUN_0041FA3D` = match-vector reserve/clear** (`__thiscall`, called
   from the enumerator): frees or grows (`FUN_0041FABE` + `FUN_00420870`)
   the per-scan match list.
