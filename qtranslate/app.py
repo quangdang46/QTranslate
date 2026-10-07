@@ -158,8 +158,8 @@ def detect_language(text):
     """
     candidates = (
         lambda t: _deepl.detect_code(t),
-        _naver.detect,
-        _baidu.detect,
+        lambda t: _naver.detect_code(t),
+        lambda t: _baidu.detect_code(t),
         lambda t: _yandex.detect_code(t),
     )
     for fn in candidates:
