@@ -56,6 +56,6 @@ def lookup(word: str, xdxf_path: str) -> str:
 
 
 if __name__ == "__main__":
-    demo = ("<ar><k>hello</k><tr>həˈloʊ</tr><def><dtrn>xin chào</dtr>"
-            "<ex>hello world <kref>world</kref></ex></dtrn></def></ar>")
+    demo = ("<ar><k>hello</k><tr>həˈloʊ</tr><def><dtrn>xin chào</dtrn>"
+            "<ex>hello world <kref>world</kref></ex></def></ar>")
     print(render_article(demo))
