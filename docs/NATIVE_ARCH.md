@@ -696,6 +696,14 @@ Each user action = a `Task` object posted to a worker thread:
   Multi-monitor-aware centering behind every popup show (complements the
   `FUN_0040C393` topmost+content setter).
 
+## Icon compositor (decompiled)
+
+- **`FUN_00449C12` = icon compositor** (`__fastcall`, `DrawIconEx` IAT
+  `0x50D474`, `AlphaBlend` IAT `0x50D3C4`): memDC (`FUN_0044A581`) →
+  `DrawIconEx` → 4-corner `GetPixel` transparency test → `AlphaBlend`
+  with/without per-pixel alpha. Sibling caller `FUN_00436F19` (capture
+  overlay icons). Used for service icons, tray states, and button glyphs.
+
 ## Tooltip + balloon (decompiled)
 
 - **`FUN_00403E00` = tooltip creator** (`__thiscall`): `CreateWindowExW(
