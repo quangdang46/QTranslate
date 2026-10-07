@@ -512,17 +512,18 @@ def multitran_link(word) -> str:
     return multitran_host() + "/m.exe?s=" + _q(word)
 
 
-def multitran_build_uri(word, sl, tl, ui_lang="en") -> str:
+def multitran_build_uri(word, sl, tl, ui_lang=None) -> str:
     """Port of buildUri(): /m.exe?l1={target}&l2={source}&s={word}
     (+ &SHL=1 unless UI lang is ru). l1/l2 are numeric codes."""
     from qtranslate.common import Options
     url = "/m.exe?l1={0}&l2={1}&s={2}".format(tl, sl, _q(word))
-    if (ui_lang or Options.get("LanguageCode", "en")) != "ru":
+    ui = ui_lang or Options.get("LanguageCode", "en")
+    if ui != "ru":
         url += "&SHL=1"
     return url
 
 
-def multitran_lookup(word, sl, tl, ui_lang="en"):
+def multitran_lookup(word, sl, tl, ui_lang=None):
     """Port of serviceDictionaryRequest/Response (width=100% table slice).
 
     Faithful to native: table slice (inclusive) -> absolutize /m.exe
