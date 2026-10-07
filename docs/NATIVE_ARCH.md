@@ -282,6 +282,9 @@ Each user action = a `Task` object posted to a worker thread:
 - **`FUN_004661D1` = dispatch-get helper** (`__thiscall`, used by both
   validators): `IDispatchEx::GetDispID (+0x14, grfdex 0x400)` + invoke
   (`FUN_00466181`) — single choke point for all JS field reads.
+- **`FUN_00420B9E` = hash rehash/shrink** (`__thiscall`): realloc bucket
+  array + rechain all entries by recomputed `hash % newcap` — standard
+  unordered-map maintenance behind the DISPID + option tables.
 - **`FUN_00420CD6` = hash-table cleanup** (`__thiscall`, called from
   `FUN_0043E471`): freelist push + count decrement + shrink
   (`FUN_00420B9E`) + empty-table teardown — no-leak DISPID cache lifecycle.
