@@ -30,6 +30,19 @@ DEFAULT_HOTKEY_DOC = (
     "Double Ctrl => Show main window; Ctrl+Q => popup translate; "
     "Ctrl+Shift+Q => dictionary; Ctrl+E => listen; "
     "Ctrl+Enter => translate; Ctrl+N => clear")
+
+# All 18 HotKey* option names (from binary strings 0x523080-0x523354,
+# matching Options.json HotKeys section 1:1). Value 0 = unbound.
+HOTKEY_NAMES = [
+    "HotKeySpeechInput", "HotKeyDictionaryClipboard",
+    "HotKeyTextRecognition", "HotKeySwitchMouseMode",
+    "HotKeyTranslateClipboardInMainWindow", "HotKeyTranslateClipboard",
+    "HotKeyTranslateClipboardInPopupWindow", "HotKeyCopyTranslation",
+    "HotKeyReplaceSelection", "HotKeyListenTranslation",
+    "HotKeyConvertTextLayout", "HotKeyKeyboard", "HotKeyListenText",
+    "HotKeyDictionary", "HotKeyListenTranslation", "HotKeyHistory",
+    "HotKeyPopupWindow", "HotKeyMainWindow",
+]
 DEFAULT_APPEARANCE = {
     "PopupAutoSize": True, "PopupAutoPos": True, "PopupTimeout": 5,
     "Transparency": 217, "PopupPinWhenDragging": True,
