@@ -776,6 +776,10 @@ Each user action = a `Task` object posted to a worker thread:
   → `FUN_00450A0E` (shell-open document) else → `FUN_00450AC2` (URL →
   default browser). Shared by `serviceLink` opens, About links, and help
   file display.
+- **`FUN_0045AC41` = link service lookup** (`__thiscall`, used by the
+  `0x812C`-adjacent link path): hash lookup (`FUN_0041FC4A`) for the
+  clicked service → fallback default — resolves which provider owns a
+  clicked `qtdp:`/menu link before dispatch.
 - **`FUN_00401675` = link-click notify** (`NM_CLICK -2` / `NM_DBLCLK -4`
   on link controls `0x3ED/0x3F7`): opens `quest-app.appspot.com` (or
   `/download`) via `FUN_00450B17` ShellExecute wrapper — About-dialog
