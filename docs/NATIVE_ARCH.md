@@ -407,6 +407,11 @@ Each user action = a `Task` object posted to a worker thread:
   sub-layout (`+0x48/+0x54`) → hotkey-test refresh (`FUN_00409EC0`) +
   show-layout (`FUN_00408ADE`). Service ids 5/`0x1A`/`0x2A`/`0x38`/`0x3B`
   take a flag variant.
+- **`FUN_0042EC6C` = UI state snapshotter** (`__fastcall`): saves window
+  placement (`FUN_00422DDD` + `DAT_005492D0`) + service/lang selections
+  (`+0x440/+0x46C` vtable) + head-lines of 2–3 edits (`FUN_004099F3` into
+  `DAT_00549424/28/2C`) — restores exact UI on next show (the
+  `Window*Placement` persistence behind Options.json).
 - **`FUN_00408A83` = head-lines reader** (`__thiscall`): resolve count
   (`FUN_00408AA2`) → `FUN_004099F3(0, count)` first-N-lines read — preview
   text for tooltips and history excerpts.
