@@ -472,6 +472,8 @@ class App:
         # top-right of the source pane)
         srcfrm = tk.Frame(self.root, bg="white")
         srcfrm.pack(fill="x", padx=4)
+        self._panes = getattr(self, "_panes", {})
+        self._panes["src"] = srcfrm
         # taller source pane: native shows ~9 lines (through
         # "Ctrl+N => Clear current translation")
         self.src = tk.Text(srcfrm, height=12, wrap="word", bg="white",
@@ -519,6 +521,15 @@ class App:
         # result pane (id1018) + headphone overlay bottom-right
         outfrm = tk.Frame(self.root, bg="white")
         outfrm.pack(fill="both", expand=True, padx=4)
+        self._panes["mid"] = outfrm
+        try:
+            if not _gp.get("ShowTopPane", True) and self._panes.get(
+                    "src") is not None:
+                self._panes["src"].pack_forget()
+            if not _gp.get("ShowMiddlePane", True):
+                outfrm.pack_forget()
+        except Exception:
+            pass
         self.out = tk.Text(outfrm, height=6, wrap="word", bg="white",
                            fg="black", insertbackground="black",
                            font=("Tahoma", 9), borderwidth=0,
@@ -538,6 +549,17 @@ class App:
         # Native shows icon above a short name (Go.., Mi.., Pr.., ...).
         strip = tk.Frame(self.root, bg=bg)
         strip.pack(fill="x", padx=4, pady=(2, 4))
+        self._panes = {"src": None, "mid": None, "svc": strip,
+                       "bar": None}
+        # ShowTopPane/Middle/Services (native 0x8071/0x8064/0x8065,
+        # Ctrl+F1/F2/F3): srcfrm=top, bar+outfrm=middle, strip=services
+        try:
+            from qtranslate import config as _CP
+            _gp = _CP.load().get("General", {})
+        except Exception:
+            _gp = {}
+        if not _gp.get("ShowServicesPane", True):
+            strip.pack_forget()
         self.svc_btns = {}
         self.svc_icons = {}
         # short names exactly like native: Go.. Mi.. Pr.. Ba.. Ya..
@@ -569,6 +591,39 @@ class App:
         self.root.bind("<Control-h>", lambda e: self.open_history_window())
         self.root.bind("<Control-i>", lambda e: self.on_swap())
         self.root.bind("<F1>", lambda e: self.show_hotkeys())
+        # native pane toggles Ctrl+F1/F2/F3 (0x8071/0x8064/0x8065)
+        self.root.bind("<Control-F1>",
+                       lambda e: self.toggle_pane("ShowTopPane", "src"))
+        self.root.bind("<Control-F2>",
+                       lambda e: self.toggle_pane("ShowMiddlePane", "mid"))
+        self.root.bind("<Control-F3>",
+                       lambda e: self.toggle_pane("ShowServicesPane",
+                                                   "svc"))
+
+    def toggle_pane(self, key, pane):
+        """Show/hide a main-window pane, persisting General.<key>."""
+        try:
+            w = (self._panes or {}).get(pane)
+            if w is None:
+                return
+            from qtranslate import config as _C
+            import json as _j
+            full = _C.load()
+            cur = bool(full.setdefault("General", {}).get(key, True))
+            full["General"][key] = not cur
+            with open(_C.DEFAULT_PATH, "w",
+                      encoding="utf-8") as f:
+                _j.dump(full, f, ensure_ascii=False, indent=1)
+            if cur:
+                w.pack_forget()
+            else:
+                if pane == "mid":
+                    w.pack(fill="both", expand=True, padx=4)
+                else:
+                    w.pack(fill="x", padx=4, pady=(2, 4)
+                           if pane == "svc" else 0)
+        except Exception:
+            pass
 
     def open_service_page_n(self, name):
         import webbrowser
