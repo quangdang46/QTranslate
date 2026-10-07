@@ -778,9 +778,12 @@ class App:
                                selectcolor=_COLORS["back"]).pack(anchor="w")
 
         def show_appearance():
-            # mirrors DLG 175: General group + Popup window group
+            # mirrors DLG 175; all values live from the real
+            # Options.json Appearance section (verified keys).
             for c in body.winfo_children():
                 c.destroy()
+            _ap = cfg.get("Appearance", {})
+            self._opt_vars = getattr(self, "_opt_vars", {})
             tk.Label(body, text="General", bg=_COLORS["back"],
                      fg=_COLORS["text"],
                      font=("Segoe UI", 10, "bold")).pack(anchor="w")
@@ -789,32 +792,55 @@ class App:
             tk.Label(r, text="Theme:", width=18, anchor="w",
                      bg=_COLORS["back"],
                      fg=_COLORS["text"]).pack(side="left")
-            th = ttk.Combobox(r, values=_THEMES, width=26)
+            th = ttk.Combobox(r, values=_THEMES, width=26,
+                              state="readonly")
             th.pack(side="left")
-            th.set(THEME if THEME in _THEMES else (_THEMES[0] if _THEMES
-                                                   else ""))
+            _cur_th = _ap.get("ThemeName") or THEME
+            th.set(_cur_th if _cur_th in _THEMES else
+                   (_THEMES[0] if _THEMES else ""))
             th.bind("<<ComboboxSelected>>",
                     lambda e: self.apply_theme(th.get()))
-            for lab, default in (("Enable auto size", True),
-                                 ("Enable auto position", True),
-                                 ("Always activate", False),
-                                 ("Pin when dragging", False)):
-                v = tk.BooleanVar(value=default)
-                tk.Checkbutton(body, text=lab, variable=v,
+            for lab, key in (("Enable auto size", "PopupAutoSize"),
+                             ("Enable auto position", "PopupAutoPos"),
+                             ("Always activate", "PopupAutoFocus"),
+                             ("Pin when dragging",
+                              "PopupPinWhenDragging"),
+                             ("Enable window style",
+                              "EnableWindowStyle")):
+                vv = tk.BooleanVar(value=bool(_ap.get(key, False)))
+                self._opt_vars[key] = vv
+                tk.Checkbutton(body, text=lab, variable=vv,
                                bg=_COLORS["back"], fg=_COLORS["text"],
                                selectcolor=_COLORS["back"]).pack(anchor="w")
             tk.Label(body, text="Popup window", bg=_COLORS["back"],
                      fg=_COLORS["text"],
                      font=("Segoe UI", 10, "bold")).pack(anchor="w",
                                                          pady=(8, 0))
-            for lab in ("Auto-hide delay:", "Transparency (0 - 90):",
-                        "Frame thickness:"):
+            for lab, key in (("Auto-hide delay (s):", "PopupTimeout"),
+                             ("Transparency (0-255):", "Transparency"),
+                             ("Frame thickness:", "PopupWindowFrameThickness"),
+                             ("Popup icons:", "PopupIcons")):
                 rr = tk.Frame(body, bg=_COLORS["back"])
                 rr.pack(fill="x", pady=1)
                 tk.Label(rr, text=lab, width=20, anchor="w",
                          bg=_COLORS["back"],
                          fg=_COLORS["text"]).pack(side="left")
-                tk.Entry(rr, width=10).pack(side="left")
+                ee = tk.Entry(rr, width=10)
+                ee.pack(side="left")
+                ee.insert(0, str(_ap.get(key, "")))
+                self._opt_vars[key] = ee
+            for lab, key in (("Background color:", "ColorBack"),
+                             ("Text color:", "ColorText"),
+                             ("Frame color:", "ColorFrame")):
+                rr = tk.Frame(body, bg=_COLORS["back"])
+                rr.pack(fill="x", pady=1)
+                tk.Label(rr, text=lab, width=20, anchor="w",
+                         bg=_COLORS["back"],
+                         fg=_COLORS["text"]).pack(side="left")
+                ee = tk.Entry(rr, width=10)
+                ee.pack(side="left")
+                ee.insert(0, "#%06x" % int(_ap.get(key, 0)))
+                self._opt_vars[key] = ee
 
         def show_hotkeys():
             # mirrors DLG 179: Enable hot keys + per-action list with
