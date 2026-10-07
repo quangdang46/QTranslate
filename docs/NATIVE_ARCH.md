@@ -280,6 +280,10 @@ Each user action = a `Task` object posted to a worker thread:
   reuses the same JSON writer as the options saver; the Csv/Html/Json/Txt
   *export* formats are JS plugins (`Plugins/History/*.js`, ported to
   `qtranslate/history.py`).
+- **`FUN_004B46C6` = fail-fast handler** (`__report_gsfailure`): clears
+  the filter, runs default `UnhandledExceptionFilter`, `TerminateProcess(
+  0xC0000409/STATUS_STACK_BUFFER_OVERRUN)` — stack-cookie death path,
+  distinct from the reportable-crash filter above.
 - **Filter registration**: `SetUnhandledExceptionFilter` (IAT `0x50D2C0`)
   armed in CRT startup (`FUN_004B46C6`, beside `entry`) — writes the
   minidump list consumed as `Exceptions.json` on next launch by
