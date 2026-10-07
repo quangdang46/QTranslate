@@ -76,12 +76,29 @@ def play_file(path: str, block: bool = True) -> None:
         play_mp3_bytes(f.read(), block=block)
 
 
-if __name__ == "__main__":
+def play_text(text: str, lang: str = "vi", block: bool = True) -> str:
+    """Online mp3 -> BASS; on any failure fall back to offline SAPI.
+
+    Mirrors native TaskListenText: serviceListenRequest mp3 first,
+    SpVoice (FUN_00448BEC) when offline. Returns backend used.
+    """
     import sys
     sys.path.insert(0, ".")
     from qtranslate.tts import google_tts
+    try:
+        play_mp3_bytes(google_tts(text, lang), block=block)
+        return "bass"
+    except Exception as e:
+        print(f"online TTS failed ({e}); falling back to SAPI")
+    from qtranslate.sapi import speak
+    speak(text)
+    return "sapi"
+
+
+if __name__ == "__main__":
+    import sys
+    sys.path.insert(0, ".")
     text = sys.argv[1] if len(sys.argv) > 1 else "Xin chào"
     lang = sys.argv[2] if len(sys.argv) > 2 else "vi"
     print(f"downloading TTS for {text!r} ...")
-    play_mp3_bytes(google_tts(text, lang))
-    print("played via bass.dll")
+    print("played via", play_text(text, lang))
