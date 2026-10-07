@@ -823,7 +823,8 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Locale pack integrity (verified)
 
-- 28/35 `Locales/*/lang.json` parse OK (7 keys each); only
+- 28/35 `Locales/*/lang.json` parse OK (7 keys each); `help.txt`
+  intact everywhere checked (EN 1989 / FR 2354 / VI 2369 bytes); only
   `English/lang.json` is truncated upstream (ends mid-`Items` at Id:10 —
   ironic for the source language). Vietnamese/French/German/Russian
   verified complete. Our `locale.py` skips broken packs gracefully.
