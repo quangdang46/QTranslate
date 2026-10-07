@@ -151,6 +151,14 @@ Each user action = a `Task` object posted to a worker thread:
   formats `"%s %s %s\n\n"` header (version line) for the About dialog.
   Called from the startup sequencer on first run.
 
+## Dynamic DLLs (decompiled)
+
+- **`FUN_004356C1` = DWM loader**: `LoadLibraryW("dwmapi.dll")` +
+  `GetProcAddress(DwmIsCompositionEnabled/GetWindowAttribute/
+  SetWindowAttribute)` — dynamic (not linked) for XP compat; Aero glass
+  popup frames when composition is on. Siblings: `msftedit.dll`
+  (RichEdit), `mscoree.dll`, `iphlpapi.dll` (proxy route lookup).
+
 ## Process model (verified)
 
 - **No child processes**: zero `CreateProcess*` imports — everything runs
