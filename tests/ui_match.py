@@ -270,6 +270,25 @@ check("hex-css", _T2._hex("abc") == "#aabbcc", _T2._hex("abc"))
 check("hex-gray2", _T2._hex("20") == "#202020", _T2._hex("20"))
 check("themes-8", len(_T2.list_themes()) == 8,
       str(_T2.list_themes()))
+# 17. history exporters byte-match Plugins/History/*.js semantics
+from qtranslate import history as _H
+check("csv-cols",
+      _H.csv_item("Google", "hello", "en", "xin chào", "vi", 0, 1)
+      == '"Google","en","hello","vi","xin chào"\n',
+      _H.csv_item("Google", "hello", "en", "xin chào", "vi", 0, 1))
+check("json-item",
+      _H.json_item("Google", "hello", "en", "xin chào", "vi", 0, 1)
+      == '{"service":"Google","srcLang":"en","trLang":"vi",'
+         '"tr":"xin chào"}',
+      _H.json_item("Google", "hello", "en", "xin chào", "vi", 0, 1))
+check("txt-item",
+      _H.txt_item("Google", "hello", "en", "xin chào", "vi", 0, 1)
+      == "[Google > en to vi]\r\nxin chào\r\n\r\n")
+check("html-item",
+      _H.html_item("Google", "hello", "en", "xin chào", "vi", 0, 1)
+      == "<tr><td class='th'>Google (en to vi)</td>"
+         "<td>xin chào</td></tr>\r\n")
+
 import re as _re2
 _ok = True
 for _th in _T2.list_themes():

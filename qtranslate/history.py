@@ -26,9 +26,9 @@ def csv_item_begin(service, src):
 
 
 def csv_item(service, src, src_lang, tr, tr_lang, i, n):
-    # note the native column order: service, tr, src, trLang, srcLang
-    return ",".join([_qcsv(service), _qcsv(tr), _qcsv(src),
-                     _qcsv(tr_lang), _qcsv(src_lang)]) + "\n"
+    # native Csv.js: [a,c,b,e,d] = service, srcLang, src, trLang, tr
+    return ",".join([_qcsv(service), _qcsv(src_lang), _qcsv(src),
+                     _qcsv(tr_lang), _qcsv(tr)]) + "\n"
 
 
 def csv_item_end(service, src):
@@ -113,14 +113,14 @@ def json_header():
 
 
 def json_item_begin(service, src):
-    return '{"src":' + _json.dumps(src) + ',"trs":['
+    return '{"src":' + _json.dumps(src, ensure_ascii=False) + ',"trs":['
 
 
 def json_item(service, src, src_lang, tr, tr_lang, i, n):
-    return ('{"service":' + _json.dumps(service)
-            + ',"srcLang":' + _json.dumps(src_lang)
-            + ',"trLang":' + _json.dumps(tr_lang)
-            + ',"tr":' + _json.dumps(tr) + "}"
+    return ('{"service":' + _json.dumps(service, ensure_ascii=False)
+            + ',"srcLang":' + _json.dumps(src_lang, ensure_ascii=False)
+            + ',"trLang":' + _json.dumps(tr_lang, ensure_ascii=False)
+            + ',"tr":' + _json.dumps(tr, ensure_ascii=False) + "}"
             + ("," if i < n - 1 else ""))
 
 
