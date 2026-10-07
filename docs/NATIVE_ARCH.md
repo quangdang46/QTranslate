@@ -23,6 +23,12 @@ Symbols stripped, but **RTTI intact** — full class map recovered from `.rdata`
   `WindowPopupIcons`, `ProgressWindow`, RichEdit init) — offsets give the
   member layout for a future C++ reconstruction.
 - **`FUN_00403057` = ATL thunk allocator** (`AtlThunk_AllocateData/InitData`).
+- **`FUN_00421892` = WndClass registration** (cursor, `GetClassInfoExW` chain,
+  `RegisterClassExW`).
+- Audio imports confirmed: `BASS_StreamCreateFile/ChannelPlay/Init/Free`,
+  `BASS_RecordInit/Start` (mic capture for speech-to-text), `BASS_ChannelSetSync/Stop`
+  — playback path is `TaskListenText` → mp3 bytes → `StreamCreateFile` → `ChannelPlay`.
+  RTTI `TaskListenText` type descriptor at VA `0x44603c`.
 
 ## UI windows (`windows::` namespace, WTL dialogs)
 
