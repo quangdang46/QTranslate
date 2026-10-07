@@ -544,6 +544,10 @@ Each user action = a `Task` object posted to a worker thread:
 - Menu builders confirmed sharing `FUN_00404055` loader (7 sites):
   `FUN_00432082` = Show Full History (`0x806D`); all use
   `FUN_00451F6D`-build + `FUN_004040BA`-patch + `TrackPopupMenu`.
+- **`FUN_00401530` = main-window init**: RichEdit subclass (`0x4AE` via
+  `FUN_004030AE`) + 50ms debounce `SetTimer` + format text
+  (`DAT_0051C490`) into `0x3ED` + layout (`FUN_0044B4F4`) + pretranslate
+  register (`FUN_004551D6`) — the full MainWindow bring-up sequence.
 - **`FUN_004030AE` = RichEdit subclasser**: ATL thunk alloc + `SetWindowLongW(GWL_WNDPROC)`
   — popup text controls get a custom WndProc for link-click/hover handling.
 - **`FUN_0044FB11` = content-control classifier**: picks SysListView32 (lists)
