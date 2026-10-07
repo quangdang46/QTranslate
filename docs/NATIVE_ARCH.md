@@ -338,6 +338,9 @@ Each user action = a `Task` object posted to a worker thread:
   (`0x10` Shift → 4, `0x11` Ctrl → 2, `0x12` Alt → 1, `0x5B/0x5C` Win → 8) →
   `FUN_00417DCE` match against `DAT_00549484` (Double-Ctrl pattern). This is
   the "Double Ctrl => Show main window" trigger from the hotkey docs.
+- **`FUN_00417DCE` = press-pattern matcher**: modifier compare (`& 0xF`)
+  + `GetTickCount` vs last-press (`this+0x183C`) within `GetDoubleClickTime`
+  = double-press detected, timestamp reset. Single-press = plain equality.
 
 ## Tooltip + balloon (decompiled)
 
