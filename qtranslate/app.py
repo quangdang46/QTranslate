@@ -2503,6 +2503,41 @@ def on_hotkey(app):
         pass
 
 
+_MOUSE_MON = {"active": None}
+
+
+def _toggle_mouse_mode(app):
+    """Closest port of HotKeySwitchMouseMode without a cursor hook.
+
+    Cycles General.MouseMode 0=off -> 1=popup-monitor -> 2=main-monitor
+    using the clipboard-sequence monitor (copy = the selection event).
+    True cursor-side icon/hover needs a Win32 hook (documented limit).
+    """
+    try:
+        from qtranslate import config as _C
+        import json as _j
+        full = _C.load()
+        mode = (int(full.setdefault("General", {}).get("MouseMode", 0))
+                + 1) % 3
+        full["General"]["MouseMode"] = mode
+        full["General"]["MouseModeOn"] = mode != 0
+        with open(_C.DEFAULT_PATH, "w", encoding="utf-8") as f:
+            _j.dump(full, f, ensure_ascii=False, indent=1)
+    except Exception:
+        return
+    try:
+        if _MOUSE_MON["active"] is not None:
+            _MOUSE_MON["active"][0] = False
+            _MOUSE_MON["active"] = None
+        if mode != 0:
+            _MOUSE_MON["active"] = start_clipboard_monitor(
+                app, popup=(mode == 1))
+        print(f"mouse mode: {['off', 'popup on copy', 'main on copy'][mode]}"
+              " (cursor icon/hover needs Win32 hook)")
+    except Exception as e:
+        print(f"mouse mode failed: {e}")
+
+
 def start_clipboard_monitor(app, interval_ms: int = 800,
                             popup: bool = False):
     """Port of TaskTranslateClipboard: poll GetClipboardSequenceNumber,
@@ -2753,8 +2788,7 @@ def _register_native_hotkeys(app) -> list:
         "HotKeyTranslateClipboardInMainWindow": _mon_main,
         "HotKeyTranslateClipboardInPopupWindow": _mon_popup,
         "HotKeySpeechInput": lambda: app.root.after(0, app.on_mic),
-        "HotKeySwitchMouseMode": lambda: print(
-            "mouse mode toggle (not ported: needs cursor hook)"),
+        "HotKeySwitchMouseMode": lambda: _toggle_mouse_mode(app),
     }
     bound = []
     for name, fn in _actions.items():
