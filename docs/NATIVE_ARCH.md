@@ -110,6 +110,10 @@ Each user action = a `Task` object posted to a worker thread:
   "QTranslate_ApplicationWindow")` → if found, `PostMessageW(hWnd,
   WM_COMMAND, 0x8009)` (show-main-window) and exit. Second launch just
   focuses the running instance.
+- **CLI flags** (parsed by `FUN_0043CA85` = cmdline-parse + options-map
+  lookup `FUN_0043CF37`): `allow-multiple-instances`, `startup-show`,
+  `startup-minimized` (refs in `FUN_00435175` singleton + `FUN_00418F81`
+  startup placement).
 
 ## Settings persistence (decompiled, verified)
 
