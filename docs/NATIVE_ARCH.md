@@ -173,6 +173,13 @@ Each user action = a `Task` object posted to a worker thread:
   DWMWA_EXTENDED_FRAME_BOUNDS)` → else `GetWindowRect` minus borders
   (skipped when zoomed on Win7+) — correct popup rect under Aero.
 
+## Object factory (decompiled)
+
+- **`FUN_00402CBD` = factory singleton** (thread-safe once, highest
+  non-literal call count): `GetProcessHeap` + `CWin32Heap` vftable +
+  `CAtlStringMgr` vftable + `_atexit` — backs every object/string
+  allocation in the app.
+
 ## String literal loader (decompiled)
 
 - **`FUN_00401F21` = literal loader** (`__thiscall`, highest call count in
