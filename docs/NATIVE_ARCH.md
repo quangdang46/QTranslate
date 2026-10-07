@@ -175,6 +175,9 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Object factory (decompiled)
 
+- **`CWin32Heap::~CWin32Heap` = heap dtor** (ATL library, `HeapDestroy`
+  guarded): process-heap teardown at exit via the factory `_atexit` —
+  memory chain fully closed (factory → freelist → chunks → CRT → Heap).
 - **`FUN_00402CBD` = factory singleton** (thread-safe once, highest
   non-literal call count): `GetProcessHeap` + `CWin32Heap` vftable +
   `CAtlStringMgr` vftable + `_atexit` — backs every object/string
