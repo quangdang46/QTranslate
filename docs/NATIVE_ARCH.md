@@ -99,6 +99,21 @@ Each user action = a `Task` object posted to a worker thread:
    8 resize handles (`FUN_00449B08/00449B9C` frame/fill, `FUN_00437367` label).
    Sibling blitters: `FUN_0044A611/0044A201/00437FE4/00449901/004498A0`.
 
+## Settings persistence (decompiled, verified)
+
+- **`FUN_004561F0` = options saver**: resolves `%AppData%/QTranslate/Options.json`
+  (`FUN_0045B3D7` path builder) → serializes live state key by key
+  (`ActiveServices`, `ActiveDictionaryServices`, `WindowMainPlacement`,
+  `WindowPopupPlacement`, … via `FUN_00440893` JSON writer). Sibling savers:
+  `FUN_00418F81`/`FUN_0045869F` (history/exceptions variants for
+  `History.json`, `DictionaryHistory.json`, `Exceptions.json`).
+- File layout (from a real install, 20 sections): Application, Exceptions,
+  Contents, Advanced, Appearance, Internet, HotKeys, OfflineDictionaries, Ocr,
+  Update, DisabledServices, Proxy, DictionariesOrder, DisabledLanguages,
+  DisabledDictionaries, Dictionary, LanguagePairs, General, ServicesOrder,
+  AutoDetection. Ported to `qtranslate/config.py` (hotkey word decode matching
+  `FUN_00405A17`, default `ServicesOrder = [1,5,12,13,11,26,28,30,31]`).
+
 ## Popup render path (decompiled, verified)
 
 - **`FUN_0040C393` = popup content+position setter** (`__fastcall`, calls
