@@ -109,3 +109,13 @@ try:
 finally:
     _dl._post_jsonrpc, _t2.time = _real_post, _real_time
 print("OK: deepl payload")
+
+# config: load real Options.json + hotkey round-trip + theme palettes
+from qtranslate import config as _cfg
+import os as _os
+_real = _os.path.expanduser("~/AppData/Roaming/QTranslate/Options.json")
+_cfg.load(_real)
+assert _cfg.decode_hotkey(593)["vk"] == 0x51, "Ctrl+Q decode"
+assert "Ctrl" in _cfg.format_hotkey(593) and "Q" in _cfg.format_hotkey(593)
+assert len(_cfg.HOTKEY_NAMES) == 18
+print("OK: config real Options.json + hotkey round-trip")
