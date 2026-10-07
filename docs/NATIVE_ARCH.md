@@ -410,6 +410,10 @@ Each user action = a `Task` object posted to a worker thread:
 - **`FUN_00427D21` = raw applier** (`__thiscall`): bare
   `SetWindowPlacement`, no validation — internal fast path when the blob
   is already trusted (post-startup restores).
+- **`FUN_00450B5C`/`FUN_00450B4D` = topmost helpers**: set via
+  `SetWindowPos(hWndInsertAfter)` (`SWP_NOMOVE|NOSIZE|NOACTIVATE` =
+  `0x23`); read via `GetWindowLongW(GWL_EXSTYLE)` bit test — backs the
+  popup's always-on-top flag persisted in placement `flags & 0x10`.
 - **`FUN_00422D8B` = placement applier** (`__thiscall`,
   `SetWindowPlacement` via IAT `0x50D514`): validates `length == 0x2C`,
   honors DPI flag (`FUN_00450B5C`), maximized shortcut (`showCmd 3`),
