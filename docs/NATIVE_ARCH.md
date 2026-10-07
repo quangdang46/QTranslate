@@ -232,7 +232,10 @@ Each user action = a `Task` object posted to a worker thread:
   from `.rsrc`; item labels live as UTF-16 in `.rdata` (e.g. `Copy
   translation` at `0x11BF98`, `Spell checking` at `0x11E4E4`) and are
   appended/patched at runtime by `FUN_00451F6D` + `FUN_004040BA`, shown by
-  `TrackPopupMenu`.
+  `TrackPopupMenu`. Full `.rdata` UTF-16 scan: **1088 UI/options strings**
+  (161 menu/option-related incl. all 18 `HotKey*` names, `ActiveServices`,
+  `DictionariesOrder`, `LanguagePairs` keys) — the complete options-key
+  vocabulary 1:1 with `Options.json` sections.
 - **`FUN_004287B6` = history-item menu** (`__thiscall`, `TrackPopupMenu`
   via IAT `0x50D63C`): builds Open (`0x8028`) / Copy text (`0x806E`) /
   Copy translation (`0x8026`) / Delete (`0x8027`) / Listen to text
