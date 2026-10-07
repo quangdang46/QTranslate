@@ -1129,7 +1129,8 @@ Each user action = a `Task` object posted to a worker thread:
   `WM_MOUSEWHEEL (0x20A)` scroll (`FUN_00401870`: wheel-delta/120 *
   step) with offset clamp + repaint (`FUN_004014af`: GetClientRect
   vs content height, InvalidateRect; Tk Listbox/Treeview scroll
-  natively so no port needed). Sibling popup procs share the shape.
+  natively so no port needed; dirty flag re-arms the 50ms timer
+  (`FUN_00401481`). Sibling popup procs share the shape.
 
 ## Popup positioning (decompiled)
 
