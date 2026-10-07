@@ -346,6 +346,10 @@ Each user action = a `Task` object posted to a worker thread:
   via IAT `0x50D36C`): message `0x4A7` → pool runs `FUN_00410AB8` (async
   translate/dict worker); `0x4A6` → sync `SendMessageW(0x80C8)` UI update.
   Second async path beside the `0x812C` PostMessage queue.
+- **`FUN_00461F5C` = background dir setup** (runs in pool worker):
+  walks `DAT_00549630` path array (`FUN_00462220` resolve +
+  `FUN_0046236C` build) → `GetFileAttributesW`, `CreateDirectoryW` if
+  missing (cache/history/data dirs prepared off the UI thread).
 - **`FUN_00410AB8` = pool worker proc**: `PostMessageW(0x8064, 0)` start →
   `FUN_00461F5C` background job → `PostMessageW(0x8064, 1, status)` done
   (IsWindow-guarded both ends).
