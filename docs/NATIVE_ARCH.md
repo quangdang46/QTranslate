@@ -698,6 +698,10 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Icon compositor (decompiled)
 
+- **`FUN_0044A611`/`FUN_0044A5E4` = blit + destroy** (`FUN_0044A569`
+  wrapper): `BitBlt(SRCCOPY)` memDC→screen, then restore old bitmap +
+  `DeleteObject` + `DeleteDC`. Completes the RAII double-buffer with
+  `FUN_0044A581` — zero-flicker guarantee for all themed paint.
 - **`FUN_0044A581` = memDC helper** (`__thiscall`): `CreateCompatibleDC`
   + `CreateCompatibleBitmap` + `SetViewportOrgEx` shift — RAII-ish struct
   behind all double-buffered paint (`FUN_0044D1AC`, `FUN_00449C12`);
