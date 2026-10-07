@@ -526,6 +526,14 @@ Each user action = a `Task` object posted to a worker thread:
   fills the font dropdown in Appearance options. Callers at
   `FUN_0040A037/0040A89C` (dialog init paths).
 
+## MainWindow WndProc (decompiled)
+
+- **`FUN_00411DEB` = MainWindow proc** (`__thiscall`): `WM_CREATE (0x110)` →
+  full init (`FUN_00401530`); `WM_DESTROY (2)` → teardown (kill timer,
+  unregister pretranslate, detach); `WM_COMMAND (0x111)` → button/menu
+  dispatch; `WM_NOTIFY (0x4E)` → list/tree events (`FUN_00401675`);
+  `WM_MOUSEWHEEL (0x20A)` scroll. Sibling popup procs share the shape.
+
 ## Tooltip + balloon (decompiled)
 
 - **`FUN_00403E00` = tooltip creator** (`__thiscall`): `CreateWindowExW(
