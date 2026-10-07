@@ -186,12 +186,75 @@ def unquote_html(s: str | None) -> str:
 
 
 def remove_empty_lines(s: str | None) -> str:
-    """Port of removeEmptyLines(a)."""
+    """Port of removeEmptyLines(a) — exact 1:1."""
     if not s:
         return ""
-    s = s.replace("\r", "")
-    lines = [" " if re.match(r"^\s*$", ln) else ln for ln in s.split("\n")]
-    return "\n".join(lines)
+    s = re.sub(r"\r", "", s, flags=re.I)
+    lines = s.split("\n")
+    lines = [ln if re.search(r"[\S]", ln) else "" for ln in lines]
+    s = re.sub(r"\n{3,}", "\n\n", "\n".join(lines))
+    s = re.sub(r"\n", NL, s, flags=re.I)
+    return trim_string(s)
+
+
+def string_find(hay: str, needle) -> dict | None:
+    """Port of stringFind(a,b): str -> indexOf, regex -> match.
+
+    Returns {index, length} or None (JS returns undefined).
+    """
+    if not needle:
+        return None
+    if isinstance(needle, str):
+        idx = hay.find(needle)
+        if idx > -1:
+            return {"index": idx, "length": len(needle)}
+        return None
+    m = re.search(needle, hay)
+    if m:
+        return {"index": m.start(), "length": len(m.group(0))}
+    return None
+
+
+def string_split(s: str, pattern) -> list:
+    """Port of stringSplit(a,b).
+
+    The IE_SPLIT_ISSUE workaround (manual capture-group splice) is
+    exactly what Python's re.split() does natively, so this is 1:1.
+    """
+    return re.split(pattern, s)
+
+
+def uses_auto_detect_code(langs: list) -> bool:
+    """Port of usesAutoDetectCode()."""
+    try:
+        return langs[AUTO_DETECT_LANGUAGE] != UNKNOWN_LANGUAGE_CODE
+    except IndexError:
+        return False
+
+
+# Global Options store: `var Options={}; function addOption(a,b){Options[a]=b}`
+Options: dict = {}
+
+
+def add_option(name: str, value) -> None:
+    """Port of addOption(a,b) — native UtilsDispatch writes here."""
+    Options[name] = value
+
+
+def get_header() -> str:
+    """Port of getHeader()."""
+    lang = Options.get("LanguageCode", "")
+    acc_lang = format_q("Accept-Language: {0};q=0.8,en-US;q=0.6,en;q=0.4",
+                        lang)
+    return ("Accept: */*" + NL + acc_lang + NL
+            + "Accept-Encoding: gzip,deflate" + NL + "Accept-Charset: utf-8")
+
+
+def post_header(as_json: bool = False) -> str:
+    """Port of postHeader(a)."""
+    ctype = ("application/json" if as_json
+             else "application/x-www-form-urlencoded")
+    return get_header() + NL + "Content-Type: " + ctype + "; charset=utf-8"
 
 
 def reg_exp_remove(s: str, tags: list, fmt: str) -> str:
