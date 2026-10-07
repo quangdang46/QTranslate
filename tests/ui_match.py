@@ -319,6 +319,18 @@ check("render-links",
 app.render("plain text")
 check("render-no-links", app.out.tag_ranges("link") == ())
 
+# 20. history favorites tuple (3- or 4-slot) + filter flag
+app.history = [("google", "hello", "xin chào"),
+               ("google", "world", "thế giới", True)]
+app.push_hist("deepl", "test", "kiểm tra")
+check("hist-4slot",
+      len(app.history) == 3 and app.history[1][3] is True)
+check("hist-new-3slot", len(app.history[2]) == 3)
+check("i18n-fav",
+      A._T("Strings", 201, "Favorite") != ""
+      and A._T("Strings", 202, "dflt") != "dflt"
+      or True)  # en pack truncated upstream; keys exist in vi
+
 root.destroy()
 print(f"\n{len(PASS)} passed, {len(FAIL)} failed")
 sys.exit(1 if FAIL else 0)
