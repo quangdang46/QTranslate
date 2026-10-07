@@ -2326,16 +2326,17 @@ class App:
                 except Exception:
                     pass
 
-            for lab, key in (("Slower (clearer) listening",
-                              "EnableSlowerListening"),
-                             ("GUI translation (XDXF hover)",
-                              "EnableGuiTranslation"),
-                             ("Mouse mode on Ctrl",
-                              "EnableMouseModeOnCtrl"),
-                             ("Remove line breaks",
-                              "RemoveLineBreaks"),
-                             ("Tray click toggles mouse mode",
-                              "SwitchMouseModeOnTrayClick")):
+            for lab, key in (
+                    (_Cw(17, 1159, "Slower (clearer) listening"),
+                     "EnableSlowerListening"),
+                    (_Cw(17, 1154, "GUI translation (XDXF hover)"),
+                     "EnableGuiTranslation"),
+                    (_Cw(17, 1155, "Mouse mode on Ctrl"),
+                     "EnableMouseModeOnCtrl"),
+                    (_Cw(17, 1160, "Remove line breaks"),
+                     "RemoveLineBreaks"),
+                    (_Cw(17, 1156, "Tray click toggles mouse mode"),
+                     "SwitchMouseModeOnTrayClick")):
                 vv = tk.BooleanVar(value=bool(_ad2.get(key, False)))
                 self._opt_vars[key] = vv
                 tk.Checkbutton(
@@ -2344,16 +2345,21 @@ class App:
                     command=lambda k=key: (
                         _ad2.__setitem__(k, self._opt_vars[k].get()),
                         _save_a())).pack(anchor="w")
-            for lab, key in (("OCR API key:", "OcrApiKey"),
-                             ("Preferred domain:", "PreferredDomain"),
-                             ("Google domain:", "GoogleDomain"),
-                             ("Default browser id:", "DefaultBrowserId"),
-                             ("Open links with:", "DefaultBrowserId"),
-                             ("Layout indicator:", "LayoutIndicator"),
-                             ("Keyboard layout indicator:",
-                              "LayoutIndicator"),
-                             ("Copy action:", "CopyAction"),
-                             ("Mouse mode:", "MouseMode")):
+            for lab, key in (
+                    (_Cw(17, 1195, "OCR API key:"), "OcrApiKey"),
+                    (_Cw(17, 1157, "Preferred domain:"),
+                     "PreferredDomain"),
+                    (_Cw(17, 1157, "Google domain:"), "GoogleDomain"),
+                    (_Cw(17, 1151, "Default browser id:"),
+                     "DefaultBrowserId"),
+                    (_Cw(17, 1151, "Open links with:"),
+                     "DefaultBrowserId"),
+                    (_Cw(17, 1149, "Layout indicator:"),
+                     "LayoutIndicator"),
+                    (_Cw(17, 1149, "Keyboard layout indicator:"),
+                     "LayoutIndicator"),
+                    (_Cw(17, 1147, "Copy action:"), "CopyAction"),
+                    (_Cw(17, 1186, "Mouse mode:"), "MouseMode")):
                 r = tk.Frame(body, bg=_COLORS["back"])
                 r.pack(fill="x", pady=1)
                 tk.Label(r, text=lab, width=22, anchor="w",
