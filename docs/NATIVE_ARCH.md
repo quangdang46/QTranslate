@@ -674,6 +674,14 @@ Each user action = a `Task` object posted to a worker thread:
   dispatch; `WM_NOTIFY (0x4E)` → list/tree events (`FUN_00401675`);
   `WM_MOUSEWHEEL (0x20A)` scroll. Sibling popup procs share the shape.
 
+## Popup positioning (decompiled)
+
+- **`FUN_00402E7F` = popup positioner** (`__fastcall`):
+  parent-or-owner anchor → `MonitorFromWindow` + `GetMonitorInfoW` work
+  area → clamp → `SetWindowPos(..., SWP_NOMOVE/-SIZE flags 0x15)`.
+  Multi-monitor-aware centering behind every popup show (complements the
+  `FUN_0040C393` topmost+content setter).
+
 ## Tooltip + balloon (decompiled)
 
 - **`FUN_00403E00` = tooltip creator** (`__thiscall`): `CreateWindowExW(
