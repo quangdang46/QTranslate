@@ -673,6 +673,11 @@ class App:
         self.root.bind("<Control-Shift-Tab>",
                        lambda e: self.cycle_service(-1))
         self.root.bind("<Control-space>", lambda e: self.on_go())
+        # Alt+Left/Right = history back/forward, Ctrl+Up = copy
+        # translation to input (help.txt Main window hotkeys)
+        self.root.bind("<Alt-Left>", lambda e: self.hist_back())
+        self.root.bind("<Alt-Right>", lambda e: self.hist_forward())
+        self.root.bind("<Control-Up>", lambda e: self.copy_to_source())
         # native pane toggles Ctrl+F1/F2/F3 (0x8071/0x8064/0x8065)
         self.root.bind("<Control-F1>",
                        lambda e: self.toggle_pane("ShowTopPane", "src"))
@@ -883,10 +888,41 @@ class App:
         return "\n".join(lines)
 
     def hist_back(self):
-        self.render("[history back — Alt+Left]")
+        """Alt+Left: previous translation in session history."""
+        try:
+            idx = getattr(self, "_hist_pos", len(self.history)) - 1
+            if 0 <= idx < len(self.history):
+                self._hist_pos = idx
+                _, src, res = self.history[idx]
+                self.src.delete("1.0", "end")
+                self.src.insert("1.0", src)
+                self.render(res)
+        except Exception:
+            pass
 
     def hist_forward(self):
-        self.render("[history forward — Alt+Right]")
+        """Alt+Right: next translation in session history."""
+        try:
+            idx = getattr(self, "_hist_pos",
+                           len(self.history) - 1) + 1
+            if 0 <= idx < len(self.history):
+                self._hist_pos = idx
+                _, src, res = self.history[idx]
+                self.src.delete("1.0", "end")
+                self.src.insert("1.0", src)
+                self.render(res)
+        except Exception:
+            pass
+
+    def copy_to_source(self):
+        """Ctrl+Up: copy translation to the text input box."""
+        try:
+            txt = self.out.get("1.0", "end").strip()
+            if txt:
+                self.src.delete("1.0", "end")
+                self.src.insert("1.0", txt)
+        except Exception:
+            pass
 
     def open_service_page(self):
         import webbrowser
@@ -1105,6 +1141,7 @@ class App:
 
     def push_hist(self, svc, src, res):
         self.history.append((svc, src, res))
+        self._hist_pos = len(self.history) - 1
 
     def on_swap(self):
         a, b = self.src_lang.get(), self.tgt.get()
