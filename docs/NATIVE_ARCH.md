@@ -282,6 +282,9 @@ Each user action = a `Task` object posted to a worker thread:
 - **`FUN_004661D1` = dispatch-get helper** (`__thiscall`, used by both
   validators): `IDispatchEx::GetDispID (+0x14, grfdex 0x400)` + invoke
   (`FUN_00466181`) — single choke point for all JS field reads.
+- **`FUN_00427AD4` = N-arg marshaller** (`__thiscall`): `GetDispID
+  (+0x14)` + `Invoke (+0x18)` with packed DISPPARAMS (up to 4 VARIANTs) —
+  how `serviceTranslateRequest(text, sl, tl)` crosses native→JS.
 - **`FUN_0043B8CE`/`FUN_0043B942` = method-call pair** (`__thiscall`,
   the single funnel for all 9 `service*` invokes): engine-ready gate
   (`this+0x40 == 2`) → 0-arg `FUN_0043E51E` vs N-arg `FUN_00427AD4` →
