@@ -26,12 +26,13 @@ python -I qtranslate/tts.py "Xin chào" vi google.mp3
 
 | Provider | Translate | Detect | Listen | Dictionary | Status |
 |----------|-----------|--------|--------|------------|--------|
-| Google Translate | ✅ | ✅ | ✅ | — | live-tested |
-| DeepL | ✅ | ✅ | — | — | ported |
-| Microsoft (Bing) | ✅ | ✅ | — | — | ported |
-| Yandex | ✅ | ✅ | ✅ | — | ported |
-| Baidu | ✅ | ✅ | ✅ | — | ported |
-| Naver (Papago) | ✅ | ✅ | ✅ | — | ported |
+| Google Translate | ✅ | ✅ | ✅ | — | live-tested (gtx 429 → dict-chrome-ex fallback) |
+| Google TTS | — | — | ✅ | — | live-tested (MP3 downloads) |
+| DeepL | ✅ | ✅ | — | — | ported (needs live test) |
+| Microsoft (Bing) | ✅ | ✅ | — | — | ported (needs session tokens, needs live test) |
+| Yandex | ✅ | ✅ | ✅ | — | ported, **endpoint dead (HTTP 403, 2026-10-07)** |
+| Baidu | ✅ | ✅ | ✅ | — | ported (needs live test) |
+| Naver (Papago) | ✅ | ✅ | ✅ | — | ported (needs live test) |
 | Promt | ✅ | — | — | — | ported |
 | Youdao | ✅ | — | — | — | ported |
 | Reverso | ✅ | — | — | ✅ | ported |

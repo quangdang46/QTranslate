@@ -1,8 +1,21 @@
 # QTranslate 6.10 native architecture (reversed from QTranslate.exe)
 
-PE32 i386, ImageBase 0x400000, entry 0x4B46BC (CRT `__scrt_common_main_seh` → WinMain).
-C++ / WTL-ATL (`ATL::CWindowImpl`, thunking via `Qatlthunk.dll` pattern).
+PE32 i386, ImageBase 0x400000, entry 0x4B46BC.
+VS2015–2019 CRT. C++ / WTL-ATL (`ATL::CWindowImpl`, thunking).
 Symbols stripped, but **RTTI intact** — full class map recovered from `.rdata`.
+
+## Startup chain (decompiled via Ghidra, verified)
+
+- `entry 004B46BC` → `__scrt_common_main_seh 004B44E9` (CRT SEH wrapper)
+- → **`FUN_00435005` = WinMain**: parses `GetCommandLineW`, singleton check
+  (`FUN_00435175`), `CoInitializeEx(COINIT_APARTMENTTHREADED)`,
+  DPI scale init (`FUN_0044A3D8`), then `FUN_004350B8`, `CoUninitialize`.
+- → **`FUN_004350B8` = AppInit**: `LoadLibraryW("msftedit.dll")`
+  (RichEdit for popup text), registers WTL window classes
+  (`FUN_00421892`), creates main window (`FUN_0043527D`), then `FUN_00455061`.
+- → **`FUN_00455061` = message loop**: `GetMessageW` → pre-translate hook
+  chain (`DAT_005491EC` filter array — hotkey handling lives here) →
+  `TranslateMessage` → `DispatchMessageW`.
 
 ## UI windows (`windows::` namespace, WTL dialogs)
 
