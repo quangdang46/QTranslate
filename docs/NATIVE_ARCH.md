@@ -881,6 +881,10 @@ Each user action = a `Task` object posted to a worker thread:
   (1→`+0x14C`, 3→`+0x164`, 4→`+0x17C`, else→`+0x134`, stride `0x18`) —
   palettes ported to `qtranslate/theme.py` (`window_colors` per state;
   8 themes verified loadable).
+- **`FUN_0044D1AC` = double-buffered paint worker** (`__fastcall`): memDC
+  (`FUN_0044A581`) → per-type painter (button 2/3/5/6 → `FUN_0044D3C3`,
+  type 7 → `FUN_0044D282`, else → `FUN_0044D502`) → blit
+  (`FUN_0044A569`). Flicker-free themed paint core.
 - **`FUN_0044D008` = themed custom dispatcher** (`__fastcall`):
   `WM_PAINT (0xF)` → `FUN_0044D1AC`; `WM_ERASEBKGND (0x14)` skip;
   `WM_MOUSEMOVE (0x200)` hover-set + invalidate; `0x2A3`
