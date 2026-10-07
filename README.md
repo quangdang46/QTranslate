@@ -50,3 +50,15 @@ python -I qtranslate/tts.py "Xin chào" vi google.mp3
 Clean-room reimplementation for interoperability research and education.
 All provider endpoints belong to their respective owners; use at your own risk
 and respect their terms of service.
+
+## License
+
+This project is licensed under the **Mozilla Public License 2.0 (MPL-2.0)** —
+see [LICENSE](LICENSE) for the full text.
+
+- You may fork, modify, add features, and use commercially.
+- Modified MPL-covered files must keep their source available.
+- Your own new files may use a different license.
+- This license covers only the code written in this repo; it grants no
+  rights over QTranslate itself or any third-party binaries, assets,
+  keys, or data referenced for interoperability research.

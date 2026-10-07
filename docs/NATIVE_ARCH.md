@@ -75,7 +75,9 @@ Each user action = a `Task` object posted to a worker thread:
    button flags to `WM_LBUTTONDOWN/UP (0x201/0x202)`, stamps
    `GetCursorPos` + `GetTickCount` → `FUN_004193F6` click-capture trigger.
 0d. **`FUN_004193F6` = click-capture trigger** (on `0x201` LBUTTONDOWN):
-   `WindowFromPoint` (`FUN_00450DD2`) → exclusion check (`FUN_004631DE`)
+   `WindowFromPoint` (`FUN_00450DD2` = `WindowFromPoint` → `FUN_00450D7C`
+   child drill-down → walk up past invisible parents via `GetParent`)
+   → exclusion check (`FUN_004631DE`)
    → `GetWindowRect` + `PtInRect` confirm → store click point
    (`this+0x17F8`). Mouse-mode capture fires from here.
 0b. **`FUN_00418C23` = hotkey bulk registrar**: unregisters all existing
