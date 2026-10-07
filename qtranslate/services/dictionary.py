@@ -356,9 +356,17 @@ def reverso_lookup(word, sl, tl):
 
 
 # ------------------------------------------------------------ WordReference
-# Services/WordReference/Service.js
+# Services/WordReference/Service.js (SERVICE_ID=19, DICTIONARY only)
 
+WORDREF_ID = 19
+WORDREF_NAME = "WordReference"
 WORDREF_HOST = "https://www.wordreference.com"
+WORDREF_STYLE = (".rh_me,span.phrase,span.hw{font-weight: bold}"
+                 ".rh_ex,.FrEx,.ToEx{display:block;color:gray}"
+                 ".rh_lab,span.in{font-style:italic}"
+                 ".rh_cat,.rh_lab{float:right}"
+                 ".small1,.wrcopyright{font-size:x-small}"
+                 ".subjarea{font-variant:small-caps}.tooltip{display:none}")
 WORDREF_LANGS = [None, "", None, None, None, "ar", None, None, None, None,
                  None, "zh", "zh", None, "cz", None, None, "en", None, None,
                  None, "fr", None, "de", "gr", None, None, None, None, None,
@@ -369,8 +377,30 @@ WORDREF_LANGS = [None, "", None, None, None, "ar", None, None, None, None,
                  None, None, None, None, None, None]
 
 
+def wordreference_host() -> str:
+    """Port of serviceHost(): always https://www.wordreference.com."""
+    return "https://www.wordreference.com"
+
+
+def wordreference_link() -> str:
+    """Port of serviceLink(): the host itself."""
+    return wordreference_host()
+
+
+def wordreference_build_uri(word, sl, tl) -> str:
+    """Port of buildUri(): /{sl}{tl}/{word} (codes concatenated)."""
+    return "/{0}{1}/{2}".format(sl, tl, _q(word))
+
+
 def wordreference_lookup(word, sl, tl, headless_fallback=True):
-    url = WORDREF_HOST + "/{0}{1}/{2}".format(sl, tl, _q(word))
+    """Port of serviceDictionaryRequest/Response (article slice).
+
+    Faithful to native: articleWRD/article slice -> remove style ->
+    strip id/name/onclick -> style wrap -> absolutize links. The
+    ResponseData link is host + buildUri — see wordreference_link().
+    Anubis-wall fallback via headless Chromium (EXTENSION, verified).
+    """
+    url = WORDREF_HOST + wordreference_build_uri(word, sl, tl)
     page = _get(url)
     if "not a bot" in page and headless_fallback:
         # Anubis JS-challenge wall — re-fetch via headless Chromium
@@ -386,6 +416,8 @@ def wordreference_lookup(word, sl, tl, headless_fallback=True):
         return ""
     frag = _remove_elements(frag, ["style"])
     frag = _remove_attributes(frag, ["id", "name", "onclick"])
+    frag = ("<div><style>" + WORDREF_STYLE + "</style><div>" + frag
+            + "</div>")
     frag = _update_links(frag, WORDREF_HOST)
     return frag
 
@@ -445,9 +477,13 @@ def oxford_lookup(word, sl=1, tl=1):
 
 
 # ----------------------------------------------------------------- Multitran
-# Services/Multitran/Service.js (numeric lang codes; l1=target, l2=source)
+# Services/Multitran/Service.js (SERVICE_ID=17, DICTIONARY only;
+# numeric lang codes; l1=target, l2=source)
 
+MULTITRAN_ID = 17
+MULTITRAN_NAME = "Multitran"
 MULTITRAN_HOST = "https://www.multitran.com"
+MULTITRAN_STYLE = ".gray{border:1px dotted gray}"
 MULTITRAN_LANGS = [None, None, 31, None, None, 10, None, None, None, 15,
                    None, 97, 17, None, 16, 22, 24, 1, 26, 36, None, 4, None,
                    3, 38, None, None, None, 42, None, None, 23, 49, 28, None,
@@ -457,11 +493,35 @@ MULTITRAN_LANGS = [None, None, 31, None, None, 10, None, None, None, 15,
                    None, None, None, None, None, None, None, None, 9]
 
 
-def multitran_lookup(word, sl, tl, ui_lang="en"):
-    url = (MULTITRAN_HOST + "/m.exe?l1={0}&l2={1}&s={2}").format(tl, sl,
-                                                                _q(word))
-    if ui_lang != "ru":
+def multitran_host() -> str:
+    """Port of serviceHost(): always https://www.multitran.com."""
+    return "https://www.multitran.com"
+
+
+def multitran_link(word) -> str:
+    """Port of serviceLink(): host + /m.exe?s=<word>."""
+    return multitran_host() + "/m.exe?s=" + _q(word)
+
+
+def multitran_build_uri(word, sl, tl, ui_lang="en") -> str:
+    """Port of buildUri(): /m.exe?l1={target}&l2={source}&s={word}
+    (+ &SHL=1 unless UI lang is ru). l1/l2 are numeric codes."""
+    from qtranslate.common import Options
+    url = "/m.exe?l1={0}&l2={1}&s={2}".format(tl, sl, _q(word))
+    if (ui_lang or Options.get("LanguageCode", "en")) != "ru":
         url += "&SHL=1"
+    return url
+
+
+def multitran_lookup(word, sl, tl, ui_lang="en"):
+    """Port of serviceDictionaryRequest/Response (width=100% table slice).
+
+    Faithful to native: table slice (inclusive) -> absolutize /m.exe
+    links -> gray-style wrap. Current markup needs the anchor-tables
+    fallback (first table is a header shell). The ResponseData link is
+    host + buildUri — see multitran_link().
+    """
+    url = MULTITRAN_HOST + multitran_build_uri(word, sl, tl, ui_lang)
     page = _get(url)
     # Current markup: first width=100% table is a header shell; real
     # entries live in the following width=100% tables containing
@@ -475,7 +535,7 @@ def multitran_lookup(word, sl, tl, ui_lang="en"):
         return ""
     frag = re.sub(r'href="/m\.exe', 'href="https://www.multitran.com/m.exe',
                   frag, flags=re.I)
-    return frag
+    return ("<div><style>" + MULTITRAN_STYLE + "</style>" + frag + "</div>")
 
 
 # -------------------------------------------------------------- ImTranslator
