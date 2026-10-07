@@ -264,6 +264,13 @@ Each user action = a `Task` object posted to a worker thread:
   (dozens of call sites). Distinct from `FUN_004207F3` (hash-chain
   equality-bool) — this one orders, that one tests.
 
+## Timer audit (verified)
+
+- Window timers only (`SetTimer/KillTimer`, 10 sites): debounce (50ms),
+  autohide (`PopupTimeout`), dialog refresh (1s), double-press window.
+  Zero `CreateTimerQueueTimer` imports — all timing is UI-thread
+  message-driven, never pool-driven.
+
 ## Sleep audit (verified)
 
 - `Sleep` (IAT `0x50D368`, 8 app call sites, no `SwitchToThread` import):
