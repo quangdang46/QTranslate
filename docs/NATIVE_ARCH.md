@@ -915,6 +915,9 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Options dialog refresh (decompiled)
 
+- **`FUN_0042C909` = SpellProvider factory** (`__thiscall`): ctor
+  (`FUN_0042C844`) + conditional free on flag — create-or-destroy behind
+  spell-checker enable/disable in options.
 - **`FUN_0042CF8E` = spell request runner** (`__thiscall`): ctor
   (`FUN_0042C844`) + optional ref (`FUN_004B3DE2`) — fire-and-forget
   suggestion fetch feeding `SuggestionsListCtrl`.
