@@ -1246,28 +1246,48 @@ class App:
                 LANG_CODES.get(self.tgt.get().strip(), "vi"),
                 LANG_CODES.get(self.src_lang.get().strip(), "auto"))
 
-    def render(self, text):
-        # RichEdit auto-URL (native EM_AUTOURLDETECT + FUN_004266C6):
-        # qtdp: links re-lookup internally, http links open browser.
+    @staticmethod
+    def tag_links(widget, text, on_click):
+        """Shared auto-URL tagger (native EM_AUTOURLDETECT): qtdp: +
+        http links, blue/underline/hand-cursor."""
         import re as _re
-        self.out.delete("1.0", "end")
-        self.out.insert("1.0", text)
         try:
-            self.out.tag_delete("link")
+            widget.tag_delete("link")
         except Exception:
             pass
         try:
-            self.out.tag_config("link", foreground="blue",
-                                underline=True)
-            self.out.tag_bind("link", "<Button-1>", self._click_link)
-            self.out.tag_bind("link", "<Enter>",
-                              lambda e: self.out.config(cursor="hand2"))
-            self.out.tag_bind("link", "<Leave>",
-                              lambda e: self.out.config(cursor=""))
+            widget.tag_config("link", foreground="blue",
+                              underline=True)
+            widget.tag_bind("link", "<Button-1>", on_click)
+            widget.tag_bind("link", "<Enter>",
+                            lambda e: widget.config(cursor="hand2"))
+            widget.tag_bind("link", "<Leave>",
+                            lambda e: widget.config(cursor=""))
             for m in _re.finditer(
                     r"(qtdp:\S+|https?://\S+|www\.\S+)", text):
                 s, e = m.span()
-                self.out.tag_add("link", f"1.0+{s}c", f"1.0+{e}c")
+                widget.tag_add("link", f"1.0+{s}c", f"1.0+{e}c")
+        except Exception:
+            pass
+
+    def render(self, text):
+        # RichEdit auto-URL (native EM_AUTOURLDETECT + FUN_004266C6):
+        # qtdp: links re-lookup internally, http links open browser.
+        self.out.delete("1.0", "end")
+        self.out.insert("1.0", text)
+        self.tag_links(self.out, text, self._click_link)
+
+    def _click_link_dict(self, widget, event=None):
+        try:
+            idx = widget.index(f"@{event.x},{event.y}")
+            ranges = widget.tag_ranges("link")
+            for i in range(0, len(ranges), 2):
+                if widget.compare(ranges[i], "<=", idx) and \
+                        widget.compare(idx, "<=", ranges[i + 1]):
+                    url = widget.get(ranges[i], ranges[i + 1])
+                    if not url.startswith("qtdp:"):
+                        _open_url(url)
+                    break
         except Exception:
             pass
 
@@ -2748,9 +2768,15 @@ class App:
                 summary = "\n\n".join(
                     f"===== {t} =====\n" + _strip_html(f)[:800]
                     for _, t, f in cards)
-                self.root.after(
-                    0, lambda: (out.delete("1.0", "end"),
-                                out.insert("1.0", summary or "[empty]")))
+
+                def _show():
+                    out.delete("1.0", "end")
+                    out.insert("1.0", summary or "[empty]")
+                    self.tag_links(
+                        out, summary,
+                        lambda e: self._click_link_dict(out, e))
+
+                self.root.after(0, _show)
             threading.Thread(target=work, daemon=True).start()
 
         def _zoom_by(d):
