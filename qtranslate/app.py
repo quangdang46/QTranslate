@@ -1693,8 +1693,14 @@ class App:
             return
         try:
             from qtranslate.services.ocr import ocr_text
+            try:
+                from qtranslate import config as _C
+                _key = _C.load().get("Advanced",
+                                     {}).get("OcrApiKey", "") or "helloworld"
+            except Exception:
+                _key = "helloworld"
             with open(path, "rb") as f:
-                txt = ocr_text(f.read())
+                txt = ocr_text(f.read(), api_key=_key)
             self.src.delete("1.0", "end")
             self.src.insert("1.0", txt)
         except Exception as e:
