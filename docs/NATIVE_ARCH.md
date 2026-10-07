@@ -1090,6 +1090,9 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Tray icon + layout keys (decompiled)
 
+- **`FUN_00462EB7` = mode-enable path** (`__thiscall`, from the toggle):
+  lookup (`FUN_00462F8E`) → refresh-or-free-old (`FUN_0040F27D` +
+  `FUN_004B3DE2`) — activates the selected capture mode's pipeline.
 - **`FUN_00418E85` = mouse-mode toggle** (`__thiscall`, tray left-click):
   mode 0/1/2 select → exclusion check (`FUN_004631DE`) → app-name resolve
   (`FUN_00403506`) → enable path (`FUN_00462EB7`/`00462E19`) → hotkey
