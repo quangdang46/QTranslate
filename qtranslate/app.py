@@ -442,6 +442,7 @@ class App:
         # native rect decoded from General.WindowMainPlacement
         # WINDOWPLACEMENT blob (526x366 at 876,292 on this machine)
         _place_main(root)
+        self._init_opt_flags()
         self._build_main()
 
     # -- main window body: mirrors the real QTranslate main window --
@@ -523,6 +524,7 @@ class App:
                            font=("Tahoma", 9), borderwidth=0,
                            highlightthickness=0)
         self.out.pack(side="left", fill="both", expand=True)
+        self.out.bind("<Button-3>", self.show_result_menu)
         outside = tk.Frame(outfrm, bg="white")
         outside.pack(side="right", fill="y", padx=2)
         tk.Frame(outside, bg="white", height=120).pack()
@@ -612,34 +614,10 @@ class App:
             except Exception:
                 pass
 
-    # -- menus mirror RT_MENU resources --
-    def _build_menu(self):
-        mb = tk.Menu(self.root)
-        self.root.config(menu=mb)
-        m_file = tk.Menu(mb, tearoff=False)
-        m_file.add_command(label="Export history...",
-                           command=self.on_export_history)
-        m_file.add_separator()
-        m_file.add_command(label="Exit", command=self.root.destroy)
-        mb.add_cascade(label="File", menu=m_file)
-        m_tools = tk.Menu(mb, tearoff=False)
-        m_tools.add_command(label="Dictionary window",
-                            command=self.open_dict_window)
-        m_tools.add_command(label="Fix keyboard layout",
-                            command=self.on_layout)
-        m_tools.add_command(label="OCR from image file...",
-                            command=self.on_ocr)
-        m_tools.add_separator()
-        m_tools.add_command(label="Listen to result",
-                            command=self.on_listen)
-        mb.add_cascade(label="Tools", menu=m_tools)
-        m_hist = tk.Menu(mb, tearoff=False)
-        m_hist.add_command(label="Show history window",
-                           command=self.open_history_window)
-        m_hist.add_command(label="Clear history",
-                           command=self.clear_history)
-        mb.add_cascade(label="History", menu=m_hist)
-        m_opt = tk.Menu(mb, tearoff=False)
+    # -- option flags live in the nav kebab menu (show_nav_menu); the
+    # native main window has NO menubar (tray + context menus only),
+    # so there is deliberately no _build_menu here. --
+    def _init_opt_flags(self):
         try:
             from qtranslate import config as _C0
             _g0 = _C0.load().get("General", {})
@@ -649,23 +627,22 @@ class App:
             value=bool(_g0.get("AlwaysDetectLanguage", False)))
         self.opt_backtr = tk.BooleanVar(
             value=bool(_g0.get("BackTranslation", False)))
-        m_opt.add_checkbutton(label="Always detect language",
-                              variable=self.opt_detect)
-        m_opt.add_checkbutton(label="Back translation",
-                              variable=self.opt_backtr)
-        m_theme = tk.Menu(m_opt, tearoff=False)
-        for th in _THEMES:
-            m_theme.add_command(
-                label=th, command=lambda t=th: self.apply_theme(t))
-        m_opt.add_cascade(label="Theme", menu=m_theme)
-        m_opt.add_command(label="Hotkeys...",
-                          command=self.show_hotkeys)
-        mb.add_cascade(label="Options", menu=m_opt)
-        m_help = tk.Menu(mb, tearoff=False)
-        m_help.add_command(label="Hotkey reference",
-                           command=self.show_hotkeys)
-        m_help.add_command(label="About", command=self.show_about)
-        mb.add_cascade(label="Help", menu=m_help)
+
+    def show_result_menu(self, event=None):
+        """Result-pane context menu (native history-item pattern
+        FUN_004287B6: Copy / Listen / Clear)."""
+        m = tk.Menu(self.root, tearoff=False)
+        m.add_command(label="Copy translation",
+                      command=self.on_copy)
+        m.add_command(label="Listen to text",
+                      command=self.on_listen)
+        m.add_separator()
+        m.add_command(label="Clear", command=self.on_clear)
+        try:
+            m.tk_popup(self.root.winfo_pointerx(),
+                       self.root.winfo_pointery())
+        finally:
+            m.grab_release()
 
     # -- main-window helpers (mirror native behavior) --
     def ordered_services(self):
