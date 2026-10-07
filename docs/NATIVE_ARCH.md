@@ -68,6 +68,30 @@ Symbols stripped, but **RTTI intact** — full class map recovered from `.rdata`
 Settings pages (`Page*`): Basics, Hotkeys, Languages, Services, Internet,
 Appearance, Advanced, Updates, Exceptions.
 
+### Dialog resources (RT_DIALOG, all 19 mapped 2026-10-08)
+
+| ID | Title | Content | Port status |
+|---|---|---|---|
+| 129 | QTranslate (main) | source/result panes, lang row, strip | 1:1 (placement blob, help.txt, ServicesOrder) |
+| 133 | About | 2 SysLinks + OK | dedicated window |
+| 154 | Options | 9-page frame + OK/Cancel(snapshot)/Apply | 9/9 live on Options.json |
+| 162 | Virtual keyboard | empty (keys drawn dynamic) | 3 rows + JCUKEN per LanguageKeyboard |
+| 164 | History | SysTreeView32 + Clear + Save as... | Treeview, no Open btn |
+| 171 | Basics page | startup/lang/font/history flags | real defaults |
+| 172 | Internet page | Timeout + proxy | net stack honors it |
+| 173 | Offline dicts | Add/Remove dictionary... | XDXF manager |
+| 174 | Services check | Check/Uncheck all | All button per list |
+| 175 | Appearance page | theme/auto-size/popup/colors | all real keys |
+| 176 | Exceptions page | Add/Modify/Delete + smart detect | full |
+| 178 | Exception add | single entry editor | inline add/modify |
+| 179 | Hotkeys page | Enable + action list | 17 actions + Change/Clear |
+| 184 | Dictionary | (custom window, strings only) | services pane + XDXF-first |
+| 185 | Advanced page | GUI/slow/breaks/mouse/tray/copy/domain/browser/OCR | all wired |
+| 190 | Languages edit | Add/Remove/Remove All/Up/Down | pairs full |
+| 201 | Confirm | OK/Cancel | (standard) |
+| 204 | Info | RichEdit50W + OK | (standard) |
+| 205 | Updater | auto-check + Check now + Install | flag only (server 404) |
+
 ## Task pipeline (`tasks::windows::`)
 
 Each user action = a `Task` object posted to a worker thread:
