@@ -52,15 +52,39 @@ from qtranslate.session import bing_translate as _bing_tr
 
 SERVICE = sys.argv[1] if len(sys.argv) > 1 else "google"
 TARGET = sys.argv[2] if len(sys.argv) > 2 else "vi"
-THEME = sys.argv[3] if len(sys.argv) > 3 else "Flat Dark"
+THEME = sys.argv[3] if len(sys.argv) > 3 else "Blue"
+
+def _default_colors():
+    """Main-window colors from the real Options.json Appearance section.
+
+    The native main window does NOT use Themes/*.json (those are for
+    popups); it uses ColorBack/ColorText/ColorFrame from Appearance
+    (verified: ColorBack=15790320=#F0F0F0, ColorText=0, ColorFrame=8023133
+    on this machine). Falls back to the THEME arg when set.
+    """
+    if THEME != "Blue":
+        try:
+            from qtranslate.theme import load_theme, window_colors
+            return window_colors(load_theme(THEME))
+        except Exception:
+            pass
+    try:
+        from qtranslate import config as _C
+        a = _C.load().get("Appearance", {})
+        return {"back": "#%06x" % int(a.get("ColorBack", 15790320)),
+                "text": "#%06x" % int(a.get("ColorText", 0)),
+                "border": "#%06x" % int(a.get("ColorFrame", 8023133))}
+    except Exception:
+        return {"back": "#f0f0f0", "text": "#000000",
+                "border": "#7a7a7a"}
+
 
 try:
-    from qtranslate.theme import load_theme, window_colors, list_themes
-    _COLORS = window_colors(load_theme(THEME))
+    from qtranslate.theme import list_themes
     _THEMES = list_themes()
 except Exception:
-    _COLORS = {"back": "#202020", "text": "#bbbbbb", "border": "#333333"}
     _THEMES = [THEME]
+_COLORS = _default_colors()
 
 LANGS = ["auto", "en", "ru", "fr", "de", "es", "zh-CHS", "vi", "ja", "ko"]
 TO_LANGS = ["vi", "en", "ru", "fr", "de", "es", "zh-CHS", "ja", "ko"]

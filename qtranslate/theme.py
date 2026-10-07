@@ -22,9 +22,13 @@ def _hex(v: str) -> str:
 
 
 def load_theme(name: str, themes_dir: str = THEMES_DIR) -> dict:
+    """Theme files are JSONC (// comments) — strip them before parsing."""
+    import re
     with open(os.path.join(themes_dir, name + ".json"),
               encoding="utf-8-sig") as f:
-        return json.load(f)
+        text = f.read()
+    text = re.sub(r"//[^\n]*", "", text)
+    return json.loads(text)
 
 
 def list_themes(themes_dir: str = THEMES_DIR) -> list:
