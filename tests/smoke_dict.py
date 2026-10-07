@@ -54,3 +54,11 @@ print("OK: common helpers (trim/unquote/links/sub/lang)")
 from qtranslate.services.deepl import split_text as _split
 assert _split("Hello world. How are you? Fine!") == ["Hello world.", "How are you?", "Fine!"]
 print("OK: deepl split")
+
+# yandex chunking (600-char boundary, lossless)
+from qtranslate.services.yandex import make_chunks as _ch
+assert _ch("Hello") == ["Hello"]
+_long = "Sentence one. " * 100
+_chs = _ch(_long)
+assert sum(map(len, _chs)) == len(_long[:10000]) and max(map(len, _chs)) <= 700
+print("OK: yandex chunks")
