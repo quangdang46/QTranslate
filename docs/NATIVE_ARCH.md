@@ -231,6 +231,8 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## String literal loader (decompiled)
 
+- **`FUN_004214DA` = segment measure** (`__fastcall`, null-safe wcslen
+  twin of `FUN_0040208A`): lengths trie key segments before child steps.
 - **`FUN_004B5F7E` = trie child step** (`__cdecl`, 16-byte node stride,
   page-boundary-aware + SSE path behind `DAT_00548148` CPU-feature flag):
   single step of the prefix-tree walk in `FUN_0041B992`.
