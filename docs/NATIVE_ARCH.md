@@ -231,6 +231,10 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## String literal loader (decompiled)
 
+- **`FUN_004028A4`/`FUN_004027EF` = module/resource resolvers**
+  (`FindResource[Ex]W` type 6 = STRINGTABLE, block `(id>>4)+1`): walk
+  registered HINSTANCEs (`CAtlBaseModule`) for the string block —
+  how MUI/locale fallback resolves before `Locales/*.json`.
 - **`FUN_0040218A` = string-table loader** (`__thiscall`): module
   (`FUN_004028A4`) → resource (`FUN_004027EF`) → grow + copy + length —
   loads `0xB0–0xCF` errors, menu labels, and dialog strings from the exe.
