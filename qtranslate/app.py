@@ -672,8 +672,9 @@ class App:
         # [Translate] — no mic/headphone here (they live on the panes)
         bar = tk.Frame(self.root, bg=bg)
         bar.pack(fill="x", padx=4, pady=2)
+        # id1021 "New": clears source for a fresh translation
         tk.Button(bar, text="\U0001f4cb", width=3,
-                  command=self.on_paste).pack(side="left", padx=1)
+                  command=self.on_new).pack(side="left", padx=1)
         tk.Button(bar, text="⋮", width=3,
                   command=self.show_nav_menu).pack(side="left", padx=1)
         self.src_lang = ttk.Combobox(bar, values=_lang_names(LANGS),
@@ -1176,6 +1177,11 @@ class App:
                        self.root.winfo_pointery())
         finally:
             m.grab_release()
+
+    def on_new(self):
+        """id1021 New: clear source + result for a fresh translation."""
+        self.src.delete("1.0", "end")
+        self.render("")
 
     def on_paste(self):
         if _HAS_KEYS:
