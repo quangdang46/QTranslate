@@ -303,6 +303,16 @@ Each user action = a `Task` object posted to a worker thread:
   (`QueryFullProcessImageNameW`) → `PathFindFileNameW` basename — exactly
   the `exe_name` our Python `exclusions.py::_fg_class_and_exe()` computes.
 
+## Hotkey task dispatcher (decompiled)
+
+- **`FUN_0043999B` = hotkey→task switch** (`__thiscall`, on `WM_HOTKEY`
+  `param_3` = hotkey id): compares against registered id slots
+  (`this+0x208/0x234/0x260/0x2B8/0x2E4…`): same-id → destroy (toggle);
+  dictionary-id → build dict task (`FUN_00414E72`) + `PostMessageW(0x812C)`;
+  replace-id → destroy + `Sleep(100)` + `TaskReplaceSelection::vftable` +
+  post; copy-id → clipboard write (`FUN_0043BE56`). This is the central
+  fan-out from every registered hotkey to its `tasks::` object.
+
 ## Clipboard viewer chain (decompiled)
 
 - **`FUN_0043EBE0` = viewer setup**: registers `QTranslateClipboardWindowClass`
