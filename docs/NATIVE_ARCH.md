@@ -202,6 +202,10 @@ Each user action = a `Task` object posted to a worker thread:
   3–0xF → string-resource id (`0xB0`–`0xCF`) via `FUN_00451D23` (2-tier:
   language table `FUN_0045242D`, fallback format `DAT_00529AF0`). Covers
   backtrans/detect/fetch failures (`0xC/0xD/0xE` seen in `FUN_004606BA`).
+  Resolved messages (UTF-16 `.rdata`): `"…connection…No data returned
+  (timeout while sending data)."`, `"No data returned."`,
+  `"No data to translat[e]"` — the exact strings our Python ports surface
+  as `[error]`/empty results.
 - **`FUN_00460354` = detect-retry loop** (`__thiscall`): alternates
   `FUN_00460467` (detect request) + `FUN_00460580` (apply result) until
   non-empty (error 6 = all providers exhausted) — the `AlwaysDetectLanguage`
