@@ -1096,6 +1096,10 @@ Each user action = a `Task` object posted to a worker thread:
 - **`FUN_00462F8E` = mode lookup** (`__thiscall`): linear scan matching
   both strings (`FUN_00401FC2` ×2, `FUN_0041E45F` element read) —
   `0xFFFFFFFF` when absent. Backs both enable variants.
+- **`FUN_004026F0` = format core** (`__fastcall`,
+  `___stdio_common_vswprintf_s` wrapper): bottoms out at UCRT —
+  every `format_q`-equivalent in native funnels here (our Python uses
+  `%`/f-strings identically).
 - **`FUN_004033A6` = length setter** (`__thiscall`, bounds-checked,
   null-terminates): pairs with every grow/copy — length invariant behind
   all string mutation.
