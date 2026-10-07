@@ -1096,6 +1096,10 @@ Each user action = a `Task` object posted to a worker thread:
 - **`FUN_00462F8E` = mode lookup** (`__thiscall`): linear scan matching
   both strings (`FUN_00401FC2` ×2, `FUN_0041E45F` element read) —
   `0xFFFFFFFF` when absent. Backs both enable variants.
+- **`FUN_0040271D` = locale accessor** (returns global `DAT_00549120`,
+  default C locale — never customized): all formatting is locale-
+  invariant (no thousands separators / decimal-comma surprises in
+  numbers or URLs).
 - **`FUN_00402723` = length probe** (`__fastcall`, dry-run `vswprintf`
   with null buffer): sizes the output before `FUN_004026F0` formats —
   the two-call sprintf idiom behind `FUN_004023F1`.
