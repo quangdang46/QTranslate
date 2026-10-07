@@ -387,6 +387,10 @@ check("hotkey-593", C.decode_hotkey(593)["vk"] == 0x51
       and C.decode_hotkey(593)["modifiers"] == 2)
 check("hotkey-win", A._hotkey_to_combo(0x51 | (8 << 8)) == "windows+q",
       A._hotkey_to_combo(0x51 | (8 << 8)))
+check("vk-names", C.format_hotkey(0x2D) == "Insert"
+      and C.format_hotkey(0x90) == "Num Lock"
+      and C.format_hotkey(0x6F) == "Divide",
+      C.format_hotkey(0x2D) + "/" + C.format_hotkey(0x90))
 
 # 19c. multi-select toggle + Ctrl+K binding (help.txt Actions)
 app.toggle_multi_service("deepl")
