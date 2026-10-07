@@ -1509,8 +1509,10 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## TTS playback path (decompiled, verified, reimplemented)
 
-- **`FUN_00461642` = play function** (`__fastcall`, calls BASS via IAT slots
-  `0x50D7AC`/`0x50D7B4`):
+- **`FUN_00461642` = play function** (`__fastcall`, BASS IAT slots verified
+  from PE import table: `BASS_StreamFree@0x50D798`,
+  `BASS_StreamCreateFile@0x50D7B4`, `BASS_ChannelPlay@0x50D7AC`,
+  `BASS_ChannelSetSync@0x50D7C0`):
   `FUN_00461691` (free old stream) → `BASS_StreamCreateFile(mem=1, data, 0, len, 0, 0)`
   → `ctx[0x30] = stream` → `BASS_ChannelSetSync(stream, END, 0, on_end, ctx)`
   → `BASS_ChannelPlay(stream, restart=TRUE)`.
