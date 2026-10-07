@@ -706,6 +706,10 @@ Each user action = a `Task` object posted to a worker thread:
   Show top-middle-services panes); `189` = edit (Reset/Shift+Esc/Edit.../
   Always detect language); `200` = Show Full History; `206` = dictionary
   item (Show info/Remove dictionary).
+- **Icon resources** (24× `RT_GROUP_ICON` + 27× `RT_ICON` in `.rsrc`,
+  one variant each): tray states (`199` off / `0x84` on / `0x8A` partial per
+  `FUN_00418B69`) + app/dialog/service glyphs, loaded via `FUN_00454396`
+  (`LoadImageW(hInstance, resId, IMAGE_ICON, LR_SHARED)`).
 - **Accelerator tables** (2× `RT_ACCELERATOR` in `.rsrc`, parsed from PE):
   `170` = 44 entries (Ctrl+Left/Right `0x8069/0x806A`, Ctrl+1..9
   `0x8042–0x804A` service slots, Shift+1..9 `0x8082–0x808A`, Ctrl+B/D/P/Q/R
