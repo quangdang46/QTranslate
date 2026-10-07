@@ -407,6 +407,10 @@ Each user action = a `Task` object posted to a worker thread:
   sub-layout (`+0x48/+0x54`) → hotkey-test refresh (`FUN_00409EC0`) +
   show-layout (`FUN_00408ADE`). Service ids 5/`0x1A`/`0x2A`/`0x38`/`0x3B`
   take a flag variant.
+- **`FUN_0042D198` = bracket-template expander** (`__fastcall`): splits
+  text on `\r`, finds `[...]` spans (`FUN_0041BBB9` bracket match) →
+  resolves each id (`FUN_004088ED`) → applies (`+0x54`) — expands
+  hotkey/service references inside help/about text.
 - **`FUN_004088ED` = display-text resolver** (`__thiscall`):
   `FUN_004088A9` resolve → show (`+4`) → get text (`+0x48`) → hide (`+8`)
   — reads any id's display string without leaving UI visible.
