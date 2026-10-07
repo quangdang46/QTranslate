@@ -248,6 +248,14 @@ Each user action = a `Task` object posted to a worker thread:
   (`MS Shell Dlg 2`, weight 700/Bold, `lfHeight = -MulDiv(pt*20,
   LOGPIXELSY, 72)` DPI-scaled) — popup/dialog font creation path.
 
+## Options page init (decompiled)
+
+- **`FUN_0040DD3B` = options-page binder**: `CheckDlgButton` for 5 flag
+  checkboxes (`0x463/0x486–0x489` from `DAT_00549488`…`DAT_00549493`) +
+  combobox fill (`CB_ADDSTRING 0x143`, 13 entries from format `DAT_0051D32C`,
+  select `DAT_00549494` or default 5) + 3× RichEdit subclass
+  (`FUN_004030AE`). The live binding behind `OptionsWindow`/`Page*` dialogs.
+
 ## Tooltip + balloon (decompiled)
 
 - **`FUN_00403E00` = tooltip creator** (`__thiscall`): `CreateWindowExW(
