@@ -72,6 +72,24 @@ def on_hotkey():
                      daemon=True).start()
 
 
+def on_layout_hotkey():
+    # TaskConvertTextLayout: retype clipboard text in the other layout.
+    try:
+        text = pyperclip.paste().strip()
+    except Exception as e:
+        print("clipboard error:", e)
+        return
+    if not text:
+        print("clipboard empty — select text + Ctrl+C first")
+        return
+    from qtranslate.layout import convert_layout
+    fixed = convert_layout(text)
+    pyperclip.copy(fixed)
+    print(f"layout-fixed {len(text)} chars -> clipboard: {fixed[:80]}")
+
+
 print(f"qtranslate-re running: press Ctrl+Alt+Q after Ctrl+C (target={TARGET})")
+print("  Ctrl+Alt+L: convert keyboard layout of clipboard text")
 keyboard.add_hotkey("ctrl+alt+q", on_hotkey)
+keyboard.add_hotkey("ctrl+alt+l", on_layout_hotkey)
 keyboard.wait()
