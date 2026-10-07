@@ -27,5 +27,20 @@ These providers' *request-building and response-parsing logic* is still a
 faithful port of the original `Service.js` — what's missing is the ephemeral
 session-token scraping step the native app does by first loading the
 provider's web page (handled by the embedded Chakra/JS engine +
-`UtilsDispatch`, see `docs/NATIVE_ARCH.md`). A `session.py` helper that scrapes
-these tokens via `urllib` + regex would unblock them; tracked as follow-up.
+`UtilsDispatch`, see `docs/NATIVE_ARCH.md`).
+
+## Follow-up: qtranslate/session.py (token scraping)
+
+Added `qtranslate/session.py` to reproduce that bootstrap step:
+
+- `bing_session()` — scrapes `IG`/`token`/`key` + `Set-Cookie` from
+  `bing.com/translator`. **Still 401 Unauthorized live** — Bing's
+  `ttranslatev3` now rejects this cookie set entirely (tested 2026-10-07);
+  likely needs a full browser-grade TLS/header fingerprint, not just cookies.
+- `promt_session()` — scrapes `XSRF-TOKEN` cookie from `online-translator.com`.
+  **Still 400 Bad Request live** — the `paft` field regex no longer matches
+  the current page markup (site redesigned since the JS was written).
+
+Both are honest dead ends with urllib alone, documented rather than hidden;
+a real fix needs either reverse-engineering the current page's JS for the
+new token format, or driving an actual headless browser.
