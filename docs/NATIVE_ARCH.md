@@ -471,6 +471,10 @@ Each user action = a `Task` object posted to a worker thread:
   switch): walks all services, keeps `caps & mask` (`+4` field), rebuilds
   the active list (`RemoveAll` + push-back) — drives which providers show
   in translate vs dictionary UI.
+- **`FUN_004636A0` = linked-list remove + notify** (generic manager):
+  walk (`FUN_004641EE`) → notify all (`+8` via `FUN_004024F2` over
+  `DAT_00544A30/34`) → unlink (`FUN_0046424F`) → free-if-owned
+  (`FUN_004634B7` + `FUN_004B3DE2`) — backs services/languages list edits.
 - **Observer notify = vtable `+4(param_2)`** (in the switcher loop over
   `DAT_00549580`/`DAT_00549584`): each `ServicesFactoryObserver`
   (ServicesMenu, LanguagesMenu, popup lists) refreshes on service switch
