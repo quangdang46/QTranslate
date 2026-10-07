@@ -412,8 +412,9 @@ Each user action = a `Task` object posted to a worker thread:
 
 - **`FUN_0044A3D8` = DPI scaler** (called from WinMain): `GetDeviceCaps(
   LOGPIXELSX)` cached once (`DAT_00544050`, default 96), ratio stored at
-  `DAT_00544058` — drives all `MulDiv` font/layout scaling (per-monitor DPI
-  unaware, system-DPI snapshot at startup).
+  `DAT_00544058` — drives all `MulDiv` font/layout scaling. No
+  `SetProcessDpiAwareness`/`GetDpiForWindow` imports: system-DPI-unaware,
+  snapshot at startup (Windows bitmap-scales the popup on mixed-DPI moves).
 - **`FUN_0044AAA1` = GDI+ init** (called from startup + `FUN_004010D5` CRT
   init): `GdiplusStartup(&token, version=1-input)` (IAT `0x50D844`), token
   at `DAT_005491E4`. Bitmap loaders (`GdipCreateBitmapFromFile[HBITMAP]`,
