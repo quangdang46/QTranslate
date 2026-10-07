@@ -173,6 +173,13 @@ Each user action = a `Task` object posted to a worker thread:
   DWMWA_EXTENDED_FRAME_BOUNDS)` → else `GetWindowRect` minus borders
   (skipped when zoomed on Win7+) — correct popup rect under Aero.
 
+## String assign core (decompiled)
+
+- **`FUN_00401EC9` = COW string assign** (`__thiscall`, most-called string
+  op): shares buffer when refcount allows (`FUN_004021DE` addref), else
+  deep-copies bounded (`FUN_00402231`). ATL CString copy-on-write behind
+  every text move in the app.
+
 ## String compare core (decompiled)
 
 - **`FUN_00401FC2` = wcscmp 3-state** (`__thiscall`, null-guarded): the
