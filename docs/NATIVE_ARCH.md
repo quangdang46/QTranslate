@@ -714,6 +714,10 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Rounded corners (decompiled)
 
+- **`FUN_0043A77C` = popup destroyer** (`__fastcall`): IsWindow-guarded
+  `DestroyWindow` — popups are fully destroyed on hide (not just hidden),
+  rebuilt fresh by `FUN_00434025` on next show. Explains the create-every-
+  time cost and the placement re-apply path.
 - **`FUN_0043AA90` = autohide worker** (`__fastcall`, timer `0x113`): if
   cursor left the inflated rect (`DAT_00549170` margin) and no menu is open
   (`FUN_0043A8C4` guard) → `KillTimer` + `FUN_0043A77C` hide. The
