@@ -54,8 +54,22 @@ def tk(text: str, tkk: str = "0.0") -> str:
     return f"{a}.{a ^ h}"
 
 
+def _parse(resp) -> str:
+    out = ""
+    if resp and resp[0]:
+        for seg in resp[0]:
+            if seg and len(seg):
+                out += seg[0] or ""
+    return out
+
+
 def translate(text: str, sl: str = "auto", tl: str = "en", tkk: str = "0.0") -> str:
-    """Port of serviceTranslateRequest + serviceTranslateResponse."""
+    """Port of serviceTranslateRequest + serviceTranslateResponse.
+
+    Primary: original client=gtx + tk token. Fallback: dict-chrome-ex
+    (no token needed) when Google rate-limits gtx (HTTP 429).
+    """
+    import urllib.error
     token = tk(text, tkk)
     q = urllib.parse.quote(text)
     get = len(q) <= MAX_URI_LEN
@@ -70,14 +84,18 @@ def translate(text: str, sl: str = "auto", tl: str = "en", tkk: str = "0.0") -> 
         HOST + path, data=data,
         headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
                  "Accept": "*/*", "Accept-Language": "en-US;q=0.8,en;q=0.6"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return _parse(json.loads(r.read().decode("utf-8")))
+    except urllib.error.HTTPError as e:
+        if e.code != 429:
+            raise
+    fb = ("/translate_a/single?client=dict-chrome-ex&sl={}&tl={}&dt=t&q={}"
+          .format(sl, tl, q))
+    req = urllib.request.Request(
+        HOST + fb, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
     with urllib.request.urlopen(req, timeout=20) as r:
-        resp = json.loads(r.read().decode("utf-8"))
-    out = ""
-    if resp and resp[0]:
-        for seg in resp[0]:
-            if seg and len(seg):
-                out += seg[0] or ""
-    return out
+        return _parse(json.loads(r.read().decode("utf-8")))
 
 
 if __name__ == "__main__":
