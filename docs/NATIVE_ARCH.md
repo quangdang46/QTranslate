@@ -428,8 +428,10 @@ Each user action = a `Task` object posted to a worker thread:
 
 - **`FUN_0046563C` = service record lookup**: linear scan of 29 × `0x10`
   records at `DAT_005240D0` by service id — backs suggestions paint,
-  menus, and the executor's display names. Mirrors our
-  `SERVICE_NAMES` dict in `config.py` (ids 1/5/11/12/13/18/26/28/30/31 + dict ids).
+  menus, and the executor's display names. Dumped ids:
+  `5,9,14,15,16,17,18,42,21,19,23,24,26,27,28,31,36,37,43,44,45,46,48,49,
+  50,52,54,55,56` (covers all ported `SERVICE_ID`s; Google id=1 resolved
+  elsewhere — likely hardcoded default).
 - **`FUN_0042B485` = suggestions painter** (`__thiscall`, `DrawTextW` ×2):
   theme fill (`FUN_00449B9C`) → `CB_GETCOUNT (0x146)`; empty →
   `"Selected languages (in options) are not implemented."`; else per-item
