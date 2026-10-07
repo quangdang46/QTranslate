@@ -279,6 +279,9 @@ Each user action = a `Task` object posted to a worker thread:
   called from dispatcher): builds `TaskShowPopupWindow` (vftable +
   `DAT_0051DE64/68` params) + `PostMessageW(0x812C)` — re-translates with
   the newly selected service without re-capture.
+- **`FUN_004661D1` = dispatch-get helper** (`__thiscall`, used by both
+  validators): `IDispatchEx::GetDispID (+0x14, grfdex 0x400)` + invoke
+  (`FUN_00466181`) — single choke point for all JS field reads.
 - **`FUN_0046592D` = ResponseData validator** (called after every
   `*Response` invoke): dispatch-reads `translation`, `sourceLanguage`,
   `translationLanguage`, `data`, optional `nextRequestHandler` (chained
