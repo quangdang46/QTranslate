@@ -46,10 +46,8 @@ DEFAULT_HOTKEY_DOC = (
     "Ctrl+Shift+Q => dictionary; Ctrl+E => listen; "
     "Ctrl+Enter => translate; Ctrl+N => clear")
 
-# All 18 HotKey* option names (from binary strings 0x523080-0x523354,
-# matching Options.json HotKeys section 1:1). Value 0 = unbound.
-# 17 real HotKey* names from Options.json HotKeys section
-# (verified: EnableHotKeys + these 17; no duplicates).
+# HotKey* names: 17 real entries in Options.json HotKeys section
+# (EnableHotKeys + these 17; verified, no duplicates). Value 0 = unbound.
 HOTKEY_NAMES = [
     "HotKeySpeechInput", "HotKeyDictionaryClipboard",
     "HotKeyTextRecognition", "HotKeySwitchMouseMode",

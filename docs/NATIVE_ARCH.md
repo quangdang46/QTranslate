@@ -706,7 +706,7 @@ Each user action = a `Task` object posted to a worker thread:
   translation` at `0x11BF98`, `Spell checking` at `0x11E4E4`) and are
   appended/patched at runtime by `FUN_00451F6D` + `FUN_004040BA`, shown by
   `TrackPopupMenu`. Full `.rdata` UTF-16 scan: **1088 UI/options strings**
-  (161 menu/option-related incl. all 18 `HotKey*` names, `ActiveServices`,
+  (161 menu/option-related incl. all 17 `HotKey*` names, `ActiveServices`,
   `DictionariesOrder`, `LanguagePairs` keys) — the complete options-key
   vocabulary 1:1 with `Options.json` sections. Cross-check: **123/124**
   live `Options.json` keys found verbatim in the binary (only `Ocr`
