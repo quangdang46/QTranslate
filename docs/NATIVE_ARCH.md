@@ -279,6 +279,11 @@ Each user action = a `Task` object posted to a worker thread:
   called from dispatcher): builds `TaskShowPopupWindow` (vftable +
   `DAT_0051DE64/68` params) + `PostMessageW(0x812C)` — re-translates with
   the newly selected service without re-capture.
+- **`FUN_0046578F` = RequestData validator** (called after every
+  `*Request` invoke): dispatch-reads 6 fields (`method`, `uri`
+  [`DAT_0052D1C0`, verified bytes], `data`, `headers`, `codepage`,
+  optional `responseHandler`) via `FUN_004661D1` — mirrors our Python
+  `RequestData` dataclass field-for-field.
 - **`FUN_004601AD`/`FUN_004601EC` = request context init/cleanup**
   (`__fastcall` pair): inits 4 CString fields (`+4/+8/+0xC/+0x14`),
   releases in reverse — RAII around every fetch (no leak path even on
