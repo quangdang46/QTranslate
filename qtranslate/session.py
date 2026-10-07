@@ -30,12 +30,16 @@ def net_options() -> dict:
         timeout = 10.0
     proxy = None
     try:
+        # Native ProxyType (W11/1135): 0=system, 1=none, 2=manual,
+        # 3=auto-detect. Only manual (2) uses Host/Port; Scheme picks
+        # http vs socks5 (native distinguishes in the manual dialog).
         ptype = int(px.get("ProxyType", 0))
         host = (px.get("Host") or "").strip()
         port = int(px.get("Port", 0))
-        if ptype and host and port:
-            scheme = {1: "http", 2: "socks4",
-                      3: "socks5"}.get(ptype, "http")
+        if ptype == 2 and host and port:
+            scheme = "https" if int(px.get("Scheme", 0)) else "http"
+            if "socks" in host.lower():
+                scheme = "socks5"
             auth = ""
             if px.get("Username"):
                 import urllib.parse as _up

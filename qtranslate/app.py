@@ -2130,15 +2130,19 @@ class App:
                      fg=_COLORS["text"],
                      font=("Segoe UI", 10, "bold")).pack(anchor="w",
                                                          pady=(8, 0))
-            _pt = ttk.Combobox(body, values=["None", "HTTP", "SOCKS4",
-                                             "SOCKS5"], width=26,
+            # Native ProxyType combo (W11/1135): system/no/manual/
+            # auto-detect; manual details below map Proxy.Host/Port
+            # (HTTP/SOCKS distinguished by Scheme in our stack).
+            _pt_vals = ["Use system proxy settings", "No proxy",
+                        "Manual proxy configuration",
+                        "Auto-detect proxy settings"]
+            _pt = ttk.Combobox(body, values=_pt_vals, width=26,
                                state="readonly")
             _pt.pack(anchor="w", pady=1)
             try:
-                _pt.set(["None", "HTTP", "SOCKS4", "SOCKS5"][
-                    int(_px.get("ProxyType", 0))])
+                _pt.set(_pt_vals[int(_px.get("ProxyType", 0))])
             except Exception:
-                _pt.set("None")
+                _pt.set(_pt_vals[1])
             _entries = {}
             for lab, key in (("Host:", "Host"), ("Port:", "Port"),
                              ("Username:", "Username"),
@@ -2159,8 +2163,9 @@ class App:
             _sch.set("https" if int(_px.get("Scheme", 0)) else "http")
 
             def _apply_px():
-                _names = {"None": 0, "HTTP": 1, "SOCKS4": 2, "SOCKS5": 3}
-                _px["ProxyType"] = _names.get(_pt.get(), 0)
+                _names = {_pt_vals[0]: 0, _pt_vals[1]: 1,
+                          _pt_vals[2]: 2, _pt_vals[3]: 3}
+                _px["ProxyType"] = _names.get(_pt.get(), 1)
                 _px["Scheme"] = 1 if _sch.get() == "https" else 0
                 for k, ee in _entries.items():
                     v = ee.get()
