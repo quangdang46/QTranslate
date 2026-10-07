@@ -184,6 +184,16 @@ Each user action = a `Task` object posted to a worker thread:
   (Ctrl+F1/F2/F3), Minimize-to-tray `0x806F/0x8070`. Sibling
   `FUN_0042DC18`: Reset (`Shift+Esc`), Edit `0x8052`, Always-detect `0x808E`.
 
+## Capture exclusions (from real Options.json)
+
+- `Exceptions` section = per-app / per-window-class blocklist consulted before
+  capture: `{Disabled: [["", "SysListView32"], ["", "SysTreeView32"],
+  ["", "ListBox"], ["", "ScrollBar"], ["", "ComboBox"],
+  ["", "msctls_hotkey32"], ["", "ConsoleWindowClass"], ["mstsc.exe", ""]],
+  Enabled: [], DisabledMode: true}` — mouse-mode (`FUN_00404901`) and
+  clipboard capture skip these classes/apps (avoids stealing listbox/console
+  content and remote-desktop keystrokes).
+
 ## Tray icon + layout keys (decompiled)
 
 - **`FUN_00405C42` = tray add** (`__thiscall`, `Shell_NotifyIconW(NIM_ADD)`
