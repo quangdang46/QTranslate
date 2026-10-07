@@ -1138,7 +1138,84 @@ def main():
         keyboard.add_hotkey("ctrl+k", lambda: app.open_keyboard())
     else:
         print("pip install keyboard pyperclip for global hotkeys")
+    # System tray (native FUN_00418B69 states: off/partial/on).
+    # Left-click toggles mouse mode, double-click shows main window.
+    # Requires `pip install pystray Pillow`; silently skipped if absent.
+    try:
+        _tray = _make_tray(root, app)
+        if _tray is not None:
+            import threading as _th
+            _th.Thread(target=_tray.run, daemon=True).start()
+            print("  tray icon running (dbl-click = show main window)")
+    except Exception as _e:
+        print(f"  tray unavailable: {_e}")
     root.mainloop()
+
+
+def _make_tray(root, app):
+    """Build the native-like tray icon + menu, or None if pystray/PIL
+    is missing. Icon = QTranslate.exe main icon; menu mirrors the
+    native tray menu (mouse modes + windows + Options/Exit)."""
+    try:
+        import pystray
+        from PIL import Image
+        from pystray import Menu, MenuItem
+    except ImportError:
+        return None
+    try:
+        _img = Image.open(
+            "C:/Program Files (x86)/QTranslate/QTranslate.exe")
+    except Exception:
+        try:
+            _img = Image.new("RGBA", (16, 16), (30, 144, 255, 255))
+        except Exception:
+            return None
+
+    _mouse_mode = [False]
+
+    def _show():
+        try:
+            root.after(0, lambda: (root.deiconify(), root.lift(),
+                                   root.focus_force()))
+        except Exception:
+            pass
+
+    def _toggle(icon, item):
+        _mouse_mode[0] = not _mouse_mode[0]
+        try:
+            icon.title = ("QTranslate (mouse mode: %s)"
+                          % ("on" if _mouse_mode[0] else "off"))
+        except Exception:
+            pass
+
+    def _open(win):
+        return lambda icon, item: root.after(0, win)
+
+    def _quit(icon, item):
+        try:
+            icon.stop()
+        finally:
+            root.after(0, root.destroy)
+
+    menu = Menu(
+        MenuItem("Show main window", _open(app.root.lift),
+                 default=True),
+        MenuItem("Dictionary", _open(app.open_dict_window)),
+        MenuItem("History", _open(app.open_history_window)),
+        MenuItem("Virtual keyboard", _open(app.open_keyboard)),
+        MenuItem("Options...", _open(app.open_options)),
+        Menu.SEPARATOR,
+        MenuItem("Mouse mode: show icon", _toggle,
+                 checked=lambda item: _mouse_mode[0]),
+        Menu.SEPARATOR,
+        MenuItem("Exit", _quit))
+    icon = pystray.Icon("QTranslate", _img, "QTranslate",
+                        menu)
+    try:
+        icon.on_activate = lambda i: _show()  # double-click
+    except Exception:
+        pass
+    return icon
 
 
 def show_popup(source, result, service="google", target="vi"):

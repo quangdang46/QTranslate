@@ -7,3 +7,9 @@ pyperclip==1.11.0
 # Optional (only for WordReference headless fallback):
 # uv run --with playwright python -I -m playwright install chromium --only-shell
 # playwright
+
+# Optional (system-tray icon mirroring the native tray states;
+# skipped silently when absent):
+# pystray
+# Pillow (for Service.ico strip images + tray icon)
+# Pillow
