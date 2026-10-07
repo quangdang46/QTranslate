@@ -319,6 +319,14 @@ check("render-links",
 app.render("plain text")
 check("render-no-links", app.out.tag_ranges("link") == ())
 
+# 19b. service switch updates nav link display name
+app.switch_service("deepl")
+check("switch-link", app.svc_link.cget("text") == "DeepL",
+      app.svc_link.cget("text"))
+app.switch_service("google")
+check("switch-link-back", app.svc_link.cget("text") == "Google",
+      app.svc_link.cget("text"))
+
 # 20. history favorites tuple (3- or 4-slot) + filter flag
 app.history = [("google", "hello", "xin chào"),
                ("google", "world", "thế giới", True)]
