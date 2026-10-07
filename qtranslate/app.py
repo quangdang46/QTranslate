@@ -680,6 +680,38 @@ class App:
         self.root.bind("<Control-Up>", lambda e: self.copy_to_source())
         # F11 = fullscreen toggle (help.txt Main window hotkeys)
         self.root.bind("<F11>", lambda e: self.toggle_fullscreen())
+        # Ctrl+B = back-translation toggle+run (accel 0x8034);
+        # Ctrl+Alt+1..9 = dictionary with n-th service (help.txt)
+        self.root.bind("<Control-b>", lambda e: self.toggle_backtr())
+        for _i in range(1, 10):
+            self.root.bind(f"<Control-Alt-Key-{_i}>",
+                           lambda e, i=_i: self.dict_with_service(i))
+
+    def toggle_backtr(self):
+        try:
+            v = not self.opt_backtr.get()
+            self.opt_backtr.set(v)
+            from qtranslate import config as _C
+            import json as _j
+            full = _C.load()
+            full.setdefault("General", {})["BackTranslation"] = v
+            with open(_C.DEFAULT_PATH, "w",
+                      encoding="utf-8") as f:
+                _j.dump(full, f, ensure_ascii=False, indent=1)
+            if v:
+                self.on_go()
+        except Exception:
+            pass
+
+    def dict_with_service(self, n):
+        """Ctrl+Alt+1..9: dictionary lookup with the n-th service."""
+        try:
+            names = self.ordered_services()
+            if 1 <= n <= len(names):
+                self.switch_service(names[n - 1])
+            self.open_dict_window()
+        except Exception:
+            pass
 
     def toggle_fullscreen(self):
         try:
