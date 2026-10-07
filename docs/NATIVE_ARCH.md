@@ -80,6 +80,19 @@ Each user action = a `Task` object posted to a worker thread:
 - `TaskListenText` — TTS playback (via `bass.dll`)
 - `TaskOcr`, `TaskOcrCopyImageTextToClipboard` — screenshot → OCR providers
 - `TaskAutoBackTranslation`, `TaskConvertTextLayout` (keyboard layout fix), `TaskRenderHistoryItemInMainWindow`
+- `TaskCopyTranslation`, `TaskShowIcons`, `TaskWindowHandler` (verified present
+  in RTTI type descriptors, `tasks::windows::` namespace): `TaskCopyTranslation`
+  backs the `HotKeyCopyTranslation` action (copy current result to clipboard —
+  the string `Copy translation to clipboard` in `.rdata` is its menu label);
+  `TaskShowIcons`/`TaskWindowHandler` drive popup icon/window lifecycle.
+  Full RTTI task list (18, from `.?AV*Task*` descriptors): base `Task`,
+  `TaskAutoBackTranslation`, `TaskConvertTextLayout`, `TaskCopySelection`,
+  `TaskCopyTranslation`, `TaskDictionary`, `TaskListenText`, `TaskOcr`,
+  `TaskOcrCopyImageTextToClipboard`, `TaskRenderHistoryItemInMainWindow`,
+  `TaskReplaceSelection`, `TaskShowIcons`, `TaskShowMainWindow`,
+  `TaskShowPopupWindow`, `TaskTranslateClipboard`,
+  `TaskTranslateInMainWindow`, `TaskWindowHandler`, plus `ITask@base` and
+  `ThreadTaskQueue@base`.
 
 ## Capture path (hotkey → text) — decompiled, verified
 
