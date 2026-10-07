@@ -377,9 +377,11 @@ def multitran_lookup(word, sl, tl, ui_lang="en"):
 
 
 # -------------------------------------------------------------- ImTranslator
-# Services/ImTranslator/Service.js
+# Services/ImTranslator/Service.js (SERVICE_ID=18, DICTIONARY only)
 
 IMTRANS_HOST = "http://imtranslator.net"
+IMTRANS_ID = 18
+IMTRANS_NAME = "ImTranslator"
 IMTRANS_LANGS = [None, "", "af", "az", "sq", "ar", "hy", "eu", "be", "bg",
                  "ca", "zh", "zt", "hr", "cs", "da", "nl", "en", "et", "fi",
                  "tl", "fr", "gl", "de", "el", "ht", "iw", "hi", "hu", "is",
@@ -390,7 +392,24 @@ IMTRANS_LANGS = [None, "", "af", "az", "sq", "ar", "hy", "eu", "be", "bg",
                  None, None, None, None, None, None]
 
 
+def imtranslator_host() -> str:
+    """Port of serviceHost(): always http://imtranslator.net."""
+    return "http://imtranslator.net"
+
+
+def imtranslator_link() -> str:
+    """Port of serviceLink(): the dictionary subdomain + ResponseData link."""
+    return "http://dictionary.imtranslator.net/"
+
+
 def imtranslator_lookup(word, sl, tl):
+    """Port of serviceDictionaryRequest/Response (ASMX lookup, now 404).
+
+    The native also returns the "http://dictionary.imtranslator.net/"
+    link (serviceLink + ResponseData link field) — see
+    imtranslator_link(); the fragment alone is returned here to keep
+    all dictionary.py lookups string-typed.
+    """
     url = (IMTRANS_HOST + "/translation/dictionary/DicService.asmx/lookup"
            "?text={0}&dicID=&lang={1}%2F{2}&langs={1}%2F{2}&flags=DEFAULT"
            ).format(_q(word), sl, tl)
