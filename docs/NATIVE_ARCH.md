@@ -264,6 +264,13 @@ Each user action = a `Task` object posted to a worker thread:
   (dozens of call sites). Distinct from `FUN_004207F3` (hash-chain
   equality-bool) — this one orders, that one tests.
 
+## Sleep audit (verified)
+
+- `Sleep` (IAT `0x50D368`, 8 app call sites, no `SwitchToThread` import):
+  clipboard-open retry (5ms), synth gap (`0x20`), sequence-poll backoff
+  (8→320ms), dispatcher settle (100ms). All bounded retries around event
+  primitives — no busy-wait loops anywhere in app code.
+
 ## Synchronization (verified)
 
 - Critical sections guard the WndClass list (`DAT_00544BD8`), the global
