@@ -407,6 +407,9 @@ Each user action = a `Task` object posted to a worker thread:
   wiring + `HKM_* (0x43B/0x445)` hotkey set/get + highlight
   (`0xFF676985`) on flag 4 + dropdown (`+0x48`) on flag 2 — the
   "press keys" capture box (`QTranslate_HotKeyControl` class).
+- **`FUN_00408AA2` = hotkey resolver** (`__thiscall`): posts `0x45F`
+  (HKM_SETHOTKEY-family) with the hotkey word struct — feeds both the
+  display builder and the test runner.
 - **`FUN_00409D1C` = hotkey test runner**: resolve hotkey (`FUN_00408AA2`)
   → build display string (`FUN_00408456`) → vtable show (`+4`), live test
   (`+0xEC`), hide (`+8`) — the "press keys to test" box in Hotkeys options.
