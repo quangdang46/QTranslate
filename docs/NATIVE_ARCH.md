@@ -424,6 +424,14 @@ Each user action = a `Task` object posted to a worker thread:
   → build display string (`FUN_00408456`) → vtable show (`+4`), live test
   (`+0xEC`), hide (`+8`) — the "press keys to test" box in Hotkeys options.
 
+## Suggestions list paint (decompiled)
+
+- **`FUN_0042B485` = suggestions painter** (`__thiscall`, `DrawTextW` ×2):
+  theme fill (`FUN_00449B9C`) → `CB_GETCOUNT (0x146)`; empty →
+  `"Selected languages (in options) are not implemented."`; else per-item
+  draw via service name (`FUN_0046563C`) + language (`FUN_00465610`) +
+  theme colors (`FUN_0044C4CA`).
+
 ## Tooltip + balloon (decompiled)
 
 - **`FUN_00403E00` = tooltip creator** (`__thiscall`): `CreateWindowExW(
