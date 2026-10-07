@@ -776,6 +776,10 @@ Each user action = a `Task` object posted to a worker thread:
   → `FUN_00450A0E` (shell-open document) else → `FUN_00450AC2` (URL →
   default browser). Shared by `serviceLink` opens, About links, and help
   file display.
+- **`FUN_0041FC4A` = shared hash lookup** (`__thiscall`, used by link
+  lookup + named-item paths): DJB2 (`FUN_00420824`) → bucket → chain
+  (`FUN_004207F3`, hash field at `+5`, next at `+4`) — the generic map
+  behind service/link/option tables.
 - **`FUN_0045AC41` = link service lookup** (`__thiscall`, used by the
   `0x812C`-adjacent link path): hash lookup (`FUN_0041FC4A`) for the
   clicked service → fallback default — resolves which provider owns a
