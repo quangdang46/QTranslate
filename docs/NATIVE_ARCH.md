@@ -177,6 +177,11 @@ Each user action = a `Task` object posted to a worker thread:
 - **Layout key helpers** (`FUN_0042AB07` family, `SendInput` via IAT
   `0x50D504`): single `tagINPUT` inject returning success bool — shared by
   the copy-capture synth and the `TaskConvertTextLayout` retype engine.
+- **Layout converter = `FUN_00404E09`** (char, from-HKL, to-HKL): hardcoded
+  EN↔RU phonetic pairs (`HKL 0x4090409`/`0x40D040D`, e.g. `q`↔`/`, `w`↔`'`,
+  `,`↔`'`, `.`↔`/`) then generic fallback `VkKeyScanExW` + `ToUnicodeEx`
+  (IAT `0x50D64C`) with shift-state synthesis. `GetKeyboardLayout` (IAT
+  `0x50D61C`) consumer at `FUN_004140C1` (layout indicator update).
 
 ## Auto-update + proxy (decompiled, probed)
 
