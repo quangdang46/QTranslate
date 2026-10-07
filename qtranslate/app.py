@@ -1811,6 +1811,142 @@ def on_listen_hotkey(app):
                      daemon=True).start()
 
 
+def _hotkey_to_combo(code: int) -> str:
+    """Options.json hotkey dword -> `keyboard` combo string.
+
+    FUN_00405A17 packs vk | (modifiers << 8): bit0=Alt, bit1=Ctrl,
+    bit2=Shift, bit3=Win (matches format_hotkey in config.py).
+    """
+    if not code:
+        return ""
+    vk = code & 0xFF
+    mods = (code >> 8) & 0xF
+    parts = []
+    if mods & 2:
+        parts.append("ctrl")
+    if mods & 4:
+        parts.append("shift")
+    if mods & 1:
+        parts.append("alt")
+    if mods & 8:
+        parts.append("windows")
+    if vk:
+        if vk in (0x08, 0x09, 0x0D, 0x1B, 0x20, 0x2E):
+            parts.append({0x08: "backspace", 0x09: "tab",
+                          0x0D: "enter", 0x1B: "esc", 0x20: "space",
+                          0x2E: "delete"}[vk])
+        elif 0x20 <= vk < 0x7F:
+            parts.append(chr(vk).lower())
+        else:
+            return ""
+    return "+".join(parts)
+
+
+def _register_native_hotkeys(app) -> list:
+    """Register exactly the HotKeys bound in Options.json.
+
+    Action routing mirrors help.txt global hotkeys: PopupWindow =>
+    popup translate, MainWindow => show main, ReplaceSelection =>
+    replace with translation, ListenText/ListenTranslation => speak,
+    Dictionary/DictionaryClipboard => dictionary window, History =>
+    history, Keyboard => virtual keyboard, ConvertTextLayout => fix
+    layout, CopyTranslation => copy result, SpeechInput =>
+    mic (not ported, noted), TextRecognition => OCR,
+    SwitchMouseMode => toggle flag (noted),
+    TranslateClipboard* => translate clipboard (main/popup/none).
+    """
+    try:
+        from qtranslate import config as _C
+        hk = _C.load().get("HotKeys", {})
+        enabled = hk.get("EnableHotKeys", True)
+    except Exception:
+        return []
+    if not enabled:
+        print("  hotkeys disabled (EnableHotKeys=false)")
+        return []
+
+    def _show_main():
+        try:
+            app.root.after(0, lambda: (app.root.deiconify(),
+                                       app.root.lift(),
+                                       app.root.focus_force()))
+        except Exception:
+            pass
+
+    def _replace():
+        # Alt+W native: translate selection, retype into the app
+        if not _HAS_KEYS:
+            return
+        try:
+            import pyperclip as _pc
+            text = _pc.paste().strip()
+        except Exception:
+            return
+        if not text:
+            return
+        svc, _, tgt, _ = app.current()
+        res = do_translate(svc, text[:5000], tgt, "auto",
+                           app.opt_detect.get(), app.opt_backtr.get())
+        try:
+            import pyperclip as _pc2
+            _pc2.copy(res)
+            keyboard.write(res[:2000])
+        except Exception:
+            pass
+        app.src.delete("1.0", "end")
+        app.src.insert("1.0", text[:2000])
+        app.render(res)
+
+    def _copy_result():
+        try:
+            import pyperclip as _pc
+            _pc.copy(app.out.get("1.0", "end").strip())
+        except Exception:
+            pass
+
+    def _ocr():
+        app.root.after(0, app.on_ocr)
+
+    _actions = {
+        "HotKeyPopupWindow": lambda: on_hotkey(app),
+        "HotKeyMainWindow": _show_main,
+        "HotKeyReplaceSelection": _replace,
+        "HotKeyListenText": lambda: on_listen_hotkey(app),
+        "HotKeyListenTranslation": lambda: app.root.after(
+            0, app.on_listen),
+        "HotKeyDictionary": lambda: on_dict_hotkey(app),
+        "HotKeyDictionaryClipboard": lambda: on_dict_hotkey(app),
+        "HotKeyHistory": lambda: app.root.after(
+            0, app.open_history_window),
+        "HotKeyKeyboard": lambda: app.root.after(
+            0, app.open_keyboard),
+        "HotKeyConvertTextLayout": on_layout_hotkey,
+        "HotKeyCopyTranslation": _copy_result,
+        "HotKeyTextRecognition": _ocr,
+        "HotKeyTranslateClipboard": lambda: on_hotkey(app),
+        "HotKeyTranslateClipboardInMainWindow": lambda: on_hotkey(app),
+        "HotKeyTranslateClipboardInPopupWindow":
+            lambda: on_hotkey(app),
+        "HotKeySpeechInput": lambda: app.root.after(0, app.on_mic),
+        "HotKeySwitchMouseMode": lambda: print(
+            "mouse mode toggle (not ported: needs cursor hook)"),
+    }
+    bound = []
+    for name, fn in _actions.items():
+        try:
+            combo = _hotkey_to_combo(hk.get(name, 0) or 0)
+        except Exception:
+            combo = ""
+        if not combo:
+            continue
+        try:
+            keyboard.add_hotkey(combo, fn)
+            bound.append(f"{name}={combo}")
+        except Exception as e:
+            print(f"  hotkey {name} ({combo}) failed: {e}")
+    return bound
+
+
 def main():
     root = tk.Tk()
     app = App(root)
@@ -1819,9 +1955,11 @@ def main():
     print("  Ctrl+Q: popup translate | Ctrl+Shift+Q: dictionary | "
           "Ctrl+E: listen | Ctrl+Alt+L: fix layout")
     if _HAS_KEYS:
-        # Global hotkeys mirror help.txt. Double Ctrl => show main
-        # window (native FUN_00417DCE double-press matcher: two Ctrl
-        # presses within the double-click time window).
+        # Global hotkeys from Options.json HotKeys (native FUN_00405A17
+        # registrar): only bound entries register. Double Ctrl => show
+        # main window (native FUN_00417DCE double-press matcher).
+        # In-window shortcuts (Ctrl+Enter/N/D/H/K/Tab/I/Space/F1/F11)
+        # stay as Tk bindings in _build_main per help.txt.
         import time as _time
         _last_ctrl = [0.0]
 
@@ -1836,17 +1974,9 @@ def main():
             _last_ctrl[0] = now
 
         keyboard.on_press_key("ctrl", lambda e: _ctrl_tap())
-        keyboard.add_hotkey("ctrl+q", lambda: on_hotkey(app))
-        keyboard.add_hotkey("ctrl+shift+q",
-                            lambda: on_dict_hotkey(app))
-        keyboard.add_hotkey("ctrl+e", lambda: on_listen_hotkey(app))
-        keyboard.add_hotkey("ctrl+alt+q", lambda: on_hotkey(app))
-        keyboard.add_hotkey("ctrl+alt+l", on_layout_hotkey)
-        keyboard.add_hotkey("ctrl+n", lambda: app.on_clear())
-        keyboard.add_hotkey("ctrl+d", lambda: app.open_dict_window())
-        keyboard.add_hotkey("ctrl+h",
-                            lambda: app.open_history_window())
-        keyboard.add_hotkey("ctrl+k", lambda: app.open_keyboard())
+        _bound = _register_native_hotkeys(app)
+        print(f"  hotkeys bound from Options.json: "
+              f"{', '.join(_bound) if _bound else '(none)'}")
     else:
         print("pip install keyboard pyperclip for global hotkeys")
     # System tray (native FUN_00418B69 states: off/partial/on).
