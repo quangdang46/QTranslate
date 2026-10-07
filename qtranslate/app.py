@@ -3081,16 +3081,47 @@ def _make_tray(root, app):
         from pystray import Menu, MenuItem
     except ImportError:
         return None
-    try:
-        _img = Image.open(
-            "C:/Program Files (x86)/QTranslate/QTranslate.exe")
-    except Exception:
+    def _tray_icon(color):
+        # Native tray states (FUN_00418B69): 199=off(gray),
+        # 0x84=on(blue), 0x8A=partial(orange). Single-letter Q glyph
+        # on the state color (exe icons not extractable cleanly).
+        from PIL import ImageDraw
+        img = Image.new("RGBA", (16, 16), color + (255,))
         try:
-            _img = Image.new("RGBA", (16, 16), (30, 144, 255, 255))
+            ImageDraw.Draw(img).text((3, 0), "Q", fill=(255, 255, 255,
+                                                        255))
         except Exception:
-            return None
+            pass
+        return img
+
+    _COLORS_TRAY = {"off": (128, 128, 128), "on": (30, 144, 255),
+                    "partial": (255, 140, 0)}
+    try:
+        _imgs = {k: _tray_icon(v) for k, v in _COLORS_TRAY.items()}
+        _img = _imgs["off"]
+    except Exception:
+        return None
 
     _mouse_mode = [False]
+
+    def _sync_icon(icon):
+        # hotkey-state -> tray icon: any HotKey bound = on, else off
+        # (partial = mouse-mode armed without hotkeys).
+        try:
+            from qtranslate import config as _C
+            hk = _C.load().get("HotKeys", {})
+            _any = any(hk.get(n, 0) for n in _C.HOTKEY_NAMES)
+        except Exception:
+            _any = False
+        try:
+            if _mouse_mode[0] and not _any:
+                icon.icon = _imgs["partial"]
+            elif _any or _mouse_mode[0]:
+                icon.icon = _imgs["on"]
+            else:
+                icon.icon = _imgs["off"]
+        except Exception:
+            pass
 
     def _show():
         try:
@@ -3106,6 +3137,7 @@ def _make_tray(root, app):
                           % ("on" if _mouse_mode[0] else "off"))
         except Exception:
             pass
+        _sync_icon(icon)
 
     def _open(win):
         return lambda icon, item: root.after(0, win)
@@ -3134,6 +3166,7 @@ def _make_tray(root, app):
         icon.on_activate = lambda i: _show()  # double-click
     except Exception:
         pass
+    _sync_icon(icon)
     return icon
 
 
