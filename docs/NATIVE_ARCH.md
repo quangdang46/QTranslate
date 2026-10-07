@@ -414,6 +414,15 @@ Each user action = a `Task` object posted to a worker thread:
   (IAT `0x50D64C`) with shift-state synthesis. `GetKeyboardLayout` (IAT
   `0x50D61C`) consumer at `FUN_004140C1` (layout indicator update).
 
+## Crypto split (decompiled)
+
+- CSP hash (`CryptAcquireContext/HashData/GetHashParam`, ADVAPI32): app-side
+  cache-key hashing (`FUN_00474178` MD5) + RNG (`FUN_00443B9A`
+  `CryptGenRandom`).
+- Cert store (`CertEnum/Find/FreeCertificateContext`, CRYPT32): used only
+  inside static libcurl's Schannel verify path — no app-level cert code.
+  (Relevant to the Babylon SSL failure: system store vs retired host chain.)
+
 ## Winsock note
 
 - `WSAStartup`/`WSACleanup` are imported but have **zero callers** in app
