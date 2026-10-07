@@ -2144,9 +2144,9 @@ class App:
             except Exception:
                 _pt.set(_pt_vals[1])
             _entries = {}
-            for lab, key in (("Host:", "Host"), ("Port:", "Port"),
-                             ("Username:", "Username"),
-                             ("Password:", "Password")):
+            for lab, key in ((_Cw(11, 1034, "Host:"), "Host"), (_Cw(11, 1035, "Port:"), "Port"),
+                             (_Cw(11, 1036, "Username:"), "Username"),
+                             (_Cw(11, 1037, "Password:"), "Password")):
                 rr = tk.Frame(body, bg=_COLORS["back"])
                 rr.pack(fill="x", pady=1)
                 tk.Label(rr, text=lab, width=18, anchor="w",
