@@ -435,6 +435,11 @@ Each user action = a `Task` object posted to a worker thread:
 - `UtilsDispatch` (IDispatch bridge) exposes native `Options` (IG/BingToken/Cookie, GoogleTkk, proxy) into JS.
 - `CurlHandle` + `HttpDelegate` (`net::`) — embedded libcurl (strings: `Downgrades to HTTP/1.1!`, `Uses proxy env variable`, `Netscape HTTP Cookie File`) performs the actual HTTP; `WINHTTP.dll` used for IE proxy config (`WinHttpGetIEProxyConfigForCurrentUser`) and `WS2_32`/`CRYPT32` for TLS.
 - Audio: `SpeechRecognizer`, `SpeechRecognitionEngine` (Google `speech-api/full-duplex` URLs in strings), `SpeechToText`, `AudioRecorder`, `EnergyEndpointer`; playback via `bass.dll`.
+- **Offline SAPI fallback = `FUN_00448BEC`**: `CoCreateInstance(CLSID
+  {29333BF9-7B36-11D2-B20E-00C04F983E60} = SAPI SpVoice, CLSCTX 0x17)` →
+  `OleRun` → `QueryInterface` → vtable init (`+0xFC/+0x110/+0x118`).
+  When online TTS mp3 fails, `TaskListenText` falls back to system SAPI
+  voices — no network needed for English/Vietnamese system voices.
 - Speech input (from strings + RTTI, endpoint probed 2026-10-07): hotkeys
   `HotKeySpeechInput`/`HotKeyTextRecognition` → mic via `BASS_RecordStart` →
   FLAC encode → POST `speech-api/full-duplex/v1/up` (probed: HTTP 400 without
