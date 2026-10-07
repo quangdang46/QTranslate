@@ -173,6 +173,13 @@ Each user action = a `Task` object posted to a worker thread:
   DWMWA_EXTENDED_FRAME_BOUNDS)` → else `GetWindowRect` minus borders
   (skipped when zoomed on Win7+) — correct popup rect under Aero.
 
+## String refcount core (decompiled)
+
+- **`FUN_004021DE`/`FUN_004033D1` = addref/release pair** (`__fastcall`,
+  `LOCK()`-guarded Interlocked inc/dec): addref shares or clones-on-write;
+  release frees at zero via vtable dtor (`+4`). Thread-safe COW behind
+  every CString/Data object crossing the translate/dict/listen threads.
+
 ## String assign core (decompiled)
 
 - **`FUN_00401EC9` = COW string assign** (`__thiscall`, most-called string
