@@ -178,6 +178,10 @@ Each user action = a `Task` object posted to a worker thread:
 - **`CWin32Heap::~CWin32Heap` = heap dtor** (ATL library, `HeapDestroy`
   guarded): process-heap teardown at exit via the factory `_atexit` —
   memory chain fully closed (factory → freelist → chunks → CRT → Heap).
+- **`FUN_004B3F53`/`FUN_004B3F09` = MSVC thread-safe statics**
+  (`__Init_thread_wait(100)` spin + `__Init_thread_notify`, TLS epoch
+  counter): the once-pair behind *every* lazy singleton (factory, heap,
+  registry, TKK cache, GDI+ token, version id).
 - **TLS singletons** (`TlsGetValue/SetValue` via `ThreadLocalStoragePointer
   + 4 < DAT_*` guards in every `FUN_00402CBD`-family init): per-thread lazy
   singletons for factory/heap/string-mgr/registry — the `FUN_004B3F53` +
