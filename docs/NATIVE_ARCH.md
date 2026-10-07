@@ -920,6 +920,9 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Auto-update + proxy (decompiled, probed)
 
+- **`FUN_0043F865` = JSON string parser** (`__fastcall`): quote-delimited
+  scan with backslash-escape decoding (`\\`, `\b`, …) — standard-compliant
+  string unescaping for provider responses and config files.
 - **`FUN_0043FBF8`/`FUN_0043F71A` = JSON parser** (recursive descent into
   a `json::` DOM with `Null` vftable): `"`→`FUN_0043F865` string,
   `[`→`FUN_0043FDA1` array, `{`→`FUN_0043FC8F` object, `f/t/n`→literals,
