@@ -16,8 +16,14 @@ LIVE-OK  naver.detect                 en
 LIVE-OK  naver.translate EN->VI       Xin chào thế giới
 LIVE-OK  naver.dict                   dict-items
 LIVE-OK  naver.tts                    mp3-bytes
+LIVE-OK  dict.oxford                  entry HTML
+LIVE-OK  dict.lingvo                  Universal Dictionary HTML
+LIVE-OK  dict.urban                   definition group HTML
+LIVE-OK  dict.wikipedia               bodyContent HTML
+LIVE-OK  dict.multitran               anchor-table HTML
+LIVE-OK  reverso.translate EN->FR     bonjour tout le monde
 
-13/13 live OK
+19/19 live OK
 ```
 
 Extended regression (same day, ad-hoc): `yandex-android` EN→RU OK,
