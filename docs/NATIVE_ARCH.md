@@ -1090,6 +1090,9 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Tray icon + layout keys (decompiled)
 
+- **`FUN_00462E19` = enable variant** (`__thiscall`, empty-shortcut):
+  lookup (`FUN_00462F8E`) → alloc pair + vector append (grow via
+  `FUN_00463409`) — registers a mode pipeline when both sides start empty.
 - **`FUN_00462EB7` = mode-enable path** (`__thiscall`, from the toggle):
   lookup (`FUN_00462F8E`) → refresh-or-free-old (`FUN_0040F27D` +
   `FUN_004B3DE2`) — activates the selected capture mode's pipeline.
