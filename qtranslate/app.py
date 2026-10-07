@@ -245,6 +245,14 @@ def do_translate(service, text, target, src="auto", auto_detect=False,
     text = (text or "").strip()
     if not text:
         return ""
+    # Advanced.RemoveLineBreaks: collapse newlines before sending
+    try:
+        from qtranslate import config as _C
+        if _C.load().get("Advanced", {}).get("RemoveLineBreaks", False):
+            import re as _re
+            text = _re.sub(r"\s*\n\s*", " ", text)
+    except Exception:
+        pass
     fn = TRANSLATORS.get(service, _t_google)
     try:
         if auto_detect:
@@ -2080,7 +2088,29 @@ def _register_native_hotkeys(app) -> list:
     return bound
 
 
+def _seed_service_options():
+    """Seed the JS-runtime Options store (common.Options) from
+    Options.json: Advanced.PreferredDomain + locale LanguageCode.
+
+    Native UtilsDispatch runs addOption() per service at boot; without
+    this the ports fall back to hardcoded defaults.
+    """
+    try:
+        from qtranslate import common as _cm
+        from qtranslate import config as _C
+        cfg = _C.load()
+        adv = cfg.get("Advanced", {})
+        if adv.get("PreferredDomain"):
+            _cm.add_option("PreferredDomain", adv["PreferredDomain"])
+        loc = cfg.get("General", {}).get("LocaleFoderName", "")
+        if loc:
+            _cm.add_option("LanguageCode", loc[:2].lower())
+    except Exception:
+        pass
+
+
 def main():
+    _seed_service_options()
     root = tk.Tk()
     app = App(root)
     print(f"qtranslate-re main window running "
