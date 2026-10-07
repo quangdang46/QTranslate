@@ -426,17 +426,71 @@ URBAN_HOST = "https://www.urbandictionary.com"
 URBAN_LANGS = [1] * 76
 
 
+URBAN_ID = 24
+URBAN_NAME = "Urban Dictionary"
+URBAN_STYLE = (".justify-between,.mug-ad,.ad-panel{display:none}"
+               ".italic{font-style:italic}.font-bold{font-weight:700}"
+               ".p-5{padding:1em}.px-3{padding-left:.75em;padding-right:.75em}")
+
+
+def urban_host() -> str:
+    """Port of serviceHost(): always https://www.urbandictionary.com."""
+    return "https://www.urbandictionary.com"
+
+
+def urban_link(word) -> str:
+    """Port of serviceLink() + ResponseData link field."""
+    return urban_host() + "/define.php?term=" + _q(word)
+
+
+URBAN_API_HOST = "https://api.urbandictionary.com"
+
+
+def urban_api(word):
+    """Definitions via api.urbandictionary.com/v0/define — verified live
+    2026-10-07 (the /define.php HTML shell is now JS-rendered with empty
+    sections; same entries served as JSON here). Returns the raw list."""
+    import json as _json
+    req = urllib.request.Request(
+        URBAN_API_HOST + "/v0/define?term=" + _q(word), headers=_UA)
+    with urllib.request.urlopen(req, timeout=20) as r:
+        return _json.loads(r.read().decode("utf-8")).get("list", [])
+
+
 def urban_lookup(word, sl=1, tl=1):
+    """Port of serviceDictionaryRequest/Response.
+
+    Faithful to native: section slice (inclusive) -> remove
+    script/svg/iframe/button -> strip style attrs -> absolutize links ->
+    wrap in <div><style>...</style><div>. The per-word link is
+    urban_link(word) (ResponseData link field). Falls back to the live
+    v0 JSON API when the HTML shell has no rendered entries (current
+    site renders client-side).
+    """
     url = URBAN_HOST + "/define.php?term=" + _q(word)
     page = _get(url)
     frag = _sub(page, re.compile(r"<section "), True,
                 re.compile(r"</section>"), True)
-    if not frag:
+    if frag:
+        frag = _remove_elements(frag, ["script", "svg", "iframe", "button"])
+        frag = _remove_attributes(frag, ["style"])
+        frag = _update_links(frag, URBAN_HOST)
+        if "udh-ritems" not in frag or re.search(r"\w{20,}", frag):
+            return "<div><style>" + URBAN_STYLE + "</style><div>" + frag
+    try:
+        items = urban_api(word)[:5]
+    except Exception:
         return ""
-    frag = _remove_elements(frag, ["script", "svg", "iframe", "button"])
-    frag = _remove_attributes(frag, ["style"])
-    frag = _update_links(frag, URBAN_HOST)
-    return frag
+    parts = []
+    for it in items:
+        parts.append("<p><b>{}</b><br>{}<br><i>{}</i></p>".format(
+            _html.escape(it.get("word", "")),
+            _html.escape(it.get("definition", ""))[:800],
+            _html.escape(it.get("example", ""))[:400]))
+    if not parts:
+        return ""
+    return ("<div><style>" + URBAN_STYLE + "</style><div>"
+            + "".join(parts))
 
 
 # ----------------------------------------------------------------- Wikipedia
