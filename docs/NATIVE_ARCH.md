@@ -440,8 +440,11 @@ Each user action = a `Task` object posted to a worker thread:
   `OleRun` → `QueryInterface` → vtable init (`+0xFC/+0x110/+0x118`).
   When online TTS mp3 fails, `TaskListenText` falls back to system SAPI
   voices — no network needed for English/Vietnamese system voices.
-- Speech input (from strings + RTTI, endpoint probed 2026-10-07): hotkeys
-  `HotKeySpeechInput`/`HotKeyTextRecognition` → mic via `BASS_RecordStart` →
+- Speech input (from strings + RTTI + decompile, endpoint probed 2026-10-07):
+  hotkeys `HotKeySpeechInput`/`HotKeyTextRecognition` → mic via
+  **`FUN_0044555D`** (`BASS_RecordStart(rate, mono, RECORDPROC
+  `FUN_00445606`, ctx)` via IAT `0x50D7A4`, init at `FUN_00445515`/
+  `FUN_0044187E` via IAT `0x50D79C`, error via `BASS_ErrorGetCode`) →
   FLAC encode → POST `speech-api/full-duplex/v1/up` (probed: HTTP 400 without
   key, i.e. host alive but needs valid key + FLAC body — same class of block
   as Bing/Promt, documented not hidden). State machine
