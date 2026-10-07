@@ -33,6 +33,8 @@ DEFAULT_HOTKEY_DOC = (
 
 # All 18 HotKey* option names (from binary strings 0x523080-0x523354,
 # matching Options.json HotKeys section 1:1). Value 0 = unbound.
+# 17 real HotKey* names from Options.json HotKeys section
+# (verified: EnableHotKeys + these 17; no duplicates).
 HOTKEY_NAMES = [
     "HotKeySpeechInput", "HotKeyDictionaryClipboard",
     "HotKeyTextRecognition", "HotKeySwitchMouseMode",
@@ -40,7 +42,7 @@ HOTKEY_NAMES = [
     "HotKeyTranslateClipboardInPopupWindow", "HotKeyCopyTranslation",
     "HotKeyReplaceSelection", "HotKeyListenTranslation",
     "HotKeyConvertTextLayout", "HotKeyKeyboard", "HotKeyListenText",
-    "HotKeyDictionary", "HotKeyListenTranslation", "HotKeyHistory",
+    "HotKeyDictionary", "HotKeyHistory",
     "HotKeyPopupWindow", "HotKeyMainWindow",
 ]
 DEFAULT_APPEARANCE = {

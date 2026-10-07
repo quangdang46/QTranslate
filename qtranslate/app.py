@@ -817,23 +817,110 @@ class App:
                 tk.Entry(rr, width=10).pack(side="left")
 
         def show_hotkeys():
-            # mirrors DLG 179: Enable hot keys + per-action list
+            # mirrors DLG 179: Enable hot keys + per-action list with
+            # current bindings decoded via FUN_00403B48 port; Change
+            # captures a new combo, Clear unbinds (writes Options.json).
             for c in body.winfo_children():
                 c.destroy()
-            v = tk.BooleanVar(value=True)
+            try:
+                from qtranslate import config as C
+                hk = cfg.get("HotKeys", {})
+                names = C.HOTKEY_NAMES
+            except Exception:
+                hk, names = {}, []
+            self._opt_vars = getattr(self, "_opt_vars", {})
+            v = tk.BooleanVar(value=bool(hk.get("EnableHotKeys", True)))
+            self._opt_vars["EnableHotKeys"] = v
             tk.Checkbutton(body, text="Enable hot keys", variable=v,
                            bg=_COLORS["back"], fg=_COLORS["text"],
                            selectcolor=_COLORS["back"]).pack(anchor="w")
+            tv = ttk.Treeview(body, columns=("Hotkey",),
+                              show="tree headings", height=13)
+            tv.heading("#0", text="Action")
+            tv.heading("Hotkey", text="Hotkey")
+            tv.column("#0", width=260)
+            tv.column("Hotkey", width=140)
+            tv.pack(fill="both", expand=True, pady=4)
             try:
-                from qtranslate import config as C
-                names = C.HOTKEY_NAMES
+                _fmt = C.format_hotkey
             except Exception:
-                names = []
-            lb = tk.Listbox(body, height=14, bg=_COLORS["back"],
-                            fg=_COLORS["text"])
-            lb.pack(fill="both", expand=True, pady=4)
+                _fmt = lambda code: str(code)  # noqa: E731
             for n in names:
-                lb.insert("end", n)
+                code = hk.get(n, 0) or 0
+                tv.insert("", "end", iid=n, text=n,
+                          values=(_fmt(code) or "(none)",))
+
+            def _save_hotkey(name, code):
+                try:
+                    from qtranslate import config as C2
+                    full = C2.load()
+                    full.setdefault("HotKeys", {})[name] = code
+                    with open(C2.DEFAULT_PATH, "w",
+                              encoding="utf-8") as f:
+                        import json as _j
+                        _j.dump(full, f, ensure_ascii=False, indent=1)
+                    cfg.get("HotKeys", {})[name] = code
+                except Exception:
+                    pass
+
+            def _change():
+                sel = tv.selection()
+                if not sel:
+                    return
+                name = sel[0]
+                cap = tk.Toplevel(w)
+                cap.title("Press hotkey")
+                cap.geometry("280x90")
+                tk.Label(cap,
+                         text=f"Press a key combo for\n{name} "
+                              "(Esc = cancel)").pack(pady=8)
+
+                def _key(e):
+                    if e.keysym == "Escape":
+                        cap.destroy()
+                        return "break"
+                    mods = 0
+                    # state bits: Shift=0x1, CapsLock ignored,
+                    # Control=0x4, Alt/Mod1=0x8|0x20000..., Win/Mod4
+                    if e.state & 0x1:
+                        mods |= 4
+                    if e.state & 0x4:
+                        mods |= 2
+                    if e.state & 0x8:
+                        mods |= 1
+                    try:
+                        vk = e.keycode & 0xFF
+                    except Exception:
+                        vk = 0
+                    code = (vk | (mods << 8)) or 0
+                    _save_hotkey(name, code)
+                    try:
+                        tv.set(name, "Hotkey", _fmt(code) or "(none)")
+                    except Exception:
+                        pass
+                    cap.destroy()
+                    return "break"
+
+                cap.bind("<Key>", _key)
+                cap.focus_force()
+                cap.grab_set()
+
+            def _clear():
+                sel = tv.selection()
+                if not sel:
+                    return
+                _save_hotkey(sel[0], 0)
+                try:
+                    tv.set(sel[0], "Hotkey", "(none)")
+                except Exception:
+                    pass
+
+            frm = tk.Frame(body, bg=_COLORS["back"])
+            frm.pack(pady=(0, 2))
+            tk.Button(frm, text="Change...",
+                      command=_change).pack(side="left", padx=4)
+            tk.Button(frm, text="Clear",
+                      command=_clear).pack(side="left", padx=4)
 
         def on_select(_e=None):
             if not left.curselection():
