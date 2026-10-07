@@ -3770,12 +3770,17 @@ def main():
         # In-window shortcuts (Ctrl+Enter/N/D/H/K/Tab/I/Space/F1/F11)
         # stay as Tk bindings in _build_main per help.txt.
         import time as _time
+        try:
+            from ctypes import windll as _wd
+            _dbl_s = _wd.user32.GetDoubleClickTime() / 1000.0
+        except Exception:
+            _dbl_s = 0.5
         _last_ctrl = [0.0]
         _last_c = [0.0]
 
         def _ctrl_tap():
             now = _time.time()
-            if now - _last_ctrl[0] < 0.5:
+            if now - _last_ctrl[0] < _dbl_s:
                 try:
                     root.lift()
                     root.focus_force()
@@ -3787,7 +3792,7 @@ def main():
             # TaskCopySelection: Ctrl+C+C flow — double-tap C while
             # holding Ctrl: synthesize copy, translate clipboard.
             now = _time.time()
-            if keyboard.is_pressed("ctrl") and now - _last_c[0] < 0.5:
+            if keyboard.is_pressed("ctrl") and now - _last_c[0] < _dbl_s:
                 _last_c[0] = 0.0
                 try:
                     keyboard.send("ctrl+c")
