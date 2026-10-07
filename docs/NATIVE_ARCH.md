@@ -407,6 +407,9 @@ Each user action = a `Task` object posted to a worker thread:
   sub-layout (`+0x48/+0x54`) → hotkey-test refresh (`FUN_00409EC0`) +
   show-layout (`FUN_00408ADE`). Service ids 5/`0x1A`/`0x2A`/`0x38`/`0x3B`
   take a flag variant.
+- **`FUN_00408D01` = select-and-open** (`__thiscall`): `0x20` → focus;
+  `0x202` (LBUTTONUP) → line read (`FUN_004099F3`) → open dispatcher
+  (`FUN_00450B17`) — click-to-open link/text behavior in result panes.
 - **`FUN_00408B4B` = full-text reader** (`__thiscall`): `EM_GETLINECOUNT
   (0x434)` → `FUN_004099F3` range read — grabs the whole edit content for
   copy-translation and template expansion. Siblings `FUN_00408D01/
