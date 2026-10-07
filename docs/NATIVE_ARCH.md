@@ -127,6 +127,10 @@ Each user action = a `Task` object posted to a worker thread:
 - **`FUN_0045A77B` = service-id validator**: linear scan of the slot vector
   for a duplicate id (`FUN_0045AFDD` element read), returns index or 0 —
   keeps `ServicesOrder` duplicate-free across reloads.
+- **`FUN_0045A867` = language-pair validator**: same linear-search shape over
+  the pair vector (`this+0x2C0` count, entries at `*(this+700)`), used by the
+  sequencer to confirm saved `LanguagePairs` (`[[57,17],[17,57]]`) still
+  resolve — else reset to defaults.
 - **`FUN_00418F81` = startup sequencer**: init service slots
   (`FUN_0045CC98`), validate language-pair defaults (`FUN_0045A867`) →
   first-run (no `Options.json`): show setup wizard (`FUN_00419DA6`) →
