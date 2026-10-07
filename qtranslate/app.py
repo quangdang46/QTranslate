@@ -661,6 +661,13 @@ class App:
         self.root.bind("<F1>", lambda e: self.show_hotkeys())
         # Shift+Esc = reset pair to auto-detected (native 0x8052 Reset)
         self.root.bind("<Shift-Escape>", lambda e: self.reset_pair())
+        # Ctrl+1..9 = 1..9th service (accel 0x8042-0x804A),
+        # Ctrl+Shift+1..9 = select language pair (help.txt)
+        for _i in range(1, 10):
+            self.root.bind(f"<Control-Key-{_i}>",
+                           lambda e, i=_i: self.slot_service(i))
+            self.root.bind(f"<Control-Shift-Key-{_i}>",
+                           lambda e, i=_i: self.slot_pair(i))
         # Ctrl+Tab / Ctrl+Shift+Tab = next/prev service (accel 170)
         self.root.bind("<Control-Tab>", lambda e: self.cycle_service(1))
         self.root.bind("<Control-Shift-Tab>",
@@ -697,6 +704,34 @@ class App:
                                  "Vietnamese"))
         except Exception:
             self.src_lang.set("Auto-Detect")
+
+    def slot_service(self, n):
+        """Ctrl+1..9: switch to the n-th service (accel 0x8042-0x804A;
+        native Ctrl+Alt+1..9 dictionary variant opens dict window)."""
+        try:
+            names = self.ordered_services()
+            if 1 <= n <= len(names):
+                self.switch_service(names[n - 1])
+        except Exception:
+            pass
+
+    def slot_pair(self, n):
+        """Ctrl+Shift+1..9: select the n-th language pair."""
+        try:
+            from qtranslate import config as _C
+            pairs = _C.load().get("LanguagePairs", [])
+            if not (1 <= n <= len(pairs)):
+                return
+            a, b = pairs[n - 1]
+            _table = list(__import__(
+                "qtranslate.services.google_translate",
+                fromlist=["SUPPORTED_LANGS"]).SUPPORTED_LANGS)
+            ca = _table[a] if 0 <= a < len(_table) else "auto"
+            cb = _table[b] if 0 <= b < len(_table) else "vi"
+            self.src_lang.set(LANG_DISPLAY.get(ca, ca))
+            self.tgt.set(LANG_DISPLAY.get(cb, cb))
+        except Exception:
+            pass
 
     def cycle_service(self, direction=1):
         """Ctrl+Tab / Ctrl+Shift+Tab: next/previous service (accel 170
