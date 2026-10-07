@@ -76,22 +76,24 @@ def play_file(path: str, block: bool = True) -> None:
         play_mp3_bytes(f.read(), block=block)
 
 
-def play_text(text: str, lang: str = "vi", block: bool = True) -> str:
+def play_text(text: str, lang: str = "vi", block: bool = True,
+              slow: bool = False) -> str:
     """Online mp3 -> BASS; on any failure fall back to offline SAPI.
 
     Mirrors native TaskListenText: serviceListenRequest mp3 first,
-    SpVoice (FUN_00448BEC) when offline. Returns backend used.
+    SpVoice (FUN_00448BEC) when offline. slow maps
+    Advanced.EnableSlowerListening (clearer TTS). Returns backend used.
     """
     import sys
     sys.path.insert(0, ".")
     from qtranslate.tts import google_tts
     try:
-        play_mp3_bytes(google_tts(text, lang), block=block)
+        play_mp3_bytes(google_tts(text, lang, slow=slow), block=block)
         return "bass"
     except Exception as e:
         print(f"online TTS failed ({e}); falling back to SAPI")
     from qtranslate.sapi import speak
-    speak(text)
+    speak(text, rate=-4 if slow else 0)
     return "sapi"
 
 

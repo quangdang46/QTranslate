@@ -217,15 +217,24 @@ def detect_language(text):
 
 
 def speak(text, lang):
-    """Online mp3 -> BASS; on failure fall back to offline SAPI."""
+    """Online mp3 -> BASS; on failure fall back to offline SAPI.
+
+    Honors Advanced.EnableSlowerListening (clearer/slower TTS).
+    """
+    try:
+        from qtranslate import config as _C
+        slow = bool(_C.load().get("Advanced", {}).get(
+            "EnableSlowerListening", False))
+    except Exception:
+        slow = False
     try:
         from qtranslate.player import play_text
-        play_text(text, lang)
+        play_text(text, lang, slow=slow)
     except Exception as e:
         print(f"TTS failed ({e}); trying SAPI")
         try:
             from qtranslate.sapi import speak as sapi_speak
-            sapi_speak(text)
+            sapi_speak(text, rate=-4 if slow else 0)
         except Exception as e2:
             print(f"SAPI failed: {e2}")
 
