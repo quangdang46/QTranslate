@@ -881,6 +881,10 @@ Each user action = a `Task` object posted to a worker thread:
   (1→`+0x14C`, 3→`+0x164`, 4→`+0x17C`, else→`+0x134`, stride `0x18`) —
   palettes ported to `qtranslate/theme.py` (`window_colors` per state;
   8 themes verified loadable).
+- **`FUN_0044BD0F` = modern subclasser** (`__fastcall`,
+  `SetWindowSubclass` id 100 with refcounted data — cf. legacy
+  `SetWindowLong` in `FUN_004030AE`): theme-compare (`FUN_0044CD0E` on
+  `FUN_0044C4CA` colors) decides subclass need; `FUN_0044BFB6` proc.
 - **`FUN_0044B4F4` = popup layout engine**: walks child windows
   (`GetWindow GW_CHILD`), classifies Button vs Static vs
   `QTranslate_HotKeyControl` (custom key-capture control, class refs at
