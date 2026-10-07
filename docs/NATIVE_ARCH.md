@@ -173,6 +173,13 @@ Each user action = a `Task` object posted to a worker thread:
   DWMWA_EXTENDED_FRAME_BOUNDS)` → else `GetWindowRect` minus borders
   (skipped when zoomed on Win7+) — correct popup rect under Aero.
 
+## String compare core (decompiled)
+
+- **`FUN_00401FC2` = wcscmp 3-state** (`__thiscall`, null-guarded): the
+  comparison behind every class-name/menu/label check in the app
+  (dozens of call sites). Distinct from `FUN_004207F3` (hash-chain
+  equality-bool) — this one orders, that one tests.
+
 ## Process model (verified)
 
 - **No child processes**: zero `CreateProcess*` imports — everything runs
