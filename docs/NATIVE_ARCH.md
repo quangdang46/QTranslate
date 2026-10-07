@@ -279,6 +279,10 @@ Each user action = a `Task` object posted to a worker thread:
   called from dispatcher): builds `TaskShowPopupWindow` (vftable +
   `DAT_0051DE64/68` params) + `PostMessageW(0x812C)` — re-translates with
   the newly selected service without re-capture.
+- **`FUN_0046161C` = TTS queue reset** (`__fastcall`, called from the
+  toggle guard): clears playing flag + releases each queued item
+  (`+8` dtor via `FUN_004024F2` vector walk) — drains pending speech
+  before a fresh Listen.
 - **`FUN_004614A7`/`FUN_00461471` = TTS toggle guard** (dispatcher listen
   branch): if already playing (`DAT_0054961C`) → `FUN_00461691` free stream
   + `FUN_0046161C` reset state — pressing Listen twice stops instead of
