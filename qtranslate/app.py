@@ -1294,6 +1294,19 @@ class App:
             self.on_go()
 
     def apply_theme(self, name):
+        # ThemeName persists to Appearance (native popup theming);
+        # main-window bg follows for preview (native needs
+        # EnableWindowStyle for full chrome theming).
+        try:
+            from qtranslate import config as _C
+            import json as _j
+            full = _C.load()
+            full.setdefault("Appearance", {})["ThemeName"] = name
+            with open(_C.DEFAULT_PATH, "w",
+                      encoding="utf-8") as f:
+                _j.dump(full, f, ensure_ascii=False, indent=1)
+        except Exception:
+            pass
         try:
             from qtranslate.theme import load_theme, window_colors
             global _COLORS
