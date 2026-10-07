@@ -712,6 +712,13 @@ Each user action = a `Task` object posted to a worker thread:
   with/without per-pixel alpha. Sibling caller `FUN_00436F19` (capture
   overlay icons). Used for service icons, tray states, and button glyphs.
 
+## Rounded corners (decompiled)
+
+- **`FUN_0044E5EC`/`FUN_0044E826` = rounded-region applicators**
+  (`SetWindowRgn` via IAT `0x50D540`): `CreateRoundRectRgn(11, 11)`
+  (fallback `CreateRectRgn`) — matches theme `ButtonRadius`/
+  `WindowBorderRadius`; sibling at `FUN_0044E826` for popup frames.
+
 ## Tooltip + balloon (decompiled)
 
 - **`FUN_00403E00` = tooltip creator** (`__thiscall`): `CreateWindowExW(
