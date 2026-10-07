@@ -1276,6 +1276,171 @@ class App:
             tk.Button(body, text="Apply",
                       command=_apply_px).pack(anchor="w", pady=4)
 
+        def show_exceptions():
+            # Exceptions.Disabled/Enabled ([exe, class] pairs) +
+            # DisabledMode; live: exclusions.foreground_excluded honors it.
+            for c in body.winfo_children():
+                c.destroy()
+            _ex = cfg.get("Exceptions", {})
+            _dis_list = [list(p) for p in _ex.get("Disabled", [])]
+            _en_list = [list(p) for p in _ex.get("Enabled", [])]
+
+            def _save_x():
+                try:
+                    from qtranslate import config as C3
+                    import json as _j
+                    full = C3.load()
+                    full["Exceptions"] = {
+                        "Disabled": _dis_list, "Enabled": _en_list,
+                        "DisabledMode": _ex.get("DisabledMode", True)}
+                    with open(C3.DEFAULT_PATH, "w",
+                              encoding="utf-8") as f:
+                        _j.dump(full, f, ensure_ascii=False, indent=1)
+                    cfg["Exceptions"] = full["Exceptions"]
+                except Exception:
+                    pass
+
+            vv = tk.BooleanVar(value=bool(_ex.get("DisabledMode", True)))
+            tk.Checkbutton(body, text="Disable capture in listed windows "
+                                      "(uncheck = enable only here)",
+                           variable=vv, bg=_COLORS["back"],
+                           fg=_COLORS["text"], selectcolor=_COLORS["back"],
+                           command=lambda: (
+                               _ex.__setitem__("DisabledMode", vv.get()),
+                               _save_x())).pack(anchor="w")
+
+            def _mk_xlist(parent, title, pairs):
+                tk.Label(parent, text=title, bg=_COLORS["back"],
+                         fg=_COLORS["text"],
+                         font=("Segoe UI", 10, "bold")).pack(anchor="w",
+                                                             pady=(6, 0))
+                lb = tk.Listbox(parent, height=5, bg="white", fg="black")
+                lb.pack(fill="x")
+                for exe, cls in pairs:
+                    lb.insert("end", f"{exe or '*'}  |  {cls or '*'}")
+                fr = tk.Frame(parent, bg=_COLORS["back"])
+                fr.pack(fill="x", pady=2)
+                er = tk.Entry(fr, width=16)
+                er.pack(side="left", padx=1)
+                er.insert(0, "exe or empty")
+                cr = tk.Entry(fr, width=16)
+                cr.pack(side="left", padx=1)
+                cr.insert(0, "class or empty")
+
+                def _add():
+                    exe = er.get().strip()
+                    cls = cr.get().strip()
+                    if exe == "exe or empty":
+                        exe = ""
+                    if cls == "class or empty":
+                        cls = ""
+                    pairs.append([exe, cls])
+                    lb.insert("end", f"{exe or '*'}  |  {cls or '*'}")
+                    _save_x()
+
+                def _dele():
+                    s = lb.curselection()
+                    if not s:
+                        return
+                    pairs.pop(s[0])
+                    lb.delete(s[0])
+                    _save_x()
+
+                tk.Button(fr, text="Add",
+                          command=_add).pack(side="left", padx=2)
+                tk.Button(fr, text="Remove",
+                          command=_dele).pack(side="left", padx=2)
+
+            _mk_xlist(body, "Blocked (Disabled)", _dis_list)
+            _mk_xlist(body, "Allowed (Enabled)", _en_list)
+
+        def show_advanced():
+            # Full Advanced section, live where implemented.
+            for c in body.winfo_children():
+                c.destroy()
+            _ad2 = cfg.get("Advanced", {})
+            self._opt_vars = getattr(self, "_opt_vars", {})
+
+            def _save_a():
+                try:
+                    from qtranslate import config as C3
+                    import json as _j
+                    full = C3.load()
+                    full["Advanced"] = _ad2
+                    with open(C3.DEFAULT_PATH, "w",
+                              encoding="utf-8") as f:
+                        _j.dump(full, f, ensure_ascii=False, indent=1)
+                    cfg["Advanced"] = _ad2
+                except Exception:
+                    pass
+
+            for lab, key in (("Slower (clearer) listening",
+                              "EnableSlowerListening"),
+                             ("GUI translation (XDXF hover)",
+                              "EnableGuiTranslation"),
+                             ("Mouse mode on Ctrl",
+                              "EnableMouseModeOnCtrl"),
+                             ("Remove line breaks",
+                              "RemoveLineBreaks"),
+                             ("Tray click toggles mouse mode",
+                              "SwitchMouseModeOnTrayClick")):
+                vv = tk.BooleanVar(value=bool(_ad2.get(key, False)))
+                self._opt_vars[key] = vv
+                tk.Checkbutton(
+                    body, text=lab, variable=vv, bg=_COLORS["back"],
+                    fg=_COLORS["text"], selectcolor=_COLORS["back"],
+                    command=lambda k=key: (
+                        _ad2.__setitem__(k, self._opt_vars[k].get()),
+                        _save_a())).pack(anchor="w")
+            for lab, key in (("OCR API key:", "OcrApiKey"),
+                             ("Preferred domain:", "PreferredDomain"),
+                             ("Default browser id:", "DefaultBrowserId"),
+                             ("Layout indicator:", "LayoutIndicator"),
+                             ("Copy action:", "CopyAction")):
+                r = tk.Frame(body, bg=_COLORS["back"])
+                r.pack(fill="x", pady=1)
+                tk.Label(r, text=lab, width=20, anchor="w",
+                         bg=_COLORS["back"],
+                         fg=_COLORS["text"]).pack(side="left")
+                ee = tk.Entry(r, width=26)
+                ee.pack(side="left")
+                ee.insert(0, str(_ad2.get(key, "")))
+                ee.bind("<FocusOut>", lambda e, k=key, w=ee: (
+                    _ad2.__setitem__(k, w.get()), _save_a()))
+
+        def show_updates():
+            for c in body.winfo_children():
+                c.destroy()
+            _up = cfg.get("Update", {})
+
+            def _save_u():
+                try:
+                    from qtranslate import config as C3
+                    import json as _j
+                    full = C3.load()
+                    full["Update"] = _up
+                    with open(C3.DEFAULT_PATH, "w",
+                              encoding="utf-8") as f:
+                        _j.dump(full, f, ensure_ascii=False, indent=1)
+                    cfg["Update"] = _up
+                except Exception:
+                    pass
+
+            vv = tk.BooleanVar(value=bool(_up.get("CheckForUpdates",
+                                                  False)))
+            tk.Checkbutton(body, text="Check for updates on startup",
+                           variable=vv, bg=_COLORS["back"],
+                           fg=_COLORS["text"], selectcolor=_COLORS["back"],
+                           command=lambda: (
+                               _up.__setitem__("CheckForUpdates",
+                                               vv.get()),
+                               _save_u())).pack(anchor="w")
+            tk.Label(body, text="QTranslate 6.10.0 — update server is "
+                                "offline (update checker 404s; nothing to "
+                                "fetch).", bg=_COLORS["back"],
+                     fg="gray", wraplength=380,
+                     justify="left").pack(anchor="w", pady=6)
+
         def on_select(_e=None):
             if not left.curselection():
                 return
@@ -1292,6 +1457,12 @@ class App:
                 show_languages()
             elif page == "Internet":
                 show_internet()
+            elif page == "Exceptions":
+                show_exceptions()
+            elif page == "Advanced":
+                show_advanced()
+            elif page == "Updates":
+                show_updates()
             else:
                 for c in body.winfo_children():
                     c.destroy()
