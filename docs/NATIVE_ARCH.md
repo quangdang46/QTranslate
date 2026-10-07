@@ -532,6 +532,9 @@ Each user action = a `Task` object posted to a worker thread:
   major/minor/build → internal id (`DAT_005497D8`); callers branch on
   `< 7`-style checks (`0x500/0x600` thresholds = Vista/7 feature gates for
   glass, DWM, new hotkey APIs).
+- **`FUN_00405B8E` = version→id map**: 5.x→1/2 (2000/XP), 6.0→3 (Vista),
+  6.1→4 (7), 6.2→5 (8), else 6 (8.1+); 10.x build-gated → 7/8/9/10
+  (10578/14393/15063 cutoffs). XP→11 compat spine of the whole app.
 - **`FUN_004097A9` = options-page show** (`__fastcall`): dirty →
   refresh tick (`FUN_00409CC8`); clean → rebuild display
   (`FUN_00408456`) + per-item resolve/show (`FUN_004088ED`, version-gated
