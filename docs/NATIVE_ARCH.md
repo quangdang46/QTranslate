@@ -445,7 +445,10 @@ Each user action = a `Task` object posted to a worker thread:
   **`FUN_0044555D`** (`BASS_RecordStart(rate, mono, RECORDPROC
   `FUN_00445606`, ctx)` via IAT `0x50D7A4`, init at `FUN_00445515`/
   `FUN_0044187E` via IAT `0x50D79C`, error via `BASS_ErrorGetCode`) →
-  **`FUN_00445606` record callback**: chunk → `FUN_00444D94` (FLAC encode)
+  **`FUN_00445606` record callback**: chunk → `FUN_00444D94` (FLAC encode:
+  `FUN_0044DC8` alloc via `FUN_004C0BA7` + `FUN_00444E53` process via
+  `FUN_004C0200`, statically-linked libFLAC — `FLAC__STREAM_ENCODER_*`
+  strings confirm)
   → `FUN_00445659` (jitter buffer) → consumer at `ctx+0x18`
   (`EVENT_AUDIO_CHUNK` → full-duplex `up` stream) →
   FLAC encode → POST `speech-api/full-duplex/v1/up` (probed: HTTP 400 without
