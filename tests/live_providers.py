@@ -31,6 +31,11 @@ def main():
     check("baidu.detect", lambda: b.detect("Hello world"))
     check("yandex.translate EN->RU", lambda: y.translate("Good morning", "en", "ru"))
     check("bing.translate EN->VI", lambda: bing_translate("Good morning", "en", "vi"))
+    from qtranslate.services import naver as n
+    check("naver.detect", lambda: n.detect("Hello world"))
+    check("naver.translate EN->VI", lambda: n.translate("Hello world", "en", "vi")[0])
+    check("naver.dict", lambda: len(n.dictionary_search("hello", "en", "ko").get("items", [])) > 0 and "dict-items")
+    check("naver.tts", lambda: len(n.tts("Hello", "en")) > 1000 and "mp3-bytes")
 
     for name, status, detail in results:
         print(f"{status:8} {name:28} {detail}")
