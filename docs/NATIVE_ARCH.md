@@ -333,6 +333,11 @@ Each user action = a `Task` object posted to a worker thread:
   combobox fill (`CB_ADDSTRING 0x143`, 13 entries from format `DAT_0051D32C`,
   select `DAT_00549494` or default 5) + 3× RichEdit subclass
   (`FUN_004030AE`). The live binding behind `OptionsWindow`/`Page*` dialogs.
+- **`FUN_00434577` = dialog change tracker** (`__thiscall`): filters
+  `WM_COMMAND` notification codes by control class (`Edit`,
+  `HotKeyControl`, `Button` id `0x4A6`, `ComboBox[Ex32]`) → enables the
+  Apply button (`0x419`) on any real edit — standard "dirty" tracking
+  for property-sheet-style options pages.
 - **`FUN_0040E542` = conditional control**: `CB_GETCOUNT (0x147)` on combo
   `0x493` → `ShowWindow(0x4AA, SHOW/HIDE)` — dependent-option visibility
   (e.g. proxy fields only when manual proxy selected).
