@@ -1096,6 +1096,9 @@ Each user action = a `Task` object posted to a worker thread:
 - **`FUN_00462F8E` = mode lookup** (`__thiscall`): linear scan matching
   both strings (`FUN_00401FC2` ×2, `FUN_0041E45F` element read) —
   `0xFFFFFFFF` when absent. Backs both enable variants.
+- **`FUN_00463409` = struct grow** (`__thiscall`, 1.5x like
+  `FUN_0041FCDD`): backing allocator for the enable-variant's pair vector
+  — same growth idiom, different container.
 - **`FUN_00462E19` = enable variant** (`__thiscall`, empty-shortcut):
   lookup (`FUN_00462F8E`) → alloc pair + vector append (grow via
   `FUN_00463409`) — registers a mode pipeline when both sides start empty.
