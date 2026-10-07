@@ -838,6 +838,12 @@ def on_hotkey(app):
     app.src.insert("1.0", text[:2000])
     app.render(res)
     app.push_hist(svc, text[:120], res[:200])
+    # native hotkey flow shows a separate popup (TaskShowPopupWindow),
+    # not just the main window
+    try:
+        app.root.after(0, lambda: show_popup(text[:300], res, svc, tgt))
+    except Exception:
+        pass
 
 
 def on_layout_hotkey():
@@ -872,25 +878,64 @@ def main():
     root.mainloop()
 
 
-def show_popup(source, result):
-    """Back-compat headless popup used by older flows/tests."""
-    root = tk.Tk()
-    root.title("QTranslate")
-    root.attributes("-topmost", True)
-    root.configure(bg=_COLORS["back"])
-    tk.Label(root, text=source, wraplength=480, justify="left",
-             fg="gray", bg=_COLORS["back"]).pack(padx=12, pady=(12, 4))
-    tk.Label(root, text=result, wraplength=480, justify="left",
-             font=("Segoe UI", 13),
-             fg=_COLORS["text"], bg=_COLORS["back"]).pack(padx=12, pady=4)
-    frm = tk.Frame(root)
-    frm.pack(pady=(0, 12))
-    tk.Button(frm, text="Listen",
+def show_popup(source, result, service="google", target="vi"):
+    """Popup window — mirrors FUN_0040c393 render path.
+
+    Native order: SetWindowTextW(title) -> WM_SETICON(service icon) ->
+    RichEdit child content -> EM_EXLIMITTEXT-style config -> second
+    control text -> auto-resize (FUN_0044B4F4) ->
+    SetWindowPos(HWND_TOPMOST, SWP_NOMOVE|NOSIZE|SHOWWINDOW).
+    """
+    win = tk.Toplevel()
+    win.title(f"{service.title()} - QTranslate-re")
+    win.attributes("-topmost", True)
+    win.configure(bg=_COLORS["back"])
+    # header: service icon + name (WM_SETICON equivalent)
+    head = tk.Frame(win, bg=_COLORS["back"])
+    head.pack(fill="x", padx=8, pady=(8, 0))
+    try:
+        import os
+        _pats = {"google": "Google Translate", "deepl": "DeepL",
+                 "yandex": "Yandex", "baidu": "Baidu", "naver": "Naver",
+                 "youdao": "youdao", "bing": "Microsoft Translator",
+                 "microsoft": "Microsoft Translator", "promt": "Promt",
+                 "reverso": "Reverso"}
+        _ico = os.path.join("C:/Program Files (x86)/QTranslate/Services",
+                            _pats.get(service, service), "Service.ico")
+        if os.path.exists(_ico):
+            from PIL import Image, ImageTk
+            _im = Image.open(_ico).convert("RGBA").resize(
+                (20, 20), Image.LANCZOS)
+            _ph = ImageTk.PhotoImage(_im)
+            _lab = tk.Label(head, image=_ph, bg=_COLORS["back"])
+            _lab.image = _ph  # keep ref
+            _lab.pack(side="left", padx=(0, 6))
+    except Exception:
+        pass
+    tk.Label(head, text=service.title(), bg=_COLORS["back"],
+             fg=_COLORS["text"],
+             font=("Segoe UI", 10, "bold")).pack(side="left")
+    tk.Label(head, text=source[:80], bg=_COLORS["back"], fg="gray",
+             wraplength=380, justify="left").pack(side="left", padx=8)
+    # result RichEdit (auto-sized like FUN_0044B4F4)
+    lines = max(3, min(12, result.count("\n") + len(result) // 60 + 1))
+    txt = tk.Text(win, height=lines, wrap="word", bg=_COLORS["back"],
+                  fg=_COLORS["text"], insertbackground=_COLORS["text"],
+                  font=("Segoe UI", 12))
+    txt.pack(fill="both", expand=True, padx=8, pady=4)
+    txt.insert("1.0", result)
+    txt.config(state="disabled")
+    frm = tk.Frame(win, bg=_COLORS["back"])
+    frm.pack(pady=(0, 8))
+    tk.Button(frm, text="\U0001f3a7 Listen",
               command=lambda: threading.Thread(
-                  target=speak, args=(result, TARGET),
-                  daemon=True).start()).pack(side="left", padx=6)
-    tk.Button(frm, text="Close", command=root.destroy).pack(side="left")
-    root.mainloop()
+                  target=speak, args=(result, target),
+                  daemon=True).start()).pack(side="left", padx=4)
+    tk.Button(frm, text="Copy",
+              command=lambda: pyperclip.copy(result)
+              if _HAS_KEYS else None).pack(side="left", padx=4)
+    tk.Button(frm, text="Close",
+              command=win.destroy).pack(side="left", padx=4)
 
 
 if __name__ == "__main__":
