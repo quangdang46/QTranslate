@@ -37,6 +37,9 @@ def t(pack: dict, section: str, index: int, default: str = "") -> str:
 
 
 if __name__ == "__main__":
+    import io
+    import sys
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
     print(len(list_locales()), "locales")
     vi = load_pack("Vietnamese")
     print(vi["LanguageNativeName"], t(vi, "Strings", 0)[:40])
