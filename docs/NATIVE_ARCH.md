@@ -471,6 +471,9 @@ Each user action = a `Task` object posted to a worker thread:
   switch): walks all services, keeps `caps & mask` (`+4` field), rebuilds
   the active list (`RemoveAll` + push-back) — drives which providers show
   in translate vs dictionary UI.
+- **`FUN_004643DC` = count fix + freelist push** (`__thiscall`, called
+  from unlink): decrement + recycle node + empty-callback
+  (`FUN_004641AA` when zero) — keeps counts exact across edits.
 - **`FUN_004641EE` = list walker** (advance + payload at `+2`,
   fail-fast on end): iterator behind the remove/notify walk in
   `FUN_004636A0`.
