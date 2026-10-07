@@ -948,6 +948,108 @@ class App:
             tk.Button(frm, text="Clear",
                       command=_clear).pack(side="left", padx=4)
 
+        def show_services():
+            # Translate services (ServicesOrder + DisabledServices) and
+            # dictionary services (DictionariesOrder +
+            # DisabledDictionaries); check = enabled, writes Options.json.
+            for c in body.winfo_children():
+                c.destroy()
+            try:
+                from qtranslate import config as C2
+                _order = list(cfg.get("ServicesOrder", []))
+                _dis = set(cfg.get("DisabledServices", []))
+                _dorder = list(cfg.get("DictionariesOrder", []))
+                _ddis = set(cfg.get("DisabledDictionaries", []))
+                _names = dict(C2.SERVICE_NAMES)
+            except Exception:
+                _order, _dis, _dorder, _ddis, _names = [], set(), [], \
+                    set(), {}
+            from qtranslate.services import dictionary as _D
+            _dnames = {10: "google-search", 14: "wikipedia", 17: "multitran",
+                       18: "imtranslator", 19: "wordreference", 20: "babylon",
+                       22: "reverso", 24: "urban", 25: "lingvo",
+                       26: "youdao", 29: "oxford"}
+            self._opt_vars = getattr(self, "_opt_vars", {})
+
+            def _save():
+                try:
+                    from qtranslate import config as C3
+                    import json as _j
+                    full = C3.load()
+                    full["ServicesOrder"] = _order
+                    full["DisabledServices"] = sorted(_dis)
+                    full["DictionariesOrder"] = _dorder
+                    full["DisabledDictionaries"] = sorted(_ddis)
+                    with open(C3.DEFAULT_PATH, "w",
+                              encoding="utf-8") as f:
+                        _j.dump(full, f, ensure_ascii=False, indent=1)
+                    cfg["ServicesOrder"] = _order
+                    cfg["DisabledServices"] = sorted(_dis)
+                    cfg["DictionariesOrder"] = _dorder
+                    cfg["DisabledDictionaries"] = sorted(_ddis)
+                except Exception:
+                    pass
+
+            def _mk_list(parent, title, order, disabled, names):
+                tk.Label(parent, text=title, bg=_COLORS["back"],
+                         fg=_COLORS["text"],
+                         font=("Segoe UI", 10, "bold")).pack(anchor="w")
+                fr = tk.Frame(parent, bg=_COLORS["back"])
+                fr.pack(fill="both", expand=True)
+                lb = tk.Listbox(fr, height=6, selectmode="single",
+                                bg="white", fg="black")
+                lb.pack(side="left", fill="both", expand=True)
+                for i in order:
+                    lb.insert("end", names.get(i, f"id:{i}"))
+                sb = tk.Frame(fr, bg=_COLORS["back"])
+                sb.pack(side="left", padx=2)
+
+                def _refresh():
+                    lb.delete(0, "end")
+                    for i in order:
+                        lb.insert("end", names.get(i, f"id:{i}"))
+                    _save()
+
+                def _move(d):
+                    s = lb.curselection()
+                    if not s:
+                        return
+                    i = s[0]
+                    j = i + d
+                    if 0 <= j < len(order):
+                        order[i], order[j] = order[j], order[i]
+                        _refresh()
+                        lb.selection_set(j)
+
+                def _toggle():
+                    s = lb.curselection()
+                    if not s:
+                        return
+                    sid = order[s[0]]
+                    if sid in disabled:
+                        disabled.discard(sid)
+                    else:
+                        disabled.add(sid)
+                    _save()
+                    _paint()
+
+                def _paint():
+                    for idx, sid in enumerate(order):
+                        lb.itemconfig(
+                            idx, fg="gray" if sid in disabled else "black")
+                _paint()
+
+                tk.Button(sb, text="▲", width=3,
+                          command=lambda: _move(-1)).pack(pady=1)
+                tk.Button(sb, text="▼", width=3,
+                          command=lambda: _move(1)).pack(pady=1)
+                tk.Button(sb, text="On/Off", width=5,
+                          command=_toggle).pack(pady=1)
+                return lb
+
+            _mk_list(body, "Translation services", _order, _dis, _names)
+            _mk_list(body, "Dictionary services", _dorder, _ddis, _dnames)
+
         def on_select(_e=None):
             if not left.curselection():
                 return
@@ -958,6 +1060,8 @@ class App:
                 show_appearance()
             elif page == "Hotkeys":
                 show_hotkeys()
+            elif page == "Services":
+                show_services()
             else:
                 for c in body.winfo_children():
                     c.destroy()
