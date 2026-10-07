@@ -84,6 +84,12 @@ Each user action = a `Task` object posted to a worker thread:
    `WindowFromPoint` → class name `#32768` (the system menu class) check —
    suppresses mouse-mode capture while a popup menu is showing under the
    cursor (used by the clipboard-monitor gate in `FUN_0043C02B`).
+0d2. **Mouse modes** (from `Locales/English/help.txt`, behavior spec):
+   1) Show icon (select → icon near cursor → click = popup); 2) Show
+   translation (select → immediate popup); 3) Show translation + read aloud.
+   Service-name clicks: left = switch+translate, middle = open in browser,
+   right = multi-select toggle. Tray: left = mouse-mode toggle, double =
+   main window; popup header double-click = main window.
 0d. **`FUN_004193F6` = click-capture trigger** (on `0x201` LBUTTONDOWN):
    `WindowFromPoint` (`FUN_00450DD2` = `WindowFromPoint` → `FUN_00450D7C`
    (`EnumChildWindows` + hit-test callback `FUN_00450CFA` = `PtInRect` +
