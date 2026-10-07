@@ -59,6 +59,13 @@ All entries are clean-room RE of QTranslate 6.10.0 for education.
   (native escapeStr keeps unicode)
 - `tests/ui_match.py` 68/68
 
+## History favorites (2026-10-08, strings 201/202)
+
+- Star column + Favorite toggle + HistoryFilterFavorites filter;
+  4-slot tuples with 3-slot file compat; tuple-safe unpacks
+- Toolbar New (DLG129 id1021); DLG129 17-control table documented
+- `tests/ui_match.py` 71/71
+
 ## Session loop (2026-10-08, panes + langs + options roundtrip)
 
 - Contents.Edit*/SaveOnExit pane cache; SaveHistoryPath export dir;
