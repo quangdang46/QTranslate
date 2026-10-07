@@ -70,6 +70,10 @@ Each user action = a `Task` object posted to a worker thread:
    RawInput (`UsagePage 1 / Usage 2`, `RIDEV_INPUTSINK 0x100` when enabling)
    so mouse-mode capture receives movement even unfocused; then
    `FUN_00418B69` state sync.
+0c. **`FUN_00417E4E` = RawInput mouse handler** (`GetRawInputData/RID_INPUT`
+   via IAT `0x50D580`, gated by `DAT_005494E7` + `FUN_004544AE`): maps
+   button flags to `WM_LBUTTONDOWN/UP (0x201/0x202)`, stamps
+   `GetCursorPos` + `GetTickCount` → `FUN_004193F6` click-capture trigger.
 0b. **`FUN_00418C23` = hotkey bulk registrar**: unregisters all existing
    (`UnregisterHotKey` loop over the id vector at `this+0x17D8`) → registers
    17 hotkeys from consecutive option words (`DAT_00549466 + i*2`, matching
