@@ -37,7 +37,7 @@ python -I qtranslate/tts.py "Xin chào" vi google.mp3
 | Youdao | ✅ | — | — | ✅ | **live OK** (`jsonapi_s` translate + `/w/` dictionary, no sign needed, 2026-10-07) |
 | Reverso | ✅ | — | — | ✅ | **live OK** (context JSON API, no auth; legacy HTML path 403) |
 | ImTranslator | ✅ | — | — | — | ported; endpoint 404 (retired) |
-| WordReference | — | — | — | ✅ | ported; Anubis bot-wall (needs headless) |
+| WordReference | — | — | — | ✅ | **live OK** (headless Chromium via `headless.py`, 2026-10-07) |
 | Oxford Learner | — | — | — | ✅ | **live OK** |
 | Multitran | — | — | — | ✅ | **live OK** (anchor-table slice fix, 2026-10-07) |
 | Babylon / Babylon Dict | — | — | — | ✅ | ported; translate 404 + dict TLS-handshake-fail (servers retired) |

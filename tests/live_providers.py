@@ -47,6 +47,8 @@ def main():
     check("dict.multitran", lambda: dd.multitran_lookup("hello", 1, 2))
     check("reverso.translate EN->FR",
           lambda: dd.reverso_translate("Hello world", "en", "fr"))
+    check("dict.wordreference",
+          lambda: dd.wordreference_lookup("hello", "en", "ru"))
 
     for name, status, detail in results:
         print(f"{status:8} {name:28} {detail}")

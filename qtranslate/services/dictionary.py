@@ -296,9 +296,17 @@ WORDREF_LANGS = [None, "", None, None, None, "ar", None, None, None, None,
                  None, None, None, None, None, None]
 
 
-def wordreference_lookup(word, sl, tl):
+def wordreference_lookup(word, sl, tl, headless_fallback=True):
     url = WORDREF_HOST + "/{0}{1}/{2}".format(sl, tl, _q(word))
     page = _get(url)
+    if "not a bot" in page and headless_fallback:
+        # Anubis JS-challenge wall — re-fetch via headless Chromium
+        # (qtranslate/headless.py). Verified 2026-10-07.
+        try:
+            from qtranslate.headless import wordreference_html
+            page = wordreference_html(word, sl, tl)
+        except Exception:
+            pass
     frag = _sub(page, re.compile(r'<div id="(articleWRD|article)">'), False,
                 '<div id="postArticle">', False)
     if not frag:

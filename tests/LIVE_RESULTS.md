@@ -51,7 +51,7 @@ verified non-empty. Total live-verified endpoints: 12.)
 | Babylon | SSL verify fail (host cert chain broken/retired) |
 | Wikipedia | **LIVE-OK** (Vector-skin fallback slice, 2026-10-07) |
 | Multitran | **LIVE-OK** (anchor-table slice fix, 2026-10-07) |
-| WordReference | Anubis bot-wall ("Making sure you're not a bot!") — needs headless |
+| WordReference | **LIVE-OK via headless Chromium** (`qtranslate/headless.py`, stealth flags beat the Anubis wall, 2026-10-07) |
 
 ## Known-dead / blocked endpoints (as of 2026-10-07)
 
