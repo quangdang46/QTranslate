@@ -177,6 +177,30 @@ check("langs-codes-rt",
       and A.LANG_CODES.get("Auto-Detect") == "auto")
 check("langs-no-auto-target", "auto" not in A.TO_LANGS)
 
+# 12. i18n helper (lang.json Id maps; English falls back to default)
+check("i18n-en-fallback",
+      A._T("Menus", 20, "Copy translation", menu=3)
+      == "Copy translation")
+try:
+    from qtranslate import locale as _L
+    _vi = _L.load_pack("Vietnamese")
+    A._PACK.clear()
+    A._PACK.update(_vi)
+    A._PACK_NAME[0] = "Vietnamese"
+    _real_pack = A._pack
+    A._pack = lambda: A._PACK
+    check("i18n-vi-menu",
+          A._T("Menus", 20, "dflt", menu=3) == "Chép bản dịch",
+          A._T("Menus", 20, "dflt", menu=3))
+    check("i18n-vi-tray",
+          A._T("Menus", 10, "dflt", menu=5) == "Từ điển",
+          A._T("Menus", 10, "dflt", menu=5))
+    A._pack = _real_pack
+    A._PACK.clear()
+    A._PACK_NAME[0] = None
+except Exception as e:
+    check("i18n-vi-load", False, str(e)[:100])
+
 root.destroy()
 print(f"\n{len(PASS)} passed, {len(FAIL)} failed")
 sys.exit(1 if FAIL else 0)
