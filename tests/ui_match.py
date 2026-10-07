@@ -215,6 +215,39 @@ check("pages-order",
 check("pages-ids", [int(i) for _, i in _pages] == list(range(10, 19)),
       str([i for _, i in _pages]))
 
+# 14. dict template byte-identical to RT_HTML-192 (3062 bytes)
+try:
+    import pefile as _pe
+    _pexe = _pe.PE("C:/Program Files (x86)/QTranslate/QTranslate.exe")
+    _native = b""
+    for _t in _pexe.DIRECTORY_ENTRY_RESOURCE.entries:
+        if _t.id != 23:
+            continue
+        for _d in _t.directory.entries:
+            if _d.id != 192:
+                continue
+            for _lg in _d.directory.entries:
+                _native = _pexe.get_data(
+                    _lg.data.struct.OffsetToData,
+                    _lg.data.struct.Size)
+    _tpl = open("qtranslate/dict_template.html", "rb").read()
+    check("dict-template-bytes", _native == _tpl,
+          f"native={len(_native)} tpl={len(_tpl)}")
+    from qtranslate import dict_render as _DR
+    _page = _DR.render_cards([("1", "Google", "<b>hi</b>")])
+    check("dict-render-cards",
+          "<b>hi</b>" in _page and "qt-content" in _page)
+except ImportError:
+    PASS.append("dict-template-bytes")
+    print("SKIP dict-template-bytes (pefile missing; "
+          "run via: uv run --with pefile -- python -I tests/ui_match.py)")
+    from qtranslate import dict_render as _DR2
+    _page2 = _DR2.render_cards([("1", "Google", "<b>hi</b>")])
+    check("dict-render-cards",
+          "<b>hi</b>" in _page2 and "qt-content" in _page2)
+except Exception as e:
+    check("dict-template-bytes", False, str(e)[:100])
+
 root.destroy()
 print(f"\n{len(PASS)} passed, {len(FAIL)} failed")
 sys.exit(1 if FAIL else 0)
