@@ -282,6 +282,9 @@ Each user action = a `Task` object posted to a worker thread:
 - **`FUN_004661D1` = dispatch-get helper** (`__thiscall`, used by both
   validators): `IDispatchEx::GetDispID (+0x14, grfdex 0x400)` + invoke
   (`FUN_00466181`) — single choke point for all JS field reads.
+- **`FUN_00420C91` = prime capacity table** (lookup in `DAT_0051C8E8`
+  prime list by `FUN_004F4BD0` size hint, `0xFFFFFFFF` = use-raw) —
+  backing all hash-table growth in the app.
 - **`FUN_00420B9E` = hash rehash/shrink** (`__thiscall`): realloc bucket
   array + rechain all entries by recomputed `hash % newcap` — standard
   unordered-map maintenance behind the DISPID + option tables.
