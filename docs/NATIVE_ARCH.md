@@ -414,6 +414,12 @@ Each user action = a `Task` object posted to a worker thread:
   (IAT `0x50D64C`) with shift-state synthesis. `GetKeyboardLayout` (IAT
   `0x50D61C`) consumer at `FUN_004140C1` (layout indicator update).
 
+## Winsock note
+
+- `WSAStartup`/`WSACleanup` are imported but have **zero callers** in app
+  code — the statically-linked libcurl initializes Winsock itself on first
+  `curl_easy` use. No app-level socket code exists outside libcurl/BASS.
+
 ## HTTP fetch wrappers (decompiled)
 
 - **GET = `FUN_0045BCED`** (url, out, flags, timeout `0xFDE9`, retries):
