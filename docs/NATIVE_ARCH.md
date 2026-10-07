@@ -34,6 +34,10 @@ Symbols stripped, but **RTTI intact** — full class map recovered from `.rdata`
   `WindowPopupIcons`, `ProgressWindow`, RichEdit init) — offsets give the
   member layout for a future C++ reconstruction.
 - **`FUN_00403057` = ATL thunk allocator** (`AtlThunk_AllocateData/InitData`).
+- **`FUN_00421677` = WndClass guard+register** (`0xC0000005` on null):
+  stores WndProc + creating-thread id, inserts into the
+  critical-section-guarded class list (`DAT_00544BF0`) — every custom
+  window class (popup, HotKeyControl, clipboard viewer) registers here.
 - **`FUN_00421892` = WndClass registration** (cursor, `GetClassInfoExW` chain,
   `RegisterClassExW`).
 - Audio imports confirmed: `BASS_StreamCreateFile/ChannelPlay/Init/Free`,
