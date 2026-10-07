@@ -920,6 +920,12 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Auto-update + proxy (decompiled, probed)
 
+- **`FUN_0043FBF8`/`FUN_0043F71A` = JSON parser** (recursive descent into
+  a `json::` DOM with `Null` vftable): `"`→`FUN_0043F865` string,
+  `[`→`FUN_0043FDA1` array, `{`→`FUN_0043FC8F` object, `f/t/n`→literals,
+  `-/0-9`→`FUN_0043FA44` number. Backs Options/History/config + every
+  provider JSON response parse. (Our Python uses stdlib `json` —
+  behaviorally identical.)
 - **`FUN_00461ADE` = update parser** (called from the checker):
   JSON-parse (`FUN_0043F71A`) → `urls` array (`FUN_00440A08`) → per-URL
   download jobs. Dead path now (server 404), but documents the
