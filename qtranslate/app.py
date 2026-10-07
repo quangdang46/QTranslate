@@ -1469,10 +1469,17 @@ class App:
         left = tk.Listbox(w, width=14, height=20, bg=_COLORS["back"],
                           fg=_COLORS["text"])
         left.pack(side="left", fill="y", padx=8, pady=8)
-        pages = ["Basics", "Hotkeys", "Internet", "Services", "Languages",
-                 "Appearance", "Exceptions", "Advanced", "Updates"]
-        for p in pages:
-            left.insert("end", p)
+        # Page order = Windows Ids 10-18 (Basics/Internet/Services/
+        # Languages/Appearance/Exceptions/Hotkeys/Advanced/Updates);
+        # labels localized via _W. _PAGE_IDS maps listbox index.
+        _PAGES = [("Basics", 10), ("Internet", 11), ("Services", 12),
+                  ("Languages", 13), ("Appearance", 14),
+                  ("Exceptions", 15), ("Hotkeys", 16), ("Advanced", 17),
+                  ("Updates", 18)]
+        pages = [p for p, _ in _PAGES]
+        _PAGE_IDS = {p: i for i, (p, _) in enumerate(_PAGES)}
+        for p, wid in _PAGES:
+            left.insert("end", _W(wid, p))
         body = tk.Frame(w, bg=_COLORS["back"])
         body.pack(side="left", fill="both", expand=True, padx=8, pady=8)
 
@@ -2344,7 +2351,8 @@ class App:
         def on_select(_e=None):
             if not left.curselection():
                 return
-            page = left.get(left.curselection()[0])
+            # map back via index (labels are localized)
+            page = pages[left.curselection()[0]]
             if page == "Basics":
                 show_basics()
             elif page == "Appearance":
