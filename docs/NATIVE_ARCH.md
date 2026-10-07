@@ -455,7 +455,8 @@ Each user action = a `Task` object posted to a worker thread:
   key, i.e. host alive but needs valid key + FLAC body — same class of block
   as Bing/Promt, documented not hidden). State machine
   `STATE_WAITING_FOR_SPEECH` → `STATE_RECOGNIZING` with `EVENT_AUDIO_CHUNK`
-  streaming; `EnergyEndpointer` cuts silence.
+  streaming; `EnergyEndpointer` (RTTI-only, no dedicated strings — simple
+  inline RMS-threshold VAD) cuts silence.
 
 ## JS framework (`Services/Common.js` → `qtranslate/common.py`)
 
