@@ -1,30 +1,29 @@
-# Live verification results (2026-10-07)
+# Live verification results (2026-10-08)
 
 Run: `python -I tests/live_providers.py`
 
 ```
-LIVE-OK  google.translate EN->VI      Chào buổi sáng
+LIVE-OK  google.translate EN->VI      Chào buổi sáng
 LIVE-OK  google.tts                   mp3-bytes
 LIVE-OK  deepl.detect                 EN
 LIVE-OK  deepl.translate EN->VI       Chào buổi sáng
 LIVE-OK  baidu.detect                 en
+LIVE-OK  baidu.suggest                suggest-entries
 LIVE-OK  yandex.translate EN->RU      Доброе утро
 LIVE-OK  bing.translate EN->VI        Chào buổi sáng
-LIVE-OK  youdao.translate_web EN->ZH   (web_trans values)
+LIVE-OK  youdao.translate_web EN->ZH  早上好
 LIVE-OK  youdao.dictionary            dict-html
 LIVE-OK  naver.detect                 en
 LIVE-OK  naver.translate EN->VI       Xin chào thế giới
 LIVE-OK  naver.dict                   dict-items
 LIVE-OK  naver.tts                    mp3-bytes
-LIVE-OK  dict.oxford                  entry HTML
-LIVE-OK  dict.lingvo                  Universal Dictionary HTML
-LIVE-OK  dict.urban                   definition group HTML
-LIVE-OK  dict.wikipedia               bodyContent HTML
-LIVE-OK  dict.multitran               anchor-table HTML
+LIVE-OK  dict.oxford                  <div><style>.phonetics-font,.eph,.phon{font-family:"Lucida Sans Unicode",Arial}.
+LIVE-OK  dict.lingvo                  <div class="_QT6_ALLs"><style>._QT6_ALLs *{font-size:100%}._QT6_ALLs table{borde
+LIVE-OK  dict.urban                   <div><style>.justify-between,.mug-ad,.ad-panel{display:none}.italic{font-style:i
+LIVE-OK  dict.wikipedia               <div aria-labelledby="firstHeading" data-mw-ve-target-container>
+LIVE-OK  dict.multitran               <div><style>.gray{border:1px dotted gray}</style><table width="100%">
 LIVE-OK  reverso.translate EN->FR     bonjour tout le monde
-LIVE-OK  dict.wordreference           article HTML (via headless)
-LIVE-OK  baidu.suggest                suggest-entries
-
+LIVE-OK  dict.wordreference           <div><style>.rh_me,span.phrase,span.hw{font-weight: bold}.rh_ex,.FrEx,.ToEx{disp
 21/21 live OK
 ```
 
