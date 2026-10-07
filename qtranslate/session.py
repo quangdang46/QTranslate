@@ -107,7 +107,8 @@ def promt_session() -> dict:
 
 if __name__ == "__main__":
     import json
-    print("bing:", json.dumps(bing_session()))
+    s = bing_session()
+    print("bing:", json.dumps({k: v for k, v in s.items() if k != "opener"}))
     try:
         print("promt:", json.dumps(promt_session()))
     except Exception as e:
