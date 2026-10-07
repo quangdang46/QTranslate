@@ -3,6 +3,22 @@
 All entries are clean-room RE of QTranslate 6.10.0 for education.
 `LIVE-OK` = verified against the real provider endpoint.
 
+## UI 1:1 loop (2026-10-07/08, verified side-by-side vs native window)
+
+- Main: full help.txt default text, ServicesOrder strip
+  (Go..Mi..Pr..Ba..Ya..yo..Ba..Pa..DeepL), mic/headphone overlays,
+  native error string, Tahoma, WINDOWPLACEMENT restore (526x366)
+- Options 9/9 live on real Options.json: Basics, Appearance,
+  Hotkeys (17 actions + Change/Clear), Services, Languages,
+  Internet, Exceptions, Advanced, Updates
+- History = DLG164 (Treeview + Clear + Save as) + History.json
+  persistence; popup = borderless themed + dbl-click; Dictionary =
+  services pane + XDXF-offline-first + zoom + history
+- Hotkeys registrar reads Options.json (Alt+W replace, Ctrl+Q popup,
+  clipboard monitor toggles); tray (pystray, optional); TTS slow flag;
+  net stack honors Timeout+Proxy; OCR uses real OcrApiKey
+- Suites: live 21/21, `tests/ui_match.py` 35/35, smoke 9/9
+
 ## Services (`qtranslate/services/`)
 
 - google_translate.py — `tk()` token + `/translate_a/single?client=gtx`,

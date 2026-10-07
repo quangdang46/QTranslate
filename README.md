@@ -20,6 +20,17 @@ popup render + TTS).
 ```bash
 python -I qtranslate/services/google_translate.py "Hello world" vi
 python -I qtranslate/tts.py "Xin chào" vi google.mp3
+# Full native-like UI (main + popup + Options 9/9 + History + Dictionary
+# + tray + hotkeys from your real Options.json):
+python -I start_app.py
+```
+
+## Test suites (all green 2026-10-08)
+
+```bash
+python -I tests/live_providers.py  # 21/21 vs real endpoints
+python -I tests/ui_match.py        # 35/35 vs native window/Options.json
+python -I tests/smoke_dict.py      # 9/9 (dict + config + hotkeys)
 ```
 
 ## Provider status
