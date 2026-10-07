@@ -359,6 +359,14 @@ Each user action = a `Task` object posted to a worker thread:
   + `GetTickCount` vs last-press (`this+0x183C`) within `GetDoubleClickTime`
   = double-press detected, timestamp reset. Single-press = plain equality.
 
+## Theme-aware control dispatcher (decompiled)
+
+- **`FUN_0040767C` = themed control proc** (`__thiscall`, theme store
+  `DAT_005491E8`): dispatches by message (`1` = measure `FUN_0040793A`,
+  `2` = reset, `5` = update `FUN_00407A59`, `0x14` = paint `FUN_004079DA`,
+  owner `FUN_00407B18` sibling) — every owner-drawn button/list in popups
+  and dialogs paints through here with the active theme palette.
+
 ## Tooltip + balloon (decompiled)
 
 - **`FUN_00403E00` = tooltip creator** (`__thiscall`): `CreateWindowExW(
