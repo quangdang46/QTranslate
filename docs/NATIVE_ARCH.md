@@ -399,6 +399,10 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Options dialog refresh (decompiled)
 
+- **`FUN_0042C844` = SpellProvider ctor** (`__fastcall`): sets
+  `common::SpellProvider::vftable` → init (`FUN_0043AFDB`/`FUN_0043AEEA`) →
+  clears suggestion list (`FUN_00408010`) → base `Runnable::vftable`. Sibling
+  `FUN_0042C882` mirrors for the Yandex variant.
 - **`FUN_00408010` = services-list clear** (`__fastcall`): frees each
   entry (`+0xC` payload + object) and zeroes the vector — runs before every
   rebuild of the Services page list (after slot re-scan).
