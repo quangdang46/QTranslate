@@ -84,6 +84,12 @@ All entries are clean-room RE of QTranslate 6.10.0 for education.
   Extended (absent in modern Options.json), TTS phonetic (no API)
 - `tests/ui_match.py` 71/71
 
+## Theme loop (2026-10-08, ThemeName roundtrip)
+
+- Theme choice persists `Appearance.ThemeName`; popup honors it
+  (was hardcoded Flat Dark); `theme._hex` always 6-digit for Tk
+- `tests/ui_match.py` 72/72 (hex + 8 palettes + vi boot)
+
 ## Services (`qtranslate/services/`)
 
 - google_translate.py — `tk()` token + `/translate_a/single?client=gtx`,
