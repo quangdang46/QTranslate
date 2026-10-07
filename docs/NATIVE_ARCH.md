@@ -105,6 +105,12 @@ Each user action = a `Task` object posted to a worker thread:
   `SetWindowPos(HWND_TOPMOST, SWP_NOMOVE|NOSIZE|SHOWWINDOW = 0x40B)`.
   Sibling renderers share the pattern: `FUN_00411F80`, `FUN_004127DA`,
   `FUN_0042EFDA/0042F96B/0042F19A`.
+- **`FUN_004030AE` = RichEdit subclasser**: ATL thunk alloc + `SetWindowLongW(GWL_WNDPROC)`
+  — popup text controls get a custom WndProc for link-click/hover handling.
+- **`FUN_0044B4F4` = popup layout engine**: walks child windows
+  (`GetWindow GW_CHILD`), classifies Button vs Static via class-name compare,
+  resizes/repositions each (`FUN_0044BD0F`/`FUN_0044BECE`) — the auto-fit
+  logic that sizes the popup to content length.
 
 ## JS engine hosting (decompiled, verified)
 
