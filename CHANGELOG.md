@@ -3,6 +3,14 @@
 All entries are clean-room RE of QTranslate 6.10.0 for education.
 `LIVE-OK` = verified against the real provider endpoint.
 
+## Babylon translate (2026-10-08, ID 13 ported 1:1)
+
+- `services/babylon.py`: header/host/link, SupportedLanguages (76),
+  JSONP request/response (paren-strip, [1] branch, `*` -> NL);
+  endpoint SSL dead server-side (native error string via do_translate)
+- Strip now 9/9 ServicesOrder; dict fixed to ID 20 lookup
+- `tests/ui_match.py` 79/79
+
 ## UI 1:1 loop (2026-10-07/08, verified side-by-side vs native window)
 
 - Main: full help.txt default text, ServicesOrder strip
