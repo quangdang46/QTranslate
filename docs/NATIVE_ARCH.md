@@ -920,6 +920,9 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Auto-update + proxy (decompiled, probed)
 
+- **`FUN_004D56B9` = heap bottom** (`__malloc_base` wrapper): all
+  container growth bottoms out at CRT malloc — memory chain fully closed
+  (freelist → chunks → malloc, no custom heap).
 - **`FUN_0042133C` = freelist chunk allocator** (`__fastcall`,
   overflow-checked `count*size`): backs the DOM node pool + hash buckets —
   single allocator behind all container growth (no raw new[] in hot paths).
