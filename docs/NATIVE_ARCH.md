@@ -383,6 +383,9 @@ Each user action = a `Task` object posted to a worker thread:
 - **`FUN_00449B9C` = solid fill** (`__fastcall`): `SetBkColor` +
   `ExtTextOutW(OPAQUE)` + restore — the actual background fill behind
   themed controls and capture overlays.
+- **`FUN_00449B32` = handle painter** (`__fastcall`): 1px black pen +
+  null brush (`GetStockObject(5)`) + `Rectangle` — hollow resize handles
+  on the ScreenCapture selection (8 points).
 - **`FUN_0044C5A1` = luma direction flag**: `(B*0x4D + G*0x97 + R*0x1C) <
   0xE400` (ITU-R BT.601 luma weights) → dark bg lightens (+10), light bg
   darkens (−10). `FUN_0044A163` does the HLS shift; ported to
