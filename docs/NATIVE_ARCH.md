@@ -407,6 +407,9 @@ Each user action = a `Task` object posted to a worker thread:
   sub-layout (`+0x48/+0x54`) → hotkey-test refresh (`FUN_00409EC0`) +
   show-layout (`FUN_00408ADE`). Service ids 5/`0x1A`/`0x2A`/`0x38`/`0x3B`
   take a flag variant.
+- **`FUN_00427D21` = raw applier** (`__thiscall`): bare
+  `SetWindowPlacement`, no validation — internal fast path when the blob
+  is already trusted (post-startup restores).
 - **`FUN_00422D8B` = placement applier** (`__thiscall`,
   `SetWindowPlacement` via IAT `0x50D514`): validates `length == 0x2C`,
   honors DPI flag (`FUN_00450B5C`), maximized shortcut (`showCmd 3`),
