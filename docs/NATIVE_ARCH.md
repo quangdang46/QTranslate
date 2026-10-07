@@ -338,6 +338,10 @@ Each user action = a `Task` object posted to a worker thread:
   `HotKeyControl`, `Button` id `0x4A6`, `ComboBox[Ex32]`) → enables the
   Apply button (`0x419`) on any real edit — standard "dirty" tracking
   for property-sheet-style options pages.
+- **`FUN_0043471D` = list-change tracker** (sibling): `WM_NOTIFY`
+  (`lParam[2] == -0x65`) from `SysListView32` with state-change bits
+  (`0x3000` = check/select) → same Apply-enable — covers the
+  services/dictionaries reorder lists.
 - **`FUN_0040E542` = conditional control**: `CB_GETCOUNT (0x147)` on combo
   `0x493` → `ShowWindow(0x4AA, SHOW/HIDE)` — dependent-option visibility
   (e.g. proxy fields only when manual proxy selected).
