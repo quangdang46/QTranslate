@@ -32,7 +32,7 @@ python -I qtranslate/tts.py "Xin chào" vi google.mp3
 | Microsoft (Bing) | ✅ | ✅ | — | — | **live OK** (shared cookie jar — decompile insight from `FUN_00465A92`) |
 | Yandex | ✅ | ✅ | ✅ | — | **live OK via Android variant** (`srv=android` + ucid, researched 2026-10-07) |
 | Baidu | ✅ | ✅ | ✅ | — | detect live OK; translate needs page token (web API locked, 2026-10-07) |
-| Naver (Papago) | ✅ | ✅ | ✅ | — | ported, **endpoint dead (/apis/* → 404, 2026-10-07)** |
+| Naver (Papago) | ✅ | ✅ | ✅ | ✅ | **live OK** (new `/api/text/*`, `/api/tts/*`, `/api/dictionary/*` — no auth, 2026-10-07) |
 | Promt | ✅ | — | — | — | signing verified; API 400 (needs JS `paft`) |
 | Youdao | ✅ | — | — | — | signing verified; API errorCode 50 (needs `mysticTime`) |
 | Reverso | ✅ | — | — | ✅ | ported; site 403 (bot-wall) |

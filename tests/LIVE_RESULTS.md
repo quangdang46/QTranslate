@@ -89,4 +89,7 @@ Probed 2026-10-07 with shared-jar sessions — tokens absent from static HTML:
 - Youdao: live OUTFOX cookie plumbed through (was hardcoded), but
   translate_o → `errorCode 50` (new `bv`/`mysticTime` fields required).
 - Promt: Antiforgery cookies OK, `paft` absent → API 400. ghcs() verified.
-- Naver: `/apis/*` 404 (migrated off the old stack entirely).
+- Naver: legacy `/apis/*` 404 (migrated), but new web API
+  (`/api/text/translation`, `/api/langs/dect`, `/api/dictionary/search`,
+  `/api/tts/makeID` + `/api/tts/{id}`) is **LIVE-OK with no auth**
+  (reversed 2026-10-07 from Next.js chunks; speaker map ported).
