@@ -687,6 +687,17 @@ class App:
                                 width=13, state="readonly")
         self.tgt.set(LANG_DISPLAY.get(self.target, self.target))
         self.tgt.pack(side="left", padx=2)
+        self.tgt.bind("<<ComboboxSelected>>",
+                      lambda e: self._persist_langs(
+                          LANG_CODES.get(self.src_lang.get().strip(),
+                                         "auto"),
+                          LANG_CODES.get(self.tgt.get().strip(), "vi")))
+        self.src_lang.bind("<<ComboboxSelected>>",
+                           lambda e: self._persist_langs(
+                               LANG_CODES.get(
+                                   self.src_lang.get().strip(), "auto"),
+                               LANG_CODES.get(self.tgt.get().strip(),
+                                              "vi")))
         tk.Button(bar, text=_Cw(1, 1004, "Translate"),
                   command=self.on_go).pack(side="left", padx=4)
         self.suggest = tk.Label(self.root, text="", bg=bg, fg="gray",
@@ -1429,11 +1440,40 @@ class App:
         self.history.append((svc, src, res))
         self._hist_pos = len(self.history) - 1
 
+    @staticmethod
+    def _persist_langs(src_code: str, tgt_code: str):
+        # Native remembers the pair (General.LanguageFrom/To indices
+        # into SupportedLanguages).
+        try:
+            from qtranslate import config as _C
+            import json as _j
+            _table = list(__import__(
+                "qtranslate.services.google_translate",
+                fromlist=["SUPPORTED_LANGS"]).SUPPORTED_LANGS)
+            full = _C.load()
+            try:
+                full.setdefault("General", {})["LanguageFrom"] = \
+                    _table.index(src_code)
+            except ValueError:
+                pass
+            try:
+                full["General"]["LanguageTo"] = _table.index(tgt_code)
+            except ValueError:
+                pass
+            with open(_C.DEFAULT_PATH, "w",
+                      encoding="utf-8") as f:
+                _j.dump(full, f, ensure_ascii=False, indent=1)
+        except Exception:
+            pass
+
     def on_swap(self):
         a, b = self.src_lang.get(), self.tgt.get()
         if LANG_CODES.get(a, "auto") != "auto":
             self.tgt.set(a)
         self.src_lang.set(b if b else LANG_DISPLAY.get("auto", "auto"))
+        self._persist_langs(
+            LANG_CODES.get(self.src_lang.get().strip(), "auto"),
+            LANG_CODES.get(self.tgt.get().strip(), "vi"))
 
     def on_go(self):
         svc, text, tgt, src = self.current()
