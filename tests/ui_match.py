@@ -340,6 +340,12 @@ app.switch_service("google")
 check("switch-link-back", app.svc_link.cget("text") == "Google",
       app.svc_link.cget("text"))
 
+# 19d. strip icons: all 9 services resolve a real Service.ico
+import os as _os
+_missing = [n for n in app.ordered_services() if n not in app.svc_icons]
+check("strip-icons-9", len(app.svc_icons) == 9 and not _missing,
+      str(_missing))
+
 # 19d. offline modules (no network): xdxf/history/txt/theme/layout
 from qtranslate import xdxf as _X2, history as _H2
 check("offline-xdxf",
