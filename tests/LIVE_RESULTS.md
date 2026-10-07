@@ -113,3 +113,11 @@ Probed 2026-10-07 with shared-jar sessions — tokens absent from static HTML:
   (`/api/text/translation`, `/api/langs/dect`, `/api/dictionary/search`,
   `/api/tts/makeID` + `/api/tts/{id}`) is **LIVE-OK with no auth**
   (reversed 2026-10-07 from Next.js chunks; speaker map ported).
+
+## 2026-10-08 note: DeepL 429
+
+DeepL endpoints rate-limit this IP after repeated suite runs
+(HTTP 429 on detect + translate; code path verified working
+earlier same day — 21/21 green). Retry after cooldown.
+WordReference Anubis wall flaps (EMPTY/500 transient); headless
+fallback covers it.
