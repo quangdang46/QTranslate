@@ -8,8 +8,10 @@ LIVE-OK  google.tts                   mp3-bytes
 LIVE-OK  deepl.detect                 EN
 LIVE-OK  deepl.translate EN->VI       Chào buổi sáng
 LIVE-OK  baidu.detect                 en
+LIVE-OK  yandex.translate EN->RU      Доброе утро
+LIVE-OK  bing.translate EN->VI        Chào buổi sáng
 
-5/5 live OK
+7/7 live OK
 ```
 
 Extended regression (same day, ad-hoc): `yandex-android` EN→RU OK,
