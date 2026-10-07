@@ -884,6 +884,9 @@ Each user action = a `Task` object posted to a worker thread:
 - **`FUN_0044D3C3` = button-type painter** (`__fastcall`, types 2/3/5/6):
   same state machine + focus-rect (`BM_GETSTATE` bit0) for push/check/radio
   buttons; GDI+ gradient path (`FUN_0040647F` family) for glass styles.
+- **`FUN_0044D8CB` = etched-line helper** (`__fastcall`): theme frame
+  (`FUN_00449B08`) + 4 highlight edges (`FUN_004496AD` line draws,
+  skipped when color is `0xFFFFFFFF`) — sunken/etched groupbox look.
 - **`FUN_0044D282` = group/separator painter** (`__fastcall`, type 7):
   measures label (`GetTextExtentPoint32W`) → etched line halves
   (`FUN_0044D8CB`) + left-indented label (`FUN_0042248C` text) — groupbox
