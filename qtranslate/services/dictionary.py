@@ -236,16 +236,25 @@ def lingvo_host() -> str:
     return "https://www.lingvolive.com"
 
 
-def lingvo_link(word, sl, tl, ui_lang="en-us") -> str:
+def lingvo_build_uri(word, sl, tl, ui_lang=None) -> str:
+    """Port of buildUri(): /{ui}/translate/{sl}-{tl}/{word}.
+
+    ui defaults to langToUiLang(Options.LanguageCode) like the native
+    (ru->ru-ru, es->es-mx, pt-BR->pt-br, else en-us).
+    """
+    from qtranslate.common import Options
+    ui_lang = ui_lang or _lingvo_ui_lang(Options.get("LanguageCode", "en"))
+    return "/{0}/translate/{1}-{2}/{3}".format(ui_lang, sl, tl, _q(word))
+
+
+def lingvo_link(word, sl, tl, ui_lang=None) -> str:
     """The ResponseData link field: host + buildUri."""
-    return (lingvo_host() + "/{0}/translate/{1}-{2}/{3}".format(
-        ui_lang, sl, tl, _q(word)))
+    return lingvo_host() + lingvo_build_uri(word, sl, tl, ui_lang)
 
 
-def lingvo_lookup(word, sl, tl, ui_lang="en-us"):
+def lingvo_lookup(word, sl, tl, ui_lang=None):
     """Port of serviceDictionaryRequest/Response (named-div slice)."""
-    url = LINGVO_HOST + "/{0}/translate/{1}-{2}/{3}".format(
-        ui_lang, sl, tl, _q(word))
+    url = LINGVO_HOST + lingvo_build_uri(word, sl, tl, ui_lang)
     page = _get(url)
     m = re.search(r'<div name="#(dictionary|user|quote|phrase|wordform)"', page)
     if not m:
