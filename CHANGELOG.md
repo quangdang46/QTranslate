@@ -82,6 +82,12 @@ All entries are clean-room RE of QTranslate 6.10.0 for education.
 - Toolbar New (DLG129 id1021); DLG129 17-control table documented
 - `tests/ui_match.py` 71/71
 
+## Exclusions live (2026-10-08, DisabledMode both ways)
+
+- `foreground_excluded` reads live Disabled/Enabled/DisabledMode
+  (was hardcoded blocklist); allowlist mode supported
+- `tests/ui_match.py` 92/92 (wcsicmp vectors + live lists)
+
 ## Session loop (2026-10-08, panes + langs + options roundtrip)
 
 - Contents.Edit*/SaveOnExit pane cache; SaveHistoryPath export dir;
