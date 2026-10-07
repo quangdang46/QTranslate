@@ -130,7 +130,8 @@ DICTS = {
     "lingvo": lambda w, sl, tl: _dict.lingvo_lookup(w, sl, tl),
     "urban": lambda w, sl, tl: _dict.urban_lookup(w),
     "wikipedia": lambda w, sl, tl: _dict.wikipedia_lookup(w, sl, tl),
-    "multitran": lambda w, sl, tl: _dict.multitran_lookup(w, 17, 57),
+    "multitran": lambda w, sl, tl: _dict.multitran_lookup(
+        w, {"en": 1, "ru": 2}.get(sl, 1), {"en": 1, "ru": 2}.get(tl, 2)),
     "wordreference": lambda w, sl, tl: _dict.wordreference_lookup(w, sl, tl),
     "reverso": lambda w, sl, tl: _dict.reverso_lookup(w, sl, tl),
     "babylon": lambda w, sl, tl: _dict.babylon_lookup(w, sl, tl),
@@ -221,6 +222,7 @@ class App:
         tk.Button(btns, text="Translate (Ctrl+Enter)",
                   command=self.on_go).pack(side="left", padx=2)
         tk.Button(btns, text="Dict", command=self.on_dict).pack(side="left", padx=2)
+        tk.Button(btns, text="Dict all", command=self.on_dict_all).pack(side="left", padx=2)
         tk.Button(btns, text="Listen", command=self.on_listen).pack(side="left", padx=2)
         tk.Button(btns, text="Copy result",
                   command=self.on_copy).pack(side="left", padx=2)
@@ -284,6 +286,33 @@ class App:
         res = do_translate(svc, text, tgt, "dict")
         self.render(res)
         self.push_hist(svc + "/dict", text[:120], res[:200])
+
+    def on_dict_all(self):
+        """Query ALL dictionary providers, render multi-service cards."""
+        _, text, tgt, _ = self.current()
+        text = (text or "").strip()[:500]
+        if not text:
+            self.render("[empty — type a word first]")
+            return
+        self.render(f"querying {len(DICTS)} dictionaries for {text!r}...")
+        def work():
+            from qtranslate import dict_render as DR
+            cards = []
+            for name, fn in DICTS.items():
+                try:
+                    frag = fn(text, "en", tgt)
+                    if frag:
+                        cards.append((name, name.title(), frag[:8000]))
+                except Exception:
+                    pass
+            page = DR.render_cards(cards)
+            open("dict_last.html", "w", encoding="utf-8").write(page)
+            summary = "\n\n".join(
+                f"===== {t} =====\n" + _strip_html(f)[:600] for _, t, f in cards)
+            self.root.after(0, lambda: (
+                self.render(summary or "[all dicts empty]"),
+                self.push_hist("dict-all", text[:120], summary[:200])))
+        threading.Thread(target=work, daemon=True).start()
 
     def on_listen(self):
         txt = self.out.get("1.0", "end").strip()
