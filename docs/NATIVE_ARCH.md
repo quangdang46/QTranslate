@@ -235,7 +235,10 @@ Each user action = a `Task` object posted to a worker thread:
   `TrackPopupMenu`. Full `.rdata` UTF-16 scan: **1088 UI/options strings**
   (161 menu/option-related incl. all 18 `HotKey*` names, `ActiveServices`,
   `DictionariesOrder`, `LanguagePairs` keys) — the complete options-key
-  vocabulary 1:1 with `Options.json` sections.
+  vocabulary 1:1 with `Options.json` sections. Cross-check: **123/124**
+  live `Options.json` keys found verbatim in the binary (only `Ocr`
+  section header missing — likely concatenated at runtime); our
+  `config.py` covers all of them.
 - **`FUN_004287B6` = history-item menu** (`__thiscall`, `TrackPopupMenu`
   via IAT `0x50D63C`): builds Open (`0x8028`) / Copy text (`0x806E`) /
   Copy translation (`0x8026`) / Delete (`0x8027`) / Listen to text
