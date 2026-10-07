@@ -49,3 +49,8 @@ assert "https://e.com/p" in _c.update_html_links('<a href="/p">x</a>', "https://
 assert _c.string_find_sub("a[START]mid[END]b", "[START]", False, "[END]", False) == "mid"
 assert _c.is_language(17, [None] * 70) and not _c.is_language(1, [None] * 70)
 print("OK: common helpers (trim/unquote/links/sub/lang)")
+
+# deepl sentence splitting (matches JS parseText edge cases)
+from qtranslate.services.deepl import split_text as _split
+assert _split("Hello world. How are you? Fine!") == ["Hello world.", "How are you?", "Fine!"]
+print("OK: deepl split")
