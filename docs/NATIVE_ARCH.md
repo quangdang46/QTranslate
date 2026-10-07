@@ -399,6 +399,9 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Options dialog refresh (decompiled)
 
+- **`FUN_00408010` = services-list clear** (`__fastcall`): frees each
+  entry (`+0xC` payload + object) and zeroes the vector — runs before every
+  rebuild of the Services page list (after slot re-scan).
 - **`FUN_00409CC8` = dialog refresh tick** (`__fastcall`): state check
   (`FUN_0043AF94`) → content refresh (`FUN_00409D1C` + `FUN_00408010`) →
   1s `SetTimer` re-arm. Live preview behind service list / hotkey test
