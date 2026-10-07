@@ -351,6 +351,14 @@ check("offline-json", "xin chào" in _H2.json_export(_items))
 check("offline-txt", "[google > en to vi]" in _H2.txt_export(_items))
 check("offline-html", "<table>" in _H2.html_export(_items))
 
+# 19e. double-click time from Windows (native double-press matcher)
+try:
+    from ctypes import windll as _wd2
+    _dbl = _wd2.user32.GetDoubleClickTime()
+    check("dblclick-time", 100 <= _dbl <= 2000, str(_dbl))
+except Exception as e:
+    check("dblclick-time", False, str(e)[:80])
+
 # 19c. multi-select toggle + Ctrl+K binding (help.txt Actions)
 app.toggle_multi_service("deepl")
 app.toggle_multi_service("yandex")
