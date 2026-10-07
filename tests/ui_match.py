@@ -248,6 +248,20 @@ except ImportError:
 except Exception as e:
     check("dict-template-bytes", False, str(e)[:100])
 
+# 15. XDXF article render matches XdxfArticle.xslt templates
+from qtranslate import xdxf as _X
+_demo = ("<ar><k>hello</k><tr>həˈloʊ</tr>"
+         "<def><dtrn>xin chào</dtrn>"
+         "<ex>hello world <kref>world</kref></ex></def></ar>")
+_html = _X.render_article(_demo)
+check("xdxf-k", "<div><b>hello</b></div>" in _html, _html[:80])
+check("xdxf-tr", "<span>[" in _html and "]</span>" in _html)
+check("xdxf-kref", '<a href="qtdp:world">world</a>' in _html)
+check("xdxf-ex", '<span style="color:gray">' in _html)
+check("xdxf-iref",
+      _X.render_article('<ar><iref href="http://x">y</iref></ar>')
+      == '<a href="http://x">y</a>')
+
 root.destroy()
 print(f"\n{len(PASS)} passed, {len(FAIL)} failed")
 sys.exit(1 if FAIL else 0)
