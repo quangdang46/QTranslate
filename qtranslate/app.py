@@ -2208,9 +2208,15 @@ class App:
             _dlb = tk.Listbox(pane, height=18, width=22,
                               selectmode="multiple", bg="white", fg="black")
             _dlb.pack(fill="y", expand=True)
-            for sid in _dorder:
+            try:
+                _active_d = set(_C.load().get("General", {}).get(
+                    "ActiveDictionaryServices", _dorder))
+            except Exception:
+                _active_d = set(_dorder)
+            for i, sid in enumerate(_dorder):
                 _dlb.insert("end", _disp.get(sid, f"id:{sid}"))
-                _dlb.selection_set("end")
+                if sid in _active_d:
+                    _dlb.selection_set(i)
         else:
             _dlb = None
         out = tk.Text(mid, wrap="word", bg="white", fg="black",
@@ -2222,7 +2228,20 @@ class App:
                 return list(_dorder)
             sel = _dlb.curselection()
             ids = [_dorder[i] for i in sel if i < len(_dorder)]
-            return ids or list(_dorder)
+            out_ids = ids or list(_dorder)
+            # persist ActiveDictionaryServices (native remembers)
+            try:
+                from qtranslate import config as C3
+                import json as _j
+                full = C3.load()
+                full.setdefault("General", {})[
+                    "ActiveDictionaryServices"] = out_ids
+                with open(C3.DEFAULT_PATH, "w",
+                          encoding="utf-8") as f:
+                    _j.dump(full, f, ensure_ascii=False, indent=1)
+            except Exception:
+                pass
+            return out_ids
 
         _ID2FN = {"googlesearch": "google-search", "wikipedia": "wikipedia",
                   "multitran": "multitran", "imtranslator": "imtranslator",
