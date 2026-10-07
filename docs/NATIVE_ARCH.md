@@ -480,6 +480,11 @@ Each user action = a `Task` object posted to a worker thread:
   wiring + `HKM_* (0x43B/0x445)` hotkey set/get + highlight
   (`0xFF676985`) on flag 4 + dropdown (`+0x48`) on flag 2 — the
   "press keys" capture box (`QTranslate_HotKeyControl` class).
+- **`FUN_0040AA88` = key-capture proc** (`__thiscall`, `HotKeyControl`
+  WndProc): ignores bare navigation keys (Del/BS/Enter/Esc with no
+  modifiers) → `FUN_0040ABC3` builds the hotkey word → double-press arm via
+  `GetDoubleClickTime` timer with bit-15 `0x8000` "second press" flag
+  (mirrors `FUN_00417DCE` matching).
 - **`FUN_00408AA2` = hotkey resolver** (`__thiscall`): posts `0x45F`
   (HKM_SETHOTKEY-family) with the hotkey word struct — feeds both the
   display builder and the test runner.
