@@ -910,6 +910,11 @@ Each user action = a `Task` object posted to a worker thread:
   `Service.js` sees `Options.PreferredDomain/GoogleDomain/LanguageCode`
   from its first line. Our `session.py` + per-module `HOST` constants
   reproduce these values statically.
+- **`Utils.md5` audit**: only Youdao's `Service.js` calls it
+  (`Utils.md5("fanyideskweb"+...)`); our Python port uses `hashlib.md5`
+  (byte-identical — MD5 is deterministic, verified by matching Youdao
+  `errorCode 50` shape which proves the sign *format* is accepted and only
+  the session fields are stale).
 - **`FUN_00460ABE` = Utils exposer** (called from context init):
   QueryInterface gate on 3 IIDs (standard IDispatch/IUnknown + custom
   `Utils` GUID at `DAT_005143A0`) → exposes the native `Utils` object
