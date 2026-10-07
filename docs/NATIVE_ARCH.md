@@ -160,8 +160,11 @@ Each user action = a `Task` object posted to a worker thread:
   `0x8A`, service icons) come from the exe's own `.rsrc` section.
 1. **`FUN_00405A17` = hotkey registrar** (`__thiscall`, calls `RegisterHotKey`
    via IAT slot `0x50D658`): parses hotkey word — `id = low byte`,
-   `modifiers = (word >> 8) & 0xF`, `vk = low byte`; on success appends the id
-   to a vector (`this+4` count, `this[0]` array). Two sibling registrars at
+   `modifiers = (word >> 8) & 0xF`, `vk = low byte`; skips when word
+   is 0 or `(word & 0xFFF) == 0` (verified decompile 2026-10-08),
+   returns 0 on RegisterHotKey failure; on success appends the id
+   to a vector (`this+4` count, `this[0]` array, grow via
+   `FUN_0041FF84`). Two sibling registrars at
    `FUN_0040AB69` / `FUN_0040ACA3` (same IAT slot, different owners).
    `ApplicationWindow` receives `WM_HOTKEY` in the `FUN_00455061` loop.
 2. **Mouse-mode capture = `FUN_00404901`**: `GetCursorPos` →
