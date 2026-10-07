@@ -1,6 +1,11 @@
 """Baidu service port.
 
 Reversed from: C:/Program Files (x86)/QTranslate/Services/Baidu/Service.js
+
+Live status 2026-10-07: langdetect OK; v2transapi returns errno 1022
+(anti-bot: needs live gtk+token from the JS bundle + session cookies).
+Fresh BAIDUID/BIDUPSID/PSTM cookies obtainable via shared jar, but the
+sign seed (gtk) is JS-rendered — headless browser required for full flow.
 """
 from __future__ import annotations
 
