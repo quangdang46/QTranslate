@@ -201,6 +201,20 @@ try:
 except Exception as e:
     check("i18n-vi-load", False, str(e)[:100])
 
+# 13. options pages native order (Windows Ids 10-18)
+import re as _re
+_src = open("qtranslate/app.py", encoding="utf-8").read()
+_m = _re.search(r"_PAGES = \[(.*?)\]", _src, re.S)
+_pages = _re.findall(r'\("(\w+)", (\d+)\)', _m.group(1)) if _m else []
+check("pages-9", len(_pages) == 9, str(len(_pages)))
+check("pages-order",
+      [p for p, _ in _pages] == ["Basics", "Internet", "Services",
+                                 "Languages", "Appearance", "Exceptions",
+                                 "Hotkeys", "Advanced", "Updates"],
+      str([p for p, _ in _pages]))
+check("pages-ids", [int(i) for _, i in _pages] == list(range(10, 19)),
+      str([i for _, i in _pages]))
+
 root.destroy()
 print(f"\n{len(PASS)} passed, {len(FAIL)} failed")
 sys.exit(1 if FAIL else 0)
