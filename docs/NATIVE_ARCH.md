@@ -394,6 +394,11 @@ Each user action = a `Task` object posted to a worker thread:
   (`FUN_0042A10A` substring) → internal re-lookup (`FUN_00426966`) with
   history sync (`this+0x19C = this+0x18C`). Non-qtdp links fall through to
   `ShellExecute` browser open.
+- **`FUN_00408924` = language-select handler** (`__thiscall`): lang index
+  validate (`< 0x4A`) → resolve (`FUN_004088A9`) → set (`+0x20`) →
+  sub-layout (`+0x48/+0x54`) → hotkey-test refresh (`FUN_00409EC0`) +
+  show-layout (`FUN_00408ADE`). Service ids 5/`0x1A`/`0x2A`/`0x38`/`0x3B`
+  take a flag variant.
 - **`FUN_004088A9` = shared id resolver** (`__thiscall`): `-1` args
   resolve via `FUN_00408AA2` (hotkey word lookup) → vtable `+0x60`
   dispatch on the resolved pair. Central fan-in for item activation,
