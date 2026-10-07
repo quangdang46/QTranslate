@@ -683,22 +683,56 @@ class App:
         body.pack(side="left", fill="both", expand=True, padx=8, pady=8)
 
         def show_basics():
+            # Defaults from the real Options.json (General/AutoDetection):
+            # startup reg present, FontName='' (-> --- Default ---),
+            # TextSize=9, AutoDetection 57/17/57 (vi/en/vi),
+            # EnableHistory + ClearHistoryOnExit true, Expand false.
+            import os as _os
             for c in body.winfo_children():
                 c.destroy()
+            try:
+                from qtranslate import config as _C
+                _cfg = _C.load()
+                _gen = _cfg.get("General", {})
+                _ad = _cfg.get("AutoDetection", {})
+            except Exception:
+                _gen, _ad = {}, {}
             tk.Label(body, text="General", bg=_COLORS["back"],
                      fg=_COLORS["text"],
                      font=("Segoe UI", 10, "bold")).pack(anchor="w")
-            start_var = tk.BooleanVar(value=True)
+            self._opt_vars = getattr(self, "_opt_vars", {})
+            import winreg as _wr
+            try:
+                _rk = _wr.OpenKey(
+                    _wr.HKEY_CURRENT_USER,
+                    r"Software\Microsoft\Windows\CurrentVersion\Run")
+                _wr.QueryValueEx(_rk, "QTranslate")
+                _startup = True
+            except Exception:
+                _startup = False
+            _sv = tk.BooleanVar(value=_startup)
+            self._opt_vars["startup"] = _sv  # keep ref: no GC-uncheck
             tk.Checkbutton(body, text="Start with Windows",
-                           variable=start_var,
+                           variable=_sv,
                            bg=_COLORS["back"], fg=_COLORS["text"],
                            selectcolor=_COLORS["back"]).pack(anchor="w")
-            # native defaults (verified vs Options dialog screenshot):
-            # English / --- Default --- / 9
+            try:
+                _langs = sorted(
+                    d for d in _os.listdir(
+                        "C:/Program Files (x86)/QTranslate/Locales")
+                    if _os.path.isdir(
+                        _os.path.join(
+                            "C:/Program Files (x86)/QTranslate/Locales",
+                            d)))
+            except Exception:
+                _langs = ["English"]
+            _cur_lang = _gen.get("LocaleFoderName") or "English"
+            if _cur_lang not in _langs:
+                _cur_lang = "English"
             for lab, vals, default in (
-                    ("Interface language:", ["English"], "English"),
+                    ("Interface language:", _langs, _cur_lang),
                     ("Font name:", ["--- Default ---"], "--- Default ---"),
-                    ("Text size:", ["9"], "9")):
+                    ("Text size:", ["9"], str(_gen.get("TextSize", 9)))):
                 r = tk.Frame(body, bg=_COLORS["back"])
                 r.pack(fill="x", pady=1)
                 tk.Label(r, text=lab, width=18, anchor="w",
@@ -712,23 +746,33 @@ class App:
                      bg=_COLORS["back"], fg=_COLORS["text"],
                      font=("Segoe UI", 10, "bold")).pack(anchor="w",
                                                          pady=(8, 0))
-            for lab in ("First language:", "Second language:",
-                        "Speech input:"):
+            _IDX2NAME = {57: "Vietnamese", 17: "English"}
+            for lab, key in (("First language:", "LanguageFirst"),
+                             ("Second language:", "LanguageSecond"),
+                             ("Speech input:",
+                              "LanguageSpeechRecognition")):
                 r = tk.Frame(body, bg=_COLORS["back"])
                 r.pack(fill="x", pady=1)
                 tk.Label(r, text=lab, width=18, anchor="w",
                          bg=_COLORS["back"],
                          fg=_COLORS["text"]).pack(side="left")
-                ttk.Combobox(r, values=TO_LANGS,
-                             width=26).pack(side="left")
+                cb = ttk.Combobox(r, values=TO_LANG_NAMES, width=26,
+                                  state="readonly")
+                cb.pack(side="left")
+                cb.set(_IDX2NAME.get(_ad.get(key, 17), "English"))
             tk.Label(body, text="History", bg=_COLORS["back"],
                      fg=_COLORS["text"],
                      font=("Segoe UI", 10, "bold")).pack(anchor="w",
                                                          pady=(8, 0))
-            for lab, default in (("Enable history", True),
-                                 ("Clear history on exit", True),
-                                 ("Expand items", False)):
-                v = tk.BooleanVar(value=default)
+            for lab, default in (
+                    ("Enable history",
+                     _gen.get("EnableHistory", True)),
+                    ("Clear history on exit",
+                     _gen.get("ClearHistoryOnExit", True)),
+                    ("Expand items",
+                     _gen.get("ExpandHistoryItems", False))):
+                v = tk.BooleanVar(value=bool(default))
+                self._opt_vars[lab] = v  # keep ref: no GC-uncheck
                 tk.Checkbutton(body, text=lab, variable=v,
                                bg=_COLORS["back"], fg=_COLORS["text"],
                                selectcolor=_COLORS["back"]).pack(anchor="w")
