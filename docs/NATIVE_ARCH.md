@@ -394,6 +394,10 @@ Each user action = a `Task` object posted to a worker thread:
   (`FUN_0042A10A` substring) → internal re-lookup (`FUN_00426966`) with
   history sync (`this+0x19C = this+0x18C`). Non-qtdp links fall through to
   `ShellExecute` browser open.
+- **`FUN_00409EC0` = test-box refresh** (`__thiscall`): rebuild display
+  (`FUN_00408456`) → show-layout (`FUN_00408ADE`) → `HKM_SETHOTKEY
+  (0x447)` with a zeroed key struct + flag — re-arms the capture box
+  after each language/service change.
 - **`FUN_00408924` = language-select handler** (`__thiscall`): lang index
   validate (`< 0x4A`) → resolve (`FUN_004088A9`) → set (`+0x20`) →
   sub-layout (`+0x48/+0x54`) → hotkey-test refresh (`FUN_00409EC0`) +
