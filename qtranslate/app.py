@@ -548,12 +548,15 @@ def do_translate(service, text, target, src="auto", auto_detect=False,
             text = _re.sub(r"\s*\n\s*", " ", text)
     except Exception:
         pass
+    # Services whose API accepts auto natively (their Service.js
+    # sends sl=auto): skip the extra detect round-trip for them.
+    _NATIVE_AUTO = {"google", "microsoft", "bing", "deepl"}
     fn = TRANSLATORS.get(service, _t_google)
     try:
         # Native resolves auto once via the detect-retry loop, then
         # every stage (translate + back-translation) uses the concrete
         # code — no "en" guessing anywhere in the orchestrator.
-        if src == "auto":
+        if src == "auto" and service not in _NATIVE_AUTO:
             src = detect_language(text)
         out = fn(text[:5000], src, target)
         if not out:
