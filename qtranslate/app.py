@@ -1276,6 +1276,14 @@ class App:
         """FUN_0045CDBA + FUN_0043A121: switch provider, re-run."""
         self.service = name
         self._mark_service()
+        try:
+            from qtranslate import config as _C
+            _disp = _C.SERVICE_DISPLAY.get(
+                {v: k for k, v in _C.SERVICE_NAMES.items()}.get(name),
+                name.title())
+            self.svc_link.config(text=_disp)
+        except Exception:
+            pass
         # persist ActiveServices (native keeps last service)
         try:
             from qtranslate import config as _C
