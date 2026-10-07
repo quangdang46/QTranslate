@@ -698,6 +698,10 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Icon compositor (decompiled)
 
+- **`FUN_0044A581` = memDC helper** (`__thiscall`): `CreateCompatibleDC`
+  + `CreateCompatibleBitmap` + `SetViewportOrgEx` shift — RAII-ish struct
+  behind all double-buffered paint (`FUN_0044D1AC`, `FUN_00449C12`);
+  released by `FUN_0044A569` blit.
 - **`FUN_00449C12` = icon compositor** (`__fastcall`, `DrawIconEx` IAT
   `0x50D474`, `AlphaBlend` IAT `0x50D3C4`): memDC (`FUN_0044A581`) →
   `DrawIconEx` → 4-corner `GetPixel` transparency test → `AlphaBlend`
