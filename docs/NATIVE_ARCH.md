@@ -200,7 +200,9 @@ Each user action = a `Task` object posted to a worker thread:
 - **Service metadata = `FUN_0045D160`**: boots `Script` engine
   (`services::Script::vftable` on stack), runs service JS, then invokes
   `serviceHeader` via IDispatch (`FUN_0043B942`) and reads capabilities with
-  `FUN_00465669` — this is how the app knows which providers offer
+  `FUN_00465669` (= field reader: `id`/`name`/`info`/`capabilities` via
+  `FUN_004661D1` dispatch-get + `VariantChangeType` to int, stored as
+  `[id, name, info, caps]` tuple) — this is how the app knows which providers offer
   TRANSLATE vs DICTIONARY vs LISTEN (the bitmask in `Common.js`), driving
   both the ServicesMenu filter and the translate-vs-dictionary render fork.
 - **Task executor = `FUN_0045F6C1`** (`__thiscall`, 3 callers incl.
