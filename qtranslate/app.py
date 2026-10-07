@@ -1149,56 +1149,48 @@ def show_popup(source, result, service="google", target="vi"):
     control text -> auto-resize (FUN_0044B4F4) ->
     SetWindowPos(HWND_TOPMOST, SWP_NOMOVE|NOSIZE|SHOWWINDOW).
     """
+    # Native popup (WindowPopup/TopmostWindow): borderless topmost text
+    # window, themed by Themes/*.json. No buttons — header double-click
+    # opens the main window; Esc closes.
     win = tk.Toplevel()
-    win.title(f"{service.title()} - QTranslate-re")
+    win.title(f"{service.title()} - QTranslate")
     win.attributes("-topmost", True)
-    win.configure(bg=_COLORS["back"])
-    # header: service icon + name (WM_SETICON equivalent)
-    head = tk.Frame(win, bg=_COLORS["back"])
-    head.pack(fill="x", padx=8, pady=(8, 0))
+    win.overrideredirect(True)
     try:
-        import os
-        _pats = {"google": "Google Translate", "deepl": "DeepL",
-                 "yandex": "Yandex", "baidu": "Baidu", "naver": "Naver",
-                 "youdao": "youdao", "bing": "Microsoft Translator",
-                 "microsoft": "Microsoft Translator", "promt": "Promt",
-                 "reverso": "Reverso"}
-        _ico = os.path.join("C:/Program Files (x86)/QTranslate/Services",
-                            _pats.get(service, service), "Service.ico")
-        if os.path.exists(_ico):
-            from PIL import Image, ImageTk
-            _im = Image.open(_ico).convert("RGBA").resize(
-                (20, 20), Image.LANCZOS)
-            _ph = ImageTk.PhotoImage(_im)
-            _lab = tk.Label(head, image=_ph, bg=_COLORS["back"])
-            _lab.image = _ph  # keep ref
-            _lab.pack(side="left", padx=(0, 6))
+        from qtranslate.theme import load_theme, window_colors
+        _pc = window_colors(load_theme("Flat Dark"))
     except Exception:
-        pass
-    tk.Label(head, text=service.title(), bg=_COLORS["back"],
-             fg=_COLORS["text"],
-             font=("Segoe UI", 10, "bold")).pack(side="left")
-    tk.Label(head, text=source[:80], bg=_COLORS["back"], fg="gray",
-             wraplength=380, justify="left").pack(side="left", padx=8)
-    # result RichEdit (auto-sized like FUN_0044B4F4)
-    lines = max(3, min(12, result.count("\n") + len(result) // 60 + 1))
-    txt = tk.Text(win, height=lines, wrap="word", bg=_COLORS["back"],
-                  fg=_COLORS["text"], insertbackground=_COLORS["text"],
-                  font=("Segoe UI", 12))
-    txt.pack(fill="both", expand=True, padx=8, pady=4)
+        _pc = _COLORS
+    win.configure(bg=_pc.get("border", "#7a7a7a"))
+    inner = tk.Frame(win, bg=_pc.get("back", "#f0f0f0"))
+    inner.pack(fill="both", expand=True, padx=1, pady=1)
+    txt = tk.Text(inner, wrap="word",
+                  bg=_pc.get("back", "#f0f0f0"),
+                  fg=_pc.get("text", "#000000"),
+                  insertbackground=_pc.get("text", "#000000"),
+                  font=("Segoe UI", 11), borderwidth=0,
+                  highlightthickness=0)
+    lines = max(2, min(12, result.count("\n") + len(result) // 60 + 1))
+    txt.config(height=lines, width=60)
+    txt.pack(fill="both", expand=True, padx=6, pady=6)
     txt.insert("1.0", result)
     txt.config(state="disabled")
-    frm = tk.Frame(win, bg=_COLORS["back"])
-    frm.pack(pady=(0, 8))
-    tk.Button(frm, text="\U0001f3a7 Listen",
-              command=lambda: threading.Thread(
-                  target=speak, args=(result, target),
-                  daemon=True).start()).pack(side="left", padx=4)
-    tk.Button(frm, text="Copy",
-              command=lambda: pyperclip.copy(result)
-              if _HAS_KEYS else None).pack(side="left", padx=4)
-    tk.Button(frm, text="Close",
-              command=win.destroy).pack(side="left", padx=4)
+
+    def _to_main(_e=None):
+        win.destroy()
+        try:
+            from qtranslate import app as _A
+            _r = tk.Tk()
+            _a = _A.App(_r)
+            _a.src.delete("1.0", "end")
+            _a.src.insert("1.0", source)
+            _a.render(result)
+            _r.mainloop()
+        except Exception:
+            pass
+
+    txt.bind("<Double-1>", _to_main)
+    win.bind("<Escape>", lambda e: win.destroy())
 
 
 if __name__ == "__main__":
