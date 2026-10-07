@@ -56,6 +56,9 @@ def lookup(word: str, xdxf_path: str) -> str:
 
 
 if __name__ == "__main__":
+    import io
+    import sys
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
     demo = ("<ar><k>hello</k><tr>həˈloʊ</tr><def><dtrn>xin chào</dtrn>"
             "<ex>hello world <kref>world</kref></ex></def></ar>")
     print(render_article(demo))
