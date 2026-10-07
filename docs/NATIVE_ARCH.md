@@ -407,6 +407,10 @@ Each user action = a `Task` object posted to a worker thread:
   sub-layout (`+0x48/+0x54`) → hotkey-test refresh (`FUN_00409EC0`) +
   show-layout (`FUN_00408ADE`). Service ids 5/`0x1A`/`0x2A`/`0x38`/`0x3B`
   take a flag variant.
+- **`FUN_00409ABF` = combo dropdown reader** (`__fastcall`): count
+  (`0x434`), show-dropdown (`0xBB`), limit (`0xC1`) → line reads
+  (`FUN_004099F3`) walking the dropdown items — feeds language/service
+  combo boxes in options pages.
 - **`FUN_00408D01` = select-and-open** (`__thiscall`): `0x20` → focus;
   `0x202` (LBUTTONUP) → line read (`FUN_004099F3`) → open dispatcher
   (`FUN_00450B17`) — click-to-open link/text behavior in result panes.
