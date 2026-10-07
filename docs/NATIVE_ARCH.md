@@ -267,10 +267,11 @@ Each user action = a `Task` object posted to a worker thread:
   how MUI/locale fallback resolves before `Locales/*.json`.
 - **`FUN_0040218A` = string-table loader** (`__thiscall`): module
   (`FUN_004028A4`) → resource (`FUN_004027EF`) → grow + copy + length —
-  loads `0xB0–0xCF` errors, menu labels, and dialog strings from the exe.
+  loads error strings (ids 171–207, blocks 11–13), menu labels, and
+  dialog strings from the exe.
 - **`CheckImplicitLoad` = ATL resource-string load** (library,
   `CStringT::CheckImplicitLoad`): id `< 0x10000` loads from string-table
-  resources (`FUN_0040218A`) — how `0xB0–0xCF` error ids and menu labels
+  resources (`FUN_0040218A`) — how error ids (171–207) and menu labels
   resolve at runtime.
 - **`FUN_00401F21` = literal loader** (`__thiscall`, highest call count in
   the binary): fresh string + `CheckImplicitLoad` + `FUN_00401EA9` copy —
@@ -422,13 +423,16 @@ Each user action = a `Task` object posted to a worker thread:
   This single function is the native equivalent of our Python
   `translate()` wrappers — service select → request → fallback chain.
 - **`FUN_004047D6` = error-code mapper** (`__fastcall`): switch error
-  3–0xF → string-resource id (`0xB0`–`0xCF`) via `FUN_00451D23` (2-tier:
-  language table `FUN_0045242D`, fallback format `DAT_00529AF0`). Covers
+  3–0xF → string-resource id via `FUN_00451D23` (2-tier: language table
+  `FUN_0045242D`, fallback format `DAT_00529AF0`). Covers
   backtrans/detect/fetch failures (`0xC/0xD/0xE` seen in `FUN_004606BA`).
-  Resolved messages (UTF-16 `.rdata`): `"…connection…No data returned
-  (timeout while sending data)."`, `"No data returned."`,
-  `"No data to translat[e]"` — the exact strings our Python ports surface
-  as `[error]`/empty results.
+  Resolved from `RT_STRING` blocks 11–13 (ids 171–207, extracted from PE):
+  `190` = `"No data returned (timeout while sending data)."`, `191` =
+  `"No data returned."`, `192` = `"No data to translate."`, `189` =
+  `"Cannot establish Internet connection."`, `194` = `"Cannot play audio
+  stream."`, `195` = TTS language/length unsupported, `176` = `"Can't
+  detect language…"`, `177/198/193` = source/dest/capability unsupported —
+  the exact strings our Python ports surface as `[error]`/empty results.
 - **`FUN_00460354` = detect-retry loop** (`__thiscall`): alternates
   `FUN_00460467` (detect request) + `FUN_00460580` (apply result) until
   non-empty (error 6 = all providers exhausted) — the `AlwaysDetectLanguage`
