@@ -46,7 +46,7 @@ python -I tests/smoke_dict.py      # 9/9 (dict + config + hotkeys)
 | Naver (Papago) | ✅ | ✅ | ✅ | ✅ | **live OK** (new `/api/text/*`, `/api/tts/*`, `/api/dictionary/*` — no auth, 2026-10-07) |
 | Promt | ✅ | — | — | — | signing verified; API 400 (needs JS `paft`) |
 | Youdao | ✅ | — | — | ✅ | **live OK** (`jsonapi_s` translate + `/w/` dictionary, no sign needed, 2026-10-07) |
-| Reverso | ✅ | — | — | ✅ | **live OK** (context JSON API, no auth; legacy HTML path 403) |
+| Reverso | ✅ | — | — | ✅ | **live OK** (context JSON API, no auth; dict falls back to API when legacy HTML 403s) |
 | ImTranslator | ✅ | — | — | — | ported; ASMX retired (was Google/MS wrapper — no live API left) |
 | WordReference | — | — | — | ✅ | **live OK** (headless Chromium via `headless.py`, 2026-10-07) |
 | Oxford Learner | — | — | — | ✅ | **live OK** |
