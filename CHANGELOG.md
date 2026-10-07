@@ -17,7 +17,7 @@ All entries are clean-room RE of QTranslate 6.10.0 for education.
 - Hotkeys registrar reads Options.json (Alt+W replace, Ctrl+Q popup,
   clipboard monitor toggles); tray (pystray, optional); TTS slow flag;
   net stack honors Timeout+Proxy; OCR uses real OcrApiKey
-- Suites: live 21/21, `tests/ui_match.py` 72/72, smoke 9/9
+- Suites: live 21/21, `tests/ui_match.py` 74/74, smoke 9/9
 
 ## Full-fidelity loop 2 (2026-10-08, 66 commits, all suites green)
 
@@ -57,7 +57,7 @@ All entries are clean-room RE of QTranslate 6.10.0 for education.
   http browser, FUN_004266C6); shared `tag_links` helper
 - History CSV order fixed [a,c,b,e,d]; JSON `ensure_ascii=False`
   (native escapeStr keeps unicode)
-- `tests/ui_match.py` 72/72
+- `tests/ui_match.py` 74/74
 
 ## History favorites (2026-10-08, strings 201/202)
 
@@ -88,7 +88,7 @@ All entries are clean-room RE of QTranslate 6.10.0 for education.
 
 - Theme choice persists `Appearance.ThemeName`; popup honors it
   (was hardcoded Flat Dark); `theme._hex` always 6-digit for Tk
-- `tests/ui_match.py` 72/72 (hex + 8 palettes + vi boot)
+- `tests/ui_match.py` 74/74 (hex + 8 palettes + vi boot)
 
 ## Services (`qtranslate/services/`)
 

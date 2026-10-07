@@ -29,7 +29,7 @@ python -I start_app.py
 
 ```bash
 python -I tests/live_providers.py  # 21/21 vs real endpoints
-python -I tests/ui_match.py        # 72/72 vs native window/Options.json
+python -I tests/ui_match.py        # 74/74 vs native window/Options.json
 python -I tests/smoke_dict.py      # 9/9 (dict + config + hotkeys)
 ```
 
