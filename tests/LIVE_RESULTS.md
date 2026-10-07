@@ -12,6 +12,12 @@ LIVE-OK  baidu.detect                 en
 5/5 live OK
 ```
 
+Extended regression (same day, ad-hoc): `yandex-android` EN→RU OK,
+`bing` (shared-jar) EN→VI OK, `urban` HTML OK, `lingvo` HTML OK,
+`google_suggest` list OK, `yandex_spell` corrections OK.
+(Console `charmap` errors on this Windows shell are print-only; payloads
+verified non-empty. Total live-verified endpoints: 12.)
+
 ## Dictionary providers (probed 2026-10-07)
 
 | Provider | Status |
