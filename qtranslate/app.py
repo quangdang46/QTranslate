@@ -81,8 +81,9 @@ def _t_google(t, sl, tl):
 
 
 def _t_deepl(t, sl, tl):
-    return _deepl.translate(t, "AUTO" if sl == "auto" else sl.upper(),
-                            tl.upper())
+    # Native sends codeFromLanguage(index); "auto" must stay lowercase.
+    sl_c = "auto" if sl == "auto" else sl.upper()
+    return _deepl.translate(t, sl_c, tl.upper())
 
 
 def _t_yandex(t, sl, tl):
@@ -149,11 +150,22 @@ DICTS = {
 
 # ------------------------------------------------------------ backend ops
 def detect_language(text):
-    """Port of FUN_00460354 detect-retry loop: providers in order."""
-    for fn in (_deepl.detect, _naver.detect, _baidu.detect, _yandex.detect):
+    """Port of FUN_00460354 detect-retry loop: providers in order.
+
+    detect() across providers returns mixed types (DeepL/Yandex return
+    lang indices like the native languageFromCode; Naver/Baidu return
+    code strings), so normalize everything to a code string here.
+    """
+    candidates = (
+        lambda t: _deepl.detect_code(t),
+        _naver.detect,
+        _baidu.detect,
+        lambda t: _yandex.detect_code(t),
+    )
+    for fn in candidates:
         try:
             lang = fn(text[:500])
-            if lang:
+            if lang and lang != -1:
                 return lang
         except Exception:
             pass
