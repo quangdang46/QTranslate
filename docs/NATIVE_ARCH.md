@@ -1090,6 +1090,10 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Tray icon + layout keys (decompiled)
 
+- **`FUN_00418E85` = mouse-mode toggle** (`__thiscall`, tray left-click):
+  mode 0/1/2 select → exclusion check (`FUN_004631DE`) → app-name resolve
+  (`FUN_00403506`) → enable path (`FUN_00462EB7`/`00462E19`) → hotkey
+  re-setup (`FUN_00418DA0`). Tray ↔ capture-mode state machine.
 - **`FUN_00417F5B` = tray click handler** (`__thiscall`, WndProc
   `0x80AA` case in `FUN_00415EED`): left (`0x201`) → mouse-mode toggle
   (`FUN_00418E85`); double (`0x203`) → show main (`FUN_00419DA6`) + 250ms
