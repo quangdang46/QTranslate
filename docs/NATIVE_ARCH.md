@@ -320,6 +320,10 @@ Each user action = a `Task` object posted to a worker thread:
   `ColorText/ColorBack` overrides. RichEdit branch (type 3) sends
   `EM_SETCHARFORMAT (0x444)` with a `CHARFORMAT` struct then
   `EM_SETBKGNDCOLOR (0x443)` — translation-text styling path.
+- **`FUN_0044FE1B` = theme-state selector** (called by all 3 init branches):
+  picks theme index by control state — disabled → 3, focused → 4, has-text →
+  1, empty → 0 — via `FUN_0044C51C` on the shared theme store
+  (`DAT_005491E8`, `Themes/` folder: per-service icons + color schemes).
 - **`FUN_0044B4F4` = popup layout engine**: walks child windows
   (`GetWindow GW_CHILD`), classifies Button vs Static via class-name compare,
   resizes/repositions each (`FUN_0044BD0F`/`FUN_0044BECE`) — the auto-fit
