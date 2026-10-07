@@ -332,13 +332,9 @@ class App:
             return
         try:
             from qtranslate import history as H
-            items = [("svc", s, "auto", r, tgt, 0, i)
-                     for i, (s, r, tgt) in
-                     enumerate([(a, b, TARGET) for a, b, c in self.history]
-                               ) for s, r, tgt in [(s, c, tgt)]]
-            data = H.html_export([(s, src, "auto", res, tgt, 0, i)
-                                  for i, (s, src, res) in
-                                  enumerate(self.history)])
+            tgt = self.tgt.get().strip() or TARGET
+            data = H.html_export([(s, src, "auto", res, tgt)
+                                  for (s, src, res) in self.history])
             with open(path, "w", encoding="utf-8") as f:
                 f.write(data if isinstance(data, str) else str(data))
             self.render(f"exported {len(self.history)} items -> {path}")
