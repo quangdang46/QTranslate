@@ -22,8 +22,10 @@ LIVE-OK  dict.urban                   definition group HTML
 LIVE-OK  dict.wikipedia               bodyContent HTML
 LIVE-OK  dict.multitran               anchor-table HTML
 LIVE-OK  reverso.translate EN->FR     bonjour tout le monde
+LIVE-OK  dict.wordreference           article HTML (via headless)
+LIVE-OK  baidu.suggest                suggest-entries
 
-19/19 live OK
+21/21 live OK
 ```
 
 Extended regression (same day, ad-hoc): `yandex-android` EN→RU OK,
