@@ -231,6 +231,9 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## String literal loader (decompiled)
 
+- **`FUN_004027A0` = resource copy** (`__fastcall`, `_wmemcpy_s` +
+  errno check via `FUN_00402942`): length-or-explicit copy behind the
+  string-table loader.
 - **`FUN_0040281A` = string entry extractor** (`__fastcall`):
   `LoadResource` + `LockResource` + `SizeofResource` bounds → walk
   Pascal-string entries (`id & 0xF` skips) — raw STRINGTABLE parse.
