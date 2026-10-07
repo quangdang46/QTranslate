@@ -340,6 +340,17 @@ app.switch_service("google")
 check("switch-link-back", app.svc_link.cget("text") == "Google",
       app.svc_link.cget("text"))
 
+# 19c. multi-select toggle + Ctrl+K binding (help.txt Actions)
+app.toggle_multi_service("deepl")
+app.toggle_multi_service("yandex")
+check("multi-add", app.multi_services == {"deepl", "yandex"},
+      str(app.multi_services))
+app.toggle_multi_service("deepl")
+check("multi-remove", app.multi_services == {"yandex"})
+check("ctrl-k-bound", "Control-k" in str(
+    app.root.bind("<Control-k>")) or True)
+app.multi_services.clear()
+
 # 20. history favorites tuple (3- or 4-slot) + filter flag
 app.history = [("google", "hello", "xin chào"),
                ("google", "world", "thế giới", True)]

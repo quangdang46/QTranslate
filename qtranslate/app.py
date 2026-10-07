@@ -606,6 +606,8 @@ class App:
         except Exception:
             TARGET_EFF, self.source = TARGET, "auto"
         self.target = TARGET_EFF
+        # multi-select set (right-click toggles, help.txt Actions).
+        self.multi_services = set()
         self.history = self._load_history()  # (service, src, result)
         root.protocol("WM_DELETE_WINDOW", self.on_close)
         root.bind("<Unmap>", self._on_minimize)
@@ -772,6 +774,8 @@ class App:
             b.pack(side="left")
             b.bind("<Button-2>",
                    lambda e, n=name: self.open_service_page_n(n))
+            b.bind("<Button-3>",
+                   lambda e, n=name: self.toggle_multi_service(n))
             tk.Label(cell, text=_SHORT.get(name, name[:2] + ".."), bg=bg,
                      fg="black", font=("Tahoma", 8)).pack(side="left",
                                                           padx=(1, 0))
@@ -780,6 +784,7 @@ class App:
         self._mark_service()
         # key bindings mirror help.txt Main window hotkeys
         self.root.bind("<Control-Return>", lambda e: self.on_go())
+        self.root.bind("<Control-k>", lambda e: self.open_keyboard())
         self.root.bind("<Control-n>", lambda e: self.on_clear())
         self.root.bind("<Control-d>", lambda e: self.open_dict_window())
         self.root.bind("<Control-h>", lambda e: self.open_history_window())
@@ -1276,8 +1281,14 @@ class App:
 
     # -- actions --
     def _mark_service(self):
+        # current = sunken; multi-selected = groove highlight.
         for name, b in self.svc_btns.items():
-            b.config(relief="sunken" if name == self.service else "raised")
+            if name == self.service:
+                b.config(relief="sunken")
+            elif name in getattr(self, "multi_services", set()):
+                b.config(relief="groove")
+            else:
+                b.config(relief="raised")
 
     def switch_service(self, name):
         """FUN_0045CDBA + FUN_0043A121: switch provider, re-run."""
@@ -1545,12 +1556,51 @@ class App:
             LANG_CODES.get(self.src_lang.get().strip(), "auto"),
             LANG_CODES.get(self.tgt.get().strip(), "vi"))
 
+    def toggle_multi_service(self, name):
+        """Right-click: add/remove service from the multi-select set."""
+        if name in self.multi_services:
+            self.multi_services.discard(name)
+        else:
+            self.multi_services.add(name)
+        self._mark_service()
+
     def on_go(self):
         svc, text, tgt, src = self.current()
-        res = do_translate(svc, text, tgt, src,
-                           self.opt_detect.get(), self.opt_backtr.get())
-        self.render(res)
-        self.push_hist(svc, text[:120], res[:200])
+        targets = [s for s in self.ordered_services()
+                   if s in self.multi_services] or [svc]
+        if len(targets) == 1:
+            res = do_translate(targets[0], text, tgt, src,
+                               self.opt_detect.get(),
+                               self.opt_backtr.get())
+            self.render(res)
+            self.push_hist(targets[0], text[:120], res[:200])
+        else:
+            import threading as _th
+
+            def _work():
+                parts = []
+                for s in targets:
+                    try:
+                        r = do_translate(s, text, tgt, src,
+                                         self.opt_detect.get(),
+                                         self.opt_backtr.get())
+                    except Exception as e:
+                        r = f"[error] {e}"
+                    parts.append(f"===== {s} =====\n{r}")
+                    try:
+                        self.push_hist(s, text[:120], r[:200])
+                    except Exception:
+                        pass
+                combined = "\n\n".join(parts)
+                try:
+                    self.root.after(
+                        0, lambda: self.render(combined))
+                except Exception:
+                    pass
+
+            self.render(f"translating via {len(targets)} services...")
+            _th.Thread(target=_work, daemon=True).start()
+            return
         # AutoCleanupOfTranslation: clear the source pane after a
         # successful translate (native 0x8077).
         try:
