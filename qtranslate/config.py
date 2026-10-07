@@ -90,10 +90,14 @@ def decode_hotkey(code: int) -> dict:
     return {"id": code & 0xFFF, "modifiers": mods, "vk": vk, "enabled": True}
 
 
+# GetKeyNameTextW special cases from FUN_00403D3C (verified decompile):
+# nav block 0x21-0x28 + 0x2C/0x2D/0x2E, Divide 0x6F, NumLock 0x90
+# (0x100-extended via scan code), Alt-flag pseudo-key 0x13.
 _VK_NAMES = {0x08: "Backspace", 0x09: "Tab", 0x0D: "Enter", 0x1B: "Esc",
              0x20: "Space", 0x2E: "Delete", 0x21: "PgUp", 0x22: "PgDn",
              0x23: "End", 0x24: "Home", 0x25: "Left", 0x26: "Up",
-             0x27: "Right", 0x28: "Down"}
+             0x27: "Right", 0x28: "Down", 0x2C: "Print Screen",
+             0x2D: "Insert", 0x6F: "Divide", 0x90: "Num Lock"}
 
 
 def format_hotkey(code: int) -> str:
