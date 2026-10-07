@@ -678,6 +678,15 @@ class App:
         self.root.bind("<Alt-Left>", lambda e: self.hist_back())
         self.root.bind("<Alt-Right>", lambda e: self.hist_forward())
         self.root.bind("<Control-Up>", lambda e: self.copy_to_source())
+        # F11 = fullscreen toggle (help.txt Main window hotkeys)
+        self.root.bind("<F11>", lambda e: self.toggle_fullscreen())
+
+    def toggle_fullscreen(self):
+        try:
+            cur = bool(self.root.attributes("-fullscreen"))
+            self.root.attributes("-fullscreen", not cur)
+        except Exception:
+            pass
         # native pane toggles Ctrl+F1/F2/F3 (0x8071/0x8064/0x8065)
         self.root.bind("<Control-F1>",
                        lambda e: self.toggle_pane("ShowTopPane", "src"))
