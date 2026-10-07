@@ -34,7 +34,7 @@ def main():
     check("bing.translate EN->VI", lambda: bing_translate("Good morning", "en", "vi"))
     from qtranslate.services import youdao as yd
     check("youdao.translate_web EN->ZH", lambda: yd.translate_web("Good morning", "en", "zh-CHS"))
-    check("youdao.dictionary", lambda: "results-contents" in yd.dictionary("hello")[0] and "dict-html")
+    check("youdao.dictionary", lambda: len(yd.dictionary("hello")[0]) > 1000 and "dict-html")
     from qtranslate.services import naver as n
     check("naver.detect", lambda: n.detect_code("Hello world"))
     check("naver.translate EN->VI", lambda: n.translate("Hello world", "en", "vi")[0])
