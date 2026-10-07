@@ -74,6 +74,10 @@ Each user action = a `Task` object posted to a worker thread:
    via IAT `0x50D580`, gated by `DAT_005494E7` + `FUN_004544AE`): maps
    button flags to `WM_LBUTTONDOWN/UP (0x201/0x202)`, stamps
    `GetCursorPos` + `GetTickCount` → `FUN_004193F6` click-capture trigger.
+0d. **`FUN_004193F6` = click-capture trigger** (on `0x201` LBUTTONDOWN):
+   `WindowFromPoint` (`FUN_00450DD2`) → exclusion check (`FUN_004631DE`)
+   → `GetWindowRect` + `PtInRect` confirm → store click point
+   (`this+0x17F8`). Mouse-mode capture fires from here.
 0b. **`FUN_00418C23` = hotkey bulk registrar**: unregisters all existing
    (`UnregisterHotKey` loop over the id vector at `this+0x17D8`) → registers
    17 hotkeys from consecutive option words (`DAT_00549466 + i*2`, matching
