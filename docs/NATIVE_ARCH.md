@@ -127,6 +127,16 @@ Each user action = a `Task` object posted to a worker thread:
   AutoDetection. Ported to `qtranslate/config.py` (hotkey word decode matching
   `FUN_00405A17`, default `ServicesOrder = [1,5,12,13,11,26,28,30,31]`).
 
+## Tray icon + layout keys (decompiled)
+
+- **`FUN_00405C42` = tray add** (`__thiscall`, `Shell_NotifyIconW(NIM_ADD)`
+  via IAT `0x50D424`): fills NOTIFYICONDATA (`cbSize` from `this+0x3BC`,
+  `uCallbackMessage = 0x80AA`, 128-wchar tooltip copy). Siblings:
+  `FUN_00405CB2/00405D0C/00405D62` (modify/delete/show balloon).
+- **Layout key helpers** (`FUN_0042AB07` family, `SendInput` via IAT
+  `0x50D504`): single `tagINPUT` inject returning success bool — shared by
+  the copy-capture synth and the `TaskConvertTextLayout` retype engine.
+
 ## Auto-update + proxy (decompiled, probed)
 
 - **`FUN_00461A26` = update checker** (`CheckForUpdateRunnable`'s worker):
