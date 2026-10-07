@@ -305,7 +305,8 @@ class App:
         self.service = SERVICE if SERVICE in TRANSLATORS else "google"
         self.target = TARGET
         self.source = "auto"
-        self.history = []  # (service, src, result)
+        self.history = self._load_history()  # (service, src, result)
+        root.protocol("WM_DELETE_WINDOW", self.on_close)
         root.title("QTranslate")
         root.configure(bg=_COLORS["back"])
         # native main-window rect measured on screen: 526x352
@@ -638,6 +639,60 @@ class App:
     def render(self, text):
         self.out.delete("1.0", "end")
         self.out.insert("1.0", text)
+
+    @staticmethod
+    def _history_path():
+        try:
+            from qtranslate import config as _C
+            import os as _o
+            return _o.path.join(_o.path.dirname(_C.DEFAULT_PATH),
+                                "History.json")
+        except Exception:
+            return "History.json"
+
+    def _load_history(self):
+        # Native persists translation history (History.json) and
+        # restores it unless ClearHistoryOnExit.
+        try:
+            from qtranslate import config as _C
+            import json as _j
+            _g = _C.load().get("General", {})
+            if _g.get("ClearHistoryOnExit", False):
+                return []
+            with open(self._history_path(),
+                      encoding="utf-8") as f:
+                items = _j.load(f)
+            return [(str(s), str(a), str(b)) for s, a, b in items
+                    if isinstance(items, list)][:500]
+        except Exception:
+            return []
+
+    def _save_history(self):
+        try:
+            from qtranslate import config as _C
+            import json as _j
+            _c = _C.load()
+            if not _c.get("Contents", {}).get("SaveOnExit", True):
+                return
+            if _c.get("General", {}).get("ClearHistoryOnExit", False):
+                try:
+                    import os as _o
+                    _o.remove(self._history_path())
+                except OSError:
+                    pass
+                return
+            with open(self._history_path(), "w",
+                      encoding="utf-8") as f:
+                _j.dump(self.history[-500:], f, ensure_ascii=False)
+        except Exception:
+            pass
+
+    def on_close(self):
+        self._save_history()
+        try:
+            self.root.destroy()
+        except Exception:
+            pass
 
     def push_hist(self, svc, src, res):
         self.history.append((svc, src, res))
