@@ -380,6 +380,9 @@ Each user action = a `Task` object posted to a worker thread:
 - **`FUN_00449B08` = rect frame** (`__fastcall`): `CreateSolidBrush` →
   `FrameRect` → `DeleteObject` — draws themed borders (selection frames,
   popup outlines), not solid fills.
+- **`FUN_00449B9C` = solid fill** (`__fastcall`): `SetBkColor` +
+  `ExtTextOutW(OPAQUE)` + restore — the actual background fill behind
+  themed controls and capture overlays.
 - **`FUN_0044C5A1` = luma direction flag**: `(B*0x4D + G*0x97 + R*0x1C) <
   0xE400` (ITU-R BT.601 luma weights) → dark bg lightens (+10), light bg
   darkens (−10). `FUN_0044A163` does the HLS shift; ported to
