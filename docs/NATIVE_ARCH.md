@@ -275,6 +275,11 @@ Each user action = a `Task` object posted to a worker thread:
   of the `ServicesOrder` vector (`FUN_0045AFDD` head read on
   `DAT_005495C0`); by-id = hash lookup (`FUN_0045DAF5` on `DAT_00549590`).
   Mirrored 1:1 by `qtranslate/config.py::services_order()`.
+- **`FUN_0045CDBA` = service switcher** (dispatcher service-select branch):
+  id lookup (`FUN_0045CC50`) → capability gate (`TRANSLATE 1` /
+  `DICTIONARY 8` at `+0x10`) → move-to-front (`FUN_0041E559`) → notify
+  `ServicesFactoryObserver` list (`DAT_00549584`). Click-to-switch on
+  popup service names.
 
 ## Replace-selection path (decompiled)
 
