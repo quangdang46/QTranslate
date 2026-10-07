@@ -279,6 +279,10 @@ Each user action = a `Task` object posted to a worker thread:
   called from dispatcher): builds `TaskShowPopupWindow` (vftable +
   `DAT_0051DE64/68` params) + `PostMessageW(0x812C)` — re-translates with
   the newly selected service without re-capture.
+- **`FUN_0045C2F4` = network-alive gate**: `IsNetworkAlive` (SensApi,
+  the `SensApi.dll` import) — every fetch path checks connectivity first;
+  offline → error 4 without touching curl. (Matches the offline-first
+  design: SAPI TTS + XDXF dicts keep working with no network.)
 - **`FUN_00460006` = fetch dispatcher** (`__thiscall`): invokes
   `serviceHost(...)` (3 args) for the base URL, then routes to GET/POST
   wrappers — every translate/detect/listen/dictionary fetch funnels here
