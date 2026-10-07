@@ -1126,7 +1126,10 @@ Each user action = a `Task` object posted to a worker thread:
   full init (`FUN_00401530`); `WM_DESTROY (2)` → teardown (kill timer,
   unregister pretranslate, detach); `WM_COMMAND (0x111)` → button/menu
   dispatch; `WM_NOTIFY (0x4E)` → list/tree events (`FUN_00401675`);
-  `WM_MOUSEWHEEL (0x20A)` scroll. Sibling popup procs share the shape.
+  `WM_MOUSEWHEEL (0x20A)` scroll (`FUN_00401870`: wheel-delta/120 *
+  step) with offset clamp + repaint (`FUN_004014af`: GetClientRect
+  vs content height, InvalidateRect; Tk Listbox/Treeview scroll
+  natively so no port needed). Sibling popup procs share the shape.
 
 ## Popup positioning (decompiled)
 
