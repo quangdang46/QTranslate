@@ -881,6 +881,9 @@ Each user action = a `Task` object posted to a worker thread:
   (1→`+0x14C`, 3→`+0x164`, 4→`+0x17C`, else→`+0x134`, stride `0x18`) —
   palettes ported to `qtranslate/theme.py` (`window_colors` per state;
   8 themes verified loadable).
+- **`FUN_0044BFB6` = subclass proc** (SetWindowSubclass callback):
+  custom dispatch (`FUN_0044D008`, handled-flag) → `WM_NCDESTROY (0x82)`
+  cleanup (`FUN_0044BCC1`) → `DefSubclassProc` fallback.
 - **`FUN_0044BD0F` = modern subclasser** (`__fastcall`,
   `SetWindowSubclass` id 100 with refcounted data — cf. legacy
   `SetWindowLong` in `FUN_004030AE`): theme-compare (`FUN_0044CD0E` on
