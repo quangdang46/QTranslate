@@ -2266,15 +2266,15 @@ class App:
                     lb.selection_set(i)
                     _save_x()
 
-                tk.Button(fr, text="Add",
+                tk.Button(fr, text=_Cw(15, 1101, "Add"),
                           command=_add).pack(side="left", padx=2)
-                tk.Button(fr, text="Modify",
+                tk.Button(fr, text=_Cw(15, 1103, "Modify"),
                           command=_modify).pack(side="left", padx=2)
-                tk.Button(fr, text="Remove",
+                tk.Button(fr, text=_Cw(15, 1102, "Remove"),
                           command=_dele).pack(side="left", padx=2)
 
-            _mk_xlist(body, "Blocked (Disabled)", _dis_list)
-            _mk_xlist(body, "Allowed (Enabled)", _en_list)
+            _mk_xlist(body, _Cw(15, 1162, "Blocked (Disabled)"), _dis_list)
+            _mk_xlist(body, _Cw(15, 1162, "Allowed (Enabled)"), _en_list)
             # DLG 176 "Enable smart detection" (General.UseSmartDetection)
             try:
                 _genx = cfg.get("General", {})
@@ -2300,7 +2300,7 @@ class App:
                 except Exception:
                     pass
 
-            tk.Checkbutton(body, text="Enable smart detection",
+            tk.Checkbutton(body, text=_Cw(15, 1113, "Enable smart detection"),
                            variable=_sv, bg=_COLORS["back"],
                            fg=_COLORS["text"], selectcolor=_COLORS["back"],
                            command=_save_smart).pack(anchor="w",
