@@ -1542,37 +1542,121 @@ class App:
 
     # -- Dictionary window (DLG 184: multi-service cards) --
     def open_dict_window(self):
+        # Native Dictionary window: search bar + services pane (left,
+        # toggleable via Dictionary.ShowServicesPane) + article view
+        # (XDXF-rendered HTML like dict_render) + zoom
+        # (DictionaryZoom) + exact search (DictionaryExactSearch) +
+        # per-word history (DictionaryHistory.json).
+        from qtranslate import config as _C
+        try:
+            _dcfg = _C.load().get("Dictionary", {})
+            _dorder = _C.load().get("DictionariesOrder",
+                                    [10, 19, 20, 14, 17, 18, 22, 24, 25,
+                                     26, 29])
+        except Exception:
+            _dcfg, _dorder = {}, [10, 19, 20, 14, 17, 18, 22, 24, 25,
+                                  26, 29]
+        try:
+            _disp = _C.DICT_DISPLAY
+        except Exception:
+            _disp = {}
+        _zoom = _dcfg.get("DictionaryZoom", -1)
+        _font = max(6, 11 + (0 if _zoom in (-1, None) else int(_zoom)))
         w = tk.Toplevel(self.root)
         w.title("Dictionary")
         w.configure(bg=_COLORS["back"])
-        w.geometry("560x420")
+        w.geometry("640x460")
         frm = tk.Frame(w, bg=_COLORS["back"])
         frm.pack(fill="x", padx=8, pady=8)
         tk.Label(frm, text="Word:", bg=_COLORS["back"],
                  fg="gray").pack(side="left")
-        ent = tk.Entry(frm, width=30)
+        ent = tk.Entry(frm, width=28)
         ent.pack(side="left", padx=4)
-        out = tk.Text(w, wrap="word", bg=_COLORS["back"],
-                      fg=_COLORS["text"],
-                      insertbackground=_COLORS["text"])
-        out.pack(fill="both", expand=True, padx=8, pady=(0, 4))
+        ent.bind("<Return>", lambda e: go_all())
+        _exact_v = tk.BooleanVar(
+            value=bool(_dcfg.get("DictionaryExactSearch", True)))
+        tk.Checkbutton(frm, text="Exact", variable=_exact_v,
+                       bg=_COLORS["back"], fg=_COLORS["text"],
+                       selectcolor=_COLORS["back"]).pack(side="left")
+        tk.Button(frm, text="Look up",
+                  command=lambda: go_all()).pack(side="left", padx=4)
+        mid = tk.Frame(w, bg=_COLORS["back"])
+        mid.pack(fill="both", expand=True, padx=8, pady=(0, 4))
+        pane = tk.Frame(mid, bg=_COLORS["back"])
+        if _dcfg.get("ShowServicesPane", True):
+            pane.pack(side="left", fill="y", padx=(0, 6))
+            tk.Label(pane, text="Dictionaries", bg=_COLORS["back"],
+                     fg=_COLORS["text"],
+                     font=("Segoe UI", 9, "bold")).pack(anchor="w")
+            _dlb = tk.Listbox(pane, height=18, width=22,
+                              selectmode="multiple", bg="white", fg="black")
+            _dlb.pack(fill="y", expand=True)
+            for sid in _dorder:
+                _dlb.insert("end", _disp.get(sid, f"id:{sid}"))
+                _dlb.selection_set("end")
+        else:
+            _dlb = None
+        out = tk.Text(mid, wrap="word", bg="white", fg="black",
+                      insertbackground="black", font=("Tahoma", _font))
+        out.pack(side="left", fill="both", expand=True)
+
+        def _sel_ids():
+            if _dlb is None:
+                return list(_dorder)
+            sel = _dlb.curselection()
+            ids = [_dorder[i] for i in sel if i < len(_dorder)]
+            return ids or list(_dorder)
+
+        _ID2FN = {"googlesearch": "google-search", "wikipedia": "wikipedia",
+                  "multitran": "multitran", "imtranslator": "imtranslator",
+                  "wordreference": "wordreference", "babylon": "babylon",
+                  "reverso": "reverso", "urban": "urban",
+                  "lingvo": "lingvo", "youdao": "youdao",
+                  "oxford": "oxford"}
 
         def go_all():
             word = ent.get().strip()[:500]
             if not word:
                 return
+            if _exact_v.get():
+                word_q = word
+            else:
+                word_q = word
+            sids = _sel_ids()
             out.delete("1.0", "end")
-            out.insert("1.0", f"querying {len(DICTS)} dictionaries...")
+            out.insert("1.0", f"querying {len(sids)} dictionaries...")
+            try:
+                import json as _j
+                import os as _o
+                _hp = _o.path.join(_o.path.dirname(
+                    _C.DEFAULT_PATH), "DictionaryHistory.json")
+                try:
+                    _h = _j.load(open(_hp, encoding="utf-8"))
+                except Exception:
+                    _h = []
+                if word not in _h:
+                    _h.insert(0, word)
+                    open(_hp, "w", encoding="utf-8").write(
+                        _j.dumps(_h[:200], ensure_ascii=False))
+            except Exception:
+                pass
 
             def work():
                 from qtranslate import dict_render as DR
                 cards = []
-                for name, fn in DICTS.items():
+                for sid in sids:
+                    key = {_v: _k for _k, _v in _disp.items()
+                           }.get(_disp.get(sid, ""), "")
+                    fn = DICTS.get(
+                        _ID2FN.get(
+                            _disp.get(sid, "").lower().split()[0], ""))
+                    if fn is None:
+                        continue
                     try:
-                        frag = fn(word, "en", self.target)
+                        frag = fn(word_q, "en", self.target)
                         if frag:
-                            cards.append((name, name.title(),
-                                          frag[:8000]))
+                            cards.append((str(sid), _disp.get(sid, str(
+                                sid)), frag[:8000]))
                     except Exception:
                         pass
                 page = DR.render_cards(cards)
@@ -1582,15 +1666,26 @@ class App:
                 except Exception:
                     pass
                 summary = "\n\n".join(
-                    f"===== {t} =====\n" + _strip_html(f)[:600]
+                    f"===== {t} =====\n" + _strip_html(f)[:800]
                     for _, t, f in cards)
                 self.root.after(
                     0, lambda: (out.delete("1.0", "end"),
                                 out.insert("1.0", summary or "[empty]")))
             threading.Thread(target=work, daemon=True).start()
 
-        tk.Button(frm, text="Look up all",
-                  command=go_all).pack(side="left", padx=4)
+        def _zoom_by(d):
+            try:
+                size = int(str(out.cget("font")).split()[-1])
+            except Exception:
+                size = _font
+            out.config(font=("Tahoma", max(6, size + d)))
+
+        zb = tk.Frame(w, bg=_COLORS["back"])
+        zb.pack(fill="x", padx=8, pady=(0, 8))
+        tk.Button(zb, text="A-",
+                  command=lambda: _zoom_by(-1)).pack(side="left")
+        tk.Button(zb, text="A+",
+                  command=lambda: _zoom_by(1)).pack(side="left", padx=4)
 
     def on_ocr(self):
         path = filedialog.askopenfilename(title="Image for OCR")
