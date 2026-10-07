@@ -331,6 +331,29 @@ check("i18n-fav",
       and A._T("Strings", 202, "dflt") != "dflt"
       or True)  # en pack truncated upstream; keys exist in vi
 
+# 21. multi-locale boot (app + options build under vi pack)
+try:
+    from qtranslate import locale as _L2
+    A._PACK.clear()
+    A._PACK.update(_L2.load_pack("Vietnamese"))
+    A._PACK_NAME[0] = "Vietnamese"
+    _rp = A._pack
+    A._pack = lambda: A._PACK
+    import tkinter as _tk2
+    _r2 = _tk2.Tk()
+    _r2.withdraw()
+    _a2 = A.App(_r2)
+    _r2.update()
+    _a2.open_options()
+    _r2.update()
+    check("locale-vi-boot", True)
+    _r2.destroy()
+    A._pack = _rp
+    A._PACK.clear()
+    A._PACK_NAME[0] = None
+except Exception as e:
+    check("locale-vi-boot", False, str(e)[:100])
+
 root.destroy()
 print(f"\n{len(PASS)} passed, {len(FAIL)} failed")
 sys.exit(1 if FAIL else 0)
