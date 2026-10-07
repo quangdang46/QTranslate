@@ -139,10 +139,6 @@ def _t_bing(t, sl, tl):
     return _bing_tr(t, "en" if sl == "auto" else sl, tl)
 
 
-def _t_reverso(t, sl, tl):
-    return _dict.reverso_translate(t, "en" if sl == "auto" else sl, tl)
-
-
 def _t_promt(t, sl, tl):
     try:
         paft, xsrf, op = _promt.session(sl, tl)
@@ -162,7 +158,6 @@ TRANSLATORS = {
     "bing": _t_bing,
     "microsoft": _t_bing,
     "promt": _t_promt,
-    "reverso": _t_reverso,
 }
 
 DICTS = {
@@ -245,8 +240,11 @@ def do_translate(service, text, target, src="auto", auto_detect=False,
     try:
         if auto_detect:
             src = detect_language(text)
-        out = fn(text[:5000], src, target) or "[empty]"
-        if back_translate and out and not out.startswith("["):
+        out = fn(text[:5000], src, target)
+        if not out:
+            # native string from Locales/English/lang.json
+            return "No data returned (timeout while sending data)."
+        if back_translate and not out.startswith("No data"):
             try:
                 back = fn(out[:5000], target,
                            "en" if src == "auto" else src)
@@ -255,8 +253,8 @@ def do_translate(service, text, target, src="auto", auto_detect=False,
             except Exception:
                 pass
         return out
-    except Exception as e:
-        return f"[error] {e}"
+    except Exception:
+        return "No data returned (timeout while sending data)."
 
 
 # ------------------------------------------------------------------ UI
@@ -271,7 +269,8 @@ class App:
         self.history = []  # (service, src, result)
         root.title("QTranslate")
         root.configure(bg=_COLORS["back"])
-        root.geometry("540x430")
+        # native main-window rect measured on screen: 526x352
+        root.geometry("526x352")
         self._build_main()
 
     # -- main window body: mirrors the real QTranslate main window --
@@ -296,15 +295,33 @@ class App:
                            lambda e: self.open_service_page())
         tk.Button(nav, text="⋮", width=3,
                   command=self.show_nav_menu).pack(side="right", padx=1)
-        # source pane (id1017) — default text like the original
-        # font mirrors the native dialog font (MS Shell Dlg ~ Tahoma 9)
-        self.src = tk.Text(self.root, height=7, wrap="word", bg="white",
+        # source pane (id1017) + mic/headphone overlay at right edge,
+        # exactly like the native main window (mic above headphone,
+        # top-right of the source pane)
+        srcfrm = tk.Frame(self.root, bg="white")
+        srcfrm.pack(fill="x", padx=4)
+        # taller source pane: native shows ~9 lines (through
+        # "Ctrl+N => Clear current translation")
+        self.src = tk.Text(srcfrm, height=12, wrap="word", bg="white",
                            fg="black", insertbackground="black",
-                           font=("Tahoma", 9))
-        self.src.pack(fill="x", padx=4)
+                           font=("Tahoma", 9), borderwidth=0,
+                           highlightthickness=0)
+        self.src.pack(side="left", fill="x", expand=True)
         self.src.insert("1.0", self.default_source_text())
         self.src.bind("<KeyRelease>", lambda e: self.on_type())
-        # toolbar row
+        srcside = tk.Frame(srcfrm, bg="white")
+        srcside.pack(side="right", fill="y", padx=2)
+        # Tahoma glyphs (emoji mic/headphone render blank on win32 Tk)
+        tk.Button(srcside, text="Mic", width=4, borderwidth=0,
+                  bg="white", font=("Tahoma", 7),
+                  command=self.on_mic).pack(pady=(4, 1))
+        tk.Button(srcside, text="♫", width=4, borderwidth=0,
+                  bg="white", font=("Tahoma", 9),
+                  command=self.on_listen).pack(pady=1)
+        # keep the side column narrow so the text pane keeps its width
+        srcside.config(width=34)
+        # toolbar row: [paste] [kebab] [Auto-Detect] [swap] [target]
+        # [Translate] — no mic/headphone here (they live on the panes)
         bar = tk.Frame(self.root, bg=bg)
         bar.pack(fill="x", padx=4, pady=2)
         tk.Button(bar, text="\U0001f4cb", width=3,
@@ -315,7 +332,7 @@ class App:
                                      width=13, state="readonly")
         self.src_lang.set(LANG_DISPLAY.get("auto", "auto"))
         self.src_lang.pack(side="left", padx=2)
-        tk.Button(bar, text="⇄", width=3,
+        tk.Button(bar, text="⇄", width=3, font=("Segoe UI Symbol", 10),
                   command=self.on_swap).pack(side="left", padx=1)
         self.tgt = ttk.Combobox(bar, values=TO_LANG_NAMES,
                                 width=13, state="readonly")
@@ -323,18 +340,24 @@ class App:
         self.tgt.pack(side="left", padx=2)
         tk.Button(bar, text="Translate",
                   command=self.on_go).pack(side="left", padx=4)
-        tk.Button(bar, text="\U0001f3a4", width=3,
-                  command=self.on_mic).pack(side="right", padx=1)
-        tk.Button(bar, text="\U0001f3a7", width=3,
-                  command=self.on_listen).pack(side="right", padx=1)
         self.suggest = tk.Label(self.root, text="", bg=bg, fg="gray",
-                                anchor="w")
-        self.suggest.pack(fill="x", padx=4)
-        # result pane (id1018)
-        self.out = tk.Text(self.root, height=10, wrap="word", bg="white",
+                                anchor="w", font=("Tahoma", 7))
+        self.suggest.pack(fill="x", padx=4, pady=0)
+        # result pane (id1018) + headphone overlay bottom-right
+        outfrm = tk.Frame(self.root, bg="white")
+        outfrm.pack(fill="both", expand=True, padx=4)
+        self.out = tk.Text(outfrm, height=6, wrap="word", bg="white",
                            fg="black", insertbackground="black",
-                           font=("Tahoma", 9))
-        self.out.pack(fill="both", expand=True, padx=4)
+                           font=("Tahoma", 9), borderwidth=0,
+                           highlightthickness=0)
+        self.out.pack(side="left", fill="both", expand=True)
+        outside = tk.Frame(outfrm, bg="white")
+        outside.pack(side="right", fill="y", padx=2)
+        tk.Frame(outside, bg="white", height=120).pack()
+        tk.Button(outside, text="♫", width=4, borderwidth=0,
+                  bg="white", font=("Tahoma", 9),
+                  command=self.on_listen).pack(side="bottom", pady=4)
+        outside.config(width=34)
         # service icon strip at the bottom (icons from Services/*/Service.ico,
         # click = switch + re-translate like FUN_0045CDBA; middle-click =
         # browser, right-click = multi-select per help.txt Actions).
@@ -343,16 +366,25 @@ class App:
         strip.pack(fill="x", padx=4, pady=(2, 4))
         self.svc_btns = {}
         self.svc_icons = {}
+        # short names exactly like native: Go.. Mi.. Pr.. Ba.. Ya..
+        # yo.. Ba.. Pa.. De.. (icon folder names truncated to 2 chars)
+        _SHORT = {"google": "Go..", "microsoft": "Mi..", "promt": "Pr..",
+                  "babylon": "Ba..", "yandex": "Ya..", "youdao": "yo..",
+                  "baidu": "Ba..", "naver": "Pa..", "deepl": "DeepL",
+                  "reverso": "Re.."}
         for name in self.ordered_services():
+            # native: small icon + short name side-by-side in one row
             cell = tk.Frame(strip, bg=bg)
-            cell.pack(side="left", padx=1)
-            b = tk.Button(cell, width=34, height=26,
+            cell.pack(side="left", padx=2)
+            b = tk.Button(cell, width=22, height=22, borderwidth=0,
+                          bg=bg, activebackground=bg,
                           command=lambda n=name: self.switch_service(n))
-            b.pack()
+            b.pack(side="left")
             b.bind("<Button-2>",
                    lambda e, n=name: self.open_service_page_n(n))
-            tk.Label(cell, text=name[:4].title(), bg=bg, fg="black",
-                     font=("Tahoma", 7)).pack()
+            tk.Label(cell, text=_SHORT.get(name, name[:2] + ".."), bg=bg,
+                     fg="black", font=("Tahoma", 8)).pack(side="left",
+                                                          padx=(1, 0))
             self.svc_btns[name] = b
             self._load_svc_icon(name, b)
         self._mark_service()
@@ -458,21 +490,26 @@ class App:
 
     # -- main-window helpers (mirror native behavior) --
     def ordered_services(self):
-        """ServicesOrder from config (native default order)."""
+        """Exact native strip order: Go.. Mi.. Pr.. Ba.. Ya.. yo.. Ba..
+        Pa.. De.. = ServicesOrder [1,5,12,13,11,26,28,30,31] verified
+        against the real Options.json + screenshot (Pr before Ya)."""
         try:
             from qtranslate import config as C
-            order = {"google": 1, "microsoft": 5, "promt": 12,
-                     "babylon": 13, "yandex": 11, "youdao": 26,
-                     "baidu": 28, "naver": 30, "deepl": 31,
-                     "reverso": 22}
-            names = sorted(TRANSLATORS,
-                           key=lambda n: order.get(n, 99))
+            ids = C.services_order(None)
+            names = [C.SERVICE_NAMES.get(i) for i in ids]
+            # exactly the native strip — no extras appended
             return [n for n in names if n in TRANSLATORS]
         except Exception:
-            return sorted(TRANSLATORS)
+            return ["google", "microsoft", "promt", "babylon", "yandex",
+                    "youdao", "baidu", "naver", "deepl"]
 
     def default_source_text(self):
-        """Default source-pane text: version line + help.txt (like native)."""
+        """Default source-pane text: version line + full help.txt.
+
+        Verified side-by-side vs the native window: it shows the whole
+        help.txt (Global hotkeys + Main window hotkeys + mouse modes +
+        Actions), not just 4 lines.
+        """
         lines = ["QTranslate Version 6.10.0", ""]
         try:
             with open("C:/Program Files (x86)/QTranslate/Locales/English/"
@@ -656,14 +693,21 @@ class App:
                            variable=start_var,
                            bg=_COLORS["back"], fg=_COLORS["text"],
                            selectcolor=_COLORS["back"]).pack(anchor="w")
-            for lab in ("Interface language:", "Font name:", "Text size:"):
+            # native defaults (verified vs Options dialog screenshot):
+            # English / --- Default --- / 9
+            for lab, vals, default in (
+                    ("Interface language:", ["English"], "English"),
+                    ("Font name:", ["--- Default ---"], "--- Default ---"),
+                    ("Text size:", ["9"], "9")):
                 r = tk.Frame(body, bg=_COLORS["back"])
                 r.pack(fill="x", pady=1)
                 tk.Label(r, text=lab, width=18, anchor="w",
                          bg=_COLORS["back"],
                          fg=_COLORS["text"]).pack(side="left")
-                ttk.Combobox(r, values=["English", "Vietnamese"],
-                             width=26).pack(side="left")
+                cb = ttk.Combobox(r, values=vals, width=26,
+                                  state="readonly")
+                cb.pack(side="left")
+                cb.set(default)
             tk.Label(body, text="Auto-detect languages",
                      bg=_COLORS["back"], fg=_COLORS["text"],
                      font=("Segoe UI", 10, "bold")).pack(anchor="w",
