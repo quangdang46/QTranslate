@@ -394,6 +394,11 @@ Each user action = a `Task` object posted to a worker thread:
   (`FUN_0042A10A` substring) → internal re-lookup (`FUN_00426966`) with
   history sync (`this+0x19C = this+0x18C`). Non-qtdp links fall through to
   `ShellExecute` browser open.
+- **`FUN_00409305` = history item action** (`__thiscall`): resolve
+  (`FUN_004088A9`) → vtable show (`+4`) → set item text (`+0x20` via
+  `FUN_00421DF6` convert + `SysFreeString`) → hotkey display refresh
+  (`FUN_00408456`) → layout (`FUN_00408ADE`) → hide (`+8`). Click/keyboard
+  activation of a history entry.
 - **`FUN_004085CD` = history-list WndProc** (`__thiscall`): `WM_KEYDOWN
   (0x100)` → `FUN_00408DB1`; mouse range `0x201–0x209` →
   `FUN_00409685`; timer `0x113/0x114` → hide (`FUN_0040785C`); custom
