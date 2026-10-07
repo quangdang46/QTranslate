@@ -66,6 +66,44 @@ def decode_hotkey(code: int) -> dict:
     return {"id": code & 0xFFF, "modifiers": mods, "vk": vk, "enabled": True}
 
 
+_VK_NAMES = {0x08: "Backspace", 0x09: "Tab", 0x0D: "Enter", 0x1B: "Esc",
+             0x20: "Space", 0x2E: "Delete", 0x21: "PgUp", 0x22: "PgDn",
+             0x23: "End", 0x24: "Home", 0x25: "Left", 0x26: "Up",
+             0x27: "Right", 0x28: "Down"}
+
+
+def format_hotkey(code: int) -> str:
+    """Port of FUN_00403B48: hotkey word -> 'Double Ctrl + Q' display string.
+
+    Native: 'Double ' prefix if bit15, then Ctrl/Shift/Alt/Win names joined
+    with ' + ', vk name via MapVirtualKeyW (special-cased nav keys here).
+    """
+    if not code or not (code & 0xFFF):
+        return ""
+    parts = []
+    if code & 0x8000:
+        parts.append("Double")
+    mods = (code >> 8) & 0xF
+    vk = code & 0xFF
+    if mods & 2:
+        parts.append("Ctrl")
+    if mods & 4:
+        parts.append("Shift")
+    if mods & 1:
+        parts.append("Alt")
+    if mods & 8:
+        parts.append("Win")
+    if vk:
+        name = _VK_NAMES.get(vk)
+        if name is None:
+            try:
+                name = chr(vk).upper() if 0x20 <= vk < 0x7F else f"VK_{vk:02X}"
+            except ValueError:
+                name = f"VK_{vk:02X}"
+        parts.append(name)
+    return " + ".join(parts)
+
+
 def load(path: str = DEFAULT_PATH) -> dict:
     with open(path, encoding="utf-8-sig") as f:
         return json.load(f)
