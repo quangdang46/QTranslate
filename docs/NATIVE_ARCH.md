@@ -528,6 +528,10 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## MainWindow WndProc (decompiled)
 
+- **`FUN_00401675` = link-click notify** (`NM_CLICK -2` / `NM_DBLCLK -4`
+  on link controls `0x3ED/0x3F7`): opens `quest-app.appspot.com` (or
+  `/download`) via `FUN_00450B17` ShellExecute wrapper — About-dialog
+  homepage links.
 - **`FUN_00411DEB` = MainWindow proc** (`__thiscall`): `WM_CREATE (0x110)` →
   full init (`FUN_00401530`); `WM_DESTROY (2)` → teardown (kill timer,
   unregister pretranslate, detach); `WM_COMMAND (0x111)` → button/menu
