@@ -1590,7 +1590,7 @@ class App:
                      font=("Segoe UI", 10, "bold")).pack(anchor="w")
             r = tk.Frame(body, bg=_COLORS["back"])
             r.pack(fill="x", pady=1)
-            tk.Label(r, text="Theme:", width=18, anchor="w",
+            tk.Label(r, text=_Cw(14, 1169, "Theme:"), width=18, anchor="w",
                      bg=_COLORS["back"],
                      fg=_COLORS["text"]).pack(side="left")
             th = ttk.Combobox(r, values=_THEMES, width=26,
@@ -1601,12 +1601,12 @@ class App:
                    (_THEMES[0] if _THEMES else ""))
             th.bind("<<ComboboxSelected>>",
                     lambda e: self.apply_theme(th.get()))
-            for lab, key in (("Enable auto size", "PopupAutoSize"),
-                             ("Enable auto position", "PopupAutoPos"),
-                             ("Always activate", "PopupAutoFocus"),
-                             ("Pin when dragging",
+            for lab, key in ((_Cw(14, 1158, "Enable auto size"), "PopupAutoSize"),
+                             (_Cw(14, 1160, "Enable auto position"), "PopupAutoPos"),
+                             (_Cw(14, 1159, "Always activate"), "PopupAutoFocus"),
+                             (_Cw(14, 1161, "Pin when dragging"),
                               "PopupPinWhenDragging"),
-                             ("Enable window style",
+                             (_Cw(14, 1123, "Enable window style"),
                               "EnableWindowStyle")):
                 vv = tk.BooleanVar(value=bool(_ap.get(key, False)))
                 self._opt_vars[key] = vv
@@ -1617,10 +1617,9 @@ class App:
                      fg=_COLORS["text"],
                      font=("Segoe UI", 10, "bold")).pack(anchor="w",
                                                          pady=(8, 0))
-            for lab, key in (("Auto-hide delay (s):", "PopupTimeout"),
-                             ("Transparency (0-255):", "Transparency"),
-                             ("Frame thickness:", "PopupWindowFrameThickness"),
-                             ("Popup icons:", "PopupIcons")):
+            for lab, key in ((_Cw(14, 1147, "Auto-hide delay (s):"), "PopupTimeout"),
+                             (_Cw(14, 1145, "Transparency (0-255):"), "Transparency"),
+                             (_Cw(14, 1146, "Frame thickness:"), "PopupWindowFrameThickness")):
                 rr = tk.Frame(body, bg=_COLORS["back"])
                 rr.pack(fill="x", pady=1)
                 tk.Label(rr, text=lab, width=20, anchor="w",
@@ -1630,9 +1629,50 @@ class App:
                 ee.pack(side="left")
                 ee.insert(0, str(_ap.get(key, "")))
                 self._opt_vars[key] = ee
-            for lab, key in (("Background color:", "ColorBack"),
-                             ("Text color:", "ColorText"),
-                             ("Frame color:", "ColorFrame")):
+            # PopupIcons bitmask (native checkboxes 1138-1141):
+            # 2=dict, 4=listen-text, 8=copy, 16=replace (30 = all)
+            tk.Label(body, text=_Cw(14, 1137, "Popup icons:"),
+                     bg=_COLORS["back"], fg=_COLORS["text"],
+                     font=("Segoe UI", 9, "bold")).pack(anchor="w",
+                                                        pady=(6, 0))
+
+            def _save_icons():
+                try:
+                    from qtranslate import config as C3
+                    import json as _j
+                    full = C3.load()
+                    full.setdefault("Appearance", {})["PopupIcons"] = \
+                        _ap.get("PopupIcons", 30)
+                    with open(C3.DEFAULT_PATH, "w",
+                              encoding="utf-8") as f:
+                        _j.dump(full, f, ensure_ascii=False, indent=1)
+                except Exception:
+                    pass
+
+            for lab, bit in ((_Cw(14, 1138, "Show dictionary icon"), 2),
+                             (_Cw(14, 1139, "Show listen icon"), 4),
+                             (_Cw(14, 1140, "Show copy icon"), 8),
+                             (_Cw(14, 1141, "Show replace icon"), 16)):
+                vv = tk.BooleanVar(value=bool(
+                    int(_ap.get("PopupIcons", 30)) & bit))
+                self._opt_vars[f"PopupIcons_{bit}"] = vv
+
+                def _flip(b=bit, v=vv):
+                    try:
+                        cur = int(_ap.get("PopupIcons", 30))
+                        _ap["PopupIcons"] = (cur | b) if v.get() \
+                            else (cur & ~b)
+                    except Exception:
+                        pass
+                    _save_icons()
+
+                tk.Checkbutton(body, text=lab, variable=vv,
+                               bg=_COLORS["back"], fg=_COLORS["text"],
+                               selectcolor=_COLORS["back"],
+                               command=_flip).pack(anchor="w")
+            for lab, key in ((_Cw(14, 1092, "Background color:"), "ColorBack"),
+                             (_Cw(14, 1091, "Text color:"), "ColorText"),
+                             (_Cw(14, 1090, "Frame color:"), "ColorFrame")):
                 rr = tk.Frame(body, bg=_COLORS["back"])
                 rr.pack(fill="x", pady=1)
                 tk.Label(rr, text=lab, width=20, anchor="w",
