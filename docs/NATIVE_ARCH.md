@@ -141,6 +141,10 @@ Each user action = a `Task` object posted to a worker thread:
   (`FUN_00460354`) → error wrap (`FUN_004047D6`) → cleanup (`FUN_00404B7B`).
   This single function is the native equivalent of our Python
   `translate()` wrappers — service select → request → fallback chain.
+- **Service picker = `FUN_0045CEDE` / `FUN_0045CC50`**: default = first id
+  of the `ServicesOrder` vector (`FUN_0045AFDD` head read on
+  `DAT_005495C0`); by-id = hash lookup (`FUN_0045DAF5` on `DAT_00549590`).
+  Mirrored 1:1 by `qtranslate/config.py::services_order()`.
 
 ## Replace-selection path (decompiled)
 
