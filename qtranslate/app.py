@@ -419,6 +419,36 @@ def _T(section: str, sid: int, default: str = "",
     return default
 
 
+def _W(wid: int, default: str = "") -> str:
+    """Dialog title by Windows Id (lang.json Windows list)."""
+    try:
+        pack = _pack()
+        for w in pack.get("Windows", []):
+            if isinstance(w, dict) and w.get("Id") == wid:
+                if w.get("Caption"):
+                    return str(w["Caption"])
+            elif isinstance(w, str) and wid == 1:
+                return w
+    except Exception:
+        pass
+    return default
+
+
+def _Cw(wid: int, cid: int, default: str = "") -> str:
+    """Control label by Windows Id + control id."""
+    try:
+        pack = _pack()
+        for w in pack.get("Windows", []):
+            if isinstance(w, dict) and w.get("Id") == wid:
+                for c in w.get("Controls", []):
+                    if isinstance(c, (list, tuple)) and len(c) >= 2 \
+                            and c[0] == cid:
+                        return str(c[1])
+    except Exception:
+        pass
+    return default
+
+
 def _open_url(url: str):
     """Open URL honoring Advanced.DefaultBrowserId (native browser pick).
 
@@ -1433,7 +1463,7 @@ class App:
         except Exception:
             cfg = {}
         w = tk.Toplevel(self.root)
-        w.title("Options")
+        w.title(_W(2, "Options"))
         w.configure(bg=_COLORS["back"])
         _place_aux(w, "WindowOptionsPlacement", "560x420")
         left = tk.Listbox(w, width=14, height=20, bg=_COLORS["back"],
@@ -1461,7 +1491,7 @@ class App:
                 _ad = _cfg.get("AutoDetection", {})
             except Exception:
                 _gen, _ad = {}, {}
-            tk.Label(body, text="General", bg=_COLORS["back"],
+            tk.Label(body, text=_Cw(10, 1046, "General"), bg=_COLORS["back"],
                      fg=_COLORS["text"],
                      font=("Segoe UI", 10, "bold")).pack(anchor="w")
             self._opt_vars = getattr(self, "_opt_vars", {})
