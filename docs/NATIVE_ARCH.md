@@ -920,6 +920,9 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Auto-update + proxy (decompiled, probed)
 
+- **`FUN_0043F25B` = DOM array append** (`__thiscall`, used by the array
+  parser): grow-on-demand (`FUN_0043F4E1`) + store — backs JSON result
+  arrays before our Python `json.loads` takes over.
 - **`FUN_0043FBB4` = digit run** (`__thiscall`): accumulates `0-9` into
   a fresh string (used by the number parser's int/frac/exp parts).
 - **`FUN_0043F77D` = cursor advance** (`__thiscall`, used by every
