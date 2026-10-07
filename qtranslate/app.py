@@ -468,8 +468,15 @@ class App:
                            command=self.clear_history)
         mb.add_cascade(label="History", menu=m_hist)
         m_opt = tk.Menu(mb, tearoff=False)
-        self.opt_detect = tk.BooleanVar(value=False)
-        self.opt_backtr = tk.BooleanVar(value=False)
+        try:
+            from qtranslate import config as _C0
+            _g0 = _C0.load().get("General", {})
+        except Exception:
+            _g0 = {}
+        self.opt_detect = tk.BooleanVar(
+            value=bool(_g0.get("AlwaysDetectLanguage", False)))
+        self.opt_backtr = tk.BooleanVar(
+            value=bool(_g0.get("BackTranslation", False)))
         m_opt.add_checkbutton(label="Always detect language",
                               variable=self.opt_detect)
         m_opt.add_checkbutton(label="Back translation",
