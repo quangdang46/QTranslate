@@ -257,6 +257,15 @@ Each user action = a `Task` object posted to a worker thread:
   translation back (`FUN_0043BE56`) — then the capture synth (`FUN_0043BD5C`
   with `0x56` 'V') pastes over the selection.
 
+## Exception-list window picker (decompiled)
+
+- **`FUN_0040E891` = window picker tracker** (`__thiscall`, Spy++-style):
+  on each tick, `GetCursorPos` → `WindowFromPoint` → if changed, toggle
+  highlight on old/new window (`FUN_0040E961`) → read class name
+  (`FUN_00450C50`) → forward class+app to parent via `SendMessageW(0)`.
+  This is the "pick a window" tool behind `PageExceptions` ("drag to add
+  an app/class to the blocklist").
+
 ## Clipboard viewer chain (decompiled)
 
 - **`FUN_0043EBE0` = viewer setup**: registers `QTranslateClipboardWindowClass`
