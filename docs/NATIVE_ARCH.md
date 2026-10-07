@@ -173,6 +173,13 @@ Each user action = a `Task` object posted to a worker thread:
   DWMWA_EXTENDED_FRAME_BOUNDS)` → else `GetWindowRect` minus borders
   (skipped when zoomed on Win7+) — correct popup rect under Aero.
 
+## String literal loader (decompiled)
+
+- **`FUN_00401F21` = literal loader** (`__thiscall`, highest call count in
+  the binary): fresh string + `CheckImplicitLoad` + `FUN_00401EA9` copy —
+  every `L"..."` literal in decompile flows through here (hence its
+  ubiquity in our traces).
+
 ## String format core (decompiled)
 
 - **`FUN_004023F1` = sprintf-style formatter** (`__cdecl`, varargs):
