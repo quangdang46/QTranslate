@@ -1429,7 +1429,7 @@ class App:
     def show_about(self):
         # DLG 133: About + OK + 2 SysLinks (homepage, services credit).
         w = tk.Toplevel(self.root)
-        w.title("About")
+        w.title(_W(4, "About"))
         w.configure(bg=_COLORS["back"])
         w.geometry("360x200")
         tk.Label(w, text="QTranslate Version 6.10.0",
@@ -2488,7 +2488,7 @@ class App:
     # loads the item back into the main window.)
     def open_history_window(self):
         w = tk.Toplevel(self.root)
-        w.title("History")
+        w.title(_W(3, "History"))
         w.configure(bg=_COLORS["back"])
         _place_aux(w, "WindowHistoryPlacement", "500x280")
         tv = ttk.Treeview(w, columns=("svc",), show="tree headings",
@@ -2565,7 +2565,7 @@ class App:
         _zoom = _dcfg.get("DictionaryZoom", -1)
         _font = max(6, 11 + (0 if _zoom in (-1, None) else int(_zoom)))
         w = tk.Toplevel(self.root)
-        w.title("Dictionary")
+        w.title(_W(5, "Dictionary"))
         w.configure(bg=_COLORS["back"])
         _place_aux(w, "WindowDictionaryPlacement", "640x460")
         frm = tk.Frame(w, bg=_COLORS["back"])
@@ -2883,7 +2883,7 @@ class App:
         General.LanguageKeyboard via the JCUKEN map (17=en default).
         """
         w = tk.Toplevel(self.root)
-        w.title("Virtual keyboard")
+        w.title(_W(7, "Virtual keyboard"))
         w.configure(bg=_COLORS["back"])
         _place_aux(w, "WindowKeyboardPlacement", "308x102")
         w.attributes("-topmost", True)
