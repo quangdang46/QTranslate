@@ -231,6 +231,9 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## String literal loader (decompiled)
 
+- **`FUN_00402942` = errno→fail-fast map** (`__cdecl`): ENOMEM→no-memory,
+  EINVAL/ERANGE→invalid-param, EEXIST→ignore, else invalid — funnels CRT
+  errors into the single `FUN_0040345B` death point.
 - **`FUN_004027A0` = resource copy** (`__fastcall`, `_wmemcpy_s` +
   errno check via `FUN_00402942`): length-or-explicit copy behind the
   string-table loader.
