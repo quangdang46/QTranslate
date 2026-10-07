@@ -659,6 +659,13 @@ class App:
         self.root.bind("<Control-h>", lambda e: self.open_history_window())
         self.root.bind("<Control-i>", lambda e: self.on_swap())
         self.root.bind("<F1>", lambda e: self.show_hotkeys())
+        # Shift+Esc = reset pair to auto-detected (native 0x8052 Reset)
+        self.root.bind("<Shift-Escape>", lambda e: self.reset_pair())
+        # Ctrl+Tab / Ctrl+Shift+Tab = next/prev service (accel 170)
+        self.root.bind("<Control-Tab>", lambda e: self.cycle_service(1))
+        self.root.bind("<Control-Shift-Tab>",
+                       lambda e: self.cycle_service(-1))
+        self.root.bind("<Control-space>", lambda e: self.on_go())
         # native pane toggles Ctrl+F1/F2/F3 (0x8071/0x8064/0x8065)
         self.root.bind("<Control-F1>",
                        lambda e: self.toggle_pane("ShowTopPane", "src"))
@@ -667,6 +674,41 @@ class App:
         self.root.bind("<Control-F3>",
                        lambda e: self.toggle_pane("ShowServicesPane",
                                                    "svc"))
+
+    def reset_pair(self):
+        """Shift+Esc: reset language pair to auto-detected (native
+        Reset 0x8052 + AutoDetection first/second)."""
+        try:
+            from qtranslate import config as _C
+            _ad = _C.load().get("AutoDetection", {})
+            _table = list(__import__(
+                "qtranslate.services.google_translate",
+                fromlist=["SUPPORTED_LANGS"]).SUPPORTED_LANGS)
+            _fi, _si = _ad.get("LanguageFirst", 57), _ad.get(
+                "LanguageSecond", 17)
+            _fn = {c: n for c, n in LANG_DISPLAY.items()}
+            _rev = {_table[i] if 0 <= i < len(_table) else "auto"
+                    for i in (_fi, _si)}
+            self.src_lang.set(_fn.get(_table[_fi]
+                                      if 0 <= _fi < len(_table) else "auto",
+                                      "Auto-Detect"))
+            self.tgt.set(_fn.get(_table[_si]
+                                 if 0 <= _si < len(_table) else "vi",
+                                 "Vietnamese"))
+        except Exception:
+            self.src_lang.set("Auto-Detect")
+
+    def cycle_service(self, direction=1):
+        """Ctrl+Tab / Ctrl+Shift+Tab: next/previous service (accel 170
+        0x8069/0x806A + Ctrl+1..9 slots 0x8042-0x804A)."""
+        try:
+            names = self.ordered_services()
+            if not names:
+                return
+            i = names.index(self.service) if self.service in names else 0
+            self.switch_service(names[(i + direction) % len(names)])
+        except Exception:
+            pass
 
     def toggle_pane(self, key, pane):
         """Show/hide a main-window pane, persisting General.<key>."""
