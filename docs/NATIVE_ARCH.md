@@ -471,6 +471,10 @@ Each user action = a `Task` object posted to a worker thread:
   switch): walks all services, keeps `caps & mask` (`+4` field), rebuilds
   the active list (`RemoveAll` + push-back) — drives which providers show
   in translate vs dictionary UI.
+- **`FUN_00403446` = raise** (`__cdecl` `RaiseException` wrapper): the
+  bottom of the death chain — SEH-catchable, so even "fatal" contract
+  violations flow through the unhandled filter → `Exceptions.json` →
+  next-launch reporter. Death and diagnostics are one loop.
 - **`FUN_0040345B` = fail-fast core** (called from OOM + all contract
   violations): raises `0xC000001D` (illegal-instruction, default) or
   `0xC0000017` (no-memory, for `-0x7FF8FFF2`) via `FUN_00403446` — the
