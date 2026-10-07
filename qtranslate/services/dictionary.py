@@ -494,8 +494,10 @@ def urban_lookup(word, sl=1, tl=1):
 
 
 # ----------------------------------------------------------------- Wikipedia
-# Services/Wikipedia/Service.js (host is per-target-lang m.wikipedia.org)
+# Services/Wikipedia/Service.js (SERVICE_ID=14, DICTIONARY only)
 
+WIKI_ID = 14
+WIKI_NAME = "Wikipedia"
 WIKI_LANGS = [None, "", "af", "az", "sq", "ar", "hy", "eu", "be", "bg",
               "ca", "zh", "zh", "hr", "cs", "da", "nl", "en", "et", "fi",
               None, "fr", "gl", "de", "el", "ht", "he", "hi", "hu", "is",
@@ -507,12 +509,37 @@ WIKI_LANGS = [None, "", "af", "az", "sq", "ar", "hy", "eu", "be", "bg",
 
 
 def _wiki_host(lang_code):
-    code = lang_code or "en"
+    """Port of serviceHost(): https://{lang}.m.wikipedia.org.
+
+    Native: lang = codeFromLanguage(DICTIONARY ? target : source);
+    UNKNOWN (-1/"") falls back to ENGLISH (index 17 = "en").
+    """
+    code = lang_code or ""
+    if code in ("", -1, None):
+        code = "en"
     return "https://{0}.m.wikipedia.org".format(code)
 
 
+def wikipedia_host_for(sl, tl):
+    """Host for a dictionary lookup always uses the *target* lang."""
+    return _wiki_host(tl)
+
+
+def wikipedia_link() -> str:
+    """Port of serviceLink(): always https://www.wikipedia.org/."""
+    return "https://www.wikipedia.org/"
+
+
 def wikipedia_lookup(word, sl, tl):
-    host = _wiki_host(tl)
+    """Port of serviceDictionaryRequest/Response (bodyContent slice).
+
+    The native also returns article_url = host + /wiki/<word> (the
+    ResponseData link field) — see wikipedia_article_url(); the
+    fragment alone is returned here to keep all dictionary.py lookups
+    string-typed. Vector-skin fallback (catlinks) kept for current
+    site markup.
+    """
+    host = wikipedia_host_for(sl, tl)
     page = _get(host + "/wiki/" + _q(word))
     frag = _sub(page, '<div id="bodyContent"', True,
                 '<div class="post-content"', True)
@@ -526,6 +553,12 @@ def wikipedia_lookup(word, sl, tl):
     frag = _remove_attributes(frag + "></div>", ["id", "name", "class"])
     frag = _update_links(frag, host)
     return frag
+
+
+def wikipedia_article_url(word, sl, tl) -> str:
+    """The ResponseData link field: host + /wiki/<word>."""
+    host = wikipedia_host_for(sl, tl)
+    return host + "/wiki/" + _q(word)
 
 
 # ------------------------------------------------------------- Google Search
