@@ -152,6 +152,9 @@ Each user action = a `Task` object posted to a worker thread:
    8 resize handles (`FUN_00449B08/00449B9C` frame/fill, `FUN_00437367` label).
    Sibling blitters: `FUN_0044A611/0044A201/00437FE4/00449901/004498A0`.
 
+- **`FUN_0045B9FE` = path combine** (`__fastcall`): clone base
+  (`FUN_004021DE` addref) + `FUN_0045B9D9` append — builds each enumerated
+  `Services/<name>/Service.js` full path.
 - **`FUN_0041FA3D` = match-vector reserve/clear** (`__thiscall`, called
   from the enumerator): frees or grows (`FUN_0041FABE` + `FUN_00420870`)
   the per-scan match list.
