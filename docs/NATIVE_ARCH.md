@@ -920,6 +920,8 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Auto-update + proxy (decompiled, probed)
 
+- **`FUN_0043FBB4` = digit run** (`__thiscall`): accumulates `0-9` into
+  a fresh string (used by the number parser's int/frac/exp parts).
 - **`FUN_0043F77D` = cursor advance** (`__thiscall`, used by every
   parser): `pos += n*2` (UTF-16 units) with end-clamp — bounds-safe
   scanning shared across JSON/string/comment lexing.
