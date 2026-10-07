@@ -279,6 +279,10 @@ Each user action = a `Task` object posted to a worker thread:
   called from dispatcher): builds `TaskShowPopupWindow` (vftable +
   `DAT_0051DE64/68` params) + `PostMessageW(0x812C)` — re-translates with
   the newly selected service without re-capture.
+- **`FUN_004614A7`/`FUN_00461471` = TTS toggle guard** (dispatcher listen
+  branch): if already playing (`DAT_0054961C`) → `FUN_00461691` free stream
+  + `FUN_0046161C` reset state — pressing Listen twice stops instead of
+  overlapping. Mirrored in our `player.play_mp3_bytes` finally-block.
 - **`FUN_00405553` = TaskListenText ctor** (`__thiscall`, called from
   dispatcher listen branch): sets `TaskListenText::vftable` + fields
   (service, text, sl/tl, slow flag, extra) — the task object later run by
