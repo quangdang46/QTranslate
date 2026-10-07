@@ -96,6 +96,8 @@ def format_hotkey(code: int) -> str:
     if vk:
         name = _VK_NAMES.get(vk)
         if name is None:
+            # Native falls back to GetKeyNameTextW (system key names);
+            # printable-ASCII approximation is equivalent for hotkey display.
             try:
                 name = chr(vk).upper() if 0x20 <= vk < 0x7F else f"VK_{vk:02X}"
             except ValueError:
