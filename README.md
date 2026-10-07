@@ -38,7 +38,7 @@ python -I qtranslate/tts.py "Xin chào" vi google.mp3
 | Reverso | ✅ | — | — | ✅ | ported; site 403 (bot-wall) |
 | ImTranslator | ✅ | — | — | — | ported; endpoint 404 (retired) |
 | WordReference | — | — | — | ✅ | ported; markup changed (empty) |
-| Oxford Learner | — | — | — | ✅ | ported (needs live test) |
+| Oxford Learner | — | — | — | ✅ | **live OK** |
 | Multitran | — | — | — | ✅ | ported; markup changed (empty) |
 | Babylon / Babylon Dict | — | — | — | ✅ | ported; SSL chain broken |
 | ABBYY Lingvo Live | — | — | — | ✅ | **live OK** |
