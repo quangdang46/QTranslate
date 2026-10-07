@@ -274,6 +274,12 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Offline XDXF dictionaries (decompiled + ported)
 
+- **Options seeding = `FUN_0045D160` head**: `PreferredDomain` (from global
+  `DAT_005494E0`) and siblings pushed into the JS engine via
+  `FUN_00465A92`→`addOption` *before* `serviceHeader` runs — so every
+  `Service.js` sees `Options.PreferredDomain/GoogleDomain/LanguageCode`
+  from its first line. Our `session.py` + per-module `HOST` constants
+  reproduce these values statically.
 - **`FUN_0045D6A9` = service discovery root**: `GetFileAttributesW("Services")`
   → load `Common.js` framework first (via shared `FUN_0043DF32` reader into
   `DAT_005492AC`) → enumerate per-service dirs → each `Service.js` loaded
