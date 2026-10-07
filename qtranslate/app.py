@@ -2558,9 +2558,44 @@ class App:
                 pass
             w.destroy()
 
+        def _save_page_index():
+            try:
+                from qtranslate import config as _C
+                import json as _j
+                full = _C.load()
+                sel = left.curselection()
+                full.setdefault("Application", {})[
+                    "OptionsPageIndex"] = sel[0] if sel else 0
+                with open(_C.DEFAULT_PATH, "w",
+                          encoding="utf-8") as f:
+                    _j.dump(full, f, ensure_ascii=False, indent=1)
+            except Exception:
+                pass
+
+        _orig_select = on_select
+
+        def on_select(_e=None):
+            _orig_select(_e)
+            _save_page_index()
+
         left.bind("<<ListboxSelect>>", on_select)
-        left.selection_set(0)
-        show_basics()
+        try:
+            from qtranslate import config as _CI
+            _pi = int(_CI.load().get("Application", {}).get(
+                "OptionsPageIndex", 0))
+        except Exception:
+            _pi = 0
+        if 0 <= _pi < len(pages):
+            left.selection_set(_pi)
+            page = pages[_pi]
+            {"Basics": show_basics, "Appearance": show_appearance,
+             "Hotkeys": show_hotkeys, "Services": show_services,
+             "Languages": show_languages, "Internet": show_internet,
+             "Exceptions": show_exceptions, "Advanced": show_advanced,
+             "Updates": show_updates}.get(page, show_basics)()
+        else:
+            left.selection_set(0)
+            show_basics()
         frm = tk.Frame(w, bg=_COLORS["back"])
         frm.pack(side="bottom", pady=(0, 8))
         tk.Button(frm, text="OK",
