@@ -1096,6 +1096,8 @@ Each user action = a `Task` object posted to a worker thread:
 - **`FUN_00462F8E` = mode lookup** (`__thiscall`): linear scan matching
   both strings (`FUN_00401FC2` ×2, `FUN_0041E45F` element read) —
   `0xFFFFFFFF` when absent. Backs both enable variants.
+- **`FUN_0040208A` = null-safe wcslen** (`__fastcall`, null → 0):
+  length probe behind copy core, format sizing, and clipboard bounds.
 - **`FUN_00401EA9` = copy core** (`__thiscall`, used by both literal
   loaders): measure (`FUN_0040208A` wcslen) + bounded copy
   (`FUN_00402231`) — the 2-step under every string init.
