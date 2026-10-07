@@ -3,7 +3,6 @@
 Live status 2026-10-07: 400 without paft+XSRF. Shared-jar gets Antiforgery
 cookies but paft is JS-rendered (absent from static HTML) — headless
 browser required for the full flow. ghcs() hash verified working.
-"""
 
 PROMT.One /api/getTranslation. Signing: ghcs() Java-style hash over
 "TranslateButton#{sl}-{tl}#General#{ghcs(text)}" then ghcs() again.

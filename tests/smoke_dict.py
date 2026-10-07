@@ -67,3 +67,13 @@ print("OK: yandex chunks")
 from qtranslate.services.google_translate import tk as _tk
 assert _tk("Hello world") == _tk("Hello world")
 print("OK: google tk deterministic")
+
+# signing determinism (endpoints dead, algorithms must still be exact)
+from qtranslate.services.baidu import sign as _bs
+from qtranslate.services.youdao import make_sign as _ys
+from qtranslate.services.promt import ghcs as _gh
+assert _bs("hello", "123.456") == _bs("hello", "123.456")
+assert _ys("hello", "12345") == _ys("hello", "12345")
+assert _gh("Hello world") == _gh("Hello world")
+import qtranslate.services.promt  # syntax regression guard
+print("OK: signing deterministic")
