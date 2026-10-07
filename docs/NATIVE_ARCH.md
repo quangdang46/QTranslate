@@ -254,7 +254,11 @@ Each user action = a `Task` object posted to a worker thread:
   `serviceDetectLanguageRequest(text)` on the service JS via IDispatch
   (`FUN_0043B942`) → parses the returned `RequestData` with `FUN_0046578F` →
   executes HTTP via `FUN_00460006` → curl wrappers `FUN_0045BCED` (GET) /
-  `FUN_0045BF7D` (POST) with timeout+retry args. Sibling at `FUN_00465CCE`
+  `FUN_0045BF7D` (POST) with timeout+retry args. Response charset fixed at
+  `0xFDE9` = 65001 UTF-8 (`FUN_0043B207` wrapper → `FUN_0043B185`
+  `MultiByteToWideChar`) — matches `CodePage.UTF8` in `Common.js`; the other
+  `CodePage` enum values (WINDOWS1251/ISO8859_1) are for legacy provider pages.
+  Sibling at `FUN_00465CCE`
   (same `serviceDetectLanguageRequest` string ref — dictionary-window path).
 - Options driving it: `AlwaysDetectLanguage`, `BackTranslation`,
   `BackTranslationSplitterPos` (refs in `FUN_004561F0`/`FUN_0045869F` savers).
