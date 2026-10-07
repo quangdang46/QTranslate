@@ -676,6 +676,10 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Popup positioning (decompiled)
 
+- **`FUN_00434025` = dialog launcher** (`__fastcall`): disables Apply
+  (`0x419`) → saved placement? custom pos (`FUN_004072AA`) : default
+  (`FUN_00402E7F`) → thunk allocs → `CreateDialogParamW(0xAB)` modeless.
+  Template for options-page dialogs.
 - **`FUN_00402E7F` = popup positioner** (`__fastcall`):
   parent-or-owner anchor → `MonitorFromWindow` + `GetMonitorInfoW` work
   area → clamp → `SetWindowPos(..., SWP_NOMOVE/-SIZE flags 0x15)`.
