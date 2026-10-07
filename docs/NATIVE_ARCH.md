@@ -214,6 +214,16 @@ Each user action = a `Task` object posted to a worker thread:
   (IAT `0x50D64C`) with shift-state synthesis. `GetKeyboardLayout` (IAT
   `0x50D61C`) consumer at `FUN_004140C1` (layout indicator update).
 
+## HTTP fetch wrappers (decompiled)
+
+- **GET = `FUN_0045BCED`** (url, out, flags, timeout `0xFDE9`, retries):
+  `FUN_0045BBAE` builds URL+headers → `FUN_0043B185` charset-convert response
+  (`MultiByteToWideChar`). **POST = `FUN_0045BF7D`**: same shape via
+  `FUN_0045BF13` body builder. Underlying transport is statically-linked
+  libcurl (no curl imports; `CURLOPT_*`/timeout/proxy strings embedded);
+  proxy from `WinHttpGetIEProxyConfigForCurrentUser` or `Options.json`,
+  timeout from `Internet.Timeout` (default 10000ms).
+
 ## Auto-update + proxy (decompiled, probed)
 
 - **`FUN_00461A26` = update checker** (`CheckForUpdateRunnable`'s worker):
