@@ -48,9 +48,40 @@ def is_excluded(cls_name: str, exe_name: str,
     return False
 
 
+def _live_lists():
+    """Read Exceptions section live (Disabled/Enabled/DisabledMode).
+
+    DisabledMode=true (native default): Disabled = blocklist.
+    false: Enabled = allowlist (everything else blocked).
+    """
+    try:
+        from qtranslate import config as _C
+        _ex = _C.load().get("Exceptions", {})
+        dis = [tuple(p) for p in _ex.get("Disabled", [])
+               if isinstance(p, (list, tuple)) and len(p) >= 2]
+        ena = [tuple(p) for p in _ex.get("Enabled", [])
+               if isinstance(p, (list, tuple)) and len(p) >= 2]
+        return dis, ena, bool(_ex.get("DisabledMode", True))
+    except Exception:
+        return list(DEFAULT_DISABLED), [], True
+
+
 def foreground_excluded(disabled: list | None = None) -> bool:
     cls, exe = _fg_class_and_exe()
-    return is_excluded(cls, exe, disabled)
+    if disabled is not None:
+        return is_excluded(cls, exe, disabled)
+    dis, ena, mode = _live_lists()
+    if mode:
+        return is_excluded(cls, exe, dis or list(DEFAULT_DISABLED))
+    # allowlist mode: blocked unless explicitly enabled
+    if not ena:
+        return False
+    for app, cl in ena:
+        app_hit = (not app) or (app.lower() == exe.lower())
+        cls_hit = (not cl) or (cl.lower() == cls.lower())
+        if app_hit and cls_hit:
+            return False
+    return True
 
 
 if __name__ == "__main__":

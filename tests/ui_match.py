@@ -359,6 +359,21 @@ try:
 except Exception as e:
     check("dblclick-time", False, str(e)[:80])
 
+# 19f. exclusion gate (FUN_004631DE wcsicmp + DisabledMode)
+from qtranslate import exclusions as _X3
+check("excl-blocked",
+      _X3.is_excluded("SysListView32", "notepad.exe",
+                      [("", "SysListView32")]) is True)
+check("excl-allow",
+      _X3.is_excluded("Edit", "notepad.exe",
+                      [("", "SysListView32")]) is False)
+check("excl-exe",
+      _X3.is_excluded("Anything", "mstsc.exe",
+                      [("mstsc.exe", "")]) is True)
+check("excl-live-lists",
+      isinstance(_X3._live_lists(), tuple)
+      and len(_X3._live_lists()) == 3)
+
 # 19c. multi-select toggle + Ctrl+K binding (help.txt Actions)
 app.toggle_multi_service("deepl")
 app.toggle_multi_service("yandex")
