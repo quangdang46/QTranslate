@@ -366,6 +366,9 @@ Each user action = a `Task` object posted to a worker thread:
   `2` = reset, `5` = update `FUN_00407A59`, `0x14` = paint `FUN_004079DA`,
   owner `FUN_00407B18` sibling) — every owner-drawn button/list in popups
   and dialogs paints through here with the active theme palette.
+- **`FUN_00407A59` = list layout update** (`__fastcall`): `GetClientRect` →
+  `InflateRect(-border)` → `FUN_00421E8B` child reposition — keeps list
+  content inside the themed border on resize.
 - **`FUN_0040793A` = owner-draw ListBox setup** (`__fastcall`): creates
   `ListBox` with `LBS_OWNERDRAWFIXED|HASSTRINGS|SORT (0x50200050)`,
   `WM_SETFONT (0x30)` + update (`FUN_00407A59`) — history/suggestion lists.
