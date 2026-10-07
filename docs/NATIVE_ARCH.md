@@ -310,8 +310,10 @@ Each user action = a `Task` object posted to a worker thread:
   (`this+0x208/0x234/0x260/0x2B8/0x2E4…`): same-id → destroy (toggle);
   dictionary-id → build dict task (`FUN_00414E72`) + `PostMessageW(0x812C)`;
   replace-id → destroy + `Sleep(100)` + `TaskReplaceSelection::vftable` +
-  post; copy-id → clipboard write (`FUN_0043BE56`). This is the central
-  fan-out from every registered hotkey to its `tasks::` object.
+  post; copy-id → clipboard write (`FUN_0043BE56`). Service-select ids
+  `0x8038–0x804A` → `FUN_0045CDBA` service switch + `FUN_0043A121` re-run;
+  listen-id → `FUN_00405553` TTS task + post. This is the central fan-out
+  from every registered hotkey to its `tasks::` object.
 
 ## Clipboard viewer chain (decompiled)
 
