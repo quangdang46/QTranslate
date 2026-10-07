@@ -279,6 +279,11 @@ Each user action = a `Task` object posted to a worker thread:
   called from dispatcher): builds `TaskShowPopupWindow` (vftable +
   `DAT_0051DE64/68` params) + `PostMessageW(0x812C)` — re-translates with
   the newly selected service without re-capture.
+- **`FUN_004613FA` = playback wrapper** (`__fastcall`, called from the
+  end-sync callback): free old → `FUN_004614BB` fetch-next (1 = drained,
+  0 = has chunk, else error code) → `FUN_00461642` play → on failure
+  reset + `PostMessageW(0x8145)` error to main window. Chained playback
+  across multi-chunk TTS responses.
 - **`FUN_0046161C` = TTS queue reset** (`__fastcall`, called from the
   toggle guard): clears playing flag + releases each queued item
   (`+8` dtor via `FUN_004024F2` vector walk) — drains pending speech
