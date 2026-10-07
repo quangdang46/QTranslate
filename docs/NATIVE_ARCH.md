@@ -407,6 +407,9 @@ Each user action = a `Task` object posted to a worker thread:
   sub-layout (`+0x48/+0x54`) → hotkey-test refresh (`FUN_00409EC0`) +
   show-layout (`FUN_00408ADE`). Service ids 5/`0x1A`/`0x2A`/`0x38`/`0x3B`
   take a flag variant.
+- **`FUN_004099F3` = RichEdit line getter** (`__thiscall`):
+  `EM_GETLINE (1099)` range read into a fresh buffer — feeds the template
+  expander and the copy-translation path with source lines.
 - **`FUN_0042D198` = bracket-template expander** (`__fastcall`): splits
   text on `\r`, finds `[...]` spans (`FUN_0041BBB9` bracket match) →
   resolves each id (`FUN_004088ED`) → applies (`+0x54`) — expands
