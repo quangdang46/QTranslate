@@ -331,6 +331,14 @@ Each user action = a `Task` object posted to a worker thread:
   worker thread. Classic producer-consumer for all translate/dict/listen
   tasks.
 
+## Double-modifier hotkey (decompiled)
+
+- **`FUN_0041786B` = double-press detector** (`__thiscall`): `GetGUIThreadInfo`
+  focus check (skips own `HotKeyControl`) → modifier bits from `param_3`
+  (`0x10` Shift → 4, `0x11` Ctrl → 2, `0x12` Alt → 1, `0x5B/0x5C` Win → 8) →
+  `FUN_00417DCE` match against `DAT_00549484` (Double-Ctrl pattern). This is
+  the "Double Ctrl => Show main window" trigger from the hotkey docs.
+
 ## Tooltip + balloon (decompiled)
 
 - **`FUN_00403E00` = tooltip creator** (`__thiscall`): `CreateWindowExW(
