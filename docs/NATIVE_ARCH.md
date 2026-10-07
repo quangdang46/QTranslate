@@ -94,6 +94,18 @@ Each user action = a `Task` object posted to a worker thread:
    `TaskConvertTextLayout` engine that retypes text in the fixed layout.
 4. OCR: `OcrProvider`/`OcrSpaceProvider` (`common::`) — screenshot from `ScreenCaptureWindow` → upload to OCR API.
 
+## Popup render path (decompiled, verified)
+
+- **`FUN_0040C393` = popup content+position setter** (`__fastcall`, calls
+  `SetWindowTextW` via IAT `0x50D5C0`, `SetWindowPos` via `0x50D5A0`):
+  set window text from `this+0x3C` → `WM_SETICON (0x80)` if icon present →
+  RichEdit child (`GetDlgItem 0x49E`) content update (`FUN_004030AE`) →
+  `EM_EXLIMITTEXT`-style config msg `0xD3` → result text into second control
+  (`this+0x40`) → auto-resize (`FUN_0044B4F4`, `FUN_0040C475`) →
+  `SetWindowPos(HWND_TOPMOST, SWP_NOMOVE|NOSIZE|SHOWWINDOW = 0x40B)`.
+  Sibling renderers share the pattern: `FUN_00411F80`, `FUN_004127DA`,
+  `FUN_0042EFDA/0042F96B/0042F19A`.
+
 ## JS engine hosting (decompiled, verified)
 
 - **`FUN_0043E32F` = ActiveScript bootstrapper** (`__fastcall`, `CoCreateInstance`
