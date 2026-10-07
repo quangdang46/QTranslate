@@ -159,6 +159,13 @@ Each user action = a `Task` object posted to a worker thread:
 - `UtilsDispatch` (IDispatch bridge) exposes native `Options` (IG/BingToken/Cookie, GoogleTkk, proxy) into JS.
 - `CurlHandle` + `HttpDelegate` (`net::`) — embedded libcurl (strings: `Downgrades to HTTP/1.1!`, `Uses proxy env variable`, `Netscape HTTP Cookie File`) performs the actual HTTP; `WINHTTP.dll` used for IE proxy config (`WinHttpGetIEProxyConfigForCurrentUser`) and `WS2_32`/`CRYPT32` for TLS.
 - Audio: `SpeechRecognizer`, `SpeechRecognitionEngine` (Google `speech-api/full-duplex` URLs in strings), `SpeechToText`, `AudioRecorder`, `EnergyEndpointer`; playback via `bass.dll`.
+- Speech input (from strings + RTTI, endpoint probed 2026-10-07): hotkeys
+  `HotKeySpeechInput`/`HotKeyTextRecognition` → mic via `BASS_RecordStart` →
+  FLAC encode → POST `speech-api/full-duplex/v1/up` (probed: HTTP 400 without
+  key, i.e. host alive but needs valid key + FLAC body — same class of block
+  as Bing/Promt, documented not hidden). State machine
+  `STATE_WAITING_FOR_SPEECH` → `STATE_RECOGNIZING` with `EVENT_AUDIO_CHUNK`
+  streaming; `EnergyEndpointer` cuts silence.
 
 ## JS framework (`Services/Common.js` → `qtranslate/common.py`)
 
