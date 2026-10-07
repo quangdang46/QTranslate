@@ -55,3 +55,21 @@ Added `qtranslate/session.py` to reproduce that bootstrap step:
 Both are honest dead ends with urllib alone, documented rather than hidden;
 a real fix needs either reverse-engineering the current page's JS for the
 new token format, or driving an actual headless browser.
+
+## Update 2026-10-07: Bing UNBLOCKED via shared cookie jar
+
+Decompiling `FUN_00465A92` (native option setter → JS `addOption`) revealed
+cookie *values* come from the engine's own jar across sequential page loads —
+not from native code. Reproducing with one shared `CookieJar` opener for
+scrape + translate (`session.bing_translate()`) returns live translations.
+**Bing is now LIVE-OK.**
+
+## Verified JS-rendered (need headless, not just cookies)
+
+Probed 2026-10-07 with shared-jar sessions — tokens absent from static HTML:
+
+- Baidu: `token`/`gtk` not in page source (SPA-injected at runtime).
+  `Session.get(baidu.com)` cookie-first flow done, still no tokens.
+- Youdao: `OUTFOX_SEARCH_USER_ID`/`fanyideskweb` not in static HTML.
+- Promt: `aft` value + `XSRF` not in static HTML (markup redesigned).
+- Naver: `/apis/*` 404 (migrated off the old stack entirely).
