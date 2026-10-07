@@ -2858,6 +2858,7 @@ def main():
         # stay as Tk bindings in _build_main per help.txt.
         import time as _time
         _last_ctrl = [0.0]
+        _last_c = [0.0]
 
         def _ctrl_tap():
             now = _time.time()
@@ -2869,7 +2870,22 @@ def main():
                     pass
             _last_ctrl[0] = now
 
+        def _c_tap(e):
+            # TaskCopySelection: Ctrl+C+C flow — double-tap C while
+            # holding Ctrl: synthesize copy, translate clipboard.
+            now = _time.time()
+            if keyboard.is_pressed("ctrl") and now - _last_c[0] < 0.5:
+                _last_c[0] = 0.0
+                try:
+                    keyboard.send("ctrl+c")
+                except Exception:
+                    pass
+                root.after(300, lambda: on_hotkey(app))
+            else:
+                _last_c[0] = now
+
         keyboard.on_press_key("ctrl", lambda e: _ctrl_tap())
+        keyboard.on_press_key("c", _c_tap)
         _bound = _register_native_hotkeys(app)
         print(f"  hotkeys bound from Options.json: "
               f"{', '.join(_bound) if _bound else '(none)'}")
