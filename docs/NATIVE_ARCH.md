@@ -324,6 +324,10 @@ Each user action = a `Task` object posted to a worker thread:
   picks theme index by control state — disabled → 3, focused → 4, has-text →
   1, empty → 0 — via `FUN_0044C51C` on the shared theme store
   (`DAT_005491E8`, `Themes/` folder: per-service icons + color schemes).
+- **`FUN_0044C51C` = theme palette accessor**: state→struct offset
+  (1→`+0x14C`, 3→`+0x164`, 4→`+0x17C`, else→`+0x134`, stride `0x18`) —
+  palettes ported to `qtranslate/theme.py` (`window_colors` per state;
+  8 themes verified loadable).
 - **`FUN_0044B4F4` = popup layout engine**: walks child windows
   (`GetWindow GW_CHILD`), classifies Button vs Static via class-name compare,
   resizes/repositions each (`FUN_0044BD0F`/`FUN_0044BECE`) — the auto-fit
