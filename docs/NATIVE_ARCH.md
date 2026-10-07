@@ -821,6 +821,13 @@ Each user action = a `Task` object posted to a worker thread:
   draw via service name (`FUN_0046563C`) + language (`FUN_00465610`) +
   theme colors (`FUN_0044C4CA`).
 
+## Locale pack integrity (verified)
+
+- 28/35 `Locales/*/lang.json` parse OK (7 keys each); only
+  `English/lang.json` is truncated upstream (ends mid-`Items` at Id:10 —
+  ironic for the source language). Vietnamese/French/German/Russian
+  verified complete. Our `locale.py` skips broken packs gracefully.
+
 ## Font enumeration (decompiled)
 
 - **`FUN_0044C645` = font enumerator** (`__fastcall`,
