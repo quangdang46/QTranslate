@@ -2063,6 +2063,73 @@ class App:
         tk.Button(zb, text="A+",
                   command=lambda: _zoom_by(1)).pack(side="left", padx=4)
 
+        def _manage_offline():
+            # DLG 173: offline XDXF dictionary manager
+            # (Add dictionary... / Remove dictionary).
+            mw = tk.Toplevel(w)
+            mw.title("Offline dictionaries")
+            mw.configure(bg=_COLORS["back"])
+            mw.geometry("420x280")
+            lb = tk.Listbox(mw, bg="white", fg="black")
+            lb.pack(fill="both", expand=True, padx=8, pady=8)
+
+            def _load():
+                lb.delete(0, "end")
+                try:
+                    _items = _C.load().get("OfflineDictionaries",
+                                           []) or []
+                except Exception:
+                    _items = []
+                for p in _items:
+                    lb.insert("end", p)
+                return _items
+
+            _items = _load()
+
+            def _save(items):
+                try:
+                    from qtranslate import config as C3
+                    import json as _j
+                    full = C3.load()
+                    full["OfflineDictionaries"] = items
+                    with open(C3.DEFAULT_PATH, "w",
+                              encoding="utf-8") as f:
+                        _j.dump(full, f, ensure_ascii=False, indent=1)
+                except Exception:
+                    pass
+
+            def _add():
+                p = filedialog.askopenfilename(
+                    title="Add dictionary...",
+                    filetypes=[("XDXF dictionaries", "*.xdxf"),
+                               ("All files", "*.*")])
+                if not p:
+                    return
+                _items = _load()
+                if p not in _items:
+                    _items.append(p)
+                    _save(_items)
+                    _load()
+
+            def _remove():
+                s = lb.curselection()
+                if not s:
+                    return
+                _items = _load()
+                _items.pop(s[0])
+                _save(_items)
+                _load()
+
+            fr = tk.Frame(mw, bg=_COLORS["back"])
+            fr.pack(pady=(0, 8))
+            tk.Button(fr, text="Add dictionary...",
+                      command=_add).pack(side="left", padx=4)
+            tk.Button(fr, text="Remove dictionary",
+                      command=_remove).pack(side="left", padx=4)
+
+        tk.Button(zb, text="Dictionaries...",
+                  command=_manage_offline).pack(side="left", padx=8)
+
     def on_ocr(self):
         path = filedialog.askopenfilename(title="Image for OCR")
         if not path:
