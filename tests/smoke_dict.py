@@ -40,3 +40,12 @@ if failures:
     raise SystemExit("FAIL: " + "; ".join(failures))
 print("OK: %d dict funcs, %d lang lists, %d tts funcs" % (
     len(DICT_FUNCS), len(LANG_LISTS), len(TTS_FUNCS)))
+
+# common helper equivalence (ported from Common.js, verified 2026-10-07)
+from qtranslate import common as _c
+assert _c.trim_string("  a  ") == "a"
+assert _c.unquote_html("&lt;b&gt;") == "<b>"
+assert "https://e.com/p" in _c.update_html_links('<a href="/p">x</a>', "https://e.com")
+assert _c.string_find_sub("a[START]mid[END]b", "[START]", False, "[END]", False) == "mid"
+assert _c.is_language(17, [None] * 70) and not _c.is_language(1, [None] * 70)
+print("OK: common helpers (trim/unquote/links/sub/lang)")
