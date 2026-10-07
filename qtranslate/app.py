@@ -3878,7 +3878,28 @@ def _make_tray(root, app):
             pass
 
     def _toggle(icon, item):
+        # SwitchMouseModeOnTrayClick gates whether tray click flips
+        # the clipboard monitor (native Advanced flag).
+        try:
+            from qtranslate import config as _C
+            _allowed = bool(_C.load().get("Advanced", {}).get(
+                "SwitchMouseModeOnTrayClick", True))
+        except Exception:
+            _allowed = True
+        if not _allowed:
+            return
         _mouse_mode[0] = not _mouse_mode[0]
+        try:
+            from qtranslate import app as _A
+            if _mouse_mode[0]:
+                if _A._MOUSE_MON["active"] is None:
+                    _A._MOUSE_MON["active"] = \
+                        _A.start_clipboard_monitor(app, popup=True)
+            elif _A._MOUSE_MON["active"] is not None:
+                _A._MOUSE_MON["active"][0] = False
+                _A._MOUSE_MON["active"] = None
+        except Exception:
+            pass
         try:
             icon.title = ("QTranslate (mouse mode: %s)"
                           % ("on" if _mouse_mode[0] else "off"))
