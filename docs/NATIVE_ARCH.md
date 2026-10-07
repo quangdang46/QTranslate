@@ -342,6 +342,10 @@ Each user action = a `Task` object posted to a worker thread:
   dictionary task object → `PostMessageW(hwnd, 0x812C)` queues it to the
   window's message loop (custom `WM_APP`-range message for dictionary work,
   keeping link-clicks non-blocking).
+- **`FUN_004106AC` = work submitter** (`__thiscall`, `QueueUserWorkItem`
+  via IAT `0x50D36C`): message `0x4A7` → pool runs `FUN_00410AB8` (async
+  translate/dict worker); `0x4A6` → sync `SendMessageW(0x80C8)` UI update.
+  Second async path beside the `0x812C` PostMessage queue.
 - **`FUN_0043AC92` = async task executor** (WndProc `0x812C` case in
   `FUN_00415EED`, alongside `0x8064/0x8069` view toggles, `0x8131` state
   query, `0x8136` refresh, `0x808C`): if worker busy → run inline (vtable
