@@ -233,9 +233,27 @@ def lingvo_lookup(word, sl, tl, ui_lang="en-us"):
 
 
 # ------------------------------------------------------------------ Reverso
-# Services/Reverso/Service.js
+# Services/Reverso/Service.js (SERVICE_ID=22, DICTIONARY only)
 
+REVERSO_ID = 22
+REVERSO_NAME = "Reverso"
 REVERSO_HOST = "http://dictionary.reverso.net"
+
+
+def reverso_host(dictionary: bool = True) -> str:
+    """Port of serviceHost(): dict host vs plain host."""
+    return ("http://dictionary.reverso.net" if dictionary
+            else "http://reverso.net")
+
+
+def reverso_link() -> str:
+    """Port of serviceLink(): always the dictionary host."""
+    return reverso_host(True)
+
+
+def reverso_build_uri(word, sl, tl) -> str:
+    """Port of buildUri(): /{sl}-{tl}/{word} (codes, not indices)."""
+    return "/{0}-{1}/{2}".format(sl, tl, _q(word))
 REVERSO_LANGS = [None, None, None, None, None, "arabic", None, None, None,
                  None, None, "chinese", "chinese", None, None, None, "dutch",
                  "english", None, None, None, "french", None, "german",
@@ -289,7 +307,7 @@ def reverso_translate(text, sl="en", tl="fr"):
 
 
 def reverso_lookup(word, sl, tl):
-    url = REVERSO_HOST + "/{0}-{1}/{2}".format(sl, tl, _q(word))
+    url = reverso_host(True) + reverso_build_uri(word, sl, tl)
     page = _get(url)
     frag = _sub(page, '<div id="TableHTMLResult">', False,
                 "<!--Center section end", False)
