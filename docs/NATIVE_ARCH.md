@@ -114,6 +114,12 @@ Each user action = a `Task` object posted to a worker thread:
   reuses the same JSON writer as the options saver; the Csv/Html/Json/Txt
   *export* formats are JS plugins (`Plugins/History/*.js`, ported to
   `qtranslate/history.py`).
+- **`FUN_00462C03` = crash-report on next launch**: same path-builder +
+  file-reader + JSON-parse pipeline reads `Exceptions.json` (minidump list
+  written by the unhandled-exception filter during the *previous* run) →
+  `FUN_00462A82` walks entries filtering `type == 2` (real crashes, skipping
+  breadcrumbs) and forwards them → `DeleteFileW` consumes the file so each
+  crash reports exactly once.
 - File layout (from a real install, 20 sections): Application, Exceptions,
   Contents, Advanced, Appearance, Internet, HotKeys, OfflineDictionaries, Ocr,
   Update, DisabledServices, Proxy, DictionariesOrder, DisabledLanguages,
