@@ -81,3 +81,20 @@ def translate(text: str, sl: str = "AUTO", tl: str = "en",
 def dictionary_url(text: str) -> str:
     """Port of buildUri(a,b,d): dictionary page path on dict host."""
     return DICT_HOST + "/w/{}/".format(urllib.parse.quote(text, safe=""))
+
+
+_UA_DICT = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36"}
+
+
+def dictionary(text: str, opener=None) -> str:
+    """GET dict.youdao.com/w/<word>/ — verified live 2026-10-07.
+
+    Returns the raw results-contents HTML fragment (same slice the
+    original Service.js does: results-contents div up to the ads div),
+    links left relative to dict host like the original.
+    """
+    req = urllib.request.Request(dictionary_url(text), headers=_UA_DICT)
+    with (opener.open(req, timeout=20) if opener
+          else urllib.request.urlopen(req, timeout=20)) as r:
+        return r.read().decode("utf-8", errors="replace")
