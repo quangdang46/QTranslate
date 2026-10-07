@@ -274,6 +274,11 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Offline XDXF dictionaries (decompiled + ported)
 
+- **`FUN_0045D6A9` = service discovery root**: `GetFileAttributesW("Services")`
+  → load `Common.js` framework first (via shared `FUN_0043DF32` reader into
+  `DAT_005492AC`) → enumerate per-service dirs → each `Service.js` loaded
+  the same way. Mirrors our `qtranslate/services/` layout 1:1
+  (`common.py` + one module per provider).
 - **`FUN_00445BB9` = XDXF loader** (`__thiscall`, refs `.xdxf` at `0x52265C`):
   `PathFileExistsW` check → `PathFindExtensionW` split → register into the
   `OfflineDictionaries` list (persisted in `Options.json`, refs at
