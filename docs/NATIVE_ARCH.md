@@ -103,6 +103,14 @@ Each user action = a `Task` object posted to a worker thread:
    8 resize handles (`FUN_00449B08/00449B9C` frame/fill, `FUN_00437367` label).
    Sibling blitters: `FUN_0044A611/0044A201/00437FE4/00449901/004498A0`.
 
+## Single-instance guard (decompiled)
+
+- **`FUN_00435175` = singleton check** (called from WinMain before COM init):
+  unless `allow-multiple-instances` cmdline flag, `FindWindowW(
+  "QTranslate_ApplicationWindow")` → if found, `PostMessageW(hWnd,
+  WM_COMMAND, 0x8009)` (show-main-window) and exit. Second launch just
+  focuses the running instance.
+
 ## Settings persistence (decompiled, verified)
 
 - **`FUN_004561F0` = options saver**: resolves `%AppData%/QTranslate/Options.json`
