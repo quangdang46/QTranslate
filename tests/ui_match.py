@@ -154,6 +154,17 @@ check("combo-0", A._hotkey_to_combo(0) == "")
 check("combo-shift", A._hotkey_to_combo(0x51 | (6 << 8)) == "ctrl+shift+q",
       A._hotkey_to_combo(0x51 | (6 << 8)))
 
+# 10. WINDOWPLACEMENT blob codec vs real WindowMainPlacement
+_real_hex = cfg.get("General", {}).get("WindowMainPlacement", "")
+_rc = A._decode_placement(_real_hex)
+check("placement-decodes", _rc is not None and _rc[2] > 0 and _rc[3] > 0,
+      str(_rc))
+if _rc:
+    _rt = A._encode_placement(_rc[0], _rc[1], _rc[2], _rc[3], _rc[4])
+    check("placement-roundtrip", _rt.upper() == _real_hex.upper())
+check("placement-bad", A._decode_placement("00") is None
+      and A._decode_placement("") is None)
+
 root.destroy()
 print(f"\n{len(PASS)} passed, {len(FAIL)} failed")
 sys.exit(1 if FAIL else 0)
