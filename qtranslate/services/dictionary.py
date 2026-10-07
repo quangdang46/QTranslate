@@ -125,6 +125,32 @@ BABYLON_LANGS = [None, None, None, None, None, 15, None, None, None, None,
                  None, None, None, None, None, None, None]
 
 
+BABYLON_ID = 13
+BABYLON_NAME = "Babylon"
+BABYLON_DICT_ID = 20
+BABYLON_DICT_NAME = "Babylon Dictionary"
+
+
+def babylon_host() -> str:
+    """Port of Babylon serviceHost()."""
+    return "https://translation.babylon-software.com"
+
+
+def babylon_dict_host() -> str:
+    """Port of Babylon Dictionary serviceHost()."""
+    return "https://dictionary.babylon-software.com"
+
+
+def babylon_link() -> str:
+    """Port of Babylon serviceLink(): the host itself."""
+    return babylon_host()
+
+
+def babylon_dict_link(word) -> str:
+    """The ResponseData link field: host/word/."""
+    return babylon_dict_host() + "/" + _q(word) + "/"
+
+
 def babylon_lookup(word, sl, tl):
     """GET /translate/babylon.php?...callback=callbackFn; unwrap JSONP."""
     import json
@@ -164,6 +190,12 @@ BABYLON_DICT_LANGS = [None, None, None, None, None, "arabic", None, None,
 
 
 def babylon_dict_lookup(word, sl, tl):
+    """Port of Babylon Dictionary pair (POST /ajax.php/, now TLS-dead).
+
+    Faithful to native: BISApi body -> strip onload attrs -> absolutize
+    links. The ResponseData link field is
+    host/{sl}/{tl}/ — see babylon_dict_link().
+    """
     body = "term={0}&sourceLanguage={1}&targetLanguage={2}&action=BISApi".format(
         urllib.parse.quote_plus(str(word)), sl, tl)
     page = _post(BABYLON_DICT_HOST + "/ajax.php/", body)
