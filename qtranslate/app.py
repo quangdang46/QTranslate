@@ -162,8 +162,7 @@ DICTS = {
     "lingvo": lambda w, sl, tl: _dict.lingvo_lookup(w, sl, tl),
     "urban": lambda w, sl, tl: _dict.urban_lookup(w),
     "wikipedia": lambda w, sl, tl: _dict.wikipedia_lookup(w, sl, tl),
-    "multitran": lambda w, sl, tl: _dict.multitran_lookup(
-        w, {"en": 1, "ru": 2}.get(sl, 1), {"en": 1, "ru": 2}.get(tl, 2)),
+    "multitran": lambda w, sl, tl: _dict.multitran_lookup(w, 1, 2),
     "wordreference": lambda w, sl, tl: _dict.wordreference_lookup(w, sl, tl),
     "reverso": lambda w, sl, tl: _dict.reverso_lookup(w, sl, tl),
     "babylon": lambda w, sl, tl: _dict.babylon_lookup(w, sl, tl),
