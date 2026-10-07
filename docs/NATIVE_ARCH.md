@@ -131,6 +131,17 @@ Each user action = a `Task` object posted to a worker thread:
   AutoDetection. Ported to `qtranslate/config.py` (hotkey word decode matching
   `FUN_00405A17`, default `ServicesOrder = [1,5,12,13,11,26,28,30,31]`).
 
+## Replace-selection path (decompiled)
+
+- **`FUN_0043BE56` = clipboard writer** (`__fastcall`): open-with-retry
+  (`FUN_0043BE07`) → `EmptyClipboard` → `SetClipboardData(CF_UNICODETEXT)`
+  (`0xD`, via IAT `0x50D4AC`) → `CloseClipboard`. 7 callers incl.
+  `FUN_0043C02B`, `FUN_00405142`, `FUN_00429813`.
+- **`FUN_004056CE` = replace-selection task** (`TaskReplaceSelection`):
+  read clipboard (`FUN_0043BEB2`) → translate (`FUN_00404A12`) → write
+  translation back (`FUN_0043BE56`) — then the capture synth (`FUN_0043BD5C`
+  with `0x56` 'V') pastes over the selection.
+
 ## Clipboard viewer chain (decompiled)
 
 - **`FUN_0043EBE0` = viewer setup**: registers `QTranslateClipboardWindowClass`
