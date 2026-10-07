@@ -1698,13 +1698,14 @@ class App:
             self._opt_vars = getattr(self, "_opt_vars", {})
             v = tk.BooleanVar(value=bool(hk.get("EnableHotKeys", True)))
             self._opt_vars["EnableHotKeys"] = v
-            tk.Checkbutton(body, text="Enable hot keys", variable=v,
+            tk.Checkbutton(body, text=_Cw(16, 1118, "Enable hot keys"),
+                           variable=v,
                            bg=_COLORS["back"], fg=_COLORS["text"],
                            selectcolor=_COLORS["back"]).pack(anchor="w")
             tv = ttk.Treeview(body, columns=("Hotkey",),
                               show="tree headings", height=13)
-            tv.heading("#0", text="Action")
-            tv.heading("Hotkey", text="Hotkey")
+            tv.heading("#0", text=_T("Strings", 0, "Action"))
+            tv.heading("Hotkey", text=_T("Strings", 1, "Hotkey"))
             tv.column("#0", width=260)
             tv.column("Hotkey", width=140)
             tv.pack(fill="both", expand=True, pady=4)
@@ -1712,9 +1713,24 @@ class App:
                 _fmt = C.format_hotkey
             except Exception:
                 _fmt = lambda code: str(code)  # noqa: E731
+            # Action display names: Windows Id 16 control 1165 list
+            # (order matches HOTKEY_NAMES); fallback = key name.
+            try:
+                _acts = None
+                for _w in _pack().get("Windows", []):
+                    if isinstance(_w, dict) and _w.get("Id") == 16:
+                        for _c in _w.get("Controls", []):
+                            if isinstance(_c, (list, tuple)) \
+                                    and _c[0] == 1165:
+                                _acts = [t for _, t in _c[1]]
+                _act_map = dict(zip(names, _acts)) \
+                    if _acts and len(_acts) == len(names) else {}
+            except Exception:
+                _act_map = {}
             for n in names:
                 code = hk.get(n, 0) or 0
-                tv.insert("", "end", iid=n, text=n,
+                tv.insert("", "end", iid=n,
+                          text=_act_map.get(n, n),
                           values=(_fmt(code) or "(none)",))
 
             def _save_hotkey(name, code):
