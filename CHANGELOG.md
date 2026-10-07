@@ -82,6 +82,12 @@ All entries are clean-room RE of QTranslate 6.10.0 for education.
 - Toolbar New (DLG129 id1021); DLG129 17-control table documented
 - `tests/ui_match.py` 71/71
 
+## Signing vectors (2026-10-08, node cross-checked)
+
+- Baidu/Youdao/Promt/Google-tk known-answer vectors in smoke
+  (endpoints dead/walled, algorithms bit-exact)
+- `tests/ui_match.py` 71/71
+
 ## Exclusions live (2026-10-08, DisabledMode both ways)
 
 - `foreground_excluded` reads live Disabled/Enabled/DisabledMode
