@@ -63,6 +63,14 @@ def show_popup(source, result):
 
 
 def on_hotkey():
+    # Exclusion gate (FUN_004631DE): skip capture in blocked apps/classes.
+    try:
+        from qtranslate.exclusions import foreground_excluded
+        if foreground_excluded():
+            print("foreground excluded — capture suppressed")
+            return
+    except Exception:
+        pass
     # TaskCopySelection: clipboard already holds selected text (user pressed Ctrl+C)
     try:
         text = pyperclip.paste().strip()
