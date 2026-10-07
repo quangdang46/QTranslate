@@ -53,6 +53,10 @@ from qtranslate.session import bing_translate as _bing_tr
 SERVICE = sys.argv[1] if len(sys.argv) > 1 else "google"
 TARGET = sys.argv[2] if len(sys.argv) > 2 else "vi"
 THEME = sys.argv[3] if len(sys.argv) > 3 else "Blue"
+# Explicit CLI args win over the restored session (native behavior:
+# an explicit launch overrides the remembered service/pair).
+_CLI_SERVICE = len(sys.argv) > 1
+_CLI_TARGET = len(sys.argv) > 2
 
 def _default_colors():
     """Main-window colors from the real Options.json Appearance section.
@@ -574,15 +578,21 @@ class App:
             _aname = _CA.SERVICE_NAMES.get(_act)
         except Exception:
             _aname = None
-        self.service = _aname if _aname in TRANSLATORS else (
-            SERVICE if SERVICE in TRANSLATORS else "google")
+        if _CLI_SERVICE and SERVICE in TRANSLATORS:
+            self.service = SERVICE
+        else:
+            self.service = _aname if _aname in TRANSLATORS else (
+                SERVICE if SERVICE in TRANSLATORS else "google")
         try:
             _table = list(__import__(
                 "qtranslate.services.google_translate",
                 fromlist=["SUPPORTED_LANGS"]).SUPPORTED_LANGS)
-            _lt = _ga.get("LanguageTo", 57)
-            TARGET_EFF = _table[_lt] if 0 <= _lt < len(_table) \
-                else TARGET
+            if _CLI_TARGET:
+                TARGET_EFF = TARGET
+            else:
+                _lt = _ga.get("LanguageTo", 57)
+                TARGET_EFF = _table[_lt] if 0 <= _lt < len(_table) \
+                    else TARGET
             _lf = _ga.get("LanguageFrom", 1)
             self.source = _table[_lf] if 0 <= _lf < len(_table) \
                 else "auto"
