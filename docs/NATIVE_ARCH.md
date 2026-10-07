@@ -920,6 +920,9 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Auto-update + proxy (decompiled, probed)
 
+- **`FUN_0043F7D3` = whitespace+comment skipper** (`__fastcall` thunk,
+  called before every token): skips `\t\n\r space` + `//` line comments
+  (`FUN_0043F7DB`) — the parser accepts JSONC (config files have comments).
 - **`FUN_0043FE2D` = JSON literal parser** (`__fastcall`): `t`/`f` →
   `json::Boolean::vftable` (bool from first char), `n` handled inline as
   `json::Null` in the dispatcher — completes the literal trio.
