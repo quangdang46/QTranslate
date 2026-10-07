@@ -1907,20 +1907,33 @@ class App:
         """Virtual keyboard window (DLG 162: 308x102).
 
         Clicking a key types it into the source pane (like the native
-        on-screen keyboard feeding the edit control).
+        on-screen keyboard feeding the edit control). Key labels follow
+        General.LanguageKeyboard via the JCUKEN map (17=en default).
         """
         w = tk.Toplevel(self.root)
         w.title("Virtual keyboard")
         w.configure(bg=_COLORS["back"])
         w.attributes("-topmost", True)
+        try:
+            from qtranslate import config as _C
+            _kb = _C.load().get("General", {}).get("LanguageKeyboard",
+                                                   17)
+        except Exception:
+            _kb = 17
+        try:
+            from qtranslate.layout import EN2RU
+            _ru = (_kb != 17)
+        except Exception:
+            EN2RU, _ru = {}, False
         rows = ["qwertyuiop", "asdfghjkl", "zxcvbnm"]
         for row in rows:
             frm = tk.Frame(w, bg=_COLORS["back"])
             frm.pack()
             for ch in row:
-                tk.Button(frm, text=ch, width=3,
-                          command=lambda c=ch: self.src.insert("insert",
-                                                               c)).pack(
+                label = EN2RU.get(ch, ch) if _ru else ch
+                tk.Button(frm, text=label, width=3,
+                          command=lambda c=label: self.src.insert(
+                              "insert", c)).pack(
                     side="left", padx=1, pady=1)
         frm = tk.Frame(w, bg=_COLORS["back"])
         frm.pack(pady=2)
