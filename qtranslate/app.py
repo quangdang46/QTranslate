@@ -637,7 +637,15 @@ class App:
                            highlightthickness=0, undo=True,
                            maxundo=100)
         self.src.pack(side="left", fill="x", expand=True)
-        self.src.insert("1.0", self.default_source_text())
+        # Contents.EditSource cache wins over the default help text
+        # (native restores last session panes on boot).
+        try:
+            from qtranslate import config as _CC
+            _es = (_CC.load().get("Contents", {}).get("EditSource")
+                   or "").strip()
+        except Exception:
+            _es = ""
+        self.src.insert("1.0", _es if _es else self.default_source_text())
         self.src.bind("<KeyRelease>", lambda e: self.on_type())
         srcside = tk.Frame(srcfrm, bg="white")
         srcside.pack(side="right", fill="y", padx=2)
@@ -1354,6 +1362,22 @@ class App:
             with open(self._history_path(), "w",
                       encoding="utf-8") as f:
                 _j.dump(self.history[-500:], f, ensure_ascii=False)
+            # Contents.Edit* pane cache (native restores panes; note
+            # SaveOnExit here is bool-like in the wild: True/1/"True").
+            try:
+                full = _C.load()
+                _so = full.get("Contents", {}).get("SaveOnExit", True)
+                if str(_so).lower() not in ("0", "false", "no", "") \
+                        or _so is True or _so == 1:
+                    full.setdefault("Contents", {})["EditSource"] = \
+                        self.src.get("1.0", "end").strip()[:5000]
+                    full["Contents"]["EditTranslation"] = \
+                        self.out.get("1.0", "end").strip()[:5000]
+                    with open(_C.DEFAULT_PATH, "w",
+                              encoding="utf-8") as f:
+                        _j.dump(full, f, ensure_ascii=False, indent=1)
+            except Exception:
+                pass
         except Exception:
             pass
 
