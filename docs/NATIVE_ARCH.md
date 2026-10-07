@@ -10,6 +10,11 @@ Symbols stripped, but **RTTI intact** — full class map recovered from `.rdata`
 - → **`FUN_00435005` = WinMain**: parses `GetCommandLineW`, singleton check
   (`FUN_00435175`), `CoInitializeEx(COINIT_APARTMENTTHREADED)`,
   DPI scale init (`FUN_0044A3D8`), then `FUN_004350B8`, `CoUninitialize`.
+- → **`FUN_00435005` detail**: `CoInitializeEx(NULL,
+  COINIT_APARTMENTTHREADED)` (IAT `0x50D85C`, disasm `PUSH 2; PUSH 0`) +
+  conditional `CoUninitialize` (IAT `0x50D860`) — STA for the ActiveScript +
+  OLEACC + SAPI apartment. Sibling COM inits at `FUN_004614BB/00448AAD/
+  0043ACEA` (worker-thread apartments).
 - → **`FUN_004350B8` = AppInit**: `LoadLibraryW("msftedit.dll")`
   (RichEdit for popup text), registers WTL window classes
   (`FUN_00421892`), creates main window (`FUN_0043527D`), then `FUN_00455061`.
