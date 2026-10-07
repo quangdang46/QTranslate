@@ -78,6 +78,35 @@ def translate(text: str, sl: str = "AUTO", tl: str = "en",
     return out
 
 
+def translate_web(text: str, sl: str = "en", tl: str = "zh-CHS",
+                    opener=None) -> str:
+    """Live translate via dict.youdao.com/jsonapi_s — verified 2026-10-07.
+
+    Reversed from the translation-website 1.0.7 bundle
+    (VUE_APP_JSON_API_URL + VUE_APP_JSON_API_SIGN_SECRET_KEY). The
+    endpoint answers with NO sign at all for plain q/from/to/client —
+    web_trans.web-translation[].trans[].value holds the result.
+    """
+    body = urllib.parse.urlencode(
+        {"q": text[:5000], "from": sl, "to": tl,
+         "client": "fanyideskweb"}).encode()
+    req = urllib.request.Request(
+        DICT_HOST + "/jsonapi_s?doctype=json&jsonversion=4",
+        data=body,
+        headers={**_UA_DICT,
+                 "Content-Type": "application/x-www-form-urlencoded",
+                 "Referer": "https://fanyi.youdao.com/"})
+    open_ = opener.open if opener else urllib.request.urlopen
+    with open_(req, timeout=20) as r:
+        obj = json.loads(r.read().decode("utf-8", errors="replace"))
+    out = []
+    for block in (obj.get("web_trans") or {}).get("web-translation", []) or []:
+        for tr in block.get("trans", []) or []:
+            if tr.get("value"):
+                out.append(tr["value"])
+    return "\n".join(out)
+
+
 def dictionary_url(text: str) -> str:
     """Port of buildUri(a,b,d): dictionary page path on dict host."""
     return DICT_HOST + "/w/{}/".format(urllib.parse.quote(text, safe=""))
