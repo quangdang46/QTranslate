@@ -128,6 +128,22 @@ if pop is not None:
     check("popup-no-buttons", n_btn == 0, f"{n_btn} buttons")
     pop.destroy()
 
+# 8. Hotkeys page: 17 real actions, decoded bindings, no duplicates
+check("hotkey-names-17", len(C.HOTKEY_NAMES) == 17,
+      str(len(C.HOTKEY_NAMES)))
+check("hotkey-names-unique",
+      len(set(C.HOTKEY_NAMES)) == len(C.HOTKEY_NAMES))
+real_hk = [k for k in cfg.get("HotKeys", {}) if k != "EnableHotKeys"]
+check("hotkey-names==real",
+      sorted(C.HOTKEY_NAMES) == sorted(real_hk))
+code = cfg.get("HotKeys", {}).get("HotKeyReplaceSelection", 0)
+check("hotkey-decode-343", C.format_hotkey(code) == "Alt + W",
+      repr(C.format_hotkey(code)))
+check("hotkey-decode-593",
+      C.format_hotkey(593) == "Ctrl + Q",
+      repr(C.format_hotkey(593)))
+check("hotkey-decode-0", C.format_hotkey(0) == "")
+
 root.destroy()
 print(f"\n{len(PASS)} passed, {len(FAIL)} failed")
 sys.exit(1 if FAIL else 0)
