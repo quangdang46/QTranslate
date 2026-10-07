@@ -107,6 +107,13 @@ Each user action = a `Task` object posted to a worker thread:
   `WindowPopupPlacement`, … via `FUN_00440893` JSON writer). Sibling savers:
   `FUN_00418F81`/`FUN_0045869F` (history/exceptions variants for
   `History.json`, `DictionaryHistory.json`, `Exceptions.json`).
+- **`FUN_004638D8` = history loader**: same `FUN_0045B3D7` path builder +
+  `FUN_0043DF32` BOM-aware file reader as the service loader, then
+  `FUN_0043F71A` JSON parse (`+0x18` accessor) — one shared
+  read-file→parse-JSON pipeline for all four persistence files. Export side
+  reuses the same JSON writer as the options saver; the Csv/Html/Json/Txt
+  *export* formats are JS plugins (`Plugins/History/*.js`, ported to
+  `qtranslate/history.py`).
 - File layout (from a real install, 20 sections): Application, Exceptions,
   Contents, Advanced, Appearance, Internet, HotKeys, OfflineDictionaries, Ocr,
   Update, DisabledServices, Proxy, DictionariesOrder, DisabledLanguages,
