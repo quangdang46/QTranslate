@@ -1247,8 +1247,48 @@ class App:
                 LANG_CODES.get(self.src_lang.get().strip(), "auto"))
 
     def render(self, text):
+        # RichEdit auto-URL (native EM_AUTOURLDETECT + FUN_004266C6):
+        # qtdp: links re-lookup internally, http links open browser.
+        import re as _re
         self.out.delete("1.0", "end")
         self.out.insert("1.0", text)
+        try:
+            self.out.tag_delete("link")
+        except Exception:
+            pass
+        try:
+            self.out.tag_config("link", foreground="blue",
+                                underline=True)
+            self.out.tag_bind("link", "<Button-1>", self._click_link)
+            self.out.tag_bind("link", "<Enter>",
+                              lambda e: self.out.config(cursor="hand2"))
+            self.out.tag_bind("link", "<Leave>",
+                              lambda e: self.out.config(cursor=""))
+            for m in _re.finditer(
+                    r"(qtdp:\S+|https?://\S+|www\.\S+)", text):
+                s, e = m.span()
+                self.out.tag_add("link", f"1.0+{s}c", f"1.0+{e}c")
+        except Exception:
+            pass
+
+    def _click_link(self, event=None):
+        try:
+            idx = self.out.index(f"@{event.x},{event.y}")
+            ranges = self.out.tag_ranges("link")
+            for i in range(0, len(ranges), 2):
+                if self.out.compare(ranges[i], "<=", idx) and \
+                        self.out.compare(idx, "<=", ranges[i + 1]):
+                    url = self.out.get(ranges[i], ranges[i + 1])
+                    if url.startswith("qtdp:"):
+                        word = url[5:]
+                        self.src.delete("1.0", "end")
+                        self.src.insert("1.0", word)
+                        self.open_dict_window()
+                    else:
+                        _open_url(url)
+                    break
+        except Exception:
+            pass
 
     @staticmethod
     def _history_path():
