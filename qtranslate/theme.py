@@ -16,8 +16,13 @@ def _hex(v: str) -> str:
     if not v:
         return "#000000"
     v = v.lstrip("#")
-    if len(v) <= 2:  # grayscale shorthand used by QTranslate themes
+    if len(v) == 3 and not len(set(v)) == 1:
+        # CSS shorthand: abc -> aabbcc (but bbb stays grayscale bbbbbb)
+        v = "".join(c * 2 for c in v)
+    elif len(v) <= 2:  # grayscale shorthand used by QTranslate themes
         v = v * 3 if len(v) == 1 else v + v + v[:2]
+    if len(v) == 3:  # grayscale triple -> full 6 digits for Tk
+        v = v * 2
     return "#" + v[-6:]
 
 
