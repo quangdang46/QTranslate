@@ -910,6 +910,10 @@ Each user action = a `Task` object posted to a worker thread:
   `Service.js` sees `Options.PreferredDomain/GoogleDomain/LanguageCode`
   from its first line. Our `session.py` + per-module `HOST` constants
   reproduce these values statically.
+- **`FUN_00460ABE` = Utils exposer** (called from context init):
+  QueryInterface gate on 3 IIDs (standard IDispatch/IUnknown + custom
+  `Utils` GUID at `DAT_005143A0`) → exposes the native `Utils` object
+  (`md5`, string helpers) that `Service.js` files call.
 - **`FUN_0045F609` = executor context init** (`__fastcall`, called before
   every `FUN_0045F6C1` run): sets `Script::vftable` + tuning floats
   (`0x3F400000`=0.75, `0x3E800000`=0.25, `0x40100000`=2.25 at
