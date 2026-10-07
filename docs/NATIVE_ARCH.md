@@ -74,6 +74,15 @@ Each user action = a `Task` object posted to a worker thread:
    with 5× retry (`Sleep(5)` between attempts) — the Ctrl+C+C path's
    front door. Related readers: `FUN_0043BF30` (sequence-number poll),
    `FUN_0043ECA5`/`FUN_0043BEB2` (`GetClipboardData`).
+4. **Copy-capture = `FUN_0043BF30`/`FUN_0043C02B`** (the Ctrl+C+C engine):
+   wait for Alt (`0x12`)/Shift (`0x10`) release via `GetKeyState` →
+   snapshot `GetClipboardSequenceNumber` → `FUN_0043BD5C('C')` synthesizes
+   Ctrl+C → exponential-backoff poll (`8→320ms`) for sequence change =
+   proof the app received the copy. `param_1` selects `0x43` ('C') vs
+   `0x2D` (Insert → Ctrl+Ins alternate path).
+5. **Key synthesizer = `FUN_0043BD5C` → `FUN_0043BDB4`**: Ctrl-down
+   (`0x11`) → key-down → `Sleep(0x20)` → key-up → Ctrl-up, via zeroed
+   `tagINPUT` + `SendInput(1, &input, 0x1C)`.
 4. OCR: `OcrProvider`/`OcrSpaceProvider` (`common::`) — screenshot from `ScreenCaptureWindow` → upload to OCR API.
 
 ## JS engine hosting (decompiled, verified)
