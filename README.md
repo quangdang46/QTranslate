@@ -29,7 +29,7 @@ python -I start_app.py
 
 ```bash
 python -I tests/live_providers.py  # 21/21 vs real endpoints
-python -I tests/ui_match.py        # 74/74 vs native window/Options.json
+python -I tests/ui_match.py        # 79/79 vs native window/Options.json
 python -I tests/smoke_dict.py      # 9/9 (dict + config + hotkeys)
 ```
 
@@ -51,7 +51,8 @@ python -I tests/smoke_dict.py      # 9/9 (dict + config + hotkeys)
 | WordReference | — | — | — | ✅ | **live OK** (headless Chromium via `headless.py`, 2026-10-07) |
 | Oxford Learner | — | — | — | ✅ | **live OK** |
 | Multitran | — | — | — | ✅ | **live OK** (anchor-table slice fix, 2026-10-07) |
-| Babylon / Babylon Dict | — | — | — | ✅ | ported; translate 404 + dict TLS-handshake-fail (servers retired) |
+| Babylon translate | ✅ | — | — | — | ported 1:1 (ID 13, JSONP); endpoint SSL dead (server retired) |
+| Babylon Dictionary | — | — | — | ✅ | ported (ID 20); dict TLS-handshake-fail (server retired) |
 | ABBYY Lingvo Live | — | — | — | ✅ | **live OK** |
 | Urban Dictionary | — | — | — | ✅ | **live OK** |
 | Wikipedia | — | — | — | ✅ | **live OK** (Vector-skin fallback slice) |
