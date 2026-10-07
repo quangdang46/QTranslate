@@ -3103,8 +3103,39 @@ def _seed_service_options():
         pass
 
 
+def _consume_crash_reports():
+    """Port of FUN_00462C03: read Exceptions.json (minidump list from
+    the previous run's exception filter), report type==2 entries once,
+    then delete the file."""
+    try:
+        from qtranslate import config as _C
+        import json as _j
+        import os as _o
+        _p = _o.path.join(_o.path.dirname(_C.DEFAULT_PATH),
+                          "Exceptions.json")
+        if not _o.path.exists(_p):
+            return
+        try:
+            entries = _j.load(open(_p, encoding="utf-8"))
+        except Exception:
+            entries = []
+        for e in (entries or []):
+            try:
+                if isinstance(e, dict) and e.get("type") == 2:
+                    print(f"[previous crash] {e.get('path', e)}")
+            except Exception:
+                pass
+        try:
+            _o.remove(_p)
+        except OSError:
+            pass
+    except Exception:
+        pass
+
+
 def main():
     _seed_service_options()
+    _consume_crash_reports()
     root = tk.Tk()
     app = App(root)
     # MainWindowStartupAction (0=normal, 1=minimized, 2=tray) +
