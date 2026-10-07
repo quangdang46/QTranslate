@@ -189,6 +189,28 @@ _SERVICE_LINKS = {
 }
 
 
+def _open_url(url: str):
+    """Open URL honoring Advanced.DefaultBrowserId (native browser pick).
+
+    Empty id = system default (webbrowser.open); otherwise try the
+    registered browser name, falling back to default.
+    """
+    import webbrowser
+    try:
+        from qtranslate import config as _C
+        bid = (_C.load().get("Advanced", {}).get("DefaultBrowserId")
+               or "").strip()
+    except Exception:
+        bid = ""
+    if bid:
+        try:
+            webbrowser.get(bid).open(url)
+            return
+        except Exception:
+            pass
+    webbrowser.open(url)
+
+
 def _dict_service_link(service: str) -> str:
     return _SERVICE_LINKS.get(service, "https://translate.google.com/")
 
@@ -416,7 +438,7 @@ class App:
     def open_service_page_n(self, name):
         import webbrowser
         try:
-            webbrowser.open(_dict_service_link(name))
+            _open_url(_dict_service_link(name))
         except Exception as e:
             self.render(f"[error] {e}")
 
@@ -554,7 +576,7 @@ class App:
     def open_service_page(self):
         import webbrowser
         try:
-            webbrowser.open(_dict_service_link(self.service))
+            _open_url(_dict_service_link(self.service))
         except Exception as e:
             self.render(f"[error] {e}")
 
