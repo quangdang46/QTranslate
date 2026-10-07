@@ -31,6 +31,14 @@ All entries are clean-room RE of QTranslate 6.10.0 for education.
 - All 19 DLGs mapped; dead services verified unrevivable with cause
 - Suites: live 21/21, `tests/ui_match.py` 40/40, smoke 9/9
 
+## i18n loop (2026-10-08, vi pack verified)
+
+- `_pack`/`_T`/`_W`/`_Cw` helpers (lang.json Id maps; English fallback)
+- Localized: nav/result menus, Options titles+pages order (Ids 10-18),
+  full Basics, Appearance (+PopupIcons bitmask), Hotkeys actions,
+  Internet, Advanced, Updates, Exceptions, History, aux titles
+- `tests/ui_match.py` 46/46 (pages order/ids + vi resolve + fallback)
+
 ## Services (`qtranslate/services/`)
 
 - google_translate.py — `tk()` token + `/translate_a/single?client=gtx`,
