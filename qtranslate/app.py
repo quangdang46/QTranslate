@@ -2618,24 +2618,18 @@ class App:
                   command=_manage_offline).pack(side="left", padx=8)
 
     def on_ocr(self):
-        # Shift = file mode; plain click = ScreenCaptureWindow region
-        # select (rubber-band fullscreen overlay -> OCR API).
-        import sys as _sys
-        if "--file" in _sys.argv:
-           ASK = True
-        else:
-            ASK = False
-        if ASK:
-            path = filedialog.askopenfilename(title="Image for OCR")
-            if not path:
-                return
-            try:
-                with open(path, "rb") as f:
-                    self._ocr_bytes(f.read())
-            except Exception as e:
-                self.render(f"[ocr error] {e}")
-            return
+        # Default = ScreenCaptureWindow region select (native flow).
         self._ocr_region()
+
+    def on_ocr_file(self):
+        path = filedialog.askopenfilename(title="Image for OCR")
+        if not path:
+            return
+        try:
+            with open(path, "rb") as f:
+                self._ocr_bytes(f.read())
+        except Exception as e:
+            self.render(f"[ocr error] {e}")
 
     def _ocr_bytes(self, data: bytes):
         from qtranslate.services.ocr import ocr_text
