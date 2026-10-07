@@ -18,7 +18,8 @@ def _render(node) -> str:
     inner = (node.text or "") + "".join(
         _render(c) + (c.tail or "") for c in node)
     if tag == "k":
-        return f"<div><b>{inner}</b></div>"
+        # xsl:value-of select="." = direct text only (not children)
+        return f"<div><b>{node.text or ''}</b></div>"
     if tag == "tr":
         return f"<span>[{inner}]</span>"
     if tag == "kref":
