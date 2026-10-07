@@ -803,7 +803,8 @@ class App:
         self.root.bind("<Control-Tab>", lambda e: self.cycle_service(1))
         self.root.bind("<Control-Shift-Tab>",
                        lambda e: self.cycle_service(-1))
-        self.root.bind("<Control-space>", lambda e: self.on_go())
+        self.root.bind("<Control-space>",
+                       lambda e: self.accept_suggestion())
         # Alt+Left/Right = history back/forward, Ctrl+Up = copy
         # translation to input (help.txt Main window hotkeys)
         self.root.bind("<Alt-Left>", lambda e: self.hist_back())
@@ -1669,7 +1670,21 @@ class App:
             return
         try:
             sug = _spell.google_suggest(cur)
-            self.suggest.config(text=" | ".join(sug[:5]))
+            self._suggestions = list(sug[:5])
+            self.suggest.config(text=" | ".join(self._suggestions))
+        except Exception:
+            pass
+
+    def accept_suggestion(self):
+        """Ctrl+Space: accept the first suggestion into the source pane
+        (native suggestion/autocomplete menu, help.txt)."""
+        try:
+            sug = getattr(self, "_suggestions", [])
+            if sug:
+                self.src.delete("1.0", "end")
+                self.src.insert("1.0", sug[0])
+                self.suggest.config(text="")
+                self._suggestions = []
         except Exception:
             pass
 
