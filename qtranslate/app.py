@@ -46,6 +46,7 @@ from qtranslate.services import naver as _naver
 from qtranslate.services import youdao as _youdao
 from qtranslate.services import microsoft as _ms
 from qtranslate.services import promt as _promt
+from qtranslate.services import babylon as _babylon
 from qtranslate.services import dictionary as _dict
 from qtranslate.services import spell as _spell
 from qtranslate.session import bing_translate as _bing_tr
@@ -204,6 +205,10 @@ def _t_bing(t, sl, tl):
     return _bing_tr(t, "en" if sl == "auto" else sl, tl)
 
 
+def _t_babylon(t, sl, tl):
+    return _babylon.translate(t, "en" if sl == "auto" else sl, tl)
+
+
 def _t_promt(t, sl, tl):
     try:
         paft, xsrf, op = _promt.session(sl, tl)
@@ -223,6 +228,7 @@ TRANSLATORS = {
     "bing": _t_bing,
     "microsoft": _t_bing,
     "promt": _t_promt,
+    "babylon": _t_babylon,
 }
 
 DICTS = {
@@ -233,7 +239,7 @@ DICTS = {
     "multitran": lambda w, sl, tl: _dict.multitran_lookup(w, 1, 2),
     "wordreference": lambda w, sl, tl: _dict.wordreference_lookup(w, sl, tl),
     "reverso": lambda w, sl, tl: _dict.reverso_lookup(w, sl, tl),
-    "babylon": lambda w, sl, tl: _dict.babylon_lookup(w, sl, tl),
+    "babylon": lambda w, sl, tl: _dict.babylon_dict_lookup(w, sl, tl),
     "imtranslator": lambda w, sl, tl: _dict.imtranslator_lookup(w, sl, tl),
     "google-search": lambda w, sl, tl: _dict.google_search_lookup(w, sl, tl),
 }
@@ -250,6 +256,7 @@ _SERVICE_LINKS = {
     "bing": "https://www.bing.com/translator",
     "microsoft": "https://www.bing.com/translator",
     "promt": "https://www.online-translator.com/",
+    "babylon": "https://translation.babylon-software.com/",
     "reverso": "https://www.reverso.net/",
 }
 
@@ -961,7 +968,7 @@ class App:
                 "yandex": "Yandex", "baidu": "Baidu", "naver": "Naver",
                 "youdao": "youdao", "bing": "Microsoft Translator",
                 "microsoft": "Microsoft Translator", "promt": "Promt",
-                "reverso": "Reverso",
+                "reverso": "Reverso", "babylon": "Babylon",
             }
             folder = pats.get(name, name)
             ico = os.path.join("C:/Program Files (x86)/QTranslate/Services",
