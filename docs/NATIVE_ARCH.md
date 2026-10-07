@@ -378,6 +378,14 @@ Each user action = a `Task` object posted to a worker thread:
   direction flag) → `FUN_00449B08` rect fill. Single call behind all
   themed backgrounds.
 
+## GDI+ themed paint (decompiled)
+
+- **`FUN_0040647F`/`FUN_004064DE` = GDI+ fill wrappers** (`__thiscall`,
+  `GdipCreateFromHDC` IAT `0x50D7E0`, `GdipFillRectangle` IAT `0x50D7EC`):
+  gradient/solid brush fills for themed buttons and popup backgrounds
+  (brushes from theme palettes via `GdipCreateSolidFill`/
+  `GdipCreateLineBrushFromRect`).
+
 ## Tooltip + balloon (decompiled)
 
 - **`FUN_00403E00` = tooltip creator** (`__thiscall`): `CreateWindowExW(
