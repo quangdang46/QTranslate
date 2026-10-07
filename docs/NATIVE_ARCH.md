@@ -256,7 +256,8 @@ Each user action = a `Task` object posted to a worker thread:
   the clipboard-monitor mode alongside `GetClipboardSequenceNumber` polling.
 - **`FUN_0043EBA1` = viewer WndProc**: filters `WM_DESTROY (2)`,
   `0x305/0x306/0x308/0x30D` (IME/clipboard-chain messages), everything else
-  → `DefWindowProcW`.
+  → `DefWindowProcW`. No IMM32 imports exist — IME composition is forwarded,
+  never processed (correct: capture reads committed text only).
 
 ## History context menu (decompiled)
 
