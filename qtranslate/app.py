@@ -149,6 +149,24 @@ DICTS = {
 
 
 # ------------------------------------------------------------ backend ops
+_SERVICE_LINKS = {
+    "google": "https://translate.google.com/",
+    "deepl": "https://www.deepl.com/translator",
+    "yandex": "https://translate.yandex.com/",
+    "baidu": "https://fanyi.baidu.com/",
+    "naver": "https://papago.naver.com/",
+    "youdao": "https://fanyi.youdao.com/",
+    "bing": "https://www.bing.com/translator",
+    "microsoft": "https://www.bing.com/translator",
+    "promt": "https://www.online-translator.com/",
+    "reverso": "https://www.reverso.net/",
+}
+
+
+def _dict_service_link(service: str) -> str:
+    return _SERVICE_LINKS.get(service, "https://translate.google.com/")
+
+
 def detect_language(text):
     """Port of FUN_00460354 detect-retry loop: providers in order.
 
@@ -227,57 +245,126 @@ class App:
         self._build_menu()
         self._build_main()
 
-    # -- DLG 129 body --
+    # -- main window body: mirrors the real QTranslate main window --
+    # nav row (back/forward + service link + overflow menu),
+    # source pane (default text = version line + help.txt),
+    # toolbar (paste, Auto-Detect, swap, target combo, Translate,
+    # mic/headphone), result pane, service icon strip at the bottom.
     def _build_main(self):
         bg = _COLORS["back"]
-        # service icon row (Dl control id108 stand-in: one button/service;
-        # click = FUN_0045CDBA switch + re-run FUN_0043A121)
-        svcbar = tk.Frame(self.root, bg=bg)
-        svcbar.pack(fill="x", padx=6, pady=(6, 2))
-        self.svc_btns = {}
-        for name in sorted(TRANSLATORS):
-            b = tk.Button(svcbar, text=name[:6], width=7,
-                          command=lambda n=name: self.switch_service(n))
-            b.pack(side="left", padx=1)
-            self.svc_btns[name] = b
-        self._mark_service()
-        # source RichEdit (id1017)
-        self.src = tk.Text(self.root, height=5, wrap="word", bg=bg,
+        # nav row
+        nav = tk.Frame(self.root, bg=bg)
+        nav.pack(fill="x", padx=4, pady=(2, 0))
+        tk.Button(nav, text="◀", width=3,
+                  command=self.hist_back).pack(side="left", padx=1)
+        tk.Button(nav, text="▶", width=3,
+                  command=self.hist_forward).pack(side="left", padx=1)
+        self.svc_link = tk.Label(nav, text=self.service.title(),
+                                 fg="blue", cursor="hand2", bg=bg,
+                                 font=("Segoe UI", 9, "underline"))
+        self.svc_link.pack(side="left", padx=6)
+        self.svc_link.bind("<Button-1>",
+                           lambda e: self.open_service_page())
+        tk.Button(nav, text="⋮", width=3,
+                  command=self.show_nav_menu).pack(side="right", padx=1)
+        # source pane (id1017) — default text like the original
+        self.src = tk.Text(self.root, height=7, wrap="word", bg=bg,
                            fg=_COLORS["text"],
                            insertbackground=_COLORS["text"])
-        self.src.pack(fill="x", padx=8)
+        self.src.pack(fill="x", padx=4)
+        self.src.insert("1.0", self.default_source_text())
         self.src.bind("<KeyRelease>", lambda e: self.on_type())
-        ttk.Separator(self.root, orient="horizontal").pack(fill="x", padx=8,
-                                                           pady=4)
-        # lang row: src combo (id1001) + swap `<` (id1015) +
-        # tgt combo (id1002) + Translate (id1004)
-        langrow = tk.Frame(self.root, bg=bg)
-        langrow.pack(fill="x", padx=8)
-        self.src_lang = ttk.Combobox(langrow, values=LANGS, width=9)
+        # toolbar row
+        bar = tk.Frame(self.root, bg=bg)
+        bar.pack(fill="x", padx=4, pady=2)
+        tk.Button(bar, text="\U0001f4cb", width=3,
+                  command=self.on_paste).pack(side="left", padx=1)
+        tk.Button(bar, text="⋮", width=3,
+                  command=self.show_nav_menu).pack(side="left", padx=1)
+        self.src_lang = ttk.Combobox(bar, values=LANGS, width=11)
         self.src_lang.set("auto")
         self.src_lang.pack(side="left", padx=2)
-        tk.Button(langrow, text="<", width=3,
-                  command=self.on_swap).pack(side="left", padx=2)
-        self.tgt = ttk.Combobox(langrow, values=TO_LANGS, width=9)
+        tk.Button(bar, text="⇄", width=3,
+                  command=self.on_swap).pack(side="left", padx=1)
+        self.tgt = ttk.Combobox(bar, values=TO_LANGS, width=11)
         self.tgt.set(self.target)
         self.tgt.pack(side="left", padx=2)
-        tk.Button(langrow, text="Translate",
-                  command=self.on_go).pack(side="left", padx=6)
-        # small icon buttons (id1027-1030: Favorites/Speech/Play)
-        tk.Button(langrow, text="Listen",
-                  command=self.on_listen).pack(side="left", padx=2)
-        tk.Button(langrow, text="Copy",
-                  command=self.on_copy).pack(side="left", padx=2)
+        tk.Button(bar, text="Translate",
+                  command=self.on_go).pack(side="left", padx=4)
+        tk.Button(bar, text="\U0001f3a4", width=3,
+                  command=self.on_mic).pack(side="right", padx=1)
+        tk.Button(bar, text="\U0001f3a7", width=3,
+                  command=self.on_listen).pack(side="right", padx=1)
         self.suggest = tk.Label(self.root, text="", bg=bg, fg="gray",
                                 anchor="w")
-        self.suggest.pack(fill="x", padx=8)
-        # result RichEdit (id1018)
+        self.suggest.pack(fill="x", padx=4)
+        # result pane (id1018)
         self.out = tk.Text(self.root, height=10, wrap="word", bg=bg,
                            fg=_COLORS["text"],
                            insertbackground=_COLORS["text"],
-                           font=("Segoe UI", 12))
-        self.out.pack(fill="both", expand=True, padx=8, pady=(0, 8))
+                           font=("Segoe UI", 11))
+        self.out.pack(fill="both", expand=True, padx=4)
+        # service icon strip at the bottom (icons from Services/*/Service.ico,
+        # click = switch + re-translate like FUN_0045CDBA; middle-click =
+        # browser, right-click = multi-select per help.txt Actions)
+        strip = tk.Frame(self.root, bg=bg)
+        strip.pack(fill="x", padx=4, pady=(2, 4))
+        self.svc_btns = {}
+        self.svc_icons = {}
+        for name in self.ordered_services():
+            b = tk.Button(strip, width=34, height=26,
+                          command=lambda n=name: self.switch_service(n))
+            b.pack(side="left", padx=1)
+            b.bind("<Button-2>",
+                   lambda e, n=name: self.open_service_page_n(n))
+            self.svc_btns[name] = b
+            self._load_svc_icon(name, b)
+        self._mark_service()
         self.root.bind("<Control-Return>", lambda e: self.on_go())
+
+    def open_service_page_n(self, name):
+        import webbrowser
+        try:
+            webbrowser.open(_dict_service_link(name))
+        except Exception as e:
+            self.render(f"[error] {e}")
+
+    def _load_svc_icon(self, name, button):
+        """Load Services/<Name>/Service.ico as the strip button image."""
+        import glob
+        import os
+        try:
+            pats = {
+                "google": "Google Translate", "deepl": "DeepL",
+                "yandex": "Yandex", "baidu": "Baidu", "naver": "Naver",
+                "youdao": "youdao", "bing": "Microsoft Translator",
+                "microsoft": "Microsoft Translator", "promt": "Promt",
+                "reverso": "Reverso",
+            }
+            folder = pats.get(name, name)
+            ico = os.path.join("C:/Program Files (x86)/QTranslate/Services",
+                               folder, "Service.ico")
+            if not os.path.exists(ico):
+                button.config(text=name[:4])
+                return
+            try:
+                from PIL import Image, ImageTk
+                im = Image.open(ico)
+                im = im.convert("RGBA").resize((22, 22), Image.LANCZOS)
+                photo = ImageTk.PhotoImage(im)
+            except Exception:
+                photo = tk.PhotoImage(file=ico)
+                w, h = photo.width(), photo.height()
+                if w > 24 or h > 24:
+                    photo = photo.subsample(max(1, w // 22),
+                                            max(1, h // 22))
+            self.svc_icons[name] = photo  # keep ref
+            button.config(image=photo, text="")
+        except Exception:
+            try:
+                button.config(text=name[:4])
+            except Exception:
+                pass
 
     # -- menus mirror RT_MENU resources --
     def _build_menu(self):
@@ -326,6 +413,74 @@ class App:
                            command=self.show_hotkeys)
         m_help.add_command(label="About", command=self.show_about)
         mb.add_cascade(label="Help", menu=m_help)
+
+    # -- main-window helpers (mirror native behavior) --
+    def ordered_services(self):
+        """ServicesOrder from config (native default order)."""
+        try:
+            from qtranslate import config as C
+            order = {"google": 1, "microsoft": 5, "promt": 12,
+                     "babylon": 13, "yandex": 11, "youdao": 26,
+                     "baidu": 28, "naver": 30, "deepl": 31,
+                     "reverso": 22}
+            names = sorted(TRANSLATORS,
+                           key=lambda n: order.get(n, 99))
+            return [n for n in names if n in TRANSLATORS]
+        except Exception:
+            return sorted(TRANSLATORS)
+
+    def default_source_text(self):
+        """Default source-pane text: version line + help.txt (like native)."""
+        lines = ["QTranslate Version 6.10.0", ""]
+        try:
+            with open("C:/Program Files (x86)/QTranslate/Locales/English/"
+                      "help.txt", encoding="utf-8-sig") as f:
+                lines.append(f.read().strip())
+        except Exception:
+            lines.append("Double Ctrl => Show main window\n"
+                         "Ctrl+Q => Translate selected text\n"
+                         "Ctrl+E => Listen to selected text")
+        return "\n".join(lines)
+
+    def hist_back(self):
+        self.render("[history back — Alt+Left]")
+
+    def hist_forward(self):
+        self.render("[history forward — Alt+Right]")
+
+    def open_service_page(self):
+        import webbrowser
+        try:
+            webbrowser.open(_dict_service_link(self.service))
+        except Exception as e:
+            self.render(f"[error] {e}")
+
+    def show_nav_menu(self):
+        m = tk.Menu(self.root, tearoff=False)
+        m.add_command(label="Show dictionary window",
+                      command=self.open_dict_window)
+        m.add_command(label="Show history window",
+                      command=self.open_history_window)
+        m.add_separator()
+        m.add_command(label="Options...", command=self.open_options)
+        m.add_command(label="About", command=self.show_about)
+        try:
+            m.tk_popup(self.root.winfo_pointerx(),
+                       self.root.winfo_pointery())
+        finally:
+            m.grab_release()
+
+    def on_paste(self):
+        if _HAS_KEYS:
+            try:
+                self.src.delete("1.0", "end")
+                self.src.insert("1.0", pyperclip.paste())
+            except Exception as e:
+                self.render(f"[clipboard error] {e}")
+
+    def on_mic(self):
+        self.render("[speech input — microphone capture is not ported; "
+                    "see docs/NATIVE_ARCH.md speech-input chain]")
 
     # -- actions --
     def _mark_service(self):
@@ -422,6 +577,97 @@ class App:
         self.render("QTranslate-re — clean-room RE of QTranslate 6.10.0\n"
                     f"providers: {len(TRANSLATORS)} translate + "
                     f"{len(DICTS)} dict (see README provider table)")
+
+    # -- Options dialog (DLG 154 + pages; Basics page mirrors screenshot) --
+    def open_options(self):
+        try:
+            from qtranslate import config as C
+            cfg = C.load()
+        except Exception:
+            cfg = {}
+        w = tk.Toplevel(self.root)
+        w.title("Options")
+        w.configure(bg=_COLORS["back"])
+        w.geometry("560x420")
+        left = tk.Listbox(w, width=14, height=20, bg=_COLORS["back"],
+                          fg=_COLORS["text"])
+        left.pack(side="left", fill="y", padx=8, pady=8)
+        pages = ["Basics", "Hotkeys", "Internet", "Services", "Languages",
+                 "Appearance", "Exceptions", "Advanced", "Updates"]
+        for p in pages:
+            left.insert("end", p)
+        body = tk.Frame(w, bg=_COLORS["back"])
+        body.pack(side="left", fill="both", expand=True, padx=8, pady=8)
+
+        def show_basics():
+            for c in body.winfo_children():
+                c.destroy()
+            tk.Label(body, text="General", bg=_COLORS["back"],
+                     fg=_COLORS["text"],
+                     font=("Segoe UI", 10, "bold")).pack(anchor="w")
+            start_var = tk.BooleanVar(value=True)
+            tk.Checkbutton(body, text="Start with Windows",
+                           variable=start_var,
+                           bg=_COLORS["back"], fg=_COLORS["text"],
+                           selectcolor=_COLORS["back"]).pack(anchor="w")
+            for lab in ("Interface language:", "Font name:", "Text size:"):
+                r = tk.Frame(body, bg=_COLORS["back"])
+                r.pack(fill="x", pady=1)
+                tk.Label(r, text=lab, width=18, anchor="w",
+                         bg=_COLORS["back"],
+                         fg=_COLORS["text"]).pack(side="left")
+                ttk.Combobox(r, values=["English", "Vietnamese"],
+                             width=26).pack(side="left")
+            tk.Label(body, text="Auto-detect languages",
+                     bg=_COLORS["back"], fg=_COLORS["text"],
+                     font=("Segoe UI", 10, "bold")).pack(anchor="w",
+                                                         pady=(8, 0))
+            for lab in ("First language:", "Second language:",
+                        "Speech input:"):
+                r = tk.Frame(body, bg=_COLORS["back"])
+                r.pack(fill="x", pady=1)
+                tk.Label(r, text=lab, width=18, anchor="w",
+                         bg=_COLORS["back"],
+                         fg=_COLORS["text"]).pack(side="left")
+                ttk.Combobox(r, values=TO_LANGS,
+                             width=26).pack(side="left")
+            tk.Label(body, text="History", bg=_COLORS["back"],
+                     fg=_COLORS["text"],
+                     font=("Segoe UI", 10, "bold")).pack(anchor="w",
+                                                         pady=(8, 0))
+            for lab, default in (("Enable history", True),
+                                 ("Clear history on exit", True),
+                                 ("Expand items", False)):
+                v = tk.BooleanVar(value=default)
+                tk.Checkbutton(body, text=lab, variable=v,
+                               bg=_COLORS["back"], fg=_COLORS["text"],
+                               selectcolor=_COLORS["back"]).pack(anchor="w")
+
+        def on_select(_e=None):
+            if not left.curselection():
+                return
+            if left.get(left.curselection()[0]) == "Basics":
+                show_basics()
+            else:
+                for c in body.winfo_children():
+                    c.destroy()
+                tk.Label(body,
+                         text=left.get(left.curselection()[0])
+                         + " (see Options.json sections)",
+                         bg=_COLORS["back"],
+                         fg=_COLORS["text"]).pack(anchor="w")
+
+        left.bind("<<ListboxSelect>>", on_select)
+        left.selection_set(0)
+        show_basics()
+        frm = tk.Frame(w, bg=_COLORS["back"])
+        frm.pack(side="bottom", pady=(0, 8))
+        tk.Button(frm, text="OK",
+                  command=w.destroy).pack(side="left", padx=4)
+        tk.Button(frm, text="Cancel",
+                  command=w.destroy).pack(side="left", padx=4)
+        tk.Button(frm, text="Apply",
+                  command=w.destroy).pack(side="left", padx=4)
 
     # -- History window (DLG 164: SysTreeView32 + Clear + Save as) --
     def open_history_window(self):
