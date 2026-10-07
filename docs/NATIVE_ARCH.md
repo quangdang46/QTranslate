@@ -34,6 +34,9 @@ Symbols stripped, but **RTTI intact** — full class map recovered from `.rdata`
   `WindowPopupIcons`, `ProgressWindow`, RichEdit init) — offsets give the
   member layout for a future C++ reconstruction.
 - **`FUN_00403057` = ATL thunk allocator** (`AtlThunk_AllocateData/InitData`).
+- **`FUN_0043EC4E` = single-window teardown** (`__fastcall`):
+  `DestroyWindow` if present + `UnregisterClassW` one class — the
+  clipboard-viewer (`QTranslateClipboardWindowClass`) exit path.
 - **`FUN_00422215` = class unregister** (`__fastcall`,
   `UnregisterClassW` via IAT `0x50D6E0`): loops registered names with
   bounds-check (`0xC000008C` on OOB) → free list → `DeleteCriticalSection`
