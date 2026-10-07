@@ -138,9 +138,20 @@ def suggest(text: str) -> list:
                  "Accept": "*/*",
                  "Referer": "https://fanyi.baidu.com/",
                  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
-    with common.http_open(req) as resp:
-        obj = json.loads(resp.read().decode("utf-8", errors="replace"))
-    return obj.get("data", []) if isinstance(obj, dict) else []
+    for _try in range(2):
+        try:
+            with common.http_open(req) as resp:
+                obj = json.loads(
+                    resp.read().decode("utf-8", errors="replace"))
+            data = obj.get("data", []) if isinstance(obj, dict) else []
+            if data or _try == 1:
+                return data
+        except Exception:
+            if _try == 1:
+                return []
+        import time as _t
+        _t.sleep(1.0)
+    return []
 
 
 def detect(text: str, cookie: str = "") -> int:
