@@ -615,6 +615,10 @@ Each user action = a `Task` object posted to a worker thread:
   picks theme index by control state — disabled → 3, focused → 4, has-text →
   1, empty → 0 — via `FUN_0044C51C` on the shared theme store
   (`DAT_005491E8`, `Themes/` folder: per-service icons + color schemes).
+- **`FUN_0044C4CA` = theme color accessor** (`__thiscall`, vtable init
+  first): kind→offset (`1→0xB4, 2→0xD4, 3→0xF4, 4→0x114, else→0x94`,
+  stride `0x20`) — per-kind colors (text/back/border/...) backing
+  `theme.py::window_colors`.
 - **`FUN_0044C51C` = theme palette accessor**: state→struct offset
   (1→`+0x14C`, 3→`+0x164`, 4→`+0x17C`, else→`+0x134`, stride `0x18`) —
   palettes ported to `qtranslate/theme.py` (`window_colors` per state;
