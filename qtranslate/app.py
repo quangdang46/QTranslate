@@ -1309,12 +1309,24 @@ class App:
                             idx, fg="gray" if sid in disabled else "black")
                 _paint()
 
+                def _check_all():
+                    # DLG 174 "Check / Uncheck all": enable all if any
+                    # disabled, else disable all.
+                    if any(s in disabled for s in order):
+                        disabled.clear()
+                    else:
+                        disabled.update(order)
+                    _save()
+                    _paint()
+
                 tk.Button(sb, text="▲", width=3,
                           command=lambda: _move(-1)).pack(pady=1)
                 tk.Button(sb, text="▼", width=3,
                           command=lambda: _move(1)).pack(pady=1)
                 tk.Button(sb, text="On/Off", width=5,
                           command=_toggle).pack(pady=1)
+                tk.Button(sb, text="All", width=5,
+                          command=_check_all).pack(pady=1)
                 return lb
 
             _mk_list(body, "Translation services", _order, _dis, _names)
