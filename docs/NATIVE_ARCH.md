@@ -279,6 +279,11 @@ Each user action = a `Task` object posted to a worker thread:
   called from dispatcher): builds `TaskShowPopupWindow` (vftable +
   `DAT_0051DE64/68` params) + `PostMessageW(0x812C)` — re-translates with
   the newly selected service without re-capture.
+- **`FUN_004614BB` = mp3 fetcher** (`__fastcall`, STA COM init inside):
+  service caps gate (`LISTEN` bit at `+0x10`, fallback default service
+  `FUN_0045CF04`) → task executor (`FUN_0045F6C1`) → `FUN_0046027C`
+  (listen-request fetch → mp3 bytes into `param_1+0x20`). The online half
+  of `TaskListenText` before `FUN_00461642` plays it.
 - **`FUN_004613FA` = playback wrapper** (`__fastcall`, called from the
   end-sync callback): free old → `FUN_004614BB` fetch-next (1 = drained,
   0 = has chunk, else error code) → `FUN_00461642` play → on failure
