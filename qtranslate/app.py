@@ -1062,8 +1062,53 @@ class App:
                 self.render(f"[clipboard error] {e}")
 
     def on_mic(self):
-        self.render("[speech input — microphone capture is not ported; "
-                    "see docs/NATIVE_ARCH.md speech-input chain]")
+        # Speech input chain (docs/NATIVE_ARCH.md): mic -> FLAC ->
+        # Google full-duplex (needs dead API key). Offline fallback:
+        # Windows SAPI shared recognizer when comtypes is installed
+        # (pip install comtypes); otherwise explain.
+        try:
+            import comtypes.client  # type: ignore
+        except ImportError:
+            self.render("[speech input — needs: pip install comtypes "
+                        "(offline SAPI) — Google voice API key retired]")
+            return
+
+        def _work():
+            try:
+                reco = comtypes.client.CreateObject(
+                    "SAPI.SpSharedRecognizer")
+                ctx = reco.CreateRecoContext()
+                grammar = ctx.CreateGrammar()
+                grammar.DictationLoad()
+                grammar.DictationSetState(1)
+                heard = []
+
+                class _Events:
+                    def OnRecognition(self, *a):
+                        try:
+                            heard.append(str(a[-1]))
+                        except Exception:
+                            pass
+
+                import comtypes.client as _cc
+                _cc.GetEvents(ctx, _Events())
+                import time as _t
+                self.root.after(0, lambda: self.render(
+                    "[listening... speak now (10s)]"))
+                _t.sleep(10)
+                grammar.DictationSetState(0)
+                txt = " ".join(heard).strip()
+                self.root.after(0, lambda: (
+                    self.src.delete("1.0", "end"),
+                    self.src.insert("1.0", txt)
+                    if txt else self.render(
+                        "[speech input — nothing recognized]")))
+            except Exception as e:
+                self.root.after(
+                    0, lambda: self.render(f"[speech error] {e}"))
+
+        import threading as _th
+        _th.Thread(target=_work, daemon=True).start()
 
     # -- actions --
     def _mark_service(self):
