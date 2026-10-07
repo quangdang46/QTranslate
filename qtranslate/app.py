@@ -28,12 +28,11 @@ TARGET = sys.argv[2] if len(sys.argv) > 2 else "vi"
 
 
 def speak(text, lang):
-    import io
-    import winsound
-    mp3 = google_tts(text, lang)
-    # winsound can't play mp3; save for external player, beep as ack
-    open("listen.mp3", "wb").write(mp3)
-    winsound.Beep(880, 150)
+    # Port of native TaskListenText -> FUN_00461642 -> BASS_ChannelPlay.
+    # 32-bit bass.dll requires 32-bit Python:
+    #   uv run --python cpython-3.12.13-windows-x86-none -I qtranslate/app.py
+    from qtranslate.player import play_mp3_bytes
+    play_mp3_bytes(google_tts(text, lang))
 
 
 def show_popup(source, result):

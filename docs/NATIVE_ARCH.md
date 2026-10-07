@@ -59,11 +59,27 @@ Each user action = a `Task` object posted to a worker thread:
 - `TaskOcr`, `TaskOcrCopyImageTextToClipboard` — screenshot → OCR providers
 - `TaskAutoBackTranslation`, `TaskConvertTextLayout` (keyboard layout fix), `TaskRenderHistoryItemInMainWindow`
 
-## Capture path (hotkey → text)
+## Capture path (hotkey → text) — decompiled, verified
 
-1. `RegisterHotKey` (USER32 import) bound in `HotKeyWindow`; `ApplicationWindow` receives `WM_HOTKEY`.
+1. **`FUN_00405A17` = hotkey registrar** (`__thiscall`, calls `RegisterHotKey`
+   via IAT slot `0x50D658`): parses hotkey word — `id = low byte`,
+   `modifiers = (word >> 8) & 0xF`, `vk = low byte`; on success appends the id
+   to a vector (`this+4` count, `this[0]` array). Two sibling registrars at
+   `FUN_0040AB69` / `FUN_0040ACA3` (same IAT slot, different owners).
+   `ApplicationWindow` receives `WM_HOTKEY` in the `FUN_00455061` loop.
 2. Text sources: clipboard chain (`OpenClipboard`/`GetClipboardData`), caret/selection via MSAA (`OLEACC.dll` → `AccessibleObjectFromWindow`).
 3. OCR: `OcrProvider`/`OcrSpaceProvider` (`common::`) — screenshot from `ScreenCaptureWindow` → upload to OCR API.
+
+## TTS playback path (decompiled, verified, reimplemented)
+
+- **`FUN_00461642` = play function** (`__fastcall`, calls BASS via IAT slots
+  `0x50D7AC`/`0x50D7B4`):
+  `FUN_00461691` (free old stream) → `BASS_StreamCreateFile(mem=1, data, 0, len, 0, 0)`
+  → `ctx[0x30] = stream` → `BASS_ChannelSetSync(stream, END, 0, on_end, ctx)`
+  → `BASS_ChannelPlay(stream, restart=TRUE)`.
+- Reimplemented in `qtranslate/player.py` via ctypes against the real
+  `bass.dll` (32-bit — run with 32-bit Python). Live-verified: downloads
+  Google TTS mp3 and plays it through BASS end to end.
 
 ## Service execution (`services::` + `net::`)
 
