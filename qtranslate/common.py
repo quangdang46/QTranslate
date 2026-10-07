@@ -108,6 +108,27 @@ def parse_json_lenient(text: str):
     return json.loads(text)
 
 
+def read_response_text(resp) -> str:
+    """Read a urllib response, transparently gunzipping (native sends
+    `Accept-Encoding: gzip,deflate` in getHeader/postHeader)."""
+    raw = resp.read()
+    if resp.headers.get("Content-Encoding", "") == "gzip" \
+            or raw[:2] == b"\x1f\x8b":
+        import gzip
+        raw = gzip.decompress(raw)
+    return raw.decode("utf-8", errors="replace")
+
+
+def split_headers(header_block: str) -> dict:
+    """Split a Common.js header block ("K: V\\r\\n...") into a dict."""
+    out = {}
+    for line in header_block.split("\r\n"):
+        if ": " in line:
+            k, v = line.split(": ", 1)
+            out[k] = v
+    return out
+
+
 def strip_html(html: str | None) -> str:
     if not html:
         return ""

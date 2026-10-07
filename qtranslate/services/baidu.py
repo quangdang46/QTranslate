@@ -1,17 +1,36 @@
-"""Baidu service port.
+"""1:1 port of Services/Baidu/Service.js (SERVICE_ID=28).
 
-Reversed from: C:/Program Files (x86)/QTranslate/Services/Baidu/Service.js
-
-Live status 2026-10-07: langdetect OK; v2transapi returns errno 1022
-(anti-bot: needs live gtk+token from the JS bundle + session cookies).
-Fresh BAIDUID/BIDUPSID/PSTM cookies obtainable via shared jar, but the
-sign seed (gtk) is JS-rendered — headless browser required for full flow.
+Covers the whole file: serviceHeader/Host/Link, sign(), detect
+request/response, translate request/response (trans_result +
+dict_result branches), serviceListenRequest, SupportedLanguages,
+plus suggest() via the live /sug endpoint (reversed 2026-10-07).
+v2transapi translate needs live gtk+token (JS-rendered) — errno 1022
+without them; detect + suggest are LIVE-OK.
 """
 from __future__ import annotations
 
 import json
 import urllib.parse
 import urllib.request
+
+from qtranslate.common import (
+    NL,
+    UNKNOWN_LANGUAGE,
+    Capability,
+    ServiceHeader,
+    code_from_language,
+    encode_get_param,
+    format_q,
+    is_language,
+    language_from_code,
+    limit_source,
+    parse_json_lenient,
+    post_header,
+    prepare_source,
+    read_response_text,
+    split_headers,
+    Options,
+)
 
 SERVICE_ID = 28
 SERVICE_NAME = "Baidu"
@@ -28,20 +47,48 @@ SUPPORTED_LANGS = [
 ]
 
 
+def service_header() -> ServiceHeader:
+    return ServiceHeader(
+        28, "Baidu",
+        "Baidu Translate is a free online translation service." + NL
+        + service_host() + NL + "© 2018 Baidu",
+        Capability.TRANSLATE | Capability.DETECT_LANGUAGE | Capability.LISTEN)
+
+
+def service_host(capability: int = Capability.TRANSLATE) -> str:
+    if capability == Capability.LISTEN:
+        return "https://tts.baidu.com"
+    return "https://fanyi.baidu.com"
+
+
+def service_link(text="", sl=-1, tl=-1) -> str:
+    g = service_host()
+    if text:
+        d = code_from_language(sl, SUPPORTED_LANGS) \
+            if is_language(sl, SUPPORTED_LANGS) else "auto"
+        e = code_from_language(tl, SUPPORTED_LANGS) \
+            if is_language(tl, SUPPORTED_LANGS) else "auto"
+        g += format_q("/#{0}/{1}/{2}", d, e, encode_get_param(text))
+    return g
+
+
 def _mix(value: int, ops: str) -> int:
     """Port of inner function a(b,d) used by sign()."""
     for e in range(0, len(ops) - 2, 3):
         digit = ops[e + 2]
         shift = (ord(digit) - 87) if "a" <= digit else int(digit)
-        shifted = (value >> shift) if ops[e + 1] == "+" else (value << shift) & 0xFFFFFFFF
-        value = ((value + shifted) & 0xFFFFFFFF) if ops[e] == "+" else (value ^ shifted)
+        shifted = (value >> shift) if ops[e + 1] == "+" \
+            else (value << shift) & 0xFFFFFFFF
+        value = ((value + shifted) & 0xFFFFFFFF) \
+            if ops[e] == "+" else (value ^ shifted)
     return value & 0xFFFFFFFF
 
 
 def sign(text: str, gtk: str = "0.0") -> str:
     """Port of sign(b,d): Baidu request signature from page GTK seed."""
     if len(text) > 30:
-        text = text[:10] + text[len(text) // 2 - 5:len(text) // 2 + 5] + text[-10:]
+        text = text[:10] + text[len(text) // 2 - 5:len(text) // 2 + 5] \
+            + text[-10:]
     parts = gtk.split(".")
     e = int(parts[0]) if parts[0] else 0
     g = int(parts[1]) if len(parts) > 1 and parts[1] else 0
@@ -54,7 +101,8 @@ def sign(text: str, gtk: str = "0.0") -> str:
         elif ch < 2048:
             codepoints.append((ch >> 6) | 192)
         else:
-            if (ch & 64512) == 55296 and i + 1 < len(text) and (ord(text[i + 1]) & 64512) == 56320:
+            if (ch & 64512) == 55296 and i + 1 < len(text) \
+                    and (ord(text[i + 1]) & 64512) == 56320:
                 ch = 65536 + ((ch & 1023) << 10) + (ord(text[i + 1]) & 1023)
                 i += 1
                 codepoints.append((ch >> 18) | 240)
@@ -94,61 +142,93 @@ def suggest(text: str) -> list:
     return obj.get("data", []) if isinstance(obj, dict) else []
 
 
-def detect(text: str, cookie: str = "") -> str:
-    """Port of serviceDetectLanguageRequest/Response: POST /langdetect."""
-    body = "query=" + urllib.parse.quote((text or "")[:100], safe="")
-    headers = {
-        "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
-        "Accept": "*/*",
-    }
-    if cookie:
-        headers["Cookie"] = cookie
-    req = urllib.request.Request(
-        HOST + "/langdetect", data=body.encode("utf-8"), headers=headers
-    )
+def detect(text: str, cookie: str = "") -> int:
+    """Port of detect request/response. Returns a lang *index*."""
+    body = "query=" + urllib.parse.quote(limit_source(text)[:100], safe="")
+    headers = dict(split_headers(post_header()))
+    headers["Cookie"] = cookie or Options.get("BaiduCookie", "")
+    req = urllib.request.Request(HOST + "/langdetect",
+                                 data=body.encode("utf-8"), headers=headers)
     with urllib.request.urlopen(req, timeout=20) as resp:
-        obj = json.loads(resp.read().decode("utf-8"))
-    return obj.get("lan", "") if isinstance(obj, dict) else ""
+        obj = parse_json_lenient(read_response_text(resp))
+    if obj and obj.get("lan"):
+        return language_from_code(obj["lan"], SUPPORTED_LANGS)
+    return UNKNOWN_LANGUAGE
 
 
-def translate(
-    text: str,
-    sl: str = "auto",
-    tl: str = "en",
-    gtk: str = "0.0",
-    token: str = "",
-    cookie: str = "",
-) -> str:
-    """Port of serviceTranslateRequest/Response: POST /v2transapi."""
-    text = (text or "").replace("\r\n", "\n").replace("\r", "\n")[:5000]
+def detect_code(text: str, cookie: str = "") -> str:
+    """Convenience: detect() resolved to a language code string."""
+    return code_from_language(detect(text, cookie), SUPPORTED_LANGS)
+
+
+def translate(text: str, sl="auto", tl: str = "en", gtk: str = "0.0",
+              token: str = "", cookie: str = "") -> str:
+    """Port of translate request/response (trans + dict_result branches).
+
+    sl/tl accept indices or codes. gtk/token/cookie default to the
+    Options.Baidu* session values (scraped from the Baidu page).
+    """
+    text = limit_source(prepare_source(text))
+    sl_code = code_from_language(sl, SUPPORTED_LANGS) \
+        if isinstance(sl, int) else sl
+    tl_code = code_from_language(tl, SUPPORTED_LANGS) \
+        if isinstance(tl, int) else tl
     query = urllib.parse.quote(text, safe="").replace("%20", "+")
-    body = "query={}&from={}&to={}&simple_means_flag=3&sign={}&token={}".format(
-        query, sl, tl, sign(text, gtk), token
-    )
-    headers = {
-        "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
-        "Accept": "*/*",
-    }
-    if cookie:
-        headers["Cookie"] = cookie
-    req = urllib.request.Request(
-        HOST + "/v2transapi", data=body.encode("utf-8"), headers=headers
-    )
+    gtk = gtk if gtk != "0.0" else Options.get("BaiduGtk", "0.0")
+    token = token or Options.get("BaiduToken", "")
+    body = ("query={}&from={}&to={}&simple_means_flag=3&sign={}&token={}"
+            .format(query, sl_code, tl_code, sign(text, gtk), token))
+    headers = split_headers(post_header())
+    headers["Cookie"] = cookie or Options.get("BaiduCookie", "")
+    req = urllib.request.Request(HOST + "/v2transapi",
+                                 data=body.encode("utf-8"), headers=headers)
     with urllib.request.urlopen(req, timeout=20) as resp:
-        obj = json.loads(resp.read().decode("utf-8"))
-    out = ""
-    trans = (obj.get("trans_result") or {}).get("data", []) if obj else []
-    for item in trans:
-        out += "\r\n" * item.get("prefixWrap", 0)
-        out += (item.get("dst") or "") + "\r\n"
-    return out
+        obj = parse_json_lenient(read_response_text(resp))
+    return _translate_response(obj)
+
+
+def _translate_response(obj: dict) -> str:
+    b = ""
+    if not obj:
+        return b
+    trans = (obj.get("trans_result") or {}).get("data", [])
+    sl_idx = tl_idx = UNKNOWN_LANGUAGE
+    if trans:
+        for item in trans:
+            b += NL * item.get("prefixWrap", 0)
+            b += (item.get("dst") or "") + NL
+        sl_idx = language_from_code(
+            (obj.get("trans_result") or {}).get("from", ""), SUPPORTED_LANGS)
+        tl_idx = language_from_code(
+            (obj.get("trans_result") or {}).get("to", ""), SUPPORTED_LANGS)
+    simple = ((obj.get("dict_result") or {}).get("simple_means") or {})
+    symbols = simple.get("symbols") if isinstance(simple, dict) else None
+    if symbols:
+        b += NL
+        for sym in symbols:
+            for part in sym.get("parts", []) or []:
+                if part.get("part"):
+                    b += "[" + part["part"] + "] "
+                b += "; ".join(part.get("means", []) or []) + NL
+    else:
+        content = (obj.get("dict_result") or {}).get("content")
+        if content:
+            b += NL
+            for entry in content:
+                for mean in (entry.get("mean") or []):
+                    b += mean.get("pre", "") + " "
+                    for h in (mean.get("cont") or {}):
+                        b += h
+                    b += NL
+    return b
 
 
 def listen_url(text: str, lang: str = "en", slow: bool = False) -> str:
     """Port of serviceListenRequest: TTS GET path (no download)."""
+    code = code_from_language(lang, SUPPORTED_LANGS) \
+        if isinstance(lang, int) else lang
     path = "/text2audio?lan={}&ie=UTF-8&text={}".format(
-        lang, urllib.parse.quote(text, safe="")
-    )
+        code, urllib.parse.quote(text, safe=""))
     if slow:
         path += "&spd=1"
     return LISTEN_HOST + path
