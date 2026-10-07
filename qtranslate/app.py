@@ -1,0 +1,78 @@
+"""Minimal runnable clone of the QTranslate pipeline (Windows).
+
+Flow (mirrors native Task pipeline in docs/NATIVE_ARCH.md):
+  hotkey (Ctrl+Alt+Q) -> capture clipboard -> translate via service plugin
+  -> popup window with result (+ TTS listen button).
+
+Requires: pip install keyboard pyperclip
+  python -I qtranslate/app.py [service] [target_lang]
+"""
+import sys
+import threading
+import tkinter as tk
+
+sys.path.insert(0, ".")
+
+from qtranslate.services.google_translate import translate as _tr
+from qtranslate.tts import google_tts
+
+try:
+    import keyboard
+    import pyperclip
+except ImportError:
+    print("pip install keyboard pyperclip")
+    raise SystemExit(1)
+
+SERVICE = sys.argv[1] if len(sys.argv) > 1 else "google"
+TARGET = sys.argv[2] if len(sys.argv) > 2 else "vi"
+
+
+def speak(text, lang):
+    import io
+    import winsound
+    mp3 = google_tts(text, lang)
+    # winsound can't play mp3; save for external player, beep as ack
+    open("listen.mp3", "wb").write(mp3)
+    winsound.Beep(880, 150)
+
+
+def show_popup(source, result):
+    win = tk.Tk()
+    win.title(f"QTranslate-re [{SERVICE} -> {TARGET}] (Ctrl+Alt+Q to re-capture)")
+    win.attributes("-topmost", True)
+    tk.Label(win, text=source, wraplength=480, justify="left",
+             fg="gray").pack(padx=12, pady=(12, 4))
+    tk.Label(win, text=result, wraplength=480, justify="left",
+             font=("Segoe UI", 13)).pack(padx=12, pady=4)
+    frm = tk.Frame(win)
+    frm.pack(pady=(0, 12))
+    tk.Button(frm, text="🔊 Listen",
+              command=lambda: threading.Thread(
+                  target=speak, args=(result, TARGET),
+                  daemon=True).start()).pack(side="left", padx=6)
+    tk.Button(frm, text="Close", command=win.destroy).pack(side="left")
+    win.mainloop()
+
+
+def on_hotkey():
+    # TaskCopySelection: clipboard already holds selected text (user pressed Ctrl+C)
+    try:
+        text = pyperclip.paste().strip()
+    except Exception as e:
+        print("clipboard error:", e)
+        return
+    if not text:
+        print("clipboard empty — select text + Ctrl+C first")
+        return
+    print(f"translating {len(text)} chars...")
+    try:
+        result = _tr(text[:5000], "auto", TARGET)
+    except Exception as e:
+        result = f"[error] {e}"
+    threading.Thread(target=show_popup, args=(text[:300], result),
+                     daemon=True).start()
+
+
+print(f"qtranslate-re running: press Ctrl+Alt+Q after Ctrl+C (target={TARGET})")
+keyboard.add_hotkey("ctrl+alt+q", on_hotkey)
+keyboard.wait()
