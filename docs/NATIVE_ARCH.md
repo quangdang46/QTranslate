@@ -93,6 +93,11 @@ Each user action = a `Task` object posted to a worker thread:
    IAT slot): single-key inject helper `FUN_0042AADC(key, up/down)` — the
    `TaskConvertTextLayout` engine that retypes text in the fixed layout.
 4. OCR: `OcrProvider`/`OcrSpaceProvider` (`common::`) — screenshot from `ScreenCaptureWindow` → upload to OCR API.
+5. **ScreenCapture paint = `FUN_004371C7`** (`__thiscall`, 2× `BitBlt/SRCCOPY`
+   via IAT `0x50D120`): blit screen DC → normalize selection rect
+   (`CRect::NormalizeRect`, drag-offset adjust) → draw white selection frame +
+   8 resize handles (`FUN_00449B08/00449B9C` frame/fill, `FUN_00437367` label).
+   Sibling blitters: `FUN_0044A611/0044A201/00437FE4/00449901/004498A0`.
 
 ## Popup render path (decompiled, verified)
 
