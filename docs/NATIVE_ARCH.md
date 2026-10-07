@@ -920,6 +920,9 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Auto-update + proxy (decompiled, probed)
 
+- **`FUN_0043FE2D` = JSON literal parser** (`__fastcall`): `t`/`f` →
+  `json::Boolean::vftable` (bool from first char), `n` handled inline as
+  `json::Null` in the dispatcher — completes the literal trio.
 - **`FUN_0043FA44` = JSON number parser** (`__fastcall`): optional
   `-` → digits (`FUN_0043FBB4`) → optional `.frac` → optional `e/E±exp`
   — full JSON number grammar (ints, decimals, exponents for timestamps
