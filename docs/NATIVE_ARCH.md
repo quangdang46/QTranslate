@@ -776,6 +776,9 @@ Each user action = a `Task` object posted to a worker thread:
   → `FUN_00450A0E` (shell-open document) else → `FUN_00450AC2` (URL →
   default browser). Shared by `serviceLink` opens, About links, and help
   file display.
+- **`FUN_0043DC23` = capacity init** (`__fastcall`, shared by registry +
+  executor inits): capacities from `FUN_004F4BD0` (floor `0x11`) into
+  `+0x18/+0x1C` — scales hash/vector sizes to the machine.
 - **`FUN_0045ABD2` = registry init** (called once from the singleton):
   zeroed map + same tuning floats as the executor (`0x3F400000/0x3E800000/
   0x40100000`) + `FUN_0043DC23` init — shared defaults for provider timing.
