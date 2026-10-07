@@ -884,6 +884,10 @@ Each user action = a `Task` object posted to a worker thread:
 - **`FUN_0044D3C3` = button-type painter** (`__fastcall`, types 2/3/5/6):
   same state machine + focus-rect (`BM_GETSTATE` bit0) for push/check/radio
   buttons; GDI+ gradient path (`FUN_0040647F` family) for glass styles.
+- **`FUN_0044D282` = group/separator painter** (`__fastcall`, type 7):
+  measures label (`GetTextExtentPoint32W`) → etched line halves
+  (`FUN_0044D8CB`) + left-indented label (`FUN_0042248C` text) — groupbox
+  headers in options dialogs.
 - **`FUN_0044D502` = default control painter** (`__fastcall`):
   `BM_GETSTATE (0xF2)` + enabled/hover/pressed bits → state index
   (disabled 3 / pressed 2 / hover 1-or-4 / normal 0, feeding the
