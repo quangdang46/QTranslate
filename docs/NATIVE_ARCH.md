@@ -279,6 +279,10 @@ Each user action = a `Task` object posted to a worker thread:
   called from dispatcher): builds `TaskShowPopupWindow` (vftable +
   `DAT_0051DE64/68` params) + `PostMessageW(0x812C)` — re-translates with
   the newly selected service without re-capture.
+- **`FUN_00460006` = fetch dispatcher** (`__thiscall`): invokes
+  `serviceHost(...)` (3 args) for the base URL, then routes to GET/POST
+  wrappers — every translate/detect/listen/dictionary fetch funnels here
+  after its RequestData is built.
 - **`FUN_0045FF70` = language validator** (`__thiscall`): hash lookup
   (`FUN_00460E15`) on the service's language table (`this+0x54`) — gates
   every translate/listen/detect call (error 10 = unsupported pair).
