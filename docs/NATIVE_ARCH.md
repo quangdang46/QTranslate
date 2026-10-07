@@ -680,6 +680,8 @@ Each user action = a `Task` object posted to a worker thread:
   `MonitorFromPoint` + `GetMonitorInfoW` work area → clamps the popup rect
   on all 4 sides (in/out-place adjust of `*param_1/*param_2`) — keeps
   cursor-following popups fully on-screen across monitors.
+- **`FUN_00402DE9` = rect screen-to-client** (`__thiscall`): dual
+  `ScreenToClient` on both rect corners (guarded second call).
 - **`FUN_00434502` = dialog splitter layout** (`__thiscall`): measures
   client + toolbar child (`0x410` via `FUN_00402DE9` screen-to-client) →
   `MoveWindow` content pane (right+5, width−10) — splitter between toolbar
