@@ -667,17 +667,79 @@ class App:
                                bg=_COLORS["back"], fg=_COLORS["text"],
                                selectcolor=_COLORS["back"]).pack(anchor="w")
 
+        def show_appearance():
+            # mirrors DLG 175: General group + Popup window group
+            for c in body.winfo_children():
+                c.destroy()
+            tk.Label(body, text="General", bg=_COLORS["back"],
+                     fg=_COLORS["text"],
+                     font=("Segoe UI", 10, "bold")).pack(anchor="w")
+            r = tk.Frame(body, bg=_COLORS["back"])
+            r.pack(fill="x", pady=1)
+            tk.Label(r, text="Theme:", width=18, anchor="w",
+                     bg=_COLORS["back"],
+                     fg=_COLORS["text"]).pack(side="left")
+            th = ttk.Combobox(r, values=_THEMES, width=26)
+            th.pack(side="left")
+            th.set(THEME if THEME in _THEMES else (_THEMES[0] if _THEMES
+                                                   else ""))
+            th.bind("<<ComboboxSelected>>",
+                    lambda e: self.apply_theme(th.get()))
+            for lab, default in (("Enable auto size", True),
+                                 ("Enable auto position", True),
+                                 ("Always activate", False),
+                                 ("Pin when dragging", False)):
+                v = tk.BooleanVar(value=default)
+                tk.Checkbutton(body, text=lab, variable=v,
+                               bg=_COLORS["back"], fg=_COLORS["text"],
+                               selectcolor=_COLORS["back"]).pack(anchor="w")
+            tk.Label(body, text="Popup window", bg=_COLORS["back"],
+                     fg=_COLORS["text"],
+                     font=("Segoe UI", 10, "bold")).pack(anchor="w",
+                                                         pady=(8, 0))
+            for lab in ("Auto-hide delay:", "Transparency (0 - 90):",
+                        "Frame thickness:"):
+                rr = tk.Frame(body, bg=_COLORS["back"])
+                rr.pack(fill="x", pady=1)
+                tk.Label(rr, text=lab, width=20, anchor="w",
+                         bg=_COLORS["back"],
+                         fg=_COLORS["text"]).pack(side="left")
+                tk.Entry(rr, width=10).pack(side="left")
+
+        def show_hotkeys():
+            # mirrors DLG 179: Enable hot keys + per-action list
+            for c in body.winfo_children():
+                c.destroy()
+            v = tk.BooleanVar(value=True)
+            tk.Checkbutton(body, text="Enable hot keys", variable=v,
+                           bg=_COLORS["back"], fg=_COLORS["text"],
+                           selectcolor=_COLORS["back"]).pack(anchor="w")
+            try:
+                from qtranslate import config as C
+                names = C.HOTKEY_NAMES
+            except Exception:
+                names = []
+            lb = tk.Listbox(body, height=14, bg=_COLORS["back"],
+                            fg=_COLORS["text"])
+            lb.pack(fill="both", expand=True, pady=4)
+            for n in names:
+                lb.insert("end", n)
+
         def on_select(_e=None):
             if not left.curselection():
                 return
-            if left.get(left.curselection()[0]) == "Basics":
+            page = left.get(left.curselection()[0])
+            if page == "Basics":
                 show_basics()
+            elif page == "Appearance":
+                show_appearance()
+            elif page == "Hotkeys":
+                show_hotkeys()
             else:
                 for c in body.winfo_children():
                     c.destroy()
                 tk.Label(body,
-                         text=left.get(left.curselection()[0])
-                         + " (see Options.json sections)",
+                         text=page + " (see Options.json sections)",
                          bg=_COLORS["back"],
                          fg=_COLORS["text"]).pack(anchor="w")
 
