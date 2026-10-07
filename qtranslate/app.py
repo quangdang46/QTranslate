@@ -1650,6 +1650,24 @@ class App:
                          bg=_COLORS["back"],
                          fg=_COLORS["text"]).pack(anchor="w")
 
+        import copy as _copy
+        _snapshot = _copy.deepcopy(cfg)
+
+        def _cancel():
+            # Native Cancel discards: restore the snapshot since pages
+            # save live into cfg/Options.json as they edit.
+            try:
+                from qtranslate import config as _C
+                import json as _j
+                with open(_C.DEFAULT_PATH, "w",
+                          encoding="utf-8") as f:
+                    _j.dump(_snapshot, f, ensure_ascii=False, indent=1)
+                cfg.clear()
+                cfg.update(_copy.deepcopy(_snapshot))
+            except Exception:
+                pass
+            w.destroy()
+
         left.bind("<<ListboxSelect>>", on_select)
         left.selection_set(0)
         show_basics()
@@ -1658,7 +1676,7 @@ class App:
         tk.Button(frm, text="OK",
                   command=w.destroy).pack(side="left", padx=4)
         tk.Button(frm, text="Cancel",
-                  command=w.destroy).pack(side="left", padx=4)
+                  command=_cancel).pack(side="left", padx=4)
         tk.Button(frm, text="Apply",
                   command=w.destroy).pack(side="left", padx=4)
 
