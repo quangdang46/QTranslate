@@ -279,6 +279,10 @@ Each user action = a `Task` object posted to a worker thread:
   called from dispatcher): builds `TaskShowPopupWindow` (vftable +
   `DAT_0051DE64/68` params) + `PostMessageW(0x812C)` — re-translates with
   the newly selected service without re-capture.
+- **`FUN_004601AD`/`FUN_004601EC` = request context init/cleanup**
+  (`__fastcall` pair): inits 4 CString fields (`+4/+8/+0xC/+0x14`),
+  releases in reverse — RAII around every fetch (no leak path even on
+  error 2/4/5/10/11).
 - **`FUN_0045C2F4` = network-alive gate**: `IsNetworkAlive` (SensApi,
   the `SensApi.dll` import) — every fetch path checks connectivity first;
   offline → error 4 without touching curl. (Matches the offline-first
