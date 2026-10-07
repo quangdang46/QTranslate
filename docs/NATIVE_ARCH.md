@@ -471,6 +471,11 @@ Each user action = a `Task` object posted to a worker thread:
   switch): walks all services, keeps `caps & mask` (`+4` field), rebuilds
   the active list (`RemoveAll` + push-back) — drives which providers show
   in translate vs dictionary UI.
+- **`FUN_00403289` = OOM fail-fast** (called from every allocator on
+  failure): `FUN_0040345B(-0x7FF8FFF2)` — no graceful OOM anywhere;
+  allocation failure = instant terminate (consistent with the
+  no-`bad_alloc`-handling style of `FUN_004B3DF0`'s throw site being the
+  only catcher).
 - **`FUN_0040321E` = COW split** (`__thiscall`, called from realloc when
   shared): alloc-via-manager + copy (`FUN_004031AA`) + release-old
   (`FUN_004033D1`) — the write side of copy-on-write.
