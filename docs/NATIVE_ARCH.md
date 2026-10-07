@@ -920,6 +920,10 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Auto-update + proxy (decompiled, probed)
 
+- **`FUN_0043FA44` = JSON number parser** (`__fastcall`): optional
+  `-` → digits (`FUN_0043FBB4`) → optional `.frac` → optional `e/E±exp`
+  — full JSON number grammar (ints, decimals, exponents for timestamps
+  and language-index numerics).
 - **`FUN_0043FC8F` = JSON object parser** (`__fastcall`): `{` →
   string `:` recursive-value pairs (`FUN_00440893` insert) → `}` —
   completes the JSON trio (string/array/object + literals/numbers).
