@@ -86,14 +86,75 @@ except Exception:
     _THEMES = [THEME]
 _COLORS = _default_colors()
 
-LANGS = ["auto", "en", "ru", "fr", "de", "es", "zh-CHS", "vi", "ja", "ko"]
-TO_LANGS = ["vi", "en", "ru", "fr", "de", "es", "zh-CHS", "ja", "ko"]
-# Display names exactly as the native language combos show them
-LANG_DISPLAY = {"auto": "Auto-Detect", "en": "English", "ru": "Russian",
-                "fr": "French", "de": "German", "es": "Spanish",
-                "zh-CHS": "Chinese (Simplified)", "vi": "Vietnamese",
-                "ja": "Japanese", "ko": "Korean"}
+# Full language table from Services/Google Translate/Service.js
+# SupportedLanguages (75 codes; index 1=auto .. 57=vi). Display names
+# are ISO English names (native combo shows localized names from its
+# .mui resources; English mapping is equivalent for selection).
+_ISO_NAMES = {
+    "auto": "Auto-Detect", "af": "Afrikaans", "az": "Azerbaijani",
+    "sq": "Albanian", "ar": "Arabic", "hy": "Armenian", "eu": "Basque",
+    "be": "Belarusian", "bg": "Bulgarian", "ca": "Catalan",
+    "zh-CN": "Chinese (Simplified)", "zh-TW": "Chinese (Traditional)",
+    "hr": "Croatian", "cs": "Czech", "da": "Danish", "nl": "Dutch",
+    "en": "English", "et": "Estonian", "fi": "Finnish", "tl": "Filipino",
+    "fr": "French", "gl": "Galician", "de": "German", "el": "Greek",
+    "ht": "Haitian Creole", "iw": "Hebrew", "hi": "Hindi",
+    "hu": "Hungarian", "is": "Icelandic", "id": "Indonesian",
+    "it": "Italian", "ga": "Irish", "ja": "Japanese", "ka": "Georgian",
+    "ko": "Korean", "lv": "Latvian", "lt": "Lithuanian",
+    "mk": "Macedonian", "ms": "Malay", "mt": "Maltese",
+    "no": "Norwegian", "fa": "Persian", "pl": "Polish", "pt": "Portuguese",
+    "ro": "Romanian", "ru": "Russian", "sr": "Serbian", "sk": "Slovak",
+    "sl": "Slovenian", "es": "Spanish", "sw": "Swahili",
+    "sv": "Swedish", "th": "Thai", "tr": "Turkish", "uk": "Ukrainian",
+    "ur": "Urdu", "vi": "Vietnamese", "cy": "Welsh", "yi": "Yiddish",
+    "eo": "Esperanto", "hmn": "Hmong", "la": "Latin", "lo": "Lao",
+    "kk": "Kazakh", "uz": "Uzbek", "si": "Sinhala", "tg": "Tajik",
+    "te": "Telugu", "km": "Khmer", "mn": "Mongolian", "kn": "Kannada",
+    "ta": "Tamil", "mr": "Marathi", "bn": "Bengali", "tt": "Tatar",
+    "zh-CHS": "Chinese (Simplified)",
+}
+try:
+    from qtranslate.services.google_translate import SUPPORTED_LANGS \
+        as _SL
+    LANGS = [c for c in _SL if c != -1]
+except Exception:
+    LANGS = list(_ISO_NAMES)
+TO_LANGS = [c for c in LANGS if c != "auto"]
+LANG_DISPLAY = {c: _ISO_NAMES.get(c, c) for c in LANGS}
 LANG_CODES = {v: k for k, v in LANG_DISPLAY.items()}
+
+
+def _disabled_lang_indices() -> set:
+    try:
+        from qtranslate import config as _C
+        return set(_C.load().get("DisabledLanguages", []))
+    except Exception:
+        return set()
+
+
+def _lang_names(codes, include_auto=True):
+    try:
+        from qtranslate.services.google_translate import SUPPORTED_LANGS \
+            as _SL2
+        _dis = _disabled_lang_indices()
+        out = []
+        for c in codes:
+            try:
+                idx = list(_SL2).index(c)
+            except ValueError:
+                idx = -1
+            if idx in _dis:
+                continue
+            if c == "auto" and not include_auto:
+                continue
+            out.append(LANG_DISPLAY.get(c, c))
+        return out
+    except Exception:
+        return [LANG_DISPLAY.get(c, c) for c in codes
+                if c != "auto" or include_auto]
+
+
 SRC_LANG_NAMES = [LANG_DISPLAY[c] for c in LANGS]
 TO_LANG_NAMES = [LANG_DISPLAY[c] for c in TO_LANGS]
 
@@ -438,13 +499,14 @@ class App:
                   command=self.on_paste).pack(side="left", padx=1)
         tk.Button(bar, text="⋮", width=3,
                   command=self.show_nav_menu).pack(side="left", padx=1)
-        self.src_lang = ttk.Combobox(bar, values=SRC_LANG_NAMES,
+        self.src_lang = ttk.Combobox(bar, values=_lang_names(LANGS),
                                      width=13, state="readonly")
         self.src_lang.set(LANG_DISPLAY.get("auto", "auto"))
         self.src_lang.pack(side="left", padx=2)
         tk.Button(bar, text="⇄", width=3, font=("Segoe UI Symbol", 10),
                   command=self.on_swap).pack(side="left", padx=1)
-        self.tgt = ttk.Combobox(bar, values=TO_LANG_NAMES,
+        self.tgt = ttk.Combobox(bar, values=_lang_names(TO_LANGS,
+                                                        False),
                                 width=13, state="readonly")
         self.tgt.set(LANG_DISPLAY.get(self.target, self.target))
         self.tgt.pack(side="left", padx=2)
