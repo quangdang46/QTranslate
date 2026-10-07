@@ -103,6 +103,11 @@ Each user action = a `Task` object posted to a worker thread:
   then vtable `+0xC` (SetSite) and `+0x28` (InitNew). This is how
   `Services/*/Service.js` gets executed at runtime with `UtilsDispatch`
   exposing native `Options`.
+- **Service dispatch = `FUN_0043B777` → `FUN_0043E471`**: boot engine, walk
+  the service function hash-map invoking each entry, then `GetDispID` on the
+  script object; `FUN_0043E471` calls `IDispatch::GetIDsOfNames` (vtable
+  `+0x20`) with `AddNamedItem` fallback — the actual
+  `serviceTranslateRequest(...)` invocation boundary between native and JS.
 
 ## TTS playback path (decompiled, verified, reimplemented)
 
