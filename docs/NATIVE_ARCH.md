@@ -139,6 +139,18 @@ Each user action = a `Task` object posted to a worker thread:
   (Scheme/Host/Port/Username/Password in `Options.json Proxy` section).
   libcurl honors `http_proxy`/`all_proxy` env as fallback.
 
+## Offline XDXF dictionaries (decompiled + ported)
+
+- **`FUN_00445BB9` = XDXF loader** (`__thiscall`, refs `.xdxf` at `0x52265C`):
+  `PathFileExistsW` check → `PathFindExtensionW` split → register into the
+  `OfflineDictionaries` list (persisted in `Options.json`, refs at
+  `FUN_004561F0`/`FUN_0045869F`). File filter `XDXF Dictionary (*.xdxf)`.
+- Rendering: `Resources/XdxfArticle.xslt` applied to each `<ar>` article
+  (native MSXML transform). Ported 1:1 to `qtranslate/xdxf.py` with stdlib
+  `xml.etree` (no XSLT engine): `<k>`→bold div, `<tr>`→brackets,
+  `<kref>`→`qtdp:` link, `<iref>`→ext link, `<ex>`→gray example. Live-tested
+  render output matches the XSLT semantics.
+
 ## Popup render path (decompiled, verified)
 
 - **`FUN_0040C393` = popup content+position setter** (`__fastcall`, calls
