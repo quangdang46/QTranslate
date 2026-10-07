@@ -235,6 +235,16 @@ Each user action = a `Task` object posted to a worker thread:
   clipboard capture skip these classes/apps (avoids stealing listbox/console
   content and remote-desktop keystrokes).
 
+## Owner-draw text (decompiled)
+
+- **`FUN_00449707` = shadow text renderer** (`__fastcall`, `DrawTextW` via
+  IAT `0x50D6AC`): select font → transparent bk → optional shadow pass
+  (offset rect +1,+1 in shadow color) → main pass → restore DC. Sibling
+  callers: `FUN_004497C5`, `00407B18`, `0042B485` (×2), `00439F08`,
+  `0044D282`; low-level blit via `ExtTextOutW` (`FUN_00449B9C`, IAT
+  `0x50D0E4`). Used by ScreenCapture labels, tray balloon text, and
+  keyboard-window keys.
+
 ## Tray icon + layout keys (decompiled)
 
 - **`FUN_00405C42` = tray add** (`__thiscall`, `Shell_NotifyIconW(NIM_ADD)`
