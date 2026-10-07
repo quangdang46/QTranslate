@@ -76,7 +76,8 @@ Each user action = a `Task` object posted to a worker thread:
    `GetCursorPos` + `GetTickCount` → `FUN_004193F6` click-capture trigger.
 0d. **`FUN_004193F6` = click-capture trigger** (on `0x201` LBUTTONDOWN):
    `WindowFromPoint` (`FUN_00450DD2` = `WindowFromPoint` → `FUN_00450D7C`
-   (`EnumChildWindows` + hit-test callback `FUN_00450CFA`, fallback parent)
+   (`EnumChildWindows` + hit-test callback `FUN_00450CFA` = `PtInRect` +
+   smallest-visible-area-wins, fallback parent)
    → walk up past invisible parents via `GetParent`)
    → exclusion check (`FUN_004631DE`)
    → `GetWindowRect` + `PtInRect` confirm → store click point
