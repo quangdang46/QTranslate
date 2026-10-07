@@ -66,6 +66,11 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Capture path (hotkey → text) — decompiled, verified
 
+0. **`FUN_00418C23` = hotkey bulk registrar**: unregisters all existing
+   (`UnregisterHotKey` loop over the id vector at `this+0x17D8`) → registers
+   17 hotkeys from consecutive option words (`DAT_00549466 + i*2`, matching
+   the 17 `HotKey*` names in `Options.json`) when enabled (`param_1` = global
+   toggle, `DAT_00549464` = EnableHotKeys).
 1. **`FUN_00405A17` = hotkey registrar** (`__thiscall`, calls `RegisterHotKey`
    via IAT slot `0x50D658`): parses hotkey word — `id = low byte`,
    `modifiers = (word >> 8) & 0xF`, `vk = low byte`; on success appends the id
