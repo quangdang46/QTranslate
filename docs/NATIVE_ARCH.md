@@ -231,6 +231,9 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## String literal loader (decompiled)
 
+- **`FUN_0040281A` = string entry extractor** (`__fastcall`):
+  `LoadResource` + `LockResource` + `SizeofResource` bounds → walk
+  Pascal-string entries (`id & 0xF` skips) — raw STRINGTABLE parse.
 - **`FUN_004028A4`/`FUN_004027EF` = module/resource resolvers**
   (`FindResource[Ex]W` type 6 = STRINGTABLE, block `(id>>4)+1`): walk
   registered HINSTANCEs (`CAtlBaseModule`) for the string block —
