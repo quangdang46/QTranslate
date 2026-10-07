@@ -168,6 +168,16 @@ Each user action = a `Task` object posted to a worker thread:
   `0x305/0x306/0x308/0x30D` (IME/clipboard-chain messages), everything else
   → `DefWindowProcW`.
 
+## History context menu (decompiled)
+
+- **`FUN_004287B6` = history-item menu** (`__thiscall`, `TrackPopupMenu`
+  via IAT `0x50D63C`): builds Open (`0x8028`) / Copy text (`0x806E`) /
+  Copy translation (`0x8026`) / Delete (`0x8027`) / Listen to text
+  (`0x8099`), pruning Copy-text+Delete vs Copy-translation by `param_2`
+  (source vs translation row). 9 sibling menu builders share the
+  `FUN_00451F6D`-string + `FUN_004040BA`-append + `TrackPopupMenu` pattern
+  (`FUN_004041D7`, `00408FDB`, `0040BE65`, `0042DC18`, `0042DF28`, …).
+
 ## Tray icon + layout keys (decompiled)
 
 - **`FUN_00405C42` = tray add** (`__thiscall`, `Shell_NotifyIconW(NIM_ADD)`
