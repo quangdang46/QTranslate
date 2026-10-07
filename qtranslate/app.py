@@ -894,6 +894,34 @@ class App:
         except Exception as e:
             self.render(f"[ocr error] {e}")
 
+    def open_keyboard(self):
+        """Virtual keyboard window (DLG 162: 308x102).
+
+        Clicking a key types it into the source pane (like the native
+        on-screen keyboard feeding the edit control).
+        """
+        w = tk.Toplevel(self.root)
+        w.title("Virtual keyboard")
+        w.configure(bg=_COLORS["back"])
+        w.attributes("-topmost", True)
+        rows = ["qwertyuiop", "asdfghjkl", "zxcvbnm"]
+        for row in rows:
+            frm = tk.Frame(w, bg=_COLORS["back"])
+            frm.pack()
+            for ch in row:
+                tk.Button(frm, text=ch, width=3,
+                          command=lambda c=ch: self.src.insert("insert",
+                                                               c)).pack(
+                    side="left", padx=1, pady=1)
+        frm = tk.Frame(w, bg=_COLORS["back"])
+        frm.pack(pady=2)
+        tk.Button(frm, text="Space", width=20,
+                  command=lambda: self.src.insert("insert", " ")).pack(
+            side="left", padx=2)
+        tk.Button(frm, text="⌫", width=5,
+                  command=lambda: self.src.delete(
+                      "insert-1c", "insert")).pack(side="left", padx=2)
+
 
 def on_hotkey(app):
     # Exclusion gate (FUN_004631DE): skip capture in blocked apps/classes.
@@ -985,14 +1013,34 @@ def main():
     print("  Ctrl+Q: popup translate | Ctrl+Shift+Q: dictionary | "
           "Ctrl+E: listen | Ctrl+Alt+L: fix layout")
     if _HAS_KEYS:
-        # Global hotkeys mirror help.txt (Ctrl combos; Double-Ctrl and
-        # Ctrl+Alt variants kept as fallback where Ctrl is taken)
+        # Global hotkeys mirror help.txt. Double Ctrl => show main
+        # window (native FUN_00417DCE double-press matcher: two Ctrl
+        # presses within the double-click time window).
+        import time as _time
+        _last_ctrl = [0.0]
+
+        def _ctrl_tap():
+            now = _time.time()
+            if now - _last_ctrl[0] < 0.5:
+                try:
+                    root.lift()
+                    root.focus_force()
+                except Exception:
+                    pass
+            _last_ctrl[0] = now
+
+        keyboard.on_press_key("ctrl", lambda e: _ctrl_tap())
         keyboard.add_hotkey("ctrl+q", lambda: on_hotkey(app))
         keyboard.add_hotkey("ctrl+shift+q",
                             lambda: on_dict_hotkey(app))
         keyboard.add_hotkey("ctrl+e", lambda: on_listen_hotkey(app))
         keyboard.add_hotkey("ctrl+alt+q", lambda: on_hotkey(app))
         keyboard.add_hotkey("ctrl+alt+l", on_layout_hotkey)
+        keyboard.add_hotkey("ctrl+n", lambda: app.on_clear())
+        keyboard.add_hotkey("ctrl+d", lambda: app.open_dict_window())
+        keyboard.add_hotkey("ctrl+h",
+                            lambda: app.open_history_window())
+        keyboard.add_hotkey("ctrl+k", lambda: app.open_keyboard())
     else:
         print("pip install keyboard pyperclip for global hotkeys")
     root.mainloop()
