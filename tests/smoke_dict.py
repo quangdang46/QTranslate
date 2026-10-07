@@ -62,3 +62,8 @@ _long = "Sentence one. " * 100
 _chs = _ch(_long)
 assert sum(map(len, _chs)) == len(_long[:10000]) and max(map(len, _chs)) <= 700
 print("OK: yandex chunks")
+
+# google tk() determinism (same input -> same token)
+from qtranslate.services.google_translate import tk as _tk
+assert _tk("Hello world") == _tk("Hello world")
+print("OK: google tk deterministic")
