@@ -77,3 +77,17 @@ assert _ys("hello", "12345") == _ys("hello", "12345")
 assert _gh("Hello world") == _gh("Hello world")
 import qtranslate.services.promt  # syntax regression guard
 print("OK: signing deterministic")
+
+# naver HMAC determinism (endpoint 404, algorithm must still be exact)
+import uuid as _uuid, time as _time
+from qtranslate.services import naver as _nv
+_ru, _rt = _uuid.uuid4, _time.time
+_uuid.uuid4 = lambda: "test-device-id"
+_time.time = lambda: 1700000000.0
+try:
+    _h1, _ = _nv._auth("https://papago.naver.com/apis/n2mt/translate")
+    _h2, _ = _nv._auth("https://papago.naver.com/apis/n2mt/translate")
+    assert _h1 == _h2 and "PPG test-device-id:" in _h1
+finally:
+    _uuid.uuid4, _time.time = _ru, _rt
+print("OK: naver HMAC deterministic")
