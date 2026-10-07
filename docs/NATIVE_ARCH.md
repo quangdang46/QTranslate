@@ -706,6 +706,13 @@ Each user action = a `Task` object posted to a worker thread:
   Show top-middle-services panes); `189` = edit (Reset/Shift+Esc/Edit.../
   Always detect language); `200` = Show Full History; `206` = dictionary
   item (Show info/Remove dictionary).
+- **Accelerator tables** (2× `RT_ACCELERATOR` in `.rsrc`, parsed from PE):
+  `170` = 44 entries (Ctrl+Left/Right `0x8069/0x806A`, Ctrl+1..9
+  `0x8042–0x804A` service slots, Shift+1..9 `0x8082–0x808A`, Ctrl+B/D/P/Q/R
+  `0x807C/0x805F/0x8072/0x8073/0x8074`, Ctrl+H/I/K/N `0x8021/0x803D/0x8022/
+  0x8020`, Ctrl+Enter `0x801F`, Ctrl+Shift+1..9 `0x8053–0x805B`, Ctrl+Tab
+  `0x803F`, Tab `0x8038`, Ctrl+& `0x807F`, Esc `0x804B`, Ctrl+Z `0x809B`);
+  `207` = 4-entry subset (arrows + Ctrl+R + Ctrl+Z, popup-context).
 
 ## Capture exclusions (from real Options.json)
 
