@@ -317,7 +317,9 @@ Each user action = a `Task` object posted to a worker thread:
   ListView branch sends `LVM_SETTEXTCOLOR/BKCOLOR` (`0x1024/0x1001`) +
   extended style (`0x1026`); TreeView branch sends `TVM_SETTEXTCOLOR/BKCOLOR`
   (`0x111D/0x111E`) — colors from `GetSysColor` or the `Appearance`
-  `ColorText/ColorBack` overrides.
+  `ColorText/ColorBack` overrides. RichEdit branch (type 3) sends
+  `EM_SETCHARFORMAT (0x444)` with a `CHARFORMAT` struct then
+  `EM_SETBKGNDCOLOR (0x443)` — translation-text styling path.
 - **`FUN_0044B4F4` = popup layout engine**: walks child windows
   (`GetWindow GW_CHILD`), classifies Button vs Static via class-name compare,
   resizes/repositions each (`FUN_0044BD0F`/`FUN_0044BECE`) — the auto-fit
