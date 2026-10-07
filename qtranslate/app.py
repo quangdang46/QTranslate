@@ -711,8 +711,12 @@ class App:
         tk.Button(bar, text=_Cw(1, 1004, "Translate"),
                   command=self.on_go).pack(side="left", padx=4)
         self.suggest = tk.Label(self.root, text="", bg=bg, fg="gray",
-                                anchor="w", font=("Tahoma", 7))
+                                anchor="w", font=("Tahoma", 7),
+                                cursor="hand2")
         self.suggest.pack(fill="x", padx=4, pady=0)
+        self.suggest.bind("<Button-1>",
+                          lambda e: self.accept_suggestion())
+        self._suggestions = []
         # result pane (id1018) + headphone overlay bottom-right
         outfrm = tk.Frame(self.root, bg="white")
         outfrm.pack(fill="both", expand=True, padx=4)
