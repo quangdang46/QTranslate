@@ -314,8 +314,12 @@ Each user action = a `Task` object posted to a worker thread:
 - **`FUN_00465574` = qtdp: link check**: prefix-match `qtdp:`
   (`FUN_00454482` starts-with) — internal dictionary cross-references
   (from XDXF `<kref>` and online-dict HTML) route back into lookup instead
-  of the browser. Siblings `FUN_004655A9` (resolve) / `FUN_004266C6`
-  (click handler in RichEdit subclass WndProc).
+  of the browser. Siblings `FUN_004655A9` (resolve).
+- **`FUN_004266C6` = RichEdit link-click handler** (`__thiscall`, in the
+  subclassed WndProc chain): `qtdp:` prefix check → strip prefix
+  (`FUN_0042A10A` substring) → internal re-lookup (`FUN_00426966`) with
+  history sync (`this+0x19C = this+0x18C`). Non-qtdp links fall through to
+  `ShellExecute` browser open.
 
 ## Tooltip + balloon (decompiled)
 
