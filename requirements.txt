@@ -1,0 +1,9 @@
+# qtranslate-re runtime deps (app hotkeys + clipboard).
+# Install: pip install -r requirements.txt
+# Or zero-install: uv run --with keyboard --with pyperclip -- python -I start_app.py
+keyboard==0.13.5
+pyperclip==1.11.0
+
+# Optional (only for WordReference headless fallback):
+# uv run --with playwright python -I -m playwright install chromium --only-shell
+# playwright
