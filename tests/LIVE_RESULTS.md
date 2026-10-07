@@ -18,6 +18,14 @@ Extended regression (same day, ad-hoc): `yandex-android` EN→RU OK,
 (Console `charmap` errors on this Windows shell are print-only; payloads
 verified non-empty. Total live-verified endpoints: 12.)
 
+## TTS re-probe (2026-10-07, later same day)
+
+| TTS | Status |
+|---|---|
+| Google TTS | **LIVE-OK** (MP3 downloads, BASS playback verified) |
+| Yandex TTS (`tts.voicetech.yandex.net`) | connect timeout — host dead with the API |
+| Baidu TTS (`tts.baidu.com/text2audio`) | JSON `err_detail` (locked like translate API) |
+
 ## Dictionary providers (probed 2026-10-07)
 
 | Provider | Status |
