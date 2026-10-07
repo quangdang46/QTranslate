@@ -1090,6 +1090,11 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Tray icon + layout keys (decompiled)
 
+- **`FUN_00417F5B` = tray click handler** (`__thiscall`, WndProc
+  `0x80AA` case in `FUN_00415EED`): left (`0x201`) → mouse-mode toggle
+  (`FUN_00418E85`); double (`0x203`) → show main (`FUN_00419DA6`) + 250ms
+  timer; right (`0x204`) → `TrayMenu` popup (`FUN_004041D7`);
+  `0x405` → balloon via `0x8137`. Matches `help.txt` tray spec exactly.
 - **`FUN_00405C42` = tray add** (`__thiscall`, `Shell_NotifyIconW(NIM_ADD)`
   via IAT `0x50D424`): fills NOTIFYICONDATA (`cbSize` from `this+0x3BC`,
   `uCallbackMessage = 0x80AA`, 128-wchar tooltip copy). Siblings:
