@@ -550,7 +550,10 @@ def do_translate(service, text, target, src="auto", auto_detect=False,
         pass
     fn = TRANSLATORS.get(service, _t_google)
     try:
-        if auto_detect:
+        # Native resolves auto once via the detect-retry loop, then
+        # every stage (translate + back-translation) uses the concrete
+        # code — no "en" guessing anywhere in the orchestrator.
+        if src == "auto":
             src = detect_language(text)
         out = fn(text[:5000], src, target)
         if not out:
@@ -560,8 +563,7 @@ def do_translate(service, text, target, src="auto", auto_detect=False,
                       "No data returned (timeout while sending data).")
         if back_translate and not out.startswith("No data"):
             try:
-                back = fn(out[:5000], target,
-                           "en" if src == "auto" else src)
+                back = fn(out[:5000], target, src)
                 if back:
                     out += f"\n\n--- back-translation ---\n{back}"
             except Exception:

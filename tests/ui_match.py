@@ -365,6 +365,9 @@ _dsrc = _insp.getsource(A.detect_language)
 check("logic-detect-6",
       all(p in _dsrc for p in
           ("_google", "_deepl", "_ms", "_naver", "_baidu", "_yandex")))
+check("logic-no-en-guess",
+      '"en" if src =="auto"' not in _src
+      and '"en" if src == "auto"' not in _src)
 
 # 19e. double-click time from Windows (native double-press matcher)
 try:
