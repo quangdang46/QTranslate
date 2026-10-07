@@ -155,7 +155,21 @@ def speak(text, lang):
             print(f"SAPI failed: {e2}")
 
 
-def do_translate(service, text, target, mode):
+def detect_language(text, service="deepl"):
+    """Port of FUN_00460354 detect-retry loop: try providers in order."""
+    for name, fn in (("deepl", _deepl.detect), ("naver", _naver.detect),
+                     ("baidu", _baidu.detect), ("yandex", _yandex.detect)):
+        try:
+            lang = fn(text[:500])
+            if lang:
+                return lang
+        except Exception:
+            pass
+    return "auto"
+
+
+def do_translate(service, text, target, mode, auto_detect=False,
+                 back_translate=False):
     text = (text or "").strip()
     if not text:
         return ""
@@ -167,7 +181,18 @@ def do_translate(service, text, target, mode):
             return f"[error] {e}"
     fn = TRANSLATORS.get(service, _t_google)
     try:
-        return fn(text[:5000], "auto", target) or "[empty]"
+        # FUN_00460354: detect first when AlwaysDetectLanguage is on.
+        src = detect_language(text) if auto_detect else "auto"
+        out = fn(text[:5000], src, target) or "[empty]"
+        # FUN_004606BA: back-translation check (result -> source lang).
+        if back_translate and out and not out.startswith("["):
+            try:
+                back = fn(out[:5000], target, "en" if src == "auto" else src)
+                if back:
+                    out += f"\n\n--- back-translation ---\n{back}"
+            except Exception:
+                pass
+        return out
     except Exception as e:
         return f"[error] {e}"
 
@@ -208,6 +233,14 @@ class App:
         self.theme.set(THEME if THEME in _THEMES else (_THEMES[0] if _THEMES else ""))
         self.theme.pack(side="left", padx=4)
         self.theme.bind("<<ComboboxSelected>>", lambda e: self.apply_theme())
+        self.auto_detect = tk.BooleanVar(value=False)
+        tk.Checkbutton(top, text="Detect", variable=self.auto_detect,
+                       bg=_COLORS["back"], fg="gray",
+                       selectcolor=_COLORS["back"]).pack(side="left")
+        self.back_trans = tk.BooleanVar(value=False)
+        tk.Checkbutton(top, text="BackTr", variable=self.back_trans,
+                       bg=_COLORS["back"], fg="gray",
+                       selectcolor=_COLORS["back"]).pack(side="left")
 
         mid = tk.Frame(root, bg=_COLORS["back"])
         mid.pack(fill="both", expand=True, padx=8)
@@ -277,7 +310,8 @@ class App:
 
     def on_go(self):
         svc, text, tgt, _ = self.current()
-        res = do_translate(svc, text, tgt, "translate")
+        res = do_translate(svc, text, tgt, "translate",
+                           self.auto_detect.get(), self.back_trans.get())
         self.render(res)
         self.push_hist(svc, text[:120], res[:200])
 
@@ -406,7 +440,8 @@ def on_hotkey(app):
         return
     svc, _, tgt, mode = app.current()
     print(f"translating {len(text)} chars via {svc}...")
-    res = do_translate(svc, text[:5000], tgt, mode)
+    res = do_translate(svc, text[:5000], tgt, mode,
+                       app.auto_detect.get(), app.back_trans.get())
     app.src.delete("1.0", "end")
     app.src.insert("1.0", text[:2000])
     app.render(res)
