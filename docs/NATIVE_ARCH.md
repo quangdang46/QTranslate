@@ -165,6 +165,17 @@ Each user action = a `Task` object posted to a worker thread:
   `<kref>`→`qtdp:` link, `<iref>`→ext link, `<ex>`→gray example. Live-tested
   render output matches the XSLT semantics.
 
+## Auto-detect flow (decompiled)
+
+- **`FUN_0046009D` = detect invoker** (`__thiscall`): invokes
+  `serviceDetectLanguageRequest(text)` on the service JS via IDispatch
+  (`FUN_0043B942`) → parses the returned `RequestData` with `FUN_0046578F` →
+  executes HTTP via `FUN_00460006` → curl wrappers `FUN_0045BCED` (GET) /
+  `FUN_0045BF7D` (POST) with timeout+retry args. Sibling at `FUN_00465CCE`
+  (same `serviceDetectLanguageRequest` string ref — dictionary-window path).
+- Options driving it: `AlwaysDetectLanguage`, `BackTranslation`,
+  `BackTranslationSplitterPos` (refs in `FUN_004561F0`/`FUN_0045869F` savers).
+
 ## Popup render path (decompiled, verified)
 
 - **`FUN_0040C393` = popup content+position setter** (`__fastcall`, calls
