@@ -21,6 +21,21 @@ SERVICE_NAMES = {
     30: "naver", 31: "deepl",
 }
 
+# Display names scraped live from Services/*/Service.js serviceHeader()
+# (2nd arg) — what the native Services options page + tray show.
+SERVICE_DISPLAY = {
+    1: "Google", 5: "Microsoft", 11: "Yandex", 12: "Promt",
+    13: "Babylon", 18: "ImTranslator", 26: "youdao", 28: "Baidu",
+    30: "Papago", 31: "DeepL",
+}
+
+DICT_DISPLAY = {
+    10: "Google Search", 14: "Wikipedia", 17: "Multitran",
+    18: "ImTranslator", 19: "WordReference", 20: "Babylon Dictionary",
+    22: "Reverso", 24: "Urban Dictionary", 25: "ABBYY Lingvo Live",
+    26: "youdao", 29: "Oxford Learner Dictionary",
+}
+
 # LanguagePairs [[57,17],[17,57]] — index into the shared SupportedLanguages
 # table (57=vi, 17=en in the Google ordering used as canonical).
 LANG_INDEX = {57: "vi", 17: "en"}

@@ -965,10 +965,8 @@ class App:
                 _order, _dis, _dorder, _ddis, _names = [], set(), [], \
                     set(), {}
             from qtranslate.services import dictionary as _D
-            _dnames = {10: "google-search", 14: "wikipedia", 17: "multitran",
-                       18: "imtranslator", 19: "wordreference", 20: "babylon",
-                       22: "reverso", 24: "urban", 25: "lingvo",
-                       26: "youdao", 29: "oxford"}
+            _names = dict(C2.SERVICE_DISPLAY)
+            _dnames = dict(C2.DICT_DISPLAY)
             self._opt_vars = getattr(self, "_opt_vars", {})
 
             def _save():
