@@ -80,6 +80,10 @@ Each user action = a `Task` object posted to a worker thread:
    via IAT `0x50D580`, gated by `DAT_005494E7` + `FUN_004544AE`): maps
    button flags to `WM_LBUTTONDOWN/UP (0x201/0x202)`, stamps
    `GetCursorPos` + `GetTickCount` → `FUN_004193F6` click-capture trigger.
+0c2. **`FUN_0043A8C4` = menu-open guard**: `GetCursorPos` →
+   `WindowFromPoint` → class name `#32768` (the system menu class) check —
+   suppresses mouse-mode capture while a popup menu is showing under the
+   cursor (used by the clipboard-monitor gate in `FUN_0043C02B`).
 0d. **`FUN_004193F6` = click-capture trigger** (on `0x201` LBUTTONDOWN):
    `WindowFromPoint` (`FUN_00450DD2` = `WindowFromPoint` → `FUN_00450D7C`
    (`EnumChildWindows` + hit-test callback `FUN_00450CFA` = `PtInRect` +
