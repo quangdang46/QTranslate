@@ -714,6 +714,10 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Rounded corners (decompiled)
 
+- **`FUN_0043AA90` = autohide worker** (`__fastcall`, timer `0x113`): if
+  cursor left the inflated rect (`DAT_00549170` margin) and no menu is open
+  (`FUN_0043A8C4` guard) → `KillTimer` + `FUN_0043A77C` hide. The
+  `PopupTimeout` countdown behind auto-hiding popups.
 - **`FUN_00414A7E` = transparency+autohide controller** (`__thiscall`,
   `SetLayeredWindowAttributes` via IAT `0x50D520`): custom `0x80FD` →
   opaque (`0xFF`); mouse-leave `0x2A3` → `Transparency` alpha
