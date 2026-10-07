@@ -527,6 +527,11 @@ Each user action = a `Task` object posted to a worker thread:
 - **`FUN_00408010` = services-list clear** (`__fastcall`): frees each
   entry (`+0xC` payload + object) and zeroes the vector — runs before every
   rebuild of the Services page list (after slot re-scan).
+- **`FUN_00405B1A`/`FUN_00405AD9` = OS version gate** (cached once,
+  thread-safe): `GetVersionExW` → `FUN_00405B8E` maps
+  major/minor/build → internal id (`DAT_005497D8`); callers branch on
+  `< 7`-style checks (`0x500/0x600` thresholds = Vista/7 feature gates for
+  glass, DWM, new hotkey APIs).
 - **`FUN_004097A9` = options-page show** (`__fastcall`): dirty →
   refresh tick (`FUN_00409CC8`); clean → rebuild display
   (`FUN_00408456`) + per-item resolve/show (`FUN_004088ED`, version-gated
