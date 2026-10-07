@@ -528,6 +528,10 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## MainWindow WndProc (decompiled)
 
+- **`FUN_00450B17` = open dispatcher** (`__fastcall`): existing local file
+  → `FUN_00450A0E` (shell-open document) else → `FUN_00450AC2` (URL →
+  default browser). Shared by `serviceLink` opens, About links, and help
+  file display.
 - **`FUN_00401675` = link-click notify** (`NM_CLICK -2` / `NM_DBLCLK -4`
   on link controls `0x3ED/0x3F7`): opens `quest-app.appspot.com` (or
   `/download`) via `FUN_00450B17` ShellExecute wrapper — About-dialog
