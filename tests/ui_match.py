@@ -289,6 +289,19 @@ check("html-item",
       == "<tr><td class='th'>Google (en to vi)</td>"
          "<td>xin chào</td></tr>\r\n")
 
+# 18. layout roundtrip + spell live (light)
+from qtranslate.layout import convert_layout as _conv
+_ru = _conv("hello", to_ru=True)
+check("layout-en-ru", _ru == "руддщ", repr(_ru))
+check("layout-roundtrip", _conv(_ru) == "hello")
+try:
+    from qtranslate.services import spell as _SP
+    _sug = _SP.google_suggest("hello worl")
+    check("spell-live", isinstance(_sug, list) and len(_sug) > 0,
+          str(_sug[:2]))
+except Exception as e:
+    check("spell-live", False, str(e)[:100])
+
 import re as _re2
 _ok = True
 for _th in _T2.list_themes():
