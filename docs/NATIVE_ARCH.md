@@ -131,6 +131,17 @@ Each user action = a `Task` object posted to a worker thread:
   AutoDetection. Ported to `qtranslate/config.py` (hotkey word decode matching
   `FUN_00405A17`, default `ServicesOrder = [1,5,12,13,11,26,28,30,31]`).
 
+## Clipboard viewer chain (decompiled)
+
+- **`FUN_0043EBE0` = viewer setup**: registers `QTranslateClipboardWindowClass`
+  with WndProc `FUN_0043EBA1`, creates a message-only window
+  (`HWND_MESSAGE = 0xFFFFFFFD`) stored at `DAT_005491B0` — the classic
+  clipboard-viewer chain endpoint (`SetClipboardViewer` era pattern) used by
+  the clipboard-monitor mode alongside `GetClipboardSequenceNumber` polling.
+- **`FUN_0043EBA1` = viewer WndProc**: filters `WM_DESTROY (2)`,
+  `0x305/0x306/0x308/0x30D` (IME/clipboard-chain messages), everything else
+  → `DefWindowProcW`.
+
 ## Tray icon + layout keys (decompiled)
 
 - **`FUN_00405C42` = tray add** (`__thiscall`, `Shell_NotifyIconW(NIM_ADD)`
