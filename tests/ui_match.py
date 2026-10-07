@@ -262,6 +262,24 @@ check("xdxf-iref",
       _X.render_article('<ar><iref href="http://x">y</iref></ar>')
       == '<a href="http://x">y</a>')
 
+# 16. theme hex + palettes (Tk needs 6 digits; JSONC grayscale)
+from qtranslate import theme as _T2
+check("hex-3digit", _T2._hex("bbb") == "#bbbbbb", _T2._hex("bbb"))
+check("hex-1digit", _T2._hex("b") == "#bbbbbb", _T2._hex("b"))
+check("hex-css", _T2._hex("abc") == "#aabbcc", _T2._hex("abc"))
+check("hex-gray2", _T2._hex("20") == "#202020", _T2._hex("20"))
+check("themes-8", len(_T2.list_themes()) == 8,
+      str(_T2.list_themes()))
+import re as _re2
+_ok = True
+for _th in _T2.list_themes():
+    for _st in ("Normal", "Disabled"):
+        for _k, _v in _T2.window_colors(_T2.load_theme(_th),
+                                        _st).items():
+            if not _re2.fullmatch(r"#[0-9a-fA-F]{6}", _v):
+                _ok = False
+check("themes-6digit", _ok)
+
 root.destroy()
 print(f"\n{len(PASS)} passed, {len(FAIL)} failed")
 sys.exit(1 if FAIL else 0)
