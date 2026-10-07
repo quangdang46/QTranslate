@@ -437,6 +437,7 @@ class App:
         self.source = "auto"
         self.history = self._load_history()  # (service, src, result)
         root.protocol("WM_DELETE_WINDOW", self.on_close)
+        root.bind("<Unmap>", self._on_minimize)
         root.title("QTranslate")
         root.configure(bg=_COLORS["back"])
         # native rect decoded from General.WindowMainPlacement
@@ -911,9 +912,35 @@ class App:
         except Exception:
             pass
 
+    def _on_minimize(self, _e=None):
+        # MinimizeToTrayOnMinimize (native 0x8070): withdraw to tray
+        # on minimize instead of the taskbar.
+        try:
+            from qtranslate import config as _C
+            if not bool(_C.load().get("General", {}).get(
+                    "MinimizeToTrayOnMinimize", False)):
+                return
+            self.root.after(100, self.root.withdraw)
+        except Exception:
+            pass
+
     def on_close(self):
+        # MinimizeToTrayOnClose (native 0x806F): hide to tray instead
+        # of exiting; tray dbl-click / Show restores.
+        try:
+            from qtranslate import config as _C
+            _to_tray = bool(_C.load().get("General", {}).get(
+                "MinimizeToTrayOnClose", False))
+        except Exception:
+            _to_tray = False
         self._save_history()
         _save_placement("WindowMainPlacement", self.root)
+        if _to_tray:
+            try:
+                self.root.withdraw()
+                return
+            except Exception:
+                pass
         try:
             self.root.destroy()
         except Exception:
