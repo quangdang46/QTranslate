@@ -776,6 +776,9 @@ Each user action = a `Task` object posted to a worker thread:
   → `FUN_00450A0E` (shell-open document) else → `FUN_00450AC2` (URL →
   default browser). Shared by `serviceLink` opens, About links, and help
   file display.
+- **`FUN_0045ABD2` = registry init** (called once from the singleton):
+  zeroed map + same tuning floats as the executor (`0x3F400000/0x3E800000/
+  0x40100000`) + `FUN_0043DC23` init — shared defaults for provider timing.
 - **`FUN_0045AB74` = service-map singleton** (thread-safe once:
   `FUN_0045ABD2` init + `_atexit` cleanup + lazy `DAT_00549834` flag) —
   the global provider registry all lookups share.
