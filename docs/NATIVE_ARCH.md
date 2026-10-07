@@ -1096,6 +1096,9 @@ Each user action = a `Task` object posted to a worker thread:
 - **`FUN_00462F8E` = mode lookup** (`__thiscall`): linear scan matching
   both strings (`FUN_00401FC2` ×2, `FUN_0041E45F` element read) —
   `0xFFFFFFFF` when absent. Backs both enable variants.
+- **`FUN_00420870` = range default-construct** (`__fastcall`, called
+  from reserve): N× in-place init after calloc — completes the
+  reserve path (alloc + construct, mirroring vector::reserve).
 - **`FUN_0041FABE` = reserve worker** (`__thiscall`, 1.5x + calloc):
   explicit `reserve(n)` behind match-vector and service-list pre-sizing
   (avoids repeated grow during bulk discovery scans).
