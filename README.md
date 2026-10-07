@@ -31,8 +31,8 @@ python -I qtranslate/tts.py "Xin chào" vi google.mp3
 | DeepL | ✅ | ✅ | — | — | ported (needs live test) |
 | Microsoft (Bing) | ✅ | ✅ | — | — | ported (needs session tokens, needs live test) |
 | Yandex | ✅ | ✅ | ✅ | — | ported, **endpoint dead (HTTP 403, 2026-10-07)** |
-| Baidu | ✅ | ✅ | ✅ | — | ported (needs live test) |
-| Naver (Papago) | ✅ | ✅ | ✅ | — | ported (needs live test) |
+| Baidu | ✅ | ✅ | ✅ | — | detect live OK; translate needs page token (web API locked, 2026-10-07) |
+| Naver (Papago) | ✅ | ✅ | ✅ | — | ported, **endpoint dead (/apis/* → 404, 2026-10-07)** |
 | Promt | ✅ | — | — | — | ported |
 | Youdao | ✅ | — | — | — | ported |
 | Reverso | ✅ | — | — | ✅ | ported |

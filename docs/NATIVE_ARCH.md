@@ -16,6 +16,13 @@ Symbols stripped, but **RTTI intact** — full class map recovered from `.rdata`
 - → **`FUN_00455061` = message loop**: `GetMessageW` → pre-translate hook
   chain (`DAT_005491EC` filter array — hotkey handling lives here) →
   `TranslateMessage` → `DispatchMessageW`.
+- **`FUN_0043527D` = WTL CreateWindow wrapper**: `AtlThunk` alloc + `CreateWindowExW`
+  (thunk converts `__thiscall` WndProc → `__stdcall`).
+- **`FUN_00416470` = app-object ctor**: lays out the whole window tree by
+  vftable (`ApplicationWindow`, `KeyboardWindow`, `LanguagesComboSimple`,
+  `WindowPopupIcons`, `ProgressWindow`, RichEdit init) — offsets give the
+  member layout for a future C++ reconstruction.
+- **`FUN_00403057` = ATL thunk allocator** (`AtlThunk_AllocateData/InitData`).
 
 ## UI windows (`windows::` namespace, WTL dialogs)
 
