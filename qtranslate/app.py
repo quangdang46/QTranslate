@@ -678,7 +678,7 @@ class App:
                   command=self.show_nav_menu).pack(side="left", padx=1)
         self.src_lang = ttk.Combobox(bar, values=_lang_names(LANGS),
                                      width=13, state="readonly")
-        self.src_lang.set(LANG_DISPLAY.get("auto", "auto"))
+        self.src_lang.set(LANG_DISPLAY.get(self.source, "Auto-Detect"))
         self.src_lang.pack(side="left", padx=2)
         tk.Button(bar, text="⇄", width=3, font=("Segoe UI Symbol", 10),
                   command=self.on_swap).pack(side="left", padx=1)
