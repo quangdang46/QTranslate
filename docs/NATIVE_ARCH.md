@@ -1124,6 +1124,9 @@ Each user action = a `Task` object posted to a worker thread:
   on link controls `0x3ED/0x3F7`): opens `quest-app.appspot.com` (or
   `/download`) via `FUN_00450B17` ShellExecute wrapper — About-dialog
   homepage links.
+- **`FUN_004016E1` = About paint** (`BeginPaint`/`EndPaint`): fills
+  header band to the `0x4AE` control top, draws `QTranslate` +
+  `6.10.0` with themed fonts via `FUN_00449707`.
 - **`FUN_00411DEB` = MainWindow proc** (`__thiscall`): `WM_CREATE (0x110)` →
   full init (`FUN_00401530`); `WM_DESTROY (2)` → teardown
   (`FUN_0040160f`: scroll-offset 0, kill 50ms timer, unregister
