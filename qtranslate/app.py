@@ -1450,10 +1450,36 @@ class App:
                 _paint_pairs()
                 _save_l()
 
-            tk.Button(_pr, text="Add pair",
+            def _move_pair(d):
+                # DLG 190 Up/Down for the pairs list
+                s = _plb.curselection()
+                if not s:
+                    return
+                i, j = s[0], s[0] + d
+                if 0 <= j < len(_pairs):
+                    _pairs[i], _pairs[j] = _pairs[j], _pairs[i]
+                    _paint_pairs()
+                    _plb.selection_set(j)
+                    _save_l()
+
+            def _clear_pairs():
+                # DLG 190 Remove All
+                _pairs.clear()
+                _paint_pairs()
+                _save_l()
+
+            tk.Button(_pr, text="Add",
                       command=_add_pair).pack(side="left", padx=2)
             tk.Button(_pr, text="Remove",
                       command=_del_pair).pack(side="left", padx=2)
+            tk.Button(_pr, text="Remove All",
+                      command=_clear_pairs).pack(side="left", padx=2)
+            tk.Button(_pr, text="Up",
+                      command=lambda: _move_pair(-1)).pack(side="left",
+                                                           padx=2)
+            tk.Button(_pr, text="Down",
+                      command=lambda: _move_pair(1)).pack(side="left",
+                                                         padx=2)
             tk.Label(body, text="Disabled languages",
                      bg=_COLORS["back"], fg=_COLORS["text"],
                      font=("Segoe UI", 10, "bold")).pack(anchor="w",
