@@ -1,0 +1,77 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <title>Dictionary</title>
+  <style type="text/css">
+    body, div, img, input, ul{margin:0; padding:0;border:0;font-size:100%}
+    body{font-family:tahoma,arial;padding:8px 8px 0 8px}
+    h1, h2, h3, h4, h5, h6, p, ul, ol, li{margin-top:2px; margin-bottom:2px}
+    h1, h2, h3{font-size:1.2em}
+    h4, h5, h6{font-weight:bold}
+    .qt-navigation{position:fixed; top:0; bottom:0; left:0; width:24px;display:none;z-index:1000}
+    .qt-navigation-menu li{list-style:none}
+    .qt-navigation-menu a{background-position:center; background-repeat:no-repeat; height:24px; width:24px; display:block}
+    .qt-content{font-size:0.8em; margin-left:0}
+    .qt-header{font:Segoe UI bold; font-size:1.2em;padding:8px;cursor:default}
+    .qt-header a{cursor:pointer}
+    .qt-data{position:relative; display:block; padding:8px; overflow:hidden}
+    .qt-link-browser{text-decoration:none}
+    .qt-link-browser:hover{text-decoration:underline}
+    .qt-read-more{position: absolute;left: 0;bottom: 0;font-size:0.9em;border: none;cursor: pointer;
+        overflow: hidden;display: inline-block;padding: 6px 0;text-decoration: none;z-index:100}
+    .qt-card{border-width: 1px; border-style: solid; margin-bottom: 8px}
+  </style>
+</head>
+<body>
+  <div id="qt-navigation" class="qt-navigation"><ul id="qt-menu" class="qt-navigation-menu"></ul></div>
+  <div id="qt-content" class="qt-content"></div>
+  <script type="text/javascript">
+    function $(id) { return document.getElementById(id); }
+    function service(id) { return $("qt-s" + id); }
+    function header(id) { return $("qt-h" + id); }
+    function data(id) { return $("qt-d" + id); }
+    function link(id) { return $("qt-l" + id); }
+    function toggle(id) {
+      var s = data(id).style;
+      s.display = s.display == "none" ? "block" : "none";
+    }
+    function fullEntry(id) {
+      data(id).style.height = "";
+      link(id).style.display = "none";
+    }
+    function checkEntry(id) {
+      var h = data(id).offsetHeight;
+      if (h > 200) {
+        data(id).style.height = "200px";
+        link(id).style.display = "block";
+      }
+      else {
+        link(id).style.display = "none";
+      }
+    }
+    function appendMenuItem(id, title, iconUrl) {
+      var a = document.createElement('a');
+      a.setAttribute("href", "javascript:void(0);");
+      a.setAttribute("title", title);
+      if (iconUrl) {
+        a.style.backgroundImage = "url('" + iconUrl + "')";
+      }
+      a.onclick = function () {
+        data(id).style.display = "block";
+        data(id).style.height = "";
+        link(id).style.display = "none";
+        header(id).scrollIntoView();
+        return false;
+      };
+      var li = document.createElement('li');
+      li.setAttribute("id", "li" + id);
+      li.appendChild(a);
+      $("qt-menu").appendChild(li);
+    }
+    function showNavigation() {
+      $("qt-content").style.marginLeft = "24px";
+      $("qt-navigation").style.display = "block";
+    }
+  </script>
+</body>
+</html>
