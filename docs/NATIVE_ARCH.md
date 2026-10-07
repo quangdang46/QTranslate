@@ -920,6 +920,10 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Auto-update + proxy (decompiled, probed)
 
+- **`FUN_00440893` = DOM object insert** (`__thiscall`, used by the
+  object parser + options saver): lookup (`FUN_00440DD1`) or create
+  (`FUN_00440C4A` grow + `FUN_00440F7D` node) then set value — the same
+  writer behind `Options.json` saves.
 - **`FUN_0043F25B` = DOM array append** (`__thiscall`, used by the array
   parser): grow-on-demand (`FUN_0043F4E1`) + store — backs JSON result
   arrays before our Python `json.loads` takes over.
