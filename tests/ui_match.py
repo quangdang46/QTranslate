@@ -374,6 +374,14 @@ check("excl-live-lists",
       isinstance(_X3._live_lists(), tuple)
       and len(_X3._live_lists()) == 3)
 
+# 19g. hotkey dword bits (FUN_00405A17: vk | mod<<8; 1=Alt/2=Ctrl/4=Shift/8=Win)
+check("hotkey-343", C.decode_hotkey(343)["vk"] == 0x57
+      and C.decode_hotkey(343)["modifiers"] == 1)
+check("hotkey-593", C.decode_hotkey(593)["vk"] == 0x51
+      and C.decode_hotkey(593)["modifiers"] == 2)
+check("hotkey-win", A._hotkey_to_combo(0x51 | (8 << 8)) == "windows+q",
+      A._hotkey_to_combo(0x51 | (8 << 8)))
+
 # 19c. multi-select toggle + Ctrl+K binding (help.txt Actions)
 app.toggle_multi_service("deepl")
 app.toggle_multi_service("yandex")
