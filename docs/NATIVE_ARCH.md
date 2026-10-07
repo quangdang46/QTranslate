@@ -67,8 +67,24 @@ Each user action = a `Task` object posted to a worker thread:
    to a vector (`this+4` count, `this[0]` array). Two sibling registrars at
    `FUN_0040AB69` / `FUN_0040ACA3` (same IAT slot, different owners).
    `ApplicationWindow` receives `WM_HOTKEY` in the `FUN_00455061` loop.
-2. Text sources: clipboard chain (`OpenClipboard`/`GetClipboardData`), caret/selection via MSAA (`OLEACC.dll` → `AccessibleObjectFromWindow`).
-3. OCR: `OcrProvider`/`OcrSpaceProvider` (`common::`) — screenshot from `ScreenCaptureWindow` → upload to OCR API.
+2. **Mouse-mode capture = `FUN_00404901`**: `GetCursorPos` →
+   `AccessibleObjectFromPoint` (IAT `0x50D3D0`) → `IAccessible::get_accName`,
+   fallback `get_accValue` when name empty. This is the "hover a word" path.
+3. **Clipboard open = `FUN_0043BE07`** (`__thiscall`): `OpenClipboard(hwnd)`
+   with 5× retry (`Sleep(5)` between attempts) — the Ctrl+C+C path's
+   front door. Related readers: `FUN_0043BF30` (sequence-number poll),
+   `FUN_0043ECA5`/`FUN_0043BEB2` (`GetClipboardData`).
+4. OCR: `OcrProvider`/`OcrSpaceProvider` (`common::`) — screenshot from `ScreenCaptureWindow` → upload to OCR API.
+
+## JS engine hosting (decompiled, verified)
+
+- **`FUN_0043E32F` = ActiveScript bootstrapper** (`__fastcall`, `CoCreateInstance`
+  via IAT `0x50D878`): CLSID `{BB1A2AE1-A4F9-11CF-8F20-00805F2CD064}` =
+  **IActiveScript** (JScript), site IID
+  `{F414C260-6AC0-11CF-B6D1-00AA00BBBB58}` = **IActiveScriptSite**,
+  then vtable `+0xC` (SetSite) and `+0x28` (InitNew). This is how
+  `Services/*/Service.js` gets executed at runtime with `UtilsDispatch`
+  exposing native `Options`.
 
 ## TTS playback path (decompiled, verified, reimplemented)
 
