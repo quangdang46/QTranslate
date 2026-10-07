@@ -165,6 +165,18 @@ if _rc:
 check("placement-bad", A._decode_placement("00") is None
       and A._decode_placement("") is None)
 
+# 11. full language table (75 codes from SUPPORTED_LANGS)
+check("langs-75", len(A.LANGS) == 75, str(len(A.LANGS)))
+check("langs-index", A.LANGS[0] == "auto" and A.LANGS[16] == "en"
+      and A.LANGS[56] == "vi",
+      f"{A.LANGS[0]}/{A.LANGS[16]}/{A.LANGS[56]}")
+check("langs-display", A.LANG_DISPLAY.get("vi") == "Vietnamese"
+      and A.LANG_DISPLAY.get("zh-CN") == "Chinese (Simplified)")
+check("langs-codes-rt",
+      A.LANG_CODES.get("Vietnamese") == "vi"
+      and A.LANG_CODES.get("Auto-Detect") == "auto")
+check("langs-no-auto-target", "auto" not in A.TO_LANGS)
+
 root.destroy()
 print(f"\n{len(PASS)} passed, {len(FAIL)} failed")
 sys.exit(1 if FAIL else 0)
