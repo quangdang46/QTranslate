@@ -2618,23 +2618,94 @@ class App:
                   command=_manage_offline).pack(side="left", padx=8)
 
     def on_ocr(self):
-        path = filedialog.askopenfilename(title="Image for OCR")
-        if not path:
-            return
-        try:
-            from qtranslate.services.ocr import ocr_text
+        # Shift = file mode; plain click = ScreenCaptureWindow region
+        # select (rubber-band fullscreen overlay -> OCR API).
+        import sys as _sys
+        if "--file" in _sys.argv:
+           ASK = True
+        else:
+            ASK = False
+        if ASK:
+            path = filedialog.askopenfilename(title="Image for OCR")
+            if not path:
+                return
             try:
-                from qtranslate import config as _C
-                _key = _C.load().get("Advanced",
-                                     {}).get("OcrApiKey", "") or "helloworld"
-            except Exception:
-                _key = "helloworld"
-            with open(path, "rb") as f:
-                txt = ocr_text(f.read(), api_key=_key)
+                with open(path, "rb") as f:
+                    self._ocr_bytes(f.read())
+            except Exception as e:
+                self.render(f"[ocr error] {e}")
+            return
+        self._ocr_region()
+
+    def _ocr_bytes(self, data: bytes):
+        from qtranslate.services.ocr import ocr_text
+        try:
+            from qtranslate import config as _C
+            _key = _C.load().get("Advanced",
+                                 {}).get("OcrApiKey", "") or "helloworld"
+        except Exception:
+            _key = "helloworld"
+        try:
+            txt = ocr_text(data, api_key=_key)
             self.src.delete("1.0", "end")
             self.src.insert("1.0", txt)
         except Exception as e:
             self.render(f"[ocr error] {e}")
+
+    def _ocr_region(self):
+        """Rubber-band screen region -> ImageGrab -> OCR (native
+        ScreenCaptureWindow selection flow). Esc cancels."""
+        try:
+            from PIL import ImageGrab
+        except ImportError:
+            self.render("[ocr needs Pillow: pip install Pillow]")
+            return
+        ov = tk.Toplevel(self.root)
+        ov.attributes("-fullscreen", True)
+        ov.attributes("-alpha", 0.3)
+        ov.configure(bg="gray")
+        ov.attributes("-topmost", True)
+        cv = tk.Canvas(ov, highlightthickness=0)
+        cv.pack(fill="both", expand=True)
+        _start = [None]
+        _rect = [None]
+
+        def _down(e):
+            _start[0] = (e.x, e.y)
+            _rect[0] = cv.create_rectangle(e.x, e.y, e.x, e.y,
+                                           outline="red", width=2)
+
+        def _drag(e):
+            if _start[0] and _rect[0]:
+                x0, y0 = _start[0]
+                cv.coords(_rect[0], x0, y0, e.x, e.y)
+
+        def _up(e):
+            try:
+                x0, y0 = _start[0]
+                x1, y1 = e.x, e.y
+                x, y = min(x0, x1), min(y0, y1)
+                w, h = abs(x1 - x0), abs(y1 - y0)
+                ov.destroy()
+                if w < 5 or h < 5:
+                    return
+                sx, sy = ov.winfo_rootx() + x, ov.winfo_rooty() + y
+                img = ImageGrab.grab(bbox=(sx, sy, sx + w, sy + h))
+                import io as _io
+                buf = _io.BytesIO()
+                img.save(buf, format="PNG")
+                import threading as _th
+                _th.Thread(target=self._ocr_bytes,
+                           args=(buf.getvalue(),),
+                           daemon=True).start()
+            except Exception as ex:
+                self.render(f"[ocr error] {ex}")
+
+        cv.bind("<Button-1>", _down)
+        cv.bind("<B1-Motion>", _drag)
+        cv.bind("<ButtonRelease-1>", _up)
+        ov.bind("<Escape>", lambda e: ov.destroy())
+        ov.focus_force()
 
     def open_keyboard(self):
         """Virtual keyboard window (DLG 162: 308x102).
