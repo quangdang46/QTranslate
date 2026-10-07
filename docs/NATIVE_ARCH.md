@@ -394,6 +394,10 @@ Each user action = a `Task` object posted to a worker thread:
   (`FUN_0042A10A` substring) → internal re-lookup (`FUN_00426966`) with
   history sync (`this+0x19C = this+0x18C`). Non-qtdp links fall through to
   `ShellExecute` browser open.
+- **`FUN_00408ADE` = show-layout-hide helper** (`__thiscall`):
+  `FUN_004088A9` resolve → vtable show (`+4`) → layout (`+0x80`) → hide
+  (`+8`). Shared tail for history-item activation and hotkey-display
+  refresh paths.
 - **`FUN_00409305` = history item action** (`__thiscall`): resolve
   (`FUN_004088A9`) → vtable show (`+4`) → set item text (`+0x20` via
   `FUN_00421DF6` convert + `SysFreeString`) → hotkey display refresh
