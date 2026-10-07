@@ -473,9 +473,11 @@ Each user action = a `Task` object posted to a worker thread:
   in translate vs dictionary UI.
 - **Death sites sampled** (via `FUN_00403446` xrefs): message loop raises
   `0xC000008C` (array-bounds) on pretranslate-vector corruption
-  (`FUN_00455061`); WndClass-reg, pretranslate-reg, and window-create
-  paths raise on invariant breach — fail-fast guards at every trust
-  boundary, all flowing into the same reporter loop.
+  (`FUN_00455061`); WndClass-reg raises `0xC0000005` (access-violation
+  guard, `FUN_00421677`); pretranslate-reg raises `0xC000008C`
+  (`FUN_00455128`); window-create paths raise on invariant breach —
+  fail-fast guards at every trust boundary, all flowing into the same
+  reporter loop.
 - **`FUN_00403446` = raise** (`__cdecl` `RaiseException` wrapper): the
   bottom of the death chain — SEH-catchable, so even "fatal" contract
   violations flow through the unhandled filter → `Exceptions.json` →
