@@ -714,6 +714,11 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Rounded corners (decompiled)
 
+- **`FUN_00414A7E` = transparency+autohide controller** (`__thiscall`,
+  `SetLayeredWindowAttributes` via IAT `0x50D520`): custom `0x80FD` →
+  opaque (`0xFF`); mouse-leave `0x2A3` → `Transparency` alpha
+  (`DAT_005494A4`, default 217) + `PopupTimeout` auto-hide timer (1000);
+  timer `0x113` → `FUN_0043AA90` hide. Fade in/out behind popup hover.
 - **`FUN_0044E5EC`/`FUN_0044E826` = rounded-region applicators**
   (`SetWindowRgn` via IAT `0x50D540`): `CreateRoundRectRgn(11, 11)`
   (fallback `CreateRectRgn`) — matches theme `ButtonRadius`/
