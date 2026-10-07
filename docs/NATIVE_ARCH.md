@@ -471,6 +471,9 @@ Each user action = a `Task` object posted to a worker thread:
   switch): walks all services, keeps `caps & mask` (`+4` field), rebuilds
   the active list (`RemoveAll` + push-back) — drives which providers show
   in translate vs dictionary UI.
+- **`FUN_0046424F`/`FUN_004634B7` = unlink + deep free**
+  (`FUN_004643DC` count fix): head/tail-aware doubly-linked unlink, then
+  per-field release loop + container free — no-leak list lifecycle.
 - **`FUN_004636A0` = linked-list remove + notify** (generic manager):
   walk (`FUN_004641EE`) → notify all (`+8` via `FUN_004024F2` over
   `DAT_00544A30/34`) → unlink (`FUN_0046424F`) → free-if-owned
