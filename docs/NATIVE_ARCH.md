@@ -881,6 +881,9 @@ Each user action = a `Task` object posted to a worker thread:
   (1→`+0x14C`, 3→`+0x164`, 4→`+0x17C`, else→`+0x134`, stride `0x18`) —
   palettes ported to `qtranslate/theme.py` (`window_colors` per state;
   8 themes verified loadable).
+- **`FUN_0044D3C3` = button-type painter** (`__fastcall`, types 2/3/5/6):
+  same state machine + focus-rect (`BM_GETSTATE` bit0) for push/check/radio
+  buttons; GDI+ gradient path (`FUN_0040647F` family) for glass styles.
 - **`FUN_0044D502` = default control painter** (`__fastcall`):
   `BM_GETSTATE (0xF2)` + enabled/hover/pressed bits → state index
   (disabled 3 / pressed 2 / hover 1-or-4 / normal 0, feeding the
