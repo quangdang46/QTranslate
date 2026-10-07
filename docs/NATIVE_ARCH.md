@@ -308,6 +308,11 @@ Each user action = a `Task` object posted to a worker thread:
   `FUN_0042EFDA/0042F96B/0042F19A`.
 - **`FUN_004030AE` = RichEdit subclasser**: ATL thunk alloc + `SetWindowLongW(GWL_WNDPROC)`
   — popup text controls get a custom WndProc for link-click/hover handling.
+- **`FUN_0044FB11` = content-control classifier**: picks SysListView32 (lists)
+  → SysTreeView32 (trees) → RICHEDIT50W / RichEdit20W (`msftedit.dll`,
+  default font Segoe UI) by content type — the popup instantiates the right
+  control class per result kind (translation text vs dictionary HTML vs
+  history list).
 - **`FUN_0044B4F4` = popup layout engine**: walks child windows
   (`GetWindow GW_CHILD`), classifies Button vs Static via class-name compare,
   resizes/repositions each (`FUN_0044BD0F`/`FUN_0044BECE`) — the auto-fit
