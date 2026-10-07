@@ -461,6 +461,9 @@ Each user action = a `Task` object posted to a worker thread:
   dispatcher listen branch): sets `TaskListenText::vftable` + fields
   (service, text, sl/tl, slow flag, extra) — the task object later run by
   `FUN_0046606C` (listen invoker) → mp3 fetch → `FUN_00461642` BASS play.
+- **`RemoveAll` = ATL array clear** (library, `CSimpleArray::RemoveAll`):
+  free + zero count/cap — used by the capability filter rebuild and
+  service-list clear paths.
 - **`FUN_00427922` = record copy** (`__thiscall`, used by the filter):
   grow (`FUN_0042025F`) + store — pointer-vector append twin of
   `FUN_0041E559`.
