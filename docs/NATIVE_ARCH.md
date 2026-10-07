@@ -782,6 +782,10 @@ Each user action = a `Task` object posted to a worker thread:
 - **`FUN_0045ABD2` = registry init** (called once from the singleton):
   zeroed map + same tuning floats as the executor (`0x3F400000/0x3E800000/
   0x40100000`) + `FUN_0043DC23` init — shared defaults for provider timing.
+- **`FUN_0045A5B6` = install-path resolver** (cached `DAT_00544BD1`):
+  reads `UninstallString` from both registry views (`...\Uninstall\
+  QTranslate` + `Wow6432Node\...`) → derives the install dir (for
+  `Services/`, `Locales/`, `Themes/` resolution regardless of CWD).
 - **`FUN_0043D23A` = registry enumerator** (called once from the
   singleton guard): `RegEnumKeyExW` walk + `RegCloseKey` — discovers
   installed components (services/languages registered under the app key)
