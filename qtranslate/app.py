@@ -2519,9 +2519,9 @@ class App:
 
         frm = tk.Frame(w, bg=_COLORS["back"])
         frm.pack(pady=(0, 8))
-        tk.Button(frm, text="Clear", command=clear).pack(side="left",
-                                                        padx=4)
-        tk.Button(frm, text="Save as...",
+        tk.Button(frm, text=_Cw(3, 1067, "Clear"),
+                      command=clear).pack(side="left", padx=4)
+        tk.Button(frm, text=_Cw(3, 1160, "Save as..."),
                   command=self.on_export_history).pack(side="left", padx=4)
 
     def clear_history(self):
