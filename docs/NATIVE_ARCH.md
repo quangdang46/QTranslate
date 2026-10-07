@@ -197,6 +197,12 @@ Each user action = a `Task` object posted to a worker thread:
   script object; `FUN_0043E471` calls `IDispatch::GetIDsOfNames` (vtable
   `+0x20`) with `AddNamedItem` fallback — the actual
   `serviceTranslateRequest(...)` invocation boundary between native and JS.
+- **Service metadata = `FUN_0045D160`**: boots `Script` engine
+  (`services::Script::vftable` on stack), runs service JS, then invokes
+  `serviceHeader` via IDispatch (`FUN_0043B942`) and reads capabilities with
+  `FUN_00465669` — this is how the app knows which providers offer
+  TRANSLATE vs DICTIONARY vs LISTEN (the bitmask in `Common.js`), driving
+  both the ServicesMenu filter and the translate-vs-dictionary render fork.
 - **Task executor = `FUN_0045F6C1`** (`__thiscall`, 3 callers incl.
   `FUN_00428096`): runs `FUN_0043B777` (service JS) then post-processes via
   script helpers — `usesAutoDetectCode`, `codeFromLanguage` (VARIANT bool/u32
