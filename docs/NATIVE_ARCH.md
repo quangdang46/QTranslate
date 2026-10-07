@@ -528,6 +528,9 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## MainWindow WndProc (decompiled)
 
+- **`FUN_00450AC2` = URL opener** (`__fastcall`): `ShellExecuteW("open",
+  "rundll32.exe", "url.dll,FileProtocolHandler <url>")` — legacy-compatible
+  browser launch (works back to WinXP era, no default-browser registry walk).
 - **`FUN_00450B17` = open dispatcher** (`__fastcall`): existing local file
   → `FUN_00450A0E` (shell-open document) else → `FUN_00450AC2` (URL →
   default browser). Shared by `serviceLink` opens, About links, and help
