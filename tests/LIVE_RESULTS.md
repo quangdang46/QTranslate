@@ -17,6 +17,10 @@ LIVE-OK  baidu.detect                 en
 | Provider | Status |
 |---|---|
 | Urban Dictionary | **LIVE-OK** (old `/define.php?term=` markup intact) |
+| ABBYY Lingvo Live | **LIVE-OK** (dictionary HTML path intact) |
+| Reverso | 403 Forbidden (Cloudflare/bot-wall since ~2020) |
+| ImTranslator | 404 (endpoint `/translation/dictionary/DicService.asmx` retired) |
+| Babylon | SSL verify fail (host cert chain broken/retired) |
 | Wikipedia / WordReference / Multitran | return empty — target sites redesigned markup since 2018–2022 JS; slicing regexes no longer match (logic faithful to original, needs re-slicing against current HTML) |
 
 ## Known-dead / blocked endpoints (as of 2026-10-07)

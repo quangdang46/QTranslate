@@ -108,6 +108,12 @@ Each user action = a `Task` object posted to a worker thread:
   script object; `FUN_0043E471` calls `IDispatch::GetIDsOfNames` (vtable
   `+0x20`) with `AddNamedItem` fallback — the actual
   `serviceTranslateRequest(...)` invocation boundary between native and JS.
+- **Task executor = `FUN_0045F6C1`** (`__thiscall`, 3 callers incl.
+  `FUN_00428096`): runs `FUN_0043B777` (service JS) then post-processes via
+  script helpers — `usesAutoDetectCode`, `codeFromLanguage` (VARIANT bool/u32
+  marshalling through `FUN_0043B8CE`/`FUN_0043B9BE`). This is
+  `TaskTranslateInMainWindow`'s core: JS result → native language-code
+  resolution → render.
 
 ## TTS playback path (decompiled, verified, reimplemented)
 
