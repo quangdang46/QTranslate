@@ -109,7 +109,8 @@ Each user action = a `Task` object posted to a worker thread:
    read (`FUN_0043BEB2`). Sibling dispatcher at `FUN_0040558F`.
 3b. **`FUN_0043BEB2` = clipboard reader** (`__fastcall`): open-with-retry
    → `GetClipboardData(CF_UNICODETEXT)` → `GlobalSize - 2` (wchar null) →
-   `GlobalLock` + bounded copy (`FUN_00402231`, `param_2` = max chars) →
+   `GlobalLock` + bounded copy (`FUN_00402231` = ATL CString bounded
+   assign with realloc, `param_2` = max chars) →
    unlock + close. Returns 0 on empty.
 3. **Clipboard open = `FUN_0043BE07`** (`__thiscall`): `OpenClipboard(hwnd)`
    with 5× retry (`Sleep(5)` between attempts) — the Ctrl+C+C path's
