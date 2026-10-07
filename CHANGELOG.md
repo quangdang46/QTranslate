@@ -39,6 +39,16 @@ All entries are clean-room RE of QTranslate 6.10.0 for education.
   Internet, Advanced, Updates, Exceptions, History, aux titles
 - `tests/ui_match.py` 46/46 (pages order/ids + vi resolve + fallback)
 
+## i18n full (2026-10-08, vi 36 strings + 14 windows mapped)
+
+- Helpers `_T`/`_W`/`_Cw` (menu/strings/windows/control Ids; en fallback)
+- Localized: Translate btn (W1/1004), nav + result menus, Options
+  titles/pages/labels (Basics full, Appearance + icons bitmask,
+  Hotkeys actions, Internet, Advanced, Updates, Exceptions,
+  History, aux titles), error 190, Update Check-now
+- Verified: vi strings resolve (Chép bản dịch/Từ điển), en fallback
+- Native orders kept: pages Ids 10-18, ProxyType 0-3, PopupIcons bits
+
 ## Services (`qtranslate/services/`)
 
 - google_translate.py — `tk()` token + `/translate_a/single?client=gtx`,
