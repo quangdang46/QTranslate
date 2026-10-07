@@ -152,6 +152,10 @@ Each user action = a `Task` object posted to a worker thread:
    8 resize handles (`FUN_00449B08/00449B9C` frame/fill, `FUN_00437367` label).
    Sibling blitters: `FUN_0044A611/0044A201/00437FE4/00449901/004498A0`.
 
+- **`FUN_0045B1CF` = exe-relative path join** (`__fastcall`):
+  `GetModuleFileNameW` → `PathRemoveFileSpecW` → `PathAppendW(name)` —
+  resolves `Services/`, `Locales/`, `Themes/` against the exe dir (why our
+  hardcoded `C:/Program Files (x86)/QTranslate/...` paths work).
 - **`FUN_0045B716` = locales path builder**: `Locales\<name>` join
   (used for `help.txt` + language packs; mirrors `Locales/` folder with
   per-language UI strings).
