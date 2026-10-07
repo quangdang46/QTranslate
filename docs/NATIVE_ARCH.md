@@ -282,6 +282,9 @@ Each user action = a `Task` object posted to a worker thread:
 - **`FUN_004661D1` = dispatch-get helper** (`__thiscall`, used by both
   validators): `IDispatchEx::GetDispID (+0x14, grfdex 0x400)` + invoke
   (`FUN_00466181`) — single choke point for all JS field reads.
+- **`FUN_004207F3` = chain compare** (`__fastcall`): `wcscmp` 3-state
+  returning equality-bool — hash-bucket collision resolution for the
+  named-item + option tables.
 - **`FUN_00420824` = DJB2 string hash** (`__fastcall`, `h*0x21 + c` over
   UTF-16): backs the named-item cache + option hash-maps. Verified in
   Python: `serviceTranslateRequest→0x943703A8`, `serviceHeader→0x6A645CBA`.
