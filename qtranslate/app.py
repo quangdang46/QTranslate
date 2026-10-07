@@ -1143,6 +1143,33 @@ class App:
                           variable=self.opt_backtr,
                           command=_toggle_backtr)
 
+        def _toggle_phonetic():
+            # ReadPhonetically (menu Id 1/50): kept as flag; Google
+            # TTS has no phonetic mode (documented, no-op for TTS).
+            try:
+                from qtranslate import config as _C
+                import json as _j
+                full = _C.load()
+                cur = not full.setdefault("General", {}).get(
+                    "ReadPhonetically", False)
+                full["General"]["ReadPhonetically"] = cur
+                with open(_C.DEFAULT_PATH, "w",
+                          encoding="utf-8") as f:
+                    _j.dump(full, f, ensure_ascii=False, indent=1)
+            except Exception:
+                pass
+
+        try:
+            from qtranslate import config as _CP
+            _ph = bool(_CP.load().get("General", {}).get(
+                "ReadPhonetically", False))
+        except Exception:
+            _ph = False
+        _ph_v = tk.BooleanVar(value=_ph)
+        m.add_checkbutton(label=_T("Menus", 50, "Read phonetically",
+                                   menu=1),
+                          variable=_ph_v, command=_toggle_phonetic)
+
         def _toggle_instant():
             try:
                 from qtranslate import config as _C
