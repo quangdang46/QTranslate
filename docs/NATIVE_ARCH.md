@@ -378,6 +378,13 @@ Each user action = a `Task` object posted to a worker thread:
   direction flag) → `FUN_00449B08` rect fill. Single call behind all
   themed backgrounds.
 
+## GDI+ lifecycle (decompiled)
+
+- **`FUN_0044AAA1` = GDI+ init** (called from startup + `FUN_004010D5` CRT
+  init): `GdiplusStartup(&token, version=1-input)` (IAT `0x50D844`), token
+  at `DAT_005491E4`. Bitmap loaders (`GdipCreateBitmapFromFile[HBITMAP]`,
+  `GdipCreateHICONFromBitmap`) serve tray/service icons.
+
 ## GDI+ themed paint (decompiled)
 
 - **`FUN_0040647F`/`FUN_004064DE` = GDI+ fill wrappers** (`__thiscall`,
