@@ -185,6 +185,13 @@ Each user action = a `Task` object posted to a worker thread:
 - **Dictionary pair = `FUN_00465EF7` / `FUN_00465FAB`**: same 3-arg/4-arg
   IDispatch pattern for `serviceDictionaryRequest/Response` — the dictionary
   render fork (HTML into `DictionaryWindow` instead of plain text).
+- **Options bridge = `UtilsDispatch` table in `FUN_0045F6C1`**: before
+  running service JS, the executor exposes native settings as JS `Options.*`
+  (`PreferredDomain`, `GoogleDomain`, `GoogleTkk`, `BingToken/BingKey/BingCookie`,
+  `PromtCookie/PromtXsrf/PromtPaft`, `LanguageCode` — string refs at
+  `0045F88D`…`0045FB9F`). Name resolution through a string hash-map
+  (`FUN_00460E15` lookup). `qtranslate/session.py` reproduces the *values*
+  side of this bridge by scraping provider pages.
 - **Link opener = `FUN_0045FCCD`** (`__thiscall`): invokes
   `serviceLink(text, sl, tl, flag)` (4 args via `FUN_0043B9BE`)
   → URL string → `ShellExecute` opens the provider page in the browser
