@@ -920,6 +920,9 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Auto-update + proxy (decompiled, probed)
 
+- **`FUN_00440C4A`/`FUN_00440F7D` = DOM grow + node create**
+  (`__thiscall` pair): bucket realloc (overflow-guarded) + freelist node
+  pool — completes the DOM container behind JSON/options/history.
 - **`FUN_00440DD1` = DOM lookup** (`__thiscall`): same DJB2 + bucket +
   chain shape as `FUN_0043E950` (hash field `+3`, next `+2`) — one shared
   hash idiom across JS named-items, options, and JSON DOM.
