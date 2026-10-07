@@ -1,0 +1,133 @@
+"""Automated UI-match checks vs the native QTranslate 6.10.0 window.
+
+Verifies (no screenshots needed):
+  1. default source text == version line + full help.txt
+     (native EditSource in Options.json uses double spaces + CRLF)
+  2. service strip order == real ServicesOrder [1,5,12,13,11,26,28,30,31]
+  3. strip short names == native (Go.. Mi.. Pr.. Ba.. Ya.. yo.. Ba.. Pa.. DeepL)
+  4. native error string present in do_translate failure path
+  5. Options/Basics defaults == real Options.json
+     (TextSize 9, AutoDetection 57/17/57, history flags)
+  6. History window has Treeview + Clear + Save as (no Open button)
+  7. popup is borderless (overrideredirect) with no buttons
+
+Run: python -I tests/ui_match.py
+"""
+import io
+import sys
+
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+sys.path.insert(0, ".")
+
+PASS = []
+FAIL = []
+
+
+def check(name, cond, detail=""):
+    (PASS if cond else FAIL).append(name)
+    print(("PASS " if cond else "FAIL ") + name
+          + (f" ({detail})" if detail and not cond else ""))
+
+
+import tkinter as tk
+from qtranslate import app as A
+from qtranslate import config as C
+
+root = tk.Tk()
+root.withdraw()
+app = A.App(root)
+
+# 1. default source text
+with open("C:/Program Files (x86)/QTranslate/Locales/English/help.txt",
+          encoding="utf-8-sig") as f:
+    help_txt = f.read().strip()
+expected = "QTranslate Version 6.10.0\n\n" + help_txt
+check("default-text==help.txt", app.default_source_text() == expected)
+
+# 2. strip order == ServicesOrder
+cfg = C.load()
+ids = cfg.get("ServicesOrder", [])
+names = [C.SERVICE_NAMES.get(i) for i in ids]
+check("strip-order==ServicesOrder",
+      app.ordered_services() == [n for n in names if n in A.TRANSLATORS],
+      f"{app.ordered_services()} vs {names}")
+
+# 3. short names (source-level check)
+import re
+src = open("qtranslate/app.py", encoding="utf-8").read()
+for short in ("Go..", "Mi..", "Pr..", "Ba..", "Ya..", "yo..",
+              "Pa..", "DeepL"):
+    check(f"strip-has-{short}", f'"{short}"' in src)
+
+# 4. native error string in failure path
+check("native-error-string",
+      "No data returned (timeout while sending data)." in src)
+res = A.do_translate("google", "", "vi")
+check("empty-text-returns-empty", res == "")
+
+# 5. Options/Basics defaults
+gen = cfg.get("General", {})
+ad = cfg.get("AutoDetection", {})
+check("TextSize==9", gen.get("TextSize") == 9)
+check("AutoDetection==57/17/57",
+      (ad.get("LanguageFirst"), ad.get("LanguageSecond"),
+       ad.get("LanguageSpeechRecognition")) == (57, 17, 57))
+check("history-flags",
+      gen.get("EnableHistory") is True
+      and gen.get("ClearHistoryOnExit") is True
+      and gen.get("ExpandHistoryItems") is False)
+
+# 6. History window structure (create + inspect, no screenshot)
+app.history = [("google", "hello", "xin chào")]
+app.open_history_window()
+hist = None
+for w in root.winfo_children():
+    if isinstance(w, tk.Toplevel) and w.title() == "History":
+        hist = w
+check("history-window-exists", hist is not None)
+if hist is not None:
+    kids = hist.winfo_children()
+    has_tree = any("treeview" in str(k).lower()
+                   or k.winfo_class() == "Treeview" for k in kids)
+    btns = [k.cget("text") for k in kids for k in [k]
+            if k.winfo_class() == "Button"]
+    # buttons live in a frame; walk one level deeper
+    for k in kids:
+        try:
+            for k2 in k.winfo_children():
+                if k2.winfo_class() == "Button":
+                    btns.append(k2.cget("text"))
+        except Exception:
+            pass
+    check("history-has-treeview", has_tree)
+    check("history-no-open-button", "Open" not in btns, str(btns))
+    check("history-has-clear+saveas",
+          "Clear" in btns and "Save as..." in btns, str(btns))
+    hist.destroy()
+
+# 7. popup structure
+A.show_popup("hello", "xin chào", "google", "vi")
+pop = None
+for w in root.winfo_children():
+    if isinstance(w, tk.Toplevel) and "QTranslate" in w.title():
+        pop = w
+check("popup-exists", pop is not None)
+if pop is not None:
+    check("popup-borderless", bool(pop.overrideredirect()))
+    n_btn = 0
+    def count_btn(w):
+        global_n = [0]
+        def walk(x):
+            for c in x.winfo_children():
+                if c.winfo_class() == "Button":
+                    global_n[0] += 1
+                walk(c)
+        walk(w)
+        return global_n[0]
+    n_btn = count_btn(pop)
+    check("popup-no-buttons", n_btn == 0, f"{n_btn} buttons")
+    pop.destroy()
+
+root.destroy()
+print(f"\n{len(PASS)} passed, {len(FAIL)} failed")
+sys.exit(1 if FAIL else 0)
