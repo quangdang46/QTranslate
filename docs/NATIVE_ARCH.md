@@ -430,8 +430,10 @@ Each user action = a `Task` object posted to a worker thread:
   records at `DAT_005240D0` by service id — backs suggestions paint,
   menus, and the executor's display names. Dumped ids:
   `5,9,14,15,16,17,18,42,21,19,23,24,26,27,28,31,36,37,43,44,45,46,48,49,
-  50,52,54,55,56` (covers all ported `SERVICE_ID`s; Google id=1 resolved
-  elsewhere — likely hardcoded default).
+  50,52,54,55,56` (covers all ported `SERVICE_ID`s). Google id=1 is **not**
+  in the exe at all — ids come from each `Service.js`'s own
+  `serviceHeader(id, …)` return at runtime (verified: no `Google Translate`
+  string in the binary); native only stores what JS reports.
 - **`FUN_0042B485` = suggestions painter** (`__thiscall`, `DrawTextW` ×2):
   theme fill (`FUN_00449B9C`) → `CB_GETCOUNT (0x146)`; empty →
   `"Selected languages (in options) are not implemented."`; else per-item
