@@ -394,6 +394,9 @@ Each user action = a `Task` object posted to a worker thread:
   (`FUN_0042A10A` substring) → internal re-lookup (`FUN_00426966`) with
   history sync (`this+0x19C = this+0x18C`). Non-qtdp links fall through to
   `ShellExecute` browser open.
+- **`FUN_0041223C`/`FUN_0040785C` = history hide pair**: IsWindow-guarded
+  flag reset + `ShowWindow(SW_HIDE)` — collapses the history pane (used by
+  re-lookup to clear stale results before new content arrives).
 - **`FUN_00426966` = async re-lookup dispatch**: `FUN_00414E72` builds the
   dictionary task object → `PostMessageW(hwnd, 0x812C)` queues it to the
   window's message loop (custom `WM_APP`-range message for dictionary work,
