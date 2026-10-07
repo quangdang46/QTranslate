@@ -279,6 +279,10 @@ Each user action = a `Task` object posted to a worker thread:
   called from dispatcher): builds `TaskShowPopupWindow` (vftable +
   `DAT_0051DE64/68` params) + `PostMessageW(0x812C)` — re-translates with
   the newly selected service without re-capture.
+- **`FUN_0046027C` = listen-fetch worker** (`__thiscall`): lang validate
+  (`FUN_0045FF70`) → `serviceListenRequest` invoke (`FUN_0046606C`) →
+  `FUN_00460006` fetch → GET (`FUN_0045BBAE`) vs POST (`FUN_0045BF13`) by
+  mode (`local_1C` 1/2). Error codes 2/4/5/10/11 mirror the translate path.
 - **`FUN_004614BB` = mp3 fetcher** (`__fastcall`, STA COM init inside):
   service caps gate (`LISTEN` bit at `+0x10`, fallback default service
   `FUN_0045CF04`) → task executor (`FUN_0045F6C1`) → `FUN_0046027C`
