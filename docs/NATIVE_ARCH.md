@@ -192,6 +192,12 @@ Each user action = a `Task` object posted to a worker thread:
   `0045F88D`…`0045FB9F`). Name resolution through a string hash-map
   (`FUN_00460E15` lookup). `qtranslate/session.py` reproduces the *values*
   side of this bridge by scraping provider pages.
+- **`GoogleTkk` note**: the native side only *exposes the slot* (`Options`
+  entry at `0052AB1C`, sole ref in `FUN_0045F6C1`); the seed *value* is
+  fetched by the Google `Service.js` itself from the translate page at
+  runtime, then fed back into `tk()`. Our Python port defaults `tkk="0.0"`
+  and relies on the `dict-chrome-ex` fallback when `gtx` is rate-limited —
+  same net effect (live-verified), different token path.
 - **Link opener = `FUN_0045FCCD`** (`__thiscall`): invokes
   `serviceLink(text, sl, tl, flag)` (4 args via `FUN_0043B9BE`)
   → URL string → `ShellExecute` opens the provider page in the browser
