@@ -10,6 +10,7 @@ import json
 import sys
 import urllib.parse
 import urllib.request
+from qtranslate import common
 
 from qtranslate.common import (
     MAX_URI_LEN,
@@ -156,7 +157,7 @@ def detect(text: str):
     data = None if get else ("q=" + q).encode()
     req = urllib.request.Request(service_host() + path, data=data,
                                  headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req, timeout=20) as r:
+    with common.http_open(req) as r:
         obj = parse_json_lenient(r.read().decode("utf-8"))
     return get_source_language(obj)
 
@@ -215,7 +216,7 @@ def translate(text: str, sl: str = "auto", tl: str = "en", tkk: str = "0.0") -> 
         headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
                  "Accept": "*/*", "Accept-Language": "en-US;q=0.8,en;q=0.6"})
     try:
-        with urllib.request.urlopen(req, timeout=20) as r:
+        with common.http_open(req) as r:
             obj = parse_json_lenient(r.read().decode("utf-8"))
             b, _, _, _ = _translate_response(obj, sl, tl)
             return b
@@ -226,7 +227,7 @@ def translate(text: str, sl: str = "auto", tl: str = "en", tkk: str = "0.0") -> 
           .format(sl, tl, q))
     req = urllib.request.Request(
         service_host() + fb, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
-    with urllib.request.urlopen(req, timeout=20) as r:
+    with common.http_open(req) as r:
         return _parse(parse_json_lenient(r.read().decode("utf-8")))
 
 

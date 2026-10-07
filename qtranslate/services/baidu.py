@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import urllib.parse
 import urllib.request
+from qtranslate import common
 
 from qtranslate.common import (
     NL,
@@ -137,7 +138,7 @@ def suggest(text: str) -> list:
                  "Accept": "*/*",
                  "Referer": "https://fanyi.baidu.com/",
                  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
-    with urllib.request.urlopen(req, timeout=20) as resp:
+    with common.http_open(req) as resp:
         obj = json.loads(resp.read().decode("utf-8", errors="replace"))
     return obj.get("data", []) if isinstance(obj, dict) else []
 
@@ -149,7 +150,7 @@ def detect(text: str, cookie: str = "") -> int:
     headers["Cookie"] = cookie or Options.get("BaiduCookie", "")
     req = urllib.request.Request(HOST + "/langdetect",
                                  data=body.encode("utf-8"), headers=headers)
-    with urllib.request.urlopen(req, timeout=20) as resp:
+    with common.http_open(req) as resp:
         obj = parse_json_lenient(read_response_text(resp))
     if obj and obj.get("lan"):
         return language_from_code(obj["lan"], SUPPORTED_LANGS)
@@ -182,7 +183,7 @@ def translate(text: str, sl="auto", tl: str = "en", gtk: str = "0.0",
     headers["Cookie"] = cookie or Options.get("BaiduCookie", "")
     req = urllib.request.Request(HOST + "/v2transapi",
                                  data=body.encode("utf-8"), headers=headers)
-    with urllib.request.urlopen(req, timeout=20) as resp:
+    with common.http_open(req) as resp:
         obj = parse_json_lenient(read_response_text(resp))
     return _translate_response(obj)
 

@@ -10,6 +10,60 @@ import urllib.request
 _UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
 
+def net_options() -> dict:
+    """Internet + Proxy sections of Options.json (Timeout ms, proxy).
+
+    Native FUN_0045BCED/FUN_0045BF7D apply Internet.Timeout to every
+    curl call; Proxy* configures the curl proxy. Falls back to
+    Timeout=10000 / no proxy when Options.json is absent.
+    """
+    try:
+        from qtranslate import config as _C
+        cfg = _C.load()
+    except Exception:
+        return {"timeout": 10.0, "proxy": None}
+    inet = cfg.get("Internet", {})
+    px = cfg.get("Proxy", {})
+    try:
+        timeout = float(inet.get("Timeout", 10000)) / 1000.0
+    except Exception:
+        timeout = 10.0
+    proxy = None
+    try:
+        ptype = int(px.get("ProxyType", 0))
+        host = (px.get("Host") or "").strip()
+        port = int(px.get("Port", 0))
+        if ptype and host and port:
+            scheme = {1: "http", 2: "socks4",
+                      3: "socks5"}.get(ptype, "http")
+            auth = ""
+            if px.get("Username"):
+                import urllib.parse as _up
+                auth = _up.quote(px.get("Username", "")) + ":" + \
+                    _up.quote(px.get("Password", "")) + "@"
+            proxy = f"{scheme}://{auth}{host}:{port}"
+    except Exception:
+        proxy = None
+    return {"timeout": timeout, "proxy": proxy}
+
+
+def _net_open(req, opener=None, data=None):
+    """Open with Options.json Timeout + Proxy (native curl behavior)."""
+    opts = net_options()
+    if data is not None:
+        req.data = data
+    if opener is not None:
+        return opener.open(req, timeout=opts["timeout"])
+    if opts["proxy"]:
+        import urllib.parse as _up
+        scheme = _up.urlparse(opts["proxy"]).scheme
+        ph = {scheme: opts["proxy"]}
+        return urllib.request.build_opener(
+            urllib.request.ProxyHandler(ph)).open(
+                req, timeout=opts["timeout"])
+    return urllib.request.urlopen(req, timeout=opts["timeout"])
+
+
 def _jar_opener():
     """Shared cookie-jar opener — mirrors native libcurl cookie engine.
 
@@ -25,7 +79,7 @@ def _jar_opener():
 
 def _get(url: str, opener=None) -> str:
     req = urllib.request.Request(url, headers=_UA)
-    with (opener or urllib.request).open(req, timeout=20) as r:
+    with _net_open(req, opener) as r:
         data = r.read()
         try:
             return data.decode("utf-8")
@@ -42,7 +96,7 @@ def bing_session() -> dict:
     """
     opener = _jar_opener()
     req = urllib.request.Request("https://www.bing.com/translator", headers=_UA)
-    with opener.open(req, timeout=20) as r:
+    with _net_open(req, opener) as r:
         html = r.read().decode("utf-8", errors="replace")
         set_cookie = r.headers.get_all("Set-Cookie") or []
     cookie = "; ".join(c.split(";")[0] for c in set_cookie)
@@ -83,7 +137,7 @@ def bing_translate(text: str, sl: str = "en", tl: str = "vi") -> str:
                  "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
                  "Origin": "https://www.bing.com",
                  "Referer": "https://www.bing.com/translator"})
-    with s["opener"].open(req, timeout=20) as r:
+    with _net_open(req, s["opener"]) as r:
         obj = json.loads(r.read().decode("utf-8"))
     try:
         return obj[0]["translations"][0]["text"]
@@ -95,7 +149,7 @@ def promt_session() -> dict:
     """Scrape XSRF-TOKEN cookie + PromtPaft for online-translator.com."""
     req = urllib.request.Request(
         "https://www.online-translator.com", headers=_UA)
-    with urllib.request.urlopen(req, timeout=20) as r:
+    with _net_open(req) as r:
         html = r.read().decode("utf-8", errors="replace")
         set_cookie = r.headers.get_all("Set-Cookie") or []
     xsrf = next((c.split(";")[0].split("=", 1)[1]

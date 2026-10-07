@@ -19,6 +19,7 @@ import random
 import time
 import urllib.parse
 import urllib.request
+from qtranslate import common
 import uuid
 
 from qtranslate.common import (
@@ -120,7 +121,7 @@ def _post_legacy(path: str, body: str) -> dict:
             k, v = line.split(":", 1)
             headers[k.strip()] = v.strip()
     req = urllib.request.Request(url, data=body.encode(), headers=headers)
-    with urllib.request.urlopen(req, timeout=20) as r:
+    with common.http_open(req) as r:
         return parse_json_lenient(read_response_text(r))
 
 
@@ -187,7 +188,7 @@ def translate_legacy(text: str, sl=1, tl=17) -> tuple:
         k, v = line.split(":", 1)
         headers[k.strip()] = v.strip()
     req = urllib.request.Request(url, data=body.encode(), headers=headers)
-    with urllib.request.urlopen(req, timeout=20) as r:
+    with common.http_open(req) as r:
         resp = parse_json_lenient(read_response_text(r))
     out = resp.get("translatedText", "") if resp else ""
     src_idx = language_from_code(resp.get("srcLangType", ""),
@@ -219,7 +220,7 @@ def _new_post(path: str, params: dict, locale: str = "en",
         headers={"User-Agent": "Mozilla/5.0",
                  "Accept-Language": locale,
                  "Content-Type": ctype})
-    with urllib.request.urlopen(req, timeout=20) as r:
+    with common.http_open(req) as r:
         return parse_json_lenient(read_response_text(r))
 
 
@@ -306,7 +307,7 @@ def tts_fetch(tts_id: str) -> bytes:
     req = urllib.request.Request(
         HOST + f"/api/tts/{tts_id}",
         headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req, timeout=30) as r:
+    with common.http_open(req) as r:
         return r.read()
 
 

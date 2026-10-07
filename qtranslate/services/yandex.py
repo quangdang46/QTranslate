@@ -12,6 +12,7 @@ import json
 import re
 import urllib.parse
 import urllib.request
+from qtranslate import common
 import uuid
 
 from qtranslate.common import (
@@ -141,7 +142,7 @@ def _fetch(path: str, data: bytes | None = None,
     if android:
         headers[_ANDROID_UA[0]] = _ANDROID_UA[1]
     req = urllib.request.Request(HOST + path, data=data, headers=headers)
-    with urllib.request.urlopen(req, timeout=20) as resp:
+    with common.http_open(req) as resp:
         return parse_json_lenient(resp.read().decode("utf-8"))
 
 

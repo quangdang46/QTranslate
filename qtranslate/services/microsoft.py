@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import urllib.parse
 import urllib.request
+from qtranslate import common
 
 from qtranslate.common import (
     NL,
@@ -88,7 +89,7 @@ def _post(path: str, body: str, cookie: str = "") -> list:
         headers["Cookie"] = cookie
     req = urllib.request.Request(HOST + path, data=body.encode("utf-8"),
                                  headers=headers)
-    with urllib.request.urlopen(req, timeout=20) as resp:
+    with common.http_open(req) as resp:
         return parse_json_lenient(read_response_text(resp))
 
 
@@ -119,7 +120,7 @@ def _service_request(text, sl=AUTO_DETECT_LANGUAGE, tl=ENGLISH_LANGUAGE,
                      "application/x-www-form-urlencoded; charset=utf-8",
                      "Accept": "*/*", "Origin": "https://www.bing.com",
                      "Referer": "https://www.bing.com/translator"})
-        with opener.open(req, timeout=20) as r:
+        with common.http_open(req, opener) as r:
             obj = parse_json_lenient(read_response_text(r))
     else:
         obj = _post(path, body, cookie)
@@ -217,7 +218,7 @@ def dictionary(text, sl, tl, ig="", token="", key="", cookie="",
                      "application/x-www-form-urlencoded; charset=utf-8",
                      "Accept": "*/*", "Origin": "https://www.bing.com",
                      "Referer": "https://www.bing.com/translator"})
-        with opener.open(req, timeout=20) as r:
+        with common.http_open(req, opener) as r:
             obj = parse_json_lenient(read_response_text(r))
     else:
         obj = _post(path, body, cookie)

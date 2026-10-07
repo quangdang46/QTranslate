@@ -13,13 +13,14 @@ import html as _html
 import re
 import urllib.parse
 import urllib.request
+from qtranslate import common
 
 _UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
 
 def _get(url):
     req = urllib.request.Request(url, headers=_UA)
-    with urllib.request.urlopen(req, timeout=30) as r:
+    with common.http_open(req) as r:
         return r.read().decode("utf-8", "replace")
 
 
@@ -29,7 +30,7 @@ def _post(url, body):
         data=body.encode("utf-8"),
         headers=dict(_UA, **{"Content-Type": "application/x-www-form-urlencoded"}),
     )
-    with urllib.request.urlopen(req, timeout=30) as r:
+    with common.http_open(req) as r:
         return r.read().decode("utf-8", "replace")
 
 
@@ -342,7 +343,7 @@ def reverso_translate(text, sl="en", tl="fr"):
         headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
                  "Content-Type": "application/json",
                  "Referer": "https://www.reverso.net/"})
-    with urllib.request.urlopen(req, timeout=20) as r:
+    with common.http_open(req) as r:
         obj = _json.loads(r.read().decode("utf-8", errors="replace"))
     return " ".join(obj.get("translation", []) or [])
 
@@ -625,7 +626,7 @@ def urban_api(word):
     import json as _json
     req = urllib.request.Request(
         URBAN_API_HOST + "/v0/define?term=" + _q(word), headers=_UA)
-    with urllib.request.urlopen(req, timeout=20) as r:
+    with common.http_open(req) as r:
         return _json.loads(r.read().decode("utf-8")).get("list", [])
 
 

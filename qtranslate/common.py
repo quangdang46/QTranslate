@@ -119,6 +119,16 @@ def read_response_text(resp) -> str:
     return raw.decode("utf-8", errors="replace")
 
 
+def http_open(req, opener=None):
+    """Open a request honoring Options.json Internet.Timeout + Proxy.
+
+    Thin wrapper over session._net_open so every service port funnels
+    through the native curl behavior (FUN_0045BCED/FUN_0045BF7D).
+    """
+    from qtranslate import session as _S
+    return _S._net_open(req, opener)
+
+
 def split_headers(header_block: str) -> dict:
     """Split a Common.js header block ("K: V\\r\\n...") into a dict."""
     out = {}

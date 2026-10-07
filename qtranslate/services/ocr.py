@@ -9,6 +9,7 @@
 import json
 import urllib.parse
 import urllib.request
+from qtranslate import common
 import uuid
 
 OCR_HOST = "https://api.ocr.space/parse/image"
@@ -38,7 +39,7 @@ def ocr_space(image_bytes: bytes, api_key: str = "helloworld",
         OCR_HOST, data=body,
         headers={**_UA,
                  "Content-Type": f"multipart/form-data; boundary={boundary}"})
-    with urllib.request.urlopen(req, timeout=30) as r:
+    with common.http_open(req) as r:
         return json.loads(r.read().decode("utf-8"))
 
 

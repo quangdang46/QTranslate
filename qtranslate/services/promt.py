@@ -15,6 +15,7 @@ import json
 import re
 import urllib.parse
 import urllib.request
+from qtranslate import common
 
 from qtranslate.common import (
     NL2,
@@ -126,7 +127,7 @@ def session(sl: str = "en", tl: str = "ru", opener=None):
     a, b = _NAMES.get(sl, sl), _NAMES.get(tl, tl)
     url = f"{HOST}/translation/{a}-{b}"
     req = urllib.request.Request(url, headers=_UA)
-    with opener.open(req, timeout=20) as r:
+    with common.http_open(req, opener) as r:
         html = read_response_text(r)
     paft = re.search(r'id="_paft"[^>]*value="([^"]+)"', html).group(1)
     xsrf = re.search(r'id="_xsrf"[^>]*value="([^"]+)"', html).group(1)
@@ -171,7 +172,7 @@ def translate(text: str, sl, tl, paft: str = "",
     req = urllib.request.Request(HOST + "/api/getTranslation",
                                  data=body.encode("utf-8"), headers=headers)
     open_ = opener.open if opener is not None else urllib.request.urlopen
-    with open_(req, timeout=20) as r:
+    with common.http_open(req) as r:
         resp = parse_json_lenient(read_response_text(r))
     return _translate_response(resp)
 

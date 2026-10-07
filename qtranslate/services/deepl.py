@@ -11,6 +11,7 @@ import json
 import re
 import time
 import urllib.request
+from qtranslate import common
 
 from qtranslate.common import (
     NL2,
@@ -116,7 +117,7 @@ def _post_jsonrpc(payload: dict) -> dict:
     headers["Accept"] = "*/*"
     req = urllib.request.Request(HOST + "/jsonrpc", data=data,
                                  headers=headers)
-    with urllib.request.urlopen(req, timeout=20) as resp:
+    with common.http_open(req) as resp:
         raw = resp.read()
         if resp.headers.get("Content-Encoding", "") == "gzip" \
                 or raw[:2] == b"\x1f\x8b":
