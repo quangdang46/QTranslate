@@ -198,6 +198,10 @@ Each user action = a `Task` object posted to a worker thread:
   (`FUN_00460354`) → error wrap (`FUN_004047D6`) → cleanup (`FUN_00404B7B`).
   This single function is the native equivalent of our Python
   `translate()` wrappers — service select → request → fallback chain.
+- **`FUN_004047D6` = error-code mapper** (`__fastcall`): switch error
+  3–0xF → string-resource id (`0xB0`–`0xCF`) via `FUN_00451D23` (2-tier:
+  language table `FUN_0045242D`, fallback format `DAT_00529AF0`). Covers
+  backtrans/detect/fetch failures (`0xC/0xD/0xE` seen in `FUN_004606BA`).
 - **`FUN_00460354` = detect-retry loop** (`__thiscall`): alternates
   `FUN_00460467` (detect request) + `FUN_00460580` (apply result) until
   non-empty (error 6 = all providers exhausted) — the `AlwaysDetectLanguage`
