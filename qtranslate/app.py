@@ -365,6 +365,60 @@ def _pane_font(size_delta: int = 0):
     return (name, max(6, size))
 
 
+_PACK = {}
+_PACK_NAME = [None]
+
+
+def _pack():
+    """Load the UI language pack per General.LocaleFoderName
+    (native FUN_0045B716 path; English = built-in strings)."""
+    try:
+        from qtranslate import config as _C
+        name = _C.load().get("General", {}).get("LocaleFoderName",
+                                                "") or "English"
+    except Exception:
+        name = "English"
+    if _PACK_NAME[0] == name and _PACK:
+        return _PACK
+    _PACK.clear()
+    _PACK_NAME[0] = name
+    if name != "English":
+        try:
+            from qtranslate import locale as _L
+            _PACK.update(_L.load_pack(name))
+        except Exception:
+            pass
+    return _PACK
+
+
+def _T(section: str, sid: int, default: str = "",
+       menu: int | None = None) -> str:
+    """Localized string by section + numeric id (lang.json layout:
+    Strings = [id, text]; Menus = [{Id, Items:[[id, text]]}]. Pass
+    menu=Id to look inside one menu (e.g. menu=3 history-item)."""
+    try:
+        pack = _pack()
+        items = pack.get(section, [])
+        if menu is not None:
+            for grp in items:
+                if isinstance(grp, dict) and grp.get("Id") == menu:
+                    items = grp.get("Items", [])
+                    break
+            else:
+                return default
+        if isinstance(items, dict):
+            return str(items.get(str(sid), items.get(sid, default)))
+        for it in items:
+            if isinstance(it, (list, tuple)) and len(it) >= 2 \
+                    and it[0] == sid:
+                return str(it[1])
+            if isinstance(it, dict) and it.get("Id") == sid:
+                return str(it.get("Text", it.get("Caption", default)))
+    except Exception:
+        pass
+    return default
+
+
 def _open_url(url: str):
     """Open URL honoring Advanced.DefaultBrowserId (native browser pick).
 
@@ -682,6 +736,14 @@ class App:
         self.root.bind("<Control-Up>", lambda e: self.copy_to_source())
         # F11 = fullscreen toggle (help.txt Main window hotkeys)
         self.root.bind("<F11>", lambda e: self.toggle_fullscreen())
+        # native pane toggles Ctrl+F1/F2/F3 (0x8071/0x8064/0x8065)
+        self.root.bind("<Control-F1>",
+                       lambda e: self.toggle_pane("ShowTopPane", "src"))
+        self.root.bind("<Control-F2>",
+                       lambda e: self.toggle_pane("ShowMiddlePane", "mid"))
+        self.root.bind("<Control-F3>",
+                       lambda e: self.toggle_pane("ShowServicesPane",
+                                                   "svc"))
         # Ctrl+B = back-translation toggle+run (accel 0x8034);
         # Ctrl+Alt+1..9 = dictionary with n-th service (help.txt)
         self.root.bind("<Control-b>", lambda e: self.toggle_backtr())
@@ -730,14 +792,6 @@ class App:
             self.root.attributes("-fullscreen", not cur)
         except Exception:
             pass
-        # native pane toggles Ctrl+F1/F2/F3 (0x8071/0x8064/0x8065)
-        self.root.bind("<Control-F1>",
-                       lambda e: self.toggle_pane("ShowTopPane", "src"))
-        self.root.bind("<Control-F2>",
-                       lambda e: self.toggle_pane("ShowMiddlePane", "mid"))
-        self.root.bind("<Control-F3>",
-                       lambda e: self.toggle_pane("ShowServicesPane",
-                                                   "svc"))
 
     def reset_pair(self):
         """Shift+Esc: reset language pair to auto-detected (native
@@ -886,15 +940,16 @@ class App:
             value=bool(_g0.get("BackTranslation", False)))
 
     def show_result_menu(self, event=None):
-        """Result-pane context menu (native history-item pattern
-        FUN_004287B6: Copy / Listen / Clear)."""
+        """Result-pane context menu (native history-item menu Id 3:
+        Open/Copy-text/Copy-translation/Delete/Listen)."""
         m = tk.Menu(self.root, tearoff=False)
-        m.add_command(label="Copy translation",
+        m.add_command(label=_T("Menus", 20, "Copy translation", menu=3),
                       command=self.on_copy)
-        m.add_command(label="Listen to text",
+        m.add_command(label=_T("Menus", 40, "Listen to text", menu=3),
                       command=self.on_listen)
         m.add_separator()
-        m.add_command(label="Clear", command=self.on_clear)
+        m.add_command(label=_T("Menus", 30, "Clear", menu=3),
+                      command=self.on_clear)
         try:
             m.tk_popup(self.root.winfo_pointerx(),
                        self.root.winfo_pointery())
@@ -1009,15 +1064,19 @@ class App:
             _set_general("BackTranslation", v)
 
         m = tk.Menu(self.root, tearoff=False)
-        m.add_command(label="Show dictionary window",
+        m.add_command(label=_T("Menus", 10, "Show dictionary window",
+                               menu=5),
                       command=self.open_dict_window)
-        m.add_command(label="Show history window",
+        m.add_command(label=_T("Menus", 20, "Show history window",
+                               menu=5),
                       command=self.open_history_window)
         m.add_separator()
-        m.add_checkbutton(label="Always detect language",
+        m.add_checkbutton(label=_T("Menus", 30, "Always detect language",
+                                   menu=4),
                           variable=self.opt_detect,
                           command=_toggle_detect)
-        m.add_checkbutton(label="Back translation",
+        m.add_checkbutton(label=_T("Menus", 30, "Back translation",
+                                   menu=1),
                           variable=self.opt_backtr,
                           command=_toggle_backtr)
 
@@ -1042,11 +1101,14 @@ class App:
         except Exception:
             _inst = False
         _inst_v = tk.BooleanVar(value=_inst)
-        m.add_checkbutton(label="Instant translation",
+        m.add_checkbutton(label=_T("Menus", 20, "Instant translation",
+                                   menu=1),
                           variable=_inst_v, command=_toggle_instant)
         m.add_separator()
-        m.add_command(label="Options...", command=self.open_options)
-        m.add_command(label="About", command=self.show_about)
+        m.add_command(label=_T("Menus", 80, "Options...", menu=5),
+                      command=self.open_options)
+        m.add_command(label=_T("Menus", 90, "About", menu=5),
+                      command=self.show_about)
         try:
             m.tk_popup(self.root.winfo_pointerx(),
                        self.root.winfo_pointery())
