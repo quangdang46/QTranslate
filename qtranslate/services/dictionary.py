@@ -190,7 +190,28 @@ def _lingvo_ui_lang(code):
     return {"ru": "ru-ru", "es": "es-mx", "pt-BR": "pt-br"}.get(code, "en-us")
 
 
+LINGVO_ID = 25
+LINGVO_NAME = "ABBYY Lingvo Live"
+LINGVO_STYLE = ("._QT6_ALLs *{font-size:100%}._QT6_ALLs table{border:1px "
+                "solid #f0f0f2;border-collapse:collapse;margin-top:8px}"
+                "._QT6_ALLs table td,._QT6_ALLs table th{border:1px solid "
+                "#f0f0f2;text-align:center;padding:8px}"
+                "._QT6_ALLs h3{margin-top:8px;text-transform:uppercase}")
+
+
+def lingvo_host() -> str:
+    """Port of serviceHost(): always https://www.lingvolive.com."""
+    return "https://www.lingvolive.com"
+
+
+def lingvo_link(word, sl, tl, ui_lang="en-us") -> str:
+    """The ResponseData link field: host + buildUri."""
+    return (lingvo_host() + "/{0}/translate/{1}-{2}/{3}".format(
+        ui_lang, sl, tl, _q(word)))
+
+
 def lingvo_lookup(word, sl, tl, ui_lang="en-us"):
+    """Port of serviceDictionaryRequest/Response (named-div slice)."""
     url = LINGVO_HOST + "/{0}/translate/{1}-{2}/{3}".format(
         ui_lang, sl, tl, _q(word))
     page = _get(url)
@@ -205,7 +226,9 @@ def lingvo_lookup(word, sl, tl, ui_lang="en-us"):
         frag = frag[:j]
     frag = _remove_attributes(frag, ["id", "name", "class", "data-reactid"])
     frag = _remove_elements(frag, ["button", "svg"])
-    frag = _update_links(frag, LINGVO_HOST)
+    frag = _update_links(
+        '<div class="_QT6_ALLs"><style>' + LINGVO_STYLE + "</style><div><div>"
+        + frag, LINGVO_HOST)
     return frag
 
 
@@ -324,7 +347,36 @@ OXFORD_HOST = "https://www.oxfordlearnersdictionaries.com"
 OXFORD_LANGS = [1] * 76
 
 
+OXFORD_ID = 29
+OXFORD_NAME = "Oxford Learner Dictionary"
+OXFORD_STYLE = (
+    ".phonetics-font,.eph,.phon{font-family:\"Lucida Sans Unicode\",Arial}"
+    ".oxford3000,.link-right,.wl-add,a.topic,.bre,.name,.nbsp,"
+    ".side-panel>div,.vp-gs>div,.top-g .pos-g,.z_n+.z,.z_gr_br,"
+    "#ox-enlarge+.z,.h-g+.z,.pron-gs .wrap,li.sn-g>.num,"
+    "span[hide~=\"y\"],.top-container br{display:none}"
+    ".serif-italic,.wx,.x,.x-g,.sans-italic,.ei,.etym_i,.geo,.pos,.reg,"
+    ".subj,.wfp,.xpos,.webtop-g .pos+.pnc,.collapse .ff,"
+    ".collapse[title^=\"AWL Collocations\"] .er{font-style:italic}"
+    ".label-g{color:#767676}.x-gs{display:block}"
+    ".x-g{display:block;margin-top:6px;position:relative;margin-left:11px}"
+    ".entry-box-style,.collapse{display:block;margin:12px 0 18px 0;"
+    "position:relative;overflow:hidden}"
+    ".collapse{padding:12px 18px 12px 18px;border-left:3px solid #C76E06}")
+
+
+def oxford_host() -> str:
+    """Port of serviceHost(): always oxfordlearnersdictionaries.com."""
+    return "https://www.oxfordlearnersdictionaries.com"
+
+
+def oxford_link(word) -> str:
+    """The ResponseData link field: search URL for the word."""
+    return oxford_host() + "/search/english/?q=" + _q(word)
+
+
 def oxford_lookup(word, sl=1, tl=1):
+    """Port of serviceDictionaryRequest/Response (ox-wrapper slice)."""
     url = OXFORD_HOST + "/search/english/?q=" + _q(word)
     page = _get(url)
     frag = _sub(page, '<div id="ox-wrapper"', False,
@@ -339,7 +391,7 @@ def oxford_lookup(word, sl=1, tl=1):
     frag = _remove_attributes("<div " + frag, ["id", "dpsid", "dpsref", "geo"])
     frag = _remove_elements(frag, ["script", "img"])
     frag = re.sub(r'<div class="sound(.|\n)*?</div>', "", frag, flags=re.I)
-    return frag
+    return "<div><style>" + OXFORD_STYLE + "</style>" + frag + "</div>"
 
 
 # ----------------------------------------------------------------- Multitran
