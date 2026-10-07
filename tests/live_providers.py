@@ -31,6 +31,9 @@ def main():
     check("baidu.detect", lambda: b.detect("Hello world"))
     check("yandex.translate EN->RU", lambda: y.translate("Good morning", "en", "ru"))
     check("bing.translate EN->VI", lambda: bing_translate("Good morning", "en", "vi"))
+    from qtranslate.services import youdao as yd
+    check("youdao.translate_web EN->ZH", lambda: yd.translate_web("Good morning", "en", "zh-CHS"))
+    check("youdao.dictionary", lambda: "results-contents" in yd.dictionary("hello") and "dict-html")
     from qtranslate.services import naver as n
     check("naver.detect", lambda: n.detect("Hello world"))
     check("naver.translate EN->VI", lambda: n.translate("Hello world", "en", "vi")[0])

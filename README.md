@@ -34,7 +34,7 @@ python -I qtranslate/tts.py "Xin chào" vi google.mp3
 | Baidu | ✅ | ✅ | ✅ | — | detect live OK; translate needs page token (web API locked, 2026-10-07) |
 | Naver (Papago) | ✅ | ✅ | ✅ | ✅ | **live OK** (new `/api/text/*`, `/api/tts/*`, `/api/dictionary/*` — no auth, 2026-10-07) |
 | Promt | ✅ | — | — | — | signing verified; API 400 (needs JS `paft`) |
-| Youdao | ✅ | — | — | — | signing verified; API errorCode 50 (needs `mysticTime`) |
+| Youdao | ✅ | — | — | ✅ | **live OK** (`jsonapi_s` translate + `/w/` dictionary, no sign needed, 2026-10-07) |
 | Reverso | ✅ | — | — | ✅ | ported; site 403 (bot-wall) |
 | ImTranslator | ✅ | — | — | — | ported; endpoint 404 (retired) |
 | WordReference | — | — | — | ✅ | ported; markup changed (empty) |

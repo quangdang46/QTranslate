@@ -10,8 +10,14 @@ LIVE-OK  deepl.translate EN->VI       Chào buổi sáng
 LIVE-OK  baidu.detect                 en
 LIVE-OK  yandex.translate EN->RU      Доброе утро
 LIVE-OK  bing.translate EN->VI        Chào buổi sáng
+LIVE-OK  youdao.translate_web EN->ZH   (web_trans values)
+LIVE-OK  youdao.dictionary            dict-html
+LIVE-OK  naver.detect                 en
+LIVE-OK  naver.translate EN->VI       Xin chào thế giới
+LIVE-OK  naver.dict                   dict-items
+LIVE-OK  naver.tts                    mp3-bytes
 
-7/7 live OK
+13/13 live OK
 ```
 
 Extended regression (same day, ad-hoc): `yandex-android` EN→RU OK,
