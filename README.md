@@ -29,7 +29,7 @@ python -I qtranslate/tts.py "Xin chào" vi google.mp3
 | Google Translate | ✅ | ✅ | ✅ | — | live-tested (gtx 429 → dict-chrome-ex fallback) |
 | Google TTS | — | — | ✅ | — | live-tested (MP3 downloads) |
 | DeepL | ✅ | ✅ | — | — | ported (needs live test) |
-| Microsoft (Bing) | ✅ | ✅ | — | — | ported, **still 401 live** (needs TLS fingerprint/headless; IID+retry fixes applied) |
+| Microsoft (Bing) | ✅ | ✅ | — | — | **live OK** (shared cookie jar — decompile insight from `FUN_00465A92`) |
 | Yandex | ✅ | ✅ | ✅ | — | **live OK via Android variant** (`srv=android` + ucid, researched 2026-10-07) |
 | Baidu | ✅ | ✅ | ✅ | — | detect live OK; translate needs page token (web API locked, 2026-10-07) |
 | Naver (Papago) | ✅ | ✅ | ✅ | — | ported, **endpoint dead (/apis/* → 404, 2026-10-07)** |
