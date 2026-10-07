@@ -2878,12 +2878,37 @@ class App:
         from qtranslate.services.ocr import ocr_text
         try:
             from qtranslate import config as _C
-            _key = _C.load().get("Advanced",
-                                 {}).get("OcrApiKey", "") or "helloworld"
+            _cfg = _C.load()
+            _key = _cfg.get("Advanced",
+                            {}).get("OcrApiKey", "") or "helloworld"
+            # Ocr.OcrLanguage = Google index (17=en default) -> ocr.space
+            # code; Ocr.SaveImagePath archives the capture.
+            _oi = _cfg.get("Ocr", {}).get("OcrLanguage", 17)
+            try:
+                _table = list(__import__(
+                    "qtranslate.services.google_translate",
+                    fromlist=["SUPPORTED_LANGS"]).SUPPORTED_LANGS)
+            except Exception:
+                _table = []
+            _code = _table[_oi] if 0 <= _oi < len(_table) else "eng"
+            _lang = {"en": "eng", "vi": "vie", "fr": "fre",
+                     "de": "ger", "es": "spa", "ru": "rus",
+                     "ja": "jpn", "ko": "kor",
+                     "zh-CN": "chs"}.get(_code, "eng")
+            _savep = _cfg.get("Ocr", {}).get("SaveImagePath", "")
+            if _savep:
+                try:
+                    import datetime as _dt
+                    import os as _o
+                    _fn = "ocr_%s.png" % _dt.datetime.now().strftime(
+                        "%Y%m%d_%H%M%S")
+                    open(_o.path.join(_savep, _fn), "wb").write(data)
+                except Exception:
+                    pass
         except Exception:
-            _key = "helloworld"
+            _key, _lang = "helloworld", "eng"
         try:
-            txt = ocr_text(data, api_key=_key)
+            txt = ocr_text(data, api_key=_key, lang=_lang)
             self.src.delete("1.0", "end")
             self.src.insert("1.0", txt)
         except Exception as e:
