@@ -299,6 +299,39 @@ def _place_main(root):
     root.geometry("526x366")
 
 
+def _place_aux(widget, key: str, default: str):
+    """Restore aux-window geometry from General.<key> blob (native
+    WindowOptions/History/Dictionary/KeyboardPlacement); save on
+    close via WM_DELETE_WINDOW hook."""
+    try:
+        from qtranslate import config as _C
+        rc = _decode_placement(
+            _C.load().get("General", {}).get(key, ""))
+    except Exception:
+        rc = None
+    if rc:
+        x, y, w, h, _ = rc
+        try:
+            widget.geometry(f"{w}x{h}+{x}+{y}")
+        except Exception:
+            widget.geometry(default)
+    else:
+        widget.geometry(default)
+    try:
+        _prev = widget.protocol("WM_DELETE_WINDOW")
+
+        def _close():
+            _save_placement(key, widget)
+            try:
+                widget.destroy()
+            except Exception:
+                pass
+
+        widget.protocol("WM_DELETE_WINDOW", _close)
+    except Exception:
+        pass
+
+
 def _save_placement(key: str, widget):
     """Persist a window's geometry into General.<key> blob."""
     try:
@@ -1116,7 +1149,7 @@ class App:
         w = tk.Toplevel(self.root)
         w.title("Options")
         w.configure(bg=_COLORS["back"])
-        w.geometry("560x420")
+        _place_aux(w, "WindowOptionsPlacement", "560x420")
         left = tk.Listbox(w, width=14, height=20, bg=_COLORS["back"],
                           fg=_COLORS["text"])
         left.pack(side="left", fill="y", padx=8, pady=8)
@@ -2059,7 +2092,7 @@ class App:
         w = tk.Toplevel(self.root)
         w.title("History")
         w.configure(bg=_COLORS["back"])
-        w.geometry("500x280")
+        _place_aux(w, "WindowHistoryPlacement", "500x280")
         tv = ttk.Treeview(w, columns=("svc",), show="tree headings",
                           height=12)
         tv.heading("#0", text="Translation")
@@ -2136,7 +2169,7 @@ class App:
         w = tk.Toplevel(self.root)
         w.title("Dictionary")
         w.configure(bg=_COLORS["back"])
-        w.geometry("640x460")
+        _place_aux(w, "WindowDictionaryPlacement", "640x460")
         frm = tk.Frame(w, bg=_COLORS["back"])
         frm.pack(fill="x", padx=8, pady=8)
         tk.Label(frm, text="Word:", bg=_COLORS["back"],
@@ -2370,6 +2403,7 @@ class App:
         w = tk.Toplevel(self.root)
         w.title("Virtual keyboard")
         w.configure(bg=_COLORS["back"])
+        _place_aux(w, "WindowKeyboardPlacement", "308x102")
         w.attributes("-topmost", True)
         try:
             from qtranslate import config as _C
