@@ -3850,7 +3850,9 @@ def show_popup(source, result, service="google", target="vi"):
     win.overrideredirect(True)
     try:
         from qtranslate.theme import load_theme, window_colors
-        _pc = window_colors(load_theme("Flat Dark"))
+        from qtranslate import config as _C
+        _tn = _C.load().get("Appearance", {}).get("ThemeName", "")
+        _pc = window_colors(load_theme(_tn or "Flat Dark"))
     except Exception:
         _pc = _COLORS
     win.configure(bg=_pc.get("border", "#7a7a7a"))
