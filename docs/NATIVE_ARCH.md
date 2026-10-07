@@ -72,7 +72,7 @@ Appearance, Advanced, Updates, Exceptions.
 
 | ID | Title | Content | Port status |
 |---|---|---|---|
-| 129 | QTranslate (main) | source/result panes, lang row, strip | 1:1 (placement blob, help.txt, ServicesOrder) |
+| 129 | QTranslate (main, 340x201, 17 ctls) | RichEdit 1017/1018, combos 1001/1002, swap 1015, Translate 1004, New 1021, menu 1022, Fav 1029, Speech-radio 1030, Play 1027/1028, help 1009, separators 1134/1135, Dl strip 108 | 1:1 (placement blob, help.txt, ServicesOrder) |
 | 133 | About | 2 SysLinks + OK | dedicated window |
 | 154 | Options | 9-page frame + OK/Cancel(snapshot)/Apply | 9/9 live on Options.json |
 | 162 | Virtual keyboard | empty (keys drawn dynamic) | 3 rows + JCUKEN per LanguageKeyboard |
