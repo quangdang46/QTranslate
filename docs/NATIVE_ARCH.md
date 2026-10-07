@@ -265,6 +265,9 @@ Each user action = a `Task` object posted to a worker thread:
   (`FUN_00450C50`) → forward class+app to parent via `SendMessageW(0)`.
   This is the "pick a window" tool behind `PageExceptions` ("drag to add
   an app/class to the blocklist").
+- **`FUN_0040E961` = highlight toggle**: `GetWindowDC` + `SetROP2(R2_NOTXORPEN)`
+  + 3px pen `Rectangle` — XOR draw means calling it twice on the same window
+  erases the highlight (why the tracker calls it on both old and new).
 
 ## Clipboard viewer chain (decompiled)
 
