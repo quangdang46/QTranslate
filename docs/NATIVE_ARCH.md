@@ -1125,8 +1125,10 @@ Each user action = a `Task` object posted to a worker thread:
   `/download`) via `FUN_00450B17` ShellExecute wrapper — About-dialog
   homepage links.
 - **`FUN_00411DEB` = MainWindow proc** (`__thiscall`): `WM_CREATE (0x110)` →
-  full init (`FUN_00401530`); `WM_DESTROY (2)` → teardown (kill timer,
-  unregister pretranslate, detach); `WM_COMMAND (0x111)` → button/menu
+  full init (`FUN_00401530`); `WM_DESTROY (2)` → teardown
+  (`FUN_0040160f`: scroll-offset 0, kill 50ms timer, unregister
+  pretranslate `FUN_00455024`, erase-by-id `FUN_004012ac`, detach);
+  `WM_COMMAND (0x111)` → button/menu
   dispatch; `WM_NOTIFY (0x4E)` → list/tree events (`FUN_00401675`);
   `WM_MOUSEWHEEL (0x20A)` scroll (`FUN_00401870` step@0x8c /
   `FUN_0040145d` step@0x44: wheel-delta/120 * step, two contexts)
