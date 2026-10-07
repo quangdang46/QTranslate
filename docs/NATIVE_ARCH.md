@@ -1090,6 +1090,9 @@ Each user action = a `Task` object posted to a worker thread:
 
 ## Tray icon + layout keys (decompiled)
 
+- **`FUN_0041E45F` = element read twin** (`__thiscall`,
+  bounds-checked, fail-fast): same shape as `FUN_0041E5D5` — vector
+  indexing split across two twins for different element sizes.
 - **`FUN_00462F8E` = mode lookup** (`__thiscall`): linear scan matching
   both strings (`FUN_00401FC2` ×2, `FUN_0041E45F` element read) —
   `0xFFFFFFFF` when absent. Backs both enable variants.
