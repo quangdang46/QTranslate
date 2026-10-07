@@ -3133,9 +3133,41 @@ def _consume_crash_reports():
         pass
 
 
+def _install_crash_hook():
+    """Unhandled-exception filter: append a type==2 entry to
+    Exceptions.json so the next launch reports it once (native
+    minidump-writer equivalent; no dump, just the traceback)."""
+    import sys as _sys
+    import traceback as _tb
+
+    def _hook(typ, val, tb):
+        try:
+            from qtranslate import config as _C
+            import json as _j
+            import os as _o
+            _p = _o.path.join(_o.path.dirname(_C.DEFAULT_PATH),
+                              "Exceptions.json")
+            try:
+                entries = _j.load(open(_p, encoding="utf-8"))
+            except Exception:
+                entries = []
+            entries.append({"type": 2,
+                            "path": "".join(
+                                _tb.format_exception(typ, val,
+                                                     tb))[-2000:]})
+            open(_p, "w", encoding="utf-8").write(
+                _j.dumps(entries, ensure_ascii=False))
+        except Exception:
+            pass
+        _sys.__excepthook__(typ, val, tb)
+
+    _sys.excepthook = _hook
+
+
 def main():
     _seed_service_options()
     _consume_crash_reports()
+    _install_crash_hook()
     root = tk.Tk()
     app = App(root)
     # MainWindowStartupAction (0=normal, 1=minimized, 2=tray) +
