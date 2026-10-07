@@ -1132,7 +1132,9 @@ Each user action = a `Task` object posted to a worker thread:
   vs content height, InvalidateRect; Tk Listbox/Treeview scroll
   natively so no port needed; dirty flag re-arms the 50ms timer
   (`FUN_00401481`); reset = offset 0 + timer restart
-  (`FUN_00401426`). Sibling popup procs share the shape.
+  (`FUN_00401426`); measure = DrawText CALCRECT full-text height
+  (@0x28) + single-line height (@0x44) then clamp
+  (`FUN_00401343`). Sibling popup procs share the shape.
 
 ## Popup positioning (decompiled)
 
