@@ -2039,16 +2039,25 @@ class App:
                         cap.destroy()
                         return "break"
                     mods = 0
-                    # state bits: Shift=0x1, CapsLock ignored,
-                    # Control=0x4, Alt/Mod1=0x8|0x20000..., Win/Mod4
+                    # Tk state bits: Shift=0x1, Control=0x4,
+                    # Alt/Mod1=0x8, Win/Mod4=0x40. Native mod bits
+                    # (FUN_00405A17): 1=Alt, 2=Ctrl, 4=Shift, 8=Win.
                     if e.state & 0x1:
                         mods |= 4
                     if e.state & 0x4:
                         mods |= 2
                     if e.state & 0x8:
                         mods |= 1
+                    if e.state & 0x40:
+                        mods |= 8
                     try:
-                        vk = e.keycode & 0xFF
+                        # keysym for letters (layout-independent like
+                        # MapVirtualKeyW); fall back to keycode.
+                        _ks = (e.keysym or "")
+                        if len(_ks) == 1:
+                            vk = ord(_ks.upper()) & 0xFF
+                        else:
+                            vk = e.keycode & 0xFF
                     except Exception:
                         vk = 0
                     code = (vk | (mods << 8)) or 0
