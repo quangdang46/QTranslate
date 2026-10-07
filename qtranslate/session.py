@@ -10,10 +10,27 @@ import urllib.request
 _UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
 
-def _get(url: str) -> str:
+def _jar_opener():
+    """Shared cookie-jar opener — mirrors native libcurl cookie engine.
+
+    Decompiled finding (FUN_00465A92): cookie *values* are set by the service
+    JS itself via addOption() from prior page loads inside the same engine,
+    i.e. cookies accumulate in one jar across scrape + translate calls.
+    Our earlier failure used a fresh jar per call; this shares one.
+    """
+    import http.cookiejar
+    jar = http.cookiejar.CookieJar()
+    return urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+
+
+def _get(url: str, opener=None) -> str:
     req = urllib.request.Request(url, headers=_UA)
-    with urllib.request.urlopen(req, timeout=20) as r:
-        return r.read().decode("utf-8", errors="replace")
+    with (opener or urllib.request).open(req, timeout=20) as r:
+        data = r.read()
+        try:
+            return data.decode("utf-8")
+        except UnicodeDecodeError:
+            return data.decode("utf-8", errors="replace")
 
 
 def bing_session() -> dict:
@@ -23,8 +40,9 @@ def bing_session() -> dict:
     on the translator page response (verified live 2026-10-07) — anonymous
     (no-cookie) calls are rejected, unlike the gtx-era behaviour.
     """
+    opener = _jar_opener()
     req = urllib.request.Request("https://www.bing.com/translator", headers=_UA)
-    with urllib.request.urlopen(req, timeout=20) as r:
+    with opener.open(req, timeout=20) as r:
         html = r.read().decode("utf-8", errors="replace")
         set_cookie = r.headers.get_all("Set-Cookie") or []
     cookie = "; ".join(c.split(";")[0] for c in set_cookie)
@@ -40,7 +58,37 @@ def bing_session() -> dict:
         "token": abuse.group(2),
         "cookie": cookie,
         "iid": iid.group(1) if iid else "translator.5023.3",
+        "opener": opener,  # reuse: same cookie jar for the translate call
     }
+
+
+def bing_translate(text: str, sl: str = "en", tl: str = "vi") -> str:
+    """End-to-end Microsoft translate sharing one cookie jar (native-like).
+
+    Scrape + translate through the SAME opener so engine-set cookies
+    (MUID/_EDGE_*) persist — this is what plain per-call urllib missed.
+    """
+    import json
+    import urllib.parse
+    s = bing_session()
+    path = ("/ttranslatev3?isVertical=1&IG={}&IID={}"
+            .format(s["IG"], s["iid"]))
+    body = ("text={}&fromLang={}&to={}&token={}&key={}"
+            "&tryFetchingGenderDebiasedTranslations=true").format(
+        urllib.parse.quote(text[:1000], safe=""), sl, tl,
+        s["token"], s["key"])
+    req = urllib.request.Request(
+        "https://www.bing.com" + path, data=body.encode(),
+        headers={**_UA,
+                 "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
+                 "Origin": "https://www.bing.com",
+                 "Referer": "https://www.bing.com/translator"})
+    with s["opener"].open(req, timeout=20) as r:
+        obj = json.loads(r.read().decode("utf-8"))
+    try:
+        return obj[0]["translations"][0]["text"]
+    except (KeyError, IndexError, TypeError):
+        return ""
 
 
 def promt_session() -> dict:
