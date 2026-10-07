@@ -547,7 +547,8 @@ class App:
         self.src = tk.Text(srcfrm, height=12, wrap="word", bg="white",
                            fg="black", insertbackground="black",
                            font=_pane_font(), borderwidth=0,
-                           highlightthickness=0)
+                           highlightthickness=0, undo=True,
+                           maxundo=100)
         self.src.pack(side="left", fill="x", expand=True)
         self.src.insert("1.0", self.default_source_text())
         self.src.bind("<KeyRelease>", lambda e: self.on_type())
@@ -601,7 +602,8 @@ class App:
         self.out = tk.Text(outfrm, height=6, wrap="word", bg="white",
                            fg="black", insertbackground="black",
                            font=_pane_font(), borderwidth=0,
-                           highlightthickness=0)
+                           highlightthickness=0, undo=True,
+                           maxundo=100)
         self.out.pack(side="left", fill="both", expand=True)
         self.out.bind("<Button-3>", self.show_result_menu)
         outside = tk.Frame(outfrm, bg="white")
