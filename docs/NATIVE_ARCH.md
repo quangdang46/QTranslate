@@ -1428,7 +1428,11 @@ Each user action = a `Task` object posted to a worker thread:
   `PromtCookie/PromtXsrf/PromtPaft`, `LanguageCode` — string refs at
   `0045F88D`…`0045FB9F`). Name resolution through a string hash-map
   (`FUN_00460E15` lookup). `qtranslate/session.py` reproduces the *values*
-  side of this bridge by scraping provider pages.
+  side of this bridge by scraping provider pages. Bing `data-iid`
+  drift (2026-10-08): page now serves `translator.5023/5024/5026`
+  (was `translator.5023.3`) — `session.py` scrapes live; standalone
+  `tlookupv3` dictionary returns 401 on every IID/header combo while
+  `ttranslatev3` on the same session stays 200 (endpoint retired).
 - **`GoogleTkk` seed pipeline = `FUN_0040FB54` → `FUN_0040FEC9`** (correction
   to the earlier note): the *native* side fetches the seed itself —
   GET `https://translate.google.<PreferredDomain>/translate_a/element.js`,
