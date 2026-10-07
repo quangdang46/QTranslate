@@ -824,7 +824,9 @@ Each user action = a `Task` object posted to a worker thread:
 - **`InstantTranslation` flag** (options only, `FUN_004561F0`/`FUN_0045869F`
   save/load refs): when on, the 50ms debounce timer (`FUN_00401530`) fires
   translate on every keystroke instead of waiting for Ctrl+Enter — no
-  separate code path, just the timer armed from the edit-change notify.
+  separate code path, just the timer armed from the edit-change notify
+  (`EN_CHANGE` arrives via the MainWindow `WM_COMMAND` case in
+  `FUN_00411DEB`; no dedicated handler needed).
 - **`FUN_00401530` = main-window init**: RichEdit subclass (`0x4AE` via
   `FUN_004030AE`) + 50ms debounce `SetTimer` (IAT `0x50D498`, 10 sites:
   instant-translate delay, popup auto-hide `PopupTimeout`, OCR region
