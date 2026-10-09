@@ -118,6 +118,63 @@ renders a stray `READ MORE` button on a JS-less host. But it is a divergence,
 and it is the one that keeps the port from being a faithful port if a JS engine
 is ever attached.
 
+### 2a. The header's two slots — settled, not guessed
+
+`%s%s` in the header is **two** arguments, and the first is the **service icon**.
+Settled from `FUN_004253cc`'s own dataflow rather than inferred from `Service.ico`'s
+existence:
+
+```c
+FUN_004023f1(&local_8c, L"<img src=\"%s\" style=\"vertical-align: middle\"></img>&nbsp;");   // slot 1
+if (has home page && ...) {
+    FUN_004023f1(&local_78, L"<a href=\"%s\" class=\"qt-link-browser\" title=\"Open in browser\">%s</a>");
+} else {
+    FUN_00401ec9(&local_78, piVar2);                                                          // slot 2 = bare title
+}
+```
+
+`local_8c` (icon html) is built first, `local_78` (link-or-title) second, and
+the card format consumes them in that order. The icon's own `%s` is
+`"file:///%s"` over `<config>/Services/<name>/Service.ico` when that file
+exists, or a default when it does not — the same service-directory derivation
+the plugin loader performs in `PLUGIN_LOADER_FOUND_2026-10-10.md`.
+
+The **argument count is confirmed, not counted**: after the call the code does
+`ADD ESP,0x2c` = 44 bytes = destination + format + **9 varargs**, exactly
+matching the 9 specifiers. So nothing is unaccounted for and the header really
+does take two strings.
+
+The port emits one (`{title}`), so it fills slot 2 and leaves slot 1 empty, and
+never emits the browser link. That is a measured gap, recorded in the code so it
+cannot be mistaken for fidelity.
+
+### 2b. `No results found for '%s'.` — native has it, the port does not
+
+A native string at file offset **`0x11dbc8`** (26 chars, VA `0x51ebc8`),
+referenced exactly once, from `FUN_00451dbd`. That function is a **fallback
+formatter**: it returns the definition when one exists and
+`L"No results found for '%s'."` otherwise.
+
+It is driven by `FUN_00425767`, the dictionary pane's state machine:
+
+```c
+if (*(int *)(param_1 + 0x180) == 0) {          // ZERO results
+    ... get the document, get the query word ...
+    FUN_00451dbd(&local_14);                    // "No results found for '%s'."
+    ... substitute, then (**(vtab+0x104))(doc, word, msg);
+}
+else if (*(int *)(param_1 + 0x180) == 1) { ... }
+```
+
+So the empty-result message is a **pane state** keyed on the card counter at
+`+0x180` (the same counter that gates `showNavigation()`), with the query word
+substituted in. It is not part of `render_cards()`.
+
+The port has **nothing** for it: `DR.render_cards([])` produces zero cards, an
+empty `qt-content` div, and no message. `app.py:3546` writes `[empty]` into the
+Text widget — a different string, in a different layer, which is why the gap is
+easy to miss.
+
 **These are all in the dead path anyway** — `app.py:3534` builds the page and
 never renders it (`DICT_TEMPLATE_UNRENDERED_2026-10-10.md`, independently
 confirmed by qtranslate-ed). So none of the four is user-visible today. That is

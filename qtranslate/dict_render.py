@@ -22,14 +22,43 @@ def render_cards(results: list) -> str:
     cards = []
     menu_calls = []
     for i, (sid, title, frag) in enumerate(results):
+        # Card markup is native FUN_004253cc's format string, verbatim
+        # (docs/review/DICT_CARD_BUILDER_2026-10-10.md): one wide literal at
+        # file offset 0x11d8f0, 297 chars / 594 bytes, with NINE substitutions
+        # in order:  %u %u %u | %s %s | %u %u %u | %s
+        #              s   h   t    icon title   d   l   full   frag
+        # The four things a port most easily gets wrong are pinned here:
+        #   ondblclick, not onclick, on the header
+        #   onselectstart="return false;" on the header
+        #   qt-l is an <input type="button"> reading "READ MORE", not an <a>
+        #   no inline display:none -- native lets checkEntry decide
+        #
+        # KNOWN GAP, now measured rather than guessed. Native's header is TWO
+        # substitution slots, "%s%s", and the port emits only the title:
+        #   slot 1 = the service icon, as
+        #          <img src="%s" style="vertical-align: middle"></img>&nbsp;
+        #          whose %s is "file:///%s" over <config>/Services/<name>/
+        #          Service.ico, or a default when that file is absent
+        #   slot 2 = <a href="%s" class="qt-link-browser" title="Open in
+        #          browser">%s</a> when the service has a home page, else the
+        #          bare title
+        # Settled from FUN_004253cc's own dataflow: local_8c (icon html) is
+        # built first, local_78 (link-or-title) second, and the card format
+        # takes them in that order. ADD ESP,0x2c after the call confirms 9
+        # varargs for the 9 specifiers, so no argument is unaccounted for.
+        # The port leaves slot 1 empty and never emits the browser link --
+        # nothing here has an icon to put there, and inventing one would be a
+        # guess. docs/review/DICT_CARD_BUILDER_2026-10-10.md §2 records it.
         cards.append(
-            f'<div class="qt-card" id="qt-s{sid}">'
-            f'<div class="qt-header" id="qt-h{sid}" '
-            f'onclick="toggle({sid})">{_html.escape(title)}</div>'
-            f'<div class="qt-data" id="qt-d{sid}">{frag}'
-            f'<a class="qt-read-more" id="qt-l{sid}" '
-            f'href="javascript:void(0)" onclick="fullEntry({sid})" '
-            f'style="display:none">more...</a></div></div>')
+            f'<div id="qt-s{sid}" class="qt-card">'
+            f'<div id="qt-h{sid}" class="qt-header" '
+            f'ondblclick="toggle({sid});" onselectstart="return false;">'
+            f'{_html.escape(title)}</div>'
+            f'<div id="qt-d{sid}" class="qt-data">'
+            f'<input type="button" id="qt-l{sid}" '
+            f'onclick="fullEntry({sid});return false;" '
+            f'class="qt-read-more" value="READ MORE"></input>'
+            f'{frag}</div></div>')
         menu_calls.append(
             f"appendMenuItem({sid}, {title!r}, '');checkEntry({sid});")
     page = tpl.replace(
