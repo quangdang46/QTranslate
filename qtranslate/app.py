@@ -4243,6 +4243,36 @@ def show_popup(source, result, service="google", target="vi"):
     txt.insert("1.0", result)
     txt.config(state="disabled")
 
+    # Appearance.PopupIcons bitmask (native checkboxes 1138-1141):
+    # 2=dict, 4=listen-text, 8=copy, 16=replace. Render an icon row for
+    # whichever bits are set (default 30 = all).
+    try:
+        from qtranslate import config as _CPI
+        _icons = int(_CPI.load().get("Appearance", {}).get(
+            "PopupIcons", 30))
+    except Exception:
+        _icons = 30
+    # Native popup is button-less (borderless; interaction is click-drag /
+    # double-click-header / Esc only -- see ui_match "popup-no-buttons").
+    # PopupIcons therefore renders as a passive indicator row (Label, not
+    # Button) reflecting which icons the user enabled; it does not add new
+    # clickable affordances the native popup never had.
+    if _icons:
+        bar = tk.Frame(inner, bg=_pc.get("back", "#f0f0f0"))
+        bar.pack(fill="x", padx=4, pady=(0, 4))
+        _glyphs = []
+        if _icons & 2:
+            _glyphs.append("\U0001F4D6")  # dictionary
+        if _icons & 4:
+            _glyphs.append("\U0001F50A")  # listen
+        if _icons & 8:
+            _glyphs.append("\U0001F4CB")  # copy
+        if _icons & 16:
+            _glyphs.append("↻")      # replace
+        for g in _glyphs:
+            tk.Label(bar, text=g, bg=_pc.get("back", "#f0f0f0"),
+                     fg=_pc.get("text", "#000000")).pack(side="left", padx=1)
+
     def _to_main(_e=None):
         # Native: double-clicking the popup header shows the EXISTING main
         # window with the current text. (Previously this created a second
