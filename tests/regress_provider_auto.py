@@ -7,9 +7,11 @@ silently defeated native auto-detection for that provider.
 
 Offline: _bing_tr is monkey-patched to capture the args it receives.
 """
+import os
 import sys
 
-sys.path.insert(0, "C:/Users/ADMIN/qtranslate-re")
+sys.path.insert(0, os.path.dirname(os.path.dirname(
+                       os.path.abspath(__file__))))
 
 import qtranslate.app as app  # noqa: E402
 

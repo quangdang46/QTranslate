@@ -579,6 +579,23 @@ def do_translate(service, text, target, src="auto", auto_detect=False,
                     out += f"\n\n--- back-translation ---\n{back}"
             except Exception:
                 pass
+        # J7 — read-phonetically. FUN_0042ED3F appends
+        # "\r\r" + string-resource 186 + entry[5] to the result pane when
+        # General.ReadPhonetically is on. Our phonetics source is Google's
+        # `dt=rm` romanization (see `google_translate._translate_response`);
+        # other providers supply none, exactly as the native per-provider
+        # JS service handling does. Gate 1 (`"<Error>"` absent) is the
+        # success test, so the append never lands on an error result.
+        try:
+            from qtranslate import phonetics as _PH
+            from qtranslate.services import google_translate as _GT
+            from qtranslate import config as _C2   # not the narrow _C above
+            if service == "google":
+                out = _PH.append_phonetics(
+                    out, _GT.get_romanization(),
+                    enabled=_PH.phonetics_enabled(_C2.load()))
+        except Exception:
+            pass
         return out
     except Exception:
         return _T("Strings", 190,
@@ -1241,8 +1258,13 @@ class App:
                           command=_toggle_backtr)
 
         def _toggle_phonetic():
-            # ReadPhonetically (menu Id 1/50): kept as flag; Google
-            # TTS has no phonetic mode (documented, no-op for TTS).
+            # ReadPhonetically (menu Id 1/50). FUN_0042ED3F consumes it to
+            # append "\r\r" + "Romanization: " + entry[5] to the RESULT
+            # PANE when the phonetics field is non-empty (J7) — the flag is
+            # not a TTS control, though the earlier "no-op for TTS" note
+            # implied that. do_translate applies the append for Google,
+            # whose `dt=rm` response fills the phonetics field; providers
+            # that return no romanization get no append, as natively.
             try:
                 from qtranslate import config as _C
                 import json as _j

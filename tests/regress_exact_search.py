@@ -11,9 +11,11 @@ Native evidence (traced 2026-10-09):
 This test covers the port's flag plumbing only (offline). The exact native
 index algorithm is INFERRED; only exact-vs-broader is evidence-backed.
 """
+import os
 import sys
 
-sys.path.insert(0, "C:/Users/ADMIN/qtranslate-re")
+sys.path.insert(0, os.path.dirname(os.path.dirname(
+                       os.path.abspath(__file__))))
 
 from qtranslate import xdxf  # noqa: E402
 

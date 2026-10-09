@@ -3,6 +3,113 @@
 All entries are clean-room RE of QTranslate 6.10.0 for education.
 `LIVE-OK` = verified against the real provider endpoint.
 
+## Common.js framework layer gets its first tests; J6 dependency recorded (2026-10-10)
+
+- **`tests/regress_common_framework.py` (73 checks) — the framework layer had
+  zero coverage.** `qtranslate/common.py` is the port's substitute for native's
+  JS engine (F2: `CLSID_JScript` via IActiveScript). Every service port calls
+  these helpers, and `smoke_dict.py` — the only file importing the module —
+  exercises dictionary paths, not them. A regression in `stringFindSub`,
+  `removeElements` or `updateHtmlLinks` was invisible. Now pinned: `addOption`/
+  `Options` (F7/F8), `stringFind`/`stringSplit`/`stringFindSub` (the E21/F12
+  tkk slicer), `trim`/`startsWith`/`endsWith`, `unquoteHtml`,
+  `removeEmptyLines`, `stripHtml`, `updateHtmlLinks`, the tag/attribute/element
+  strippers, the language index↔code mapping, the `MAX_URI_LEN` encoders, the
+  header builders, and the `NL`/`NL2` constants.
+- **The suite found no bugs — and that result is recorded, not claimed as a
+  fix.** Three assertions initially failed and all three turned out to be *my*
+  wrong expectations, each checked against `node` before being changed:
+  JS `"a1b22c".split(/\d+/)` is `['a','b','c']` (greedy `+` consumes the run);
+  `stringFindSub` with a *string* start matches literally, so
+  `r"k=\d+"` is not a regex; and a regex start with `from_start=false`
+  skips `f[0]` (the whole match), not the capture group. In every case the port
+  already matched JS. Noted because "I wrote a test, it failed, I fixed the
+  test" is exactly the shape that can quietly hide a real bug.
+- **F2's row can never claim a JS engine, only a hand port.** It now says what
+  `ported` means there: the same host-side surface, tested. F13 stays
+  `not-started` as a **documented architectural divergence** — the Extension
+  SDK contract is a Python class (`EXTENSION_SDK.md` §5), so there is no engine
+  to port. `ARCHITECTURE.md:137` already calls `common.py` the shim.
+- **J6 — the FLAC encoder is not QTranslate's code, and the gap is a
+  dependency.** The recovered PE contains `reference libFLAC 1.2.1 20070917`
+  (`.rdata` file `0x12d220`), 69 `FLAC__*` enum names and `"fLaC"` at
+  `0x123310` (RVA `0x524310`) — a **statically linked libFLAC 1.2.1**. So
+  "porting the encoder" means vendoring libFLAC or reimplementing
+  partitioned-rice coding. Python's stdlib has no FLAC path and
+  `requirements.txt` adds none, so this is a **product decision**, not RE
+  work; the row keeps `not-started` with that reason instead of a silent
+  `ported`. J5's `audio/x-flac` upload cannot be exercised without it.
+- **Ghidra MCP is down — no JDK on this host.** `docs/review/GHIDRA_MCP_UNAVAILABLE_2026-10-10.md`.
+  The bridge process is alive but the `:8080` server is gone, and
+  `analyzeHeadless` cannot restart it (`Unable to locate a Java Runtime`; no
+  JDK on the machine, `/usr/bin/java` is the macOS stub). The Ghidra install
+  and the 3812-function `QT_REAL.rep` are intact. Not an install-permission
+  decision I made silently. Raw-PE analysis still works and is how J6 was
+  closed; new decompiles need a host with a JDK.
+- Rows C3, C8, C10, F2, F13, J6, J7 reconciled; tally regenerated. **4
+  `not-started` remain and all four are legitimate non-work**: C10 (proven
+  negative), F13 (divergence), G9 (needs a screenshot), J6 (needs a
+  dependency). `not-started` 7 → 4, `ported` 125. **Gate unchanged:
+  BLOCKED (1), on G9.**
+
+## J7 read-phonetically implemented; Google romanization parse bug fixed (2026-10-10)
+
+- **J7 — the port already had the data and was throwing it away.**
+  `docs/review/J7_PHONETICS_NATIVE_2026-10-10.md` §4: `translate()` has requested
+  `&dt=rm` since the first 1:1 port (commit `3d9da8d`), and
+  `_translate_response` has parsed a 4th return value since then — but
+  `translate()` discarded it with `b, _, _, _ = …`. So the "missing piece" the
+  earlier draft of that note claimed (a phonetics channel) was **one
+  unsubscribe**, not new machinery. The correction is recorded in place rather
+  than deleted, because the wrong version — "no provider produces a phonetics
+  field" — is the more plausible-sounding one.
+- **A real parse bug, live-verified: the romanization is at index 3, not 2.**
+  `_translate_response` read `g = e[2]`; index 2 is always `null` on the
+  romanization segment. Live payload for `client=gtx&sl=zh-CN&tl=en&dt=t&dt=rm`
+  on `你好`:
+  `[[["Hello","你好",null,null,10],[null,null,null,"Nǐ hǎo"]]]`.
+  Isolated by `dt`: `dt=rm` alone yields exactly that one segment, `dt=t` alone
+  yields none. Reproduced for zh-CN/ko/ja/ru against the live endpoint
+  (`Nǐ hǎo`/`annyeonghaseyo`/`Kon'nichiwa`/`Privet`). Because the value was
+  discarded the wrong slot read cost nothing until the append was wired —
+  which is why it survived.
+- **Implemented:** `qtranslate/phonetics.py` (`append_phonetics`, all three
+  gates), wired into `app.py:do_translate`, sourced from
+  `google_translate.get_romanization()`. Gates, from the decompile of
+  `FUN_0042ED3F`: phonetics non-empty **AND** `General.ReadPhonetically`
+  (`DAT_00549414`) **AND** `FUN_00403897` = `"<Error>"` **absent** from the
+  result — so the append lands on a *successful* translation only. The three
+  literals are measured, not chosen: `"\r\r"` `0x12184c`,
+  `"Romanization: "` (RT_STRING **186**) `0x158c00`, `"<Error>"` `0x121af0`.
+  The native label is used verbatim — unlike
+  `--- back-translation ---` (a port invention, absent from the binary).
+- **Two defects found in my own wiring while reviewing it, both fixed.**
+  (1) `do_translate`'s phonetics block reused `_C`, which is bound by a
+  *different, narrower* `try` at the top of the function — when that import
+  fails the phonetics block would raise `NameError` and be swallowed by its
+  own `except`, working only by luck. It now imports its own `_C2`.
+  (2) The 429 `dict-chrome-ex` fallback in `translate()` returns without
+  touching the romanization slot, so a **previous** call's value could be
+  appended to the fallback's result. It now clears the slot (that path sends
+  no `dt=rm`, so it genuinely has no romanization). Pinned by
+  `tests/regress_google_romanization.py`.
+- **The `ReadPhonetically` toggle is no longer inert.** Its old docstring
+  ("kept as flag; Google TTS has no phonetic mode — no-op for TTS") had a
+  correct premise and a wrong conclusion: native's consumer is the result
+  pane, not TTS. The comment now says so.
+- **Per-provider honesty:** `dt=rm` is Google-specific. Google translate +
+  flag on appends `\r\rRomanization: Nǐ hǎo`; every other provider appends
+  nothing, as natively. Suite: `tests/regress_google_romanization.py`
+  (19 checks; `--live` re-fetches the four languages).
+- **Recorded stopgap, not a design claim:** the romanization reaches the
+  render path through module state because the `_t_*` contract is a bare
+  `str` and `ResponseData` (`common.py:62`) has no phonetics field. Moving it
+  onto the `TranslationRequest`/`Result` value object is Phase 5
+  (`ARCHITECTURE.md` §3.1) — the reason the current wiring is not a claim of
+  1:1 fidelity.
+- J7 checklist row `not-started` → `ported` with the in-row evidence. **Gate
+  state unchanged: BLOCKED (1), on G9 only.**
+
 ## Native-artifact recovery + tkk/cursor capture verified from the binary (2026-10-10)
 
 - **The native binary was recoverable, not absent.** The only PE on disk was an

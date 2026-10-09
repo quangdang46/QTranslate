@@ -4,9 +4,11 @@ Native evidence: FUN_004434FE (rev 2026-10-09) builds both endpoints; the key
 literal and every query parameter is byte-verified from the binary. Pair id
 is random (FUN_00443b9a). Offline only -- no network.
 """
+import os
 import sys
 
-sys.path.insert(0, "C:/Users/ADMIN/qtranslate-re")
+sys.path.insert(0, os.path.dirname(os.path.dirname(
+                       os.path.abspath(__file__))))
 
 from qtranslate import speech_input as S  # noqa: E402
 

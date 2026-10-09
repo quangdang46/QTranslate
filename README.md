@@ -26,20 +26,22 @@ python -I start_app.py
 ```
 
 > **Running the test suites.** `python -I` (isolated mode) strips the current
-> directory from `sys.path`, so it only works for the suites that add the repo
-> root relative to their own file (`regress_tkk_markers.py`,
-> `regress_mouse_capture.py`, `regress_reliability.py`). The older suites
-> bootstrap `sys.path.insert(0, ".")` — which `-I` discards — or a hardcoded
-> `C:/Users/ADMIN/qtranslate-re`, so on macOS they need the repo root on the path
-> and an interpreter that has `_tkinter` (system `python3` on macOS often does
-> not):
+> directory from `sys.path`. Every suite now bootstraps the repo root relative
+> to its own file, so `python -I tests/<suite>.py` works from any directory.
 >
-> ```bash
-> PYTHONPATH=. python3 tests/regress_enable_history.py
-> ```
+> Two failures are environmental, not test failures:
 >
-> That is a packaging wart in those 9 files, not a failure of the code under
-> test; the commands above are documented here so exit codes are not misread.
+> - **`No module named '_tkinter'`** — the `tkinter`-importing suites
+>   (`ui_match.py`, `smoke_dict.py`, and the regress suites that import
+>   `qtranslate.app`) cannot run on a Python built without Tcl/Tk. On macOS
+>   use a Homebrew `python@3.x`; system `python3` typically lacks it.
+> - **A Windows `%APPDATA%` path** — `smoke_dict.py` looks for
+>   `~/AppData/Roaming/QTranslate/Options.json`, which only exists on Windows.
+>
+> The suites that hardcoded `sys.path.insert(0, "C:/Users/ADMIN/qtranslate-re")`
+> (10 files, the original Windows-authored set) were converted to the
+> `os.path.dirname(os.path.dirname(os.path.abspath(__file__)))` form on
+> 2026-10-10; the `PYTHONPATH=. python3 …` workaround is no longer needed.
 
 ## Test suites (last run 2026-10-08 — historical snapshot)
 

@@ -5,9 +5,11 @@ instead of the native "]}" (which closes both the "trs" array and the
 enclosing {"src":..,"trs":..} object), making the whole export invalid JSON.
 Also checks the CSV column order [a,c,b,e,d] and the TXT framing.
 """
+import os
 import sys
 
-sys.path.insert(0, "C:/Users/ADMIN/qtranslate-re")
+sys.path.insert(0, os.path.dirname(os.path.dirname(
+                       os.path.abspath(__file__))))
 
 import json  # noqa: E402
 

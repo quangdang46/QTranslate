@@ -163,7 +163,26 @@ def detect(text: str):
 
 
 def _translate_response(obj, sl, tl):
-    """Port of serviceTranslateResponse (translation + dt=bd dict branch)."""
+    """Port of serviceTranslateResponse (translation + dt=bd dict branch).
+
+    Returns `(translation, sl, tl, romanization)`. The 4th value is the
+    `dt=rm` romanization — J7's phonetics source — which `translate()`
+    requests and this parser has read since the first 1:1 port, but which
+    the caller discarded until now.
+
+    The slot is **index 3**, not index 2. Live shape for
+    `client=gtx&sl=zh-CN&tl=en&dt=t&dt=rm` on `你好` (fetched 2026-10-10):
+
+    ```json
+    [[["Hello","你好",null,null,10],
+      [null,null,null,"Nǐ hǎo"]]]
+    ```
+
+    Index 2 is `null` on the romanization segment; index 3 carries the
+    string. Verified against the live endpoint for zh/ko/ja/ru and by
+    isolating the `dt` values: `dt=rm` alone yields exactly one segment
+    `[null,null,null,"Nǐ hǎo"]`, `dt=t` alone yields none.
+    """
     from qtranslate.common import UNKNOWN_LANGUAGE
     b = ""
     g = ""
@@ -173,8 +192,9 @@ def _translate_response(obj, sl, tl):
             for d, e in enumerate(f):
                 if e and len(e):
                     b += e[0] or ""
-                    if len(e) > 2 and d == len(f) - 1:
-                        g = e[2] or ""
+                    # native reads the romanization slot off the LAST segment
+                    if d == len(f) - 1 and len(e) > 3:
+                        g = e[3] or ""
         if len(obj) > 1 and obj[1]:
             for e in obj[1]:
                 if e and len(e) >= 3:
@@ -249,6 +269,28 @@ def refresh_tkk(force: bool = False) -> str:
     return tkk
 
 
+# ------------------------------------------------------------------ J7
+# dt=rm romanization from the last translate() call — the phonetics field
+# for `qtranslate/phonetics.py` (J7, FUN_0042ED3F's `entry[5]`).
+#
+# It lives here, as module state, only because the `_t_*` adapter contract
+# is a bare `str`. Native carries it in the result struct at index 5; our
+# `ResponseData` (common.py) has no such field, which is Phase 5 work
+# (ARCHITECTURE.md §3.1 — TranslationRequest/Result value object).
+# A list so the setter needs no `global` and tests can reset it.
+_ROMANIZATION = [""]
+
+
+def set_romanization(value: str | None) -> None:
+    """Record the `dt=rm` romanization for the render path."""
+    _ROMANIZATION[0] = value or ""
+
+
+def get_romanization() -> str:
+    """The last romanization seen ("" when none, or after a reset)."""
+    return _ROMANIZATION[0]
+
+
 def translate(text: str, sl: str = "auto", tl: str = "en", tkk: str = "0.0") -> str:
     """Port of serviceTranslateRequest + serviceTranslateResponse.
 
@@ -278,7 +320,13 @@ def translate(text: str, sl: str = "auto", tl: str = "en", tkk: str = "0.0") -> 
     try:
         with common.http_open(req) as r:
             obj = parse_json_lenient(r.read().decode("utf-8"))
-            b, _, _, _ = _translate_response(obj, sl, tl)
+            b, _, _, g = _translate_response(obj, sl, tl)
+            # J7's phonetics source. The request has always asked for
+            # `dt=rm`, and this line has always parsed it — the value was
+            # then discarded. Kept as module state because the `_t_*`
+            # contract is a bare string; a `phonetics` field on
+            # `ResponseData` is Phase 5 (ARCHITECTURE.md §3.1).
+            set_romanization(g)
             return b
     except urllib.error.HTTPError as e:
         if e.code != 429:
@@ -287,6 +335,10 @@ def translate(text: str, sl: str = "auto", tl: str = "en", tkk: str = "0.0") -> 
           .format(sl, tl, q))
     req = urllib.request.Request(
         service_host() + fb, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+    # The dict-chrome-ex fallback sends no `dt=rm`, so it yields no
+    # romanization. Clear the slot: leaving the previous call's value here
+    # would append a stale romanization to this result.
+    set_romanization("")
     with common.http_open(req) as r:
         return _parse(parse_json_lenient(r.read().decode("utf-8")))
 

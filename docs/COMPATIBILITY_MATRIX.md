@@ -49,7 +49,7 @@ platforms it claims. Evidence column cites `file:line` where available.
 | Feature | Native evidence | Python today | Must keep | Platforms | Test | Status |
 |---|---|---|---|---|---|---|
 | Single-instance guard | `FUN_00435005`, `docs/NATIVE_ARCH.md:367` | absent | yes (bring existing window forward) | Win+mac | launch twice → one window | `analysed` |
-| Main window (DLG129, 526×366, Tahoma) | `FUN_00411DEB`, `NATIVE_ARCH.md:1086` | `app.py:634` Tk | layout + control ids | Win+mac | `ui_match` structure | `ported` |
+| Main window (DLG129, template `340×201` DU @ `MS Shell Dlg` 8pt, 17 ctls) | `FUN_00411DEB`, `NATIVE_ARCH.md:1086` | `app.py:634` Tk | layout + control ids | Win+mac | `ui_match` structure | `ported` | **corrected 2026-10-10:** earlier said `526×366, Tahoma`. `526×366` is a *runtime pixel* size from a saved `WINDOWPLACEMENT` (not the template), and the font is `MS Shell Dlg` 8pt, not Tahoma (`docs/review/G9_SPEC_NATIVE_WINDOW_2026-10-10.md`). `app.py:318` still sizes to `526x366` — template-vs-placement is a Phase 7 decision |
 | WINDOWPLACEMENT restore | `NATIVE_ARCH.md:1086` | `app.py:264-346` | yes | Win+mac | reopen → same geom | `ported` |
 | 17 global hotkeys | `FUN_00405A17`, `NATIVE_ARCH.md:677` | `app.py:3550` (`keyboard`) | all 17, from Options.json | Win ✓ / mac needs perm | registry == Options.json | `ported` |
 | Hotkey display string | `FUN_00403B48/D3C` | `config.format_hotkey` | "Double Ctrl + Q" form | Win+mac | known-answer vectors | `ported` |
@@ -152,7 +152,7 @@ recorded — a service may never quietly disappear between the two docs.
 | BASS playback | `FUN_00461642`, `NATIVE_ARCH.md:1603` | `player.py` (real bass.dll) | behavior | Win / mac(no bass.dll) | live audio | `ported` (Win) |
 | Offline TTS fallback | **no native SAPI found** — `FUN_00448BEC` is the MSXML DOMDocument engine (see `RE_PROGRESS.md` §Tensions #5) | `sapi.py` (our fallback only) | mac replacement | Win / mac | — | `ported` (Win) |
 | Slow TTS flag | `Advanced.EnableSlowerListening` | wired | yes | Win+mac | — | `ported` |
-| Read-phonetically (display) | `FUN_0042ED3F` appends `"\r\r"`+res0xBA+phonetics to the result when flag on (J7) | `layout.py`/render flag | preserve | Win+mac | — | `ported` — phonetics **display**, not TTS |
+| Read-phonetically (display) | `FUN_0042ED3F` appends `"\r\r"`+res186("Romanization: ")+`entry[5]` to the result when flag on AND `"<Error>"` absent (gate `FUN_00403897`) — an annotation on a *successful* result, never a replacement (J7) | `app.py:do_translate` → `phonetics.append_phonetics` | preserve | Win+mac | `tests/regress_phonetics.py` (35) + `tests/regress_google_romanization.py` (19, 4 live langs) | `ported` — phonetics **display**, not TTS; Google `dt=rm` only, as natively |
 | Speech input (mic → FLAC) | `FUN_0044555D`, `NATIVE_ARCH.md:1627` | `comtypes` SAPI | mac replacement | Win / mac | — | `dead:native-unavailable` |
 | OCR (ocr.space) | `OcrSpaceProvider`, `NATIVE_ARCH.md:993` | `services/ocr.py` | yes | Win+mac | endpoint smoke | `ported` |
 | OCR region select overlay | `ScreenCaptureWindow` | `app.py:3185` (`ImageGrab`) | yes | Win+mac | — | `ported` (Win) |

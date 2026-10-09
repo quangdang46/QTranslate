@@ -5,9 +5,11 @@ Native Services/*/Service.js each declare SupportedLanguages with 76 entries
 shifts every language code after the gap. Reverso was 75 (missing a trailing
 slot) until 2026-10-09.
 """
+import os
 import sys
 
-sys.path.insert(0, "C:/Users/ADMIN/qtranslate-re")
+sys.path.insert(0, os.path.dirname(os.path.dirname(
+                       os.path.abspath(__file__))))
 
 from qtranslate.services import dictionary as D  # noqa: E402
 

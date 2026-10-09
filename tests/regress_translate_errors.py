@@ -8,9 +8,11 @@ payload. The port's Promt adapter previously caught exceptions and returned
 
 Offline only: no network. Providers are monkey-patched to raise.
 """
+import os
 import sys
 
-sys.path.insert(0, "C:/Users/ADMIN/qtranslate-re")
+sys.path.insert(0, os.path.dirname(os.path.dirname(
+                       os.path.abspath(__file__))))
 
 import qtranslate.app as app  # noqa: E402
 from qtranslate.services import promt as _promt  # noqa: E402

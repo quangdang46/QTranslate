@@ -1,6 +1,8 @@
 """Regression: updater manifest parser (R2, FUN_00461ADE)."""
+import os
 import sys
-sys.path.insert(0, "C:/Users/ADMIN/qtranslate-re")
+sys.path.insert(0, os.path.dirname(os.path.dirname(
+                       os.path.abspath(__file__))))
 from qtranslate import updater as U  # noqa: E402
 fail=[]
 def ck(n,c,d=""):

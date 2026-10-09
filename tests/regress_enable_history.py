@@ -4,7 +4,8 @@ import json
 import os
 import tempfile
 
-sys.path.insert(0, "C:/Users/ADMIN/qtranslate-re")
+sys.path.insert(0, os.path.dirname(os.path.dirname(
+                       os.path.abspath(__file__))))
 
 import qtranslate.config as C  # noqa: E402
 

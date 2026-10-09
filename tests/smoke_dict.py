@@ -1,7 +1,9 @@
 """Smoke test: import every dictionary/TTS entry point (no live calls)."""
+import os
 import sys
 
-sys.path.insert(0, "C:/Users/ADMIN/qtranslate-re")
+sys.path.insert(0, os.path.dirname(os.path.dirname(
+                       os.path.abspath(__file__))))
 
 from qtranslate.services import dictionary as d  # noqa: E402
 from qtranslate import tts  # noqa: E402
