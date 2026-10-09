@@ -35,3 +35,24 @@ blocks, neither invented around:
   That is a human permission grant away, not a code defect.
 
 **No proxy baseline was created and this directory received no files.**
+
+## Attempt 2026-10-10 — BLOCKED again (both sides re-checked, unchanged)
+
+Re-verified rather than assumed, because G9 is the last open row and a
+block that has "probably" changed is exactly the kind worth re-testing:
+
+- **Native:** still `PE32 executable (GUI) Intel 80386`, and still no
+  `wine`/`wine64` on `PATH`. Unchanged — the binary cannot execute on
+  `arm64` Darwin 25.4.0.
+- **Port:** the display itself is *reachable* — under Python 3.11 (which has
+  `_tkinter`; the Homebrew 3.14 build does not) `Tk()` succeeds and reports
+  `2560x1440`. So the port can render. Capture still cannot: `screencapture -x`
+  exits 1 with `could not create image from display` and produces no file.
+  Same human permission grant as 2026-10-09.
+
+The distinction matters for how this row reads: the port-side block is not
+"no GUI" but "GUI renders, capture is denied". Nothing about that is a code
+defect, and it does not become evidence of anything by being retried.
+
+**This directory still received no files.** The G9 row stays `UNKNOWN` and
+the Gate stays `BLOCKED (1)`.

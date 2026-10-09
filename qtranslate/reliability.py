@@ -12,7 +12,9 @@ Design source: docs/RELIABILITY.md.
   §5 fallback  -> FallbackRouter (preserves the request, transparent about who
                   answered, follows ServicesOrder, skips dead providers)
   §6 health    -> HealthTracker (healthy/degraded/unavailable/unsupported)
-  §7 logs      -> Failure.log_line() + the on_event callbacks
+  §7 logs      -> Failure.log_line() + the on_event callbacks. `fell_back` is
+                  set by FallbackRouter, which is the only part that knows
+                  whether the route actually continued.
 
 No network I/O happens here: the call, the sleep and the clock are injected,
 so tests run offline and deterministically.
@@ -240,7 +242,13 @@ class Budget:
 
 @dataclasses.dataclass(frozen=True)
 class Failure:
-    """One classified provider failure, as §7 diagnostics require."""
+    """One classified provider failure, as §7 diagnostics require.
+
+    ``fell_back`` records whether the route continued past this failure to
+    another provider. §7 requires it in the log line ("whether it fell back"),
+    and only the router knows — a `Failure` on its own cannot distinguish
+    "then we tried Google" from "then we stopped".
+    """
 
     provider: str
     kind: ErrorKind
@@ -248,6 +256,7 @@ class Failure:
     detail: str = ""
     attempts: int = 1
     elapsed: float = 0.0
+    fell_back: bool = False
 
     @property
     def retryable(self) -> bool:
@@ -255,7 +264,8 @@ class Failure:
 
     def log_line(self) -> str:
         parts = [f"provider={self.provider}", f"kind={self.kind.value}",
-                 f"attempts={self.attempts}", f"elapsed={self.elapsed:.3f}s"]
+                 f"attempts={self.attempts}", f"elapsed={self.elapsed:.3f}s",
+                 "fell_back=1" if self.fell_back else "fell_back=0"]
         if self.status is not None:
             parts.append(f"status={self.status}")
         if self.detail:
@@ -474,6 +484,27 @@ class FallbackRouter:
         """A provider worth spending budget on: registered and not skippable."""
         return name in self.callables and not self.health.get(name).skippable
 
+    def _exhausted(self, requested: str | None, failures: list, budget) -> bool:
+        """True when no further provider could be tried, so nothing fell back.
+
+        Mirrors the loop's own exit conditions: a live budget, the
+        ``NETWORK_DOWN_AFTER`` consecutive-network-level stop, and at least
+        one provider left in the sequence that has not already failed.
+        """
+        if budget.expired():
+            return True
+        streak = 0
+        for prior in reversed(failures):
+            if prior.kind in NETWORK_LEVEL:
+                streak += 1
+                if streak >= self.NETWORK_DOWN_AFTER:
+                    return True
+            else:
+                break
+        remaining = [n for n in self._sequence(requested)
+                     if n not in {f.provider for f in failures}]
+        return not remaining
+
     def _sequence(self, requested: str | None) -> list:
         if requested is None:
             return [n for n in self.order if self._alive(n)]
@@ -526,6 +557,12 @@ class FallbackRouter:
                 if on_event is not None:
                     on_event(f"{name}: {outcome.kind.value} -> no fallback")
                 break
+
+            # §7: a failure is only "fell back" if another provider is actually
+            # tried after it. Look ahead rather than assume the loop continues,
+            # because the budget and NO_FALLBACK paths both end it here.
+            if not self._exhausted(requested, failures, budget):
+                failures[-1] = dataclasses.replace(failures[-1], fell_back=True)
 
             if outcome.kind in NETWORK_LEVEL:
                 network_streak += 1

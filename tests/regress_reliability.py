@@ -358,6 +358,77 @@ line = f.log_line()
 check("log line carries every §7 field",
       all(k in line for k in ("provider=bing", "kind=rate-limited", "status=429",
                               "attempts=2", "elapsed=1.250")), line)
+check("log line says whether the route fell back",
+      "fell_back=0" in line, line)
+check("fell_back defaults to False, not to 'unknown'",
+      R.Failure("x", R.ErrorKind.TIMEOUT).fell_back is False)
+
+
+def _ok(value):
+    def _call(*_a):
+        return value
+    return _call
+
+
+def _boom(message):
+    def _call(*_a):
+        raise OSError(message)
+    return _call
+
+
+# A failure the router continued past is recorded as a fallback.
+r_fb = R.FallbackRouter({"a": _boom("connection reset by peer"), "b": _ok("B")},
+                        order=["a", "b"])
+res_fb = r_fb.route("hi", "en", "vi")
+check("a failure we fell back from says so",
+      res_fb.ok and res_fb.provider_used == "b"
+      and [x.fell_back for x in res_fb.failures] == [True],
+      repr([(x.provider, x.fell_back) for x in res_fb.failures]))
+
+# The last failure of an exhausted route is not a fallback.
+r_all = R.FallbackRouter({"a": _boom("a"), "b": _boom("b")}, order=["a", "b"])
+res_all = r_all.route("hi", "en", "vi")
+check("the final failure of an exhausted route is not a fallback",
+      [x.fell_back for x in res_all.failures] == [True, False],
+      repr([(x.provider, x.fell_back) for x in res_all.failures]))
+check("every failure of an exhausted route still logs its own state",
+      all("fell_back=" in x.log_line() for x in res_all.failures),
+      repr([x.log_line() for x in res_all.failures]))
+
+# Config error is NO_FALLBACK: the route stops, so nothing claims a fallback.
+r_cfg = R.FallbackRouter({"a": _boom("proxy misconfigured"), "b": _ok("B")},
+                         order=["a", "b"])
+res_cfg = r_cfg.route("hi", "en", "vi")
+check("a NO_FALLBACK failure did not fall back",
+      not res_cfg.ok and [x.fell_back for x in res_cfg.failures] == [False],
+      repr([(x.provider, x.kind.value, x.fell_back) for x in res_cfg.failures]))
+
+# A budget that runs out mid-route must not brand the earlier failure a
+# fallback. The budget has to actually expire for that, so the first provider
+# burns it rather than failing instantly.
+def _burn_then_fail(*_a):
+    import time as _t
+    _t.sleep(0.02)
+    raise OSError("connection reset by peer")
+
+
+r_budget = R.FallbackRouter({"a": _burn_then_fail, "b": _ok("B")},
+                            order=["a", "b"],
+                            policy=R.RetryPolicy(total_budget=0.01,
+                                                 max_attempts=1,
+                                                 base_delay=0.0))
+res_budget = r_budget.route("hi", "en", "vi")
+check("an interrupted route does not claim a fallback that never happened",
+      res_budget.tried == ["a"]
+      and [x.fell_back for x in res_budget.failures] == [False],
+      repr((res_budget.tried, [x.fell_back for x in res_budget.failures])))
+
+# One provider only: there is nothing to fall back to.
+r_one = R.FallbackRouter({"a": _boom("proxy misconfigured")}, order=["a"])
+res_one = r_one.route("hi", "en", "vi")
+check("a single-provider route never reports a fallback",
+      [x.fell_back for x in res_one.failures] == [False],
+      repr([(x.provider, x.fell_back) for x in res_one.failures]))
 
 # ----------------------------- 8. the app's own error string is never faked
 _orig = app.TRANSLATORS.copy()
