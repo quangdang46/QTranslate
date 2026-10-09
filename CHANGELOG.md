@@ -128,7 +128,8 @@ All entries are clean-room RE of QTranslate 6.10.0 for education.
 - yandex.py — chunking + `srv=android` fallback — **LIVE-OK**
 - baidu.py — GTK sign; detect **LIVE-OK**, translate needs page token
 - youdao.py — md5 salt sign; needs page token
-- naver.py — HmacMD5 PPG auth; endpoint 404 (stack migrated)
+- naver.py — HmacMD5 PPG auth; **LIVE-OK** (new `/api/text/*`, `/api/tts/*`,
+  `/api/dictionary/*` — no auth; earlier `/apis/*` hits 404)
 - promt.py — ghcs hash; needs `paft` (markup changed)
 - dictionary.py — 11 providers; Urban + Lingvo **LIVE-OK**, rest dead/changed
 - spell.py — Google suggest + Yandex speller — **LIVE-OK**

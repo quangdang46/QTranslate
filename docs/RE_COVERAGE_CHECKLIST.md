@@ -1,0 +1,872 @@
+# RE Coverage Checklist — QTranslate 6.10.0
+
+> Status: **PHASE A — IN PROGRESS. THIS IS THE GATE ARTIFACT.**
+> The Gate (`PROJECT_VISION.md` §0) does **not** open until every in-scope item
+> below is `VERIFIED` on the RE axis (or `UNRECOVERABLE` with reason + impact).
+> `INFERRED` and `UNKNOWN` block the Gate.
+
+## State dictionary (fixed — every row uses exactly one of each)
+
+Two **independent** axes (`PROJECT_VISION.md` §7a). Each row has exactly one
+**RE state** and exactly one **Port state**. Never merge them.
+
+**RE state** — what we know about the **native** behavior:
+
+| State | Meaning | Counts for Gate? |
+|-------|---------|------------------|
+| `VERIFIED` | Proven by a concrete artifact: Ghidra address **+** decompile, JS source, asset bytes, or a behavioral test. | yes |
+| `INFERRED` | Reasoned from a pointer (often only `NATIVE_ARCH.md`) but not directly proven. | no → must be promoted |
+| `UNKNOWN` | Not yet investigated. | no |
+| `UNRECOVERABLE` | The native artifact genuinely cannot be obtained (e.g. server-side logic that no longer exists). Reason **and** impact required. | yes, with reason+impact |
+
+**Port / product state** — state of the **Python** side (and whether the feature
+can actually run):
+
+`not-started` · `analysed` · `ported` · `behaviour-verified` · `dead:<reason>`
+
+`dead:` reason slugs (fixed vocabulary — same slugs must appear in
+`COMPATIBILITY_MATRIX.md`):
+
+| Slug | Means |
+|------|-------|
+| `dead:host-retired` | server/host no longer exists (or cert chain dead) |
+| `dead:needs-session-token` | anti-bot session token not obtainable with urllib |
+| `dead:bot-walled` | consent/401/Cloudflare wall |
+| `dead:native-unavailable` | native used an OS/engine feature we don't reproduce yet |
+
+> **Correction applied in this revision:** an endpoint that is retired or
+> token-walled is **not** an `UNRECOVERABLE` RE state — the native behavior is
+> still readable. It is a **`dead:<reason>` port/product state**. The earlier
+> draft wrongly wrote `UNRECOVERABLE` into the Port column of several rows; that
+> is fixed here. Current count: **0**. J3 (native SAPI TTS) was reclassified to
+> `VERIFIED` on 2026-10-09: it is a **proven negative** about native behavior,
+> not an unobtainable artifact (see §J). `UNRECOVERABLE` is reserved for a
+> native artifact that genuinely cannot be obtained.
+
+**Provenance rule:** a row sourced only to `NATIVE_ARCH.md` is `INFERRED`, not
+`VERIFIED`. A document is not self-validating. Promotion requires the artifact
+(Ghidra decompile + address, JS line, asset hash, or test).
+
+**Anti-scope-creep rule:** an item is never moved out of scope to make the Gate
+pass. If it cannot be recovered it becomes `UNRECOVERABLE` with reason + impact.
+
+**Waiver rule (approved exceptions).** A row that genuinely cannot be closed by
+RE may carry an explicit, **approved** exception so the Gate can account for it
+**without relabelling its honest RE state**. Format: a non-empty
+`WAIVER: <reason>` token added to the row's Note cell. Rules:
+
+- The reason is **mandatory**; an empty reason is a validator error.
+- A waiver is valid **only** on an `INFERRED`/`UNKNOWN` row; waiving a
+  `VERIFIED`/`UNRECOVERABLE` row is an error.
+- Waived rows are reported **separately** and are **never** counted as
+  `VERIFIED` — a waiver is not RE evidence.
+- The validator **never assigns** a waiver; waivers exist only if a human adds
+  them here (with approval recorded). Absent a valid waiver, an
+  `INFERRED`/`UNKNOWN` row blocks the Gate.
+- The tool supports this (`--selftest` covers it). **No waiver is currently
+  assigned.** As of 2026-10-09 only **1** row is unresolved (`G9`), so the Gate
+  stays `BLOCKED (1)`. (Earlier revisions said "5 open rows" — superseded.)
+
+**Tooling:** Ghidra database loaded (~7946 functions). Promote
+`FUN_004xxxxx` rows with `decompile_function_by_address`.
+
+## Enumeration evidence (what the inventory granularity is based on)
+
+Directly `ls`-ed on `C:\Program Files (x86)\QTranslate\` + `%APPDATA%`:
+
+| Source | Count found on disk | Group | Granularity decision |
+|--------|---------------------|-------|----------------------|
+| `Services/*/` | **19** folders + `Common.js` | E | one item **per service** |
+| `Plugins/History/*.js` | **4** | I | one item **per exporter** |
+| `Themes/*.json` | **8** | N | **one group item** (N2) — themes are data, 8 files differ only in values |
+| `Locales/*/` | **35** | O | **one group item** (O2) — 35 packs share one loader/format |
+| `Resources/` | 1 (`XdxfArticle.xslt`) | H | covered by H3 |
+| `Options.json` sections | **20** | M | one item **per section** |
+
+Most granular where behavior differs (services, exporters, Options sections);
+grouped where only data values differ (themes, locales). This closes the P2
+"coverage completeness" sweeps of `Options.json`, `Services/`, `Plugins/`,
+`Themes/`, `Locales/`.
+
+## Coverage summary
+
+> **Auto-generated by `tools/coverage_tally.py` from the tables below — do not
+> edit by hand.** The tally is derived, so header counts cannot drift from rows.
+
+<!-- TALLY:START -->
+**Total items: 152**
+
+| RE state (native) | Count | | Port state (Python) | Count |
+|---|---|---|---|---|
+| VERIFIED | 151 | | not-started | 11 |
+| INFERRED |  | | analysed |  |
+| UNKNOWN | 1 | | ported | 121 |
+| UNRECOVERABLE |  | | behaviour-verified | 11 |
+|  |  | | dead:* | 9 |
+
+| Group | Items |
+|---|---|
+| A | 9 |
+| B | 6 |
+| C | 10 |
+| D | 11 |
+| E | 22 |
+| F | 13 |
+| G | 9 |
+| H | 8 |
+| I | 9 |
+| J | 7 |
+| K | 4 |
+| L | 4 |
+| M | 23 |
+| N | 4 |
+| O | 4 |
+| P | 3 |
+| Q | 3 |
+| R | 3 |
+
+**Gate status: BLOCKED** — 1 rows still `INFERRED`/`UNKNOWN` without a valid waiver.
+<!-- TALLY:END -->
+
+---
+
+## A. Startup · window · message loop
+
+| Item | Native evidence (artifact) | RE state | Port state | Note |
+|------|----------------------------|----------|------------|------|
+| A1 WinMain/AppInit | `FUN_00435005`: builds app object (`FUN_0043C5D0`), parses `GetCommandLineW()` (`FUN_0043CD68`), single-instance `FUN_00435175`, `CoInitializeEx(…,2)` (STA) → `FUN_004350B8` | VERIFIED | ported | STA; `main` app.py:3757 |
+| A2 Single-instance guard | `FUN_00435175`: switch `L"allow-multiple-instances"` (`FUN_0043CA85`); else `FindWindowW(L"QTranslate_ApplicationWindow")` + `PostMessage(0x111,0x8009)` to activate existing | VERIFIED | ported | 2nd launch focuses existing window |
+| A3 Message loop | `FUN_00455061`: `GetMessageW` → walk PreTranslate filter array (`DAT_005491EC`) → `TranslateMessage`/`DispatchMessageW` | VERIFIED | ported | Tk mainloop |
+| A4 PreTranslate chain | `FUN_004551D6`: registers a filter into the array (`DAT_005491EC`/`F0`/`F4`, grow ×2) | VERIFIED | ported | filter registrar, not routing |
+| A5 Window tree ctor | `FUN_00416470`: builds `windows::ApplicationWindow` embedding `KeyboardWindow`, `WindowPopupIcons`, `ProgressWindow`, `LayoutIndicatorWindow`, `WorkerThread`, `common::HistoryAutosaver` | VERIFIED | ported | App + popup + subwindows |
+| A6 Main window proc | `FUN_00411DEB` (MainWindow WndProc): `0x110` init, `2` destroy, `0x111` command, `0x4E` notify, `0xF` paint, `0x20A` mousewheel | VERIFIED | ported | RichEdit50W via msftedit |
+| A7 WINDOWPLACEMENT restore | `FUN_00422DDD`: `GetWindowPlacement` (length 0x2C), `showCmd=5` if iconic, `flags\|=0x10`; saved/loaded via Options `Window*Placement` keys (`FUN_0045869F` +0x20/+0x4C/+0x78/+0xA4/+0xD0/+0xFC) | VERIFIED | ported | app.py:264-346 |
+| A8 Startup pretranslate seed | `FUN_00455024`: finds a registered filter by pointer in `DAT_005491EC` and removes it (`FUN_004552DC` = unregister); the message loop from A3 uses this array for pretranslate | VERIFIED | ported | filter register/unregister |
+| A9 Command-line args override | `FUN_00435005` parses `GetCommandLineW()` via `FUN_0043CD68` into a switch container; `FUN_0043CA85` queries switches (e.g. `allow-multiple-instances`) | VERIFIED | ported | **resolved from A2 trace** (switch `--key` model) |
+
+### B — evidence: hotkey dispatch → task creation
+
+`FUN_0041786B` is the **hotkey/key handler** (calls `GetGUIThreadInfo`, maps the
+modifier VK to the packed 4-bit mask: Ctrl 0x11→2, Shift 0x10→4, Alt 0x12→1,
+Win 0x5B/0x5C→8), then `FUN_00417DCE(entry, table)` against a list of bound
+hotkeys, creating the matching **task object** per action:
+`TaskShowMainWindow`, `TaskShowPopupWindow`, `TaskDictionary`,
+`TaskListenText`, `TaskConvertTextLayout`, `TaskCopyTranslation`,
+`TaskReplaceSelection`, `TaskTranslateClipboard` (RTTI-verified vftables). This
+single function links group B (hotkey) to group D (orchestration) and the
+exclusions check (`FUN_004631DE`/`FUN_004630C5`).
+
+## B. Hotkeys
+
+| Item | Native evidence (artifact) | RE state | Port state | Note |
+|------|----------------------------|----------|------------|------|
+| B1 17 global hotkeys register | `FUN_00405A17`: `RegisterHotKey(hwnd, id=word, mods=(word>>8)&0xF, vk=word&0xFF)`; pushes `id` into a list on success | VERIFIED | ported | app.py:3550 |
+| B2 Hotkey decode | `config.decode_hotkey` + smoke vectors | VERIFIED | ported | id=low byte, mods=(word>>8)&0xF |
+| B3 Hotkey display string | `FUN_00403B48`: `"Double "` if bit15, then Ctrl(`FUN_00403D3C` 0x11)/Shift(0x10)/Alt(0x12)/Win, joined `" + "` (0x2B0020), then VK name — matches `config.format_hotkey` | VERIFIED | ported | "Double Ctrl + Q" |
+| B4 Hotkey dispatch + double-press | `FUN_0041786B` handler (`GetGUIThreadInfo`, mod mask) → `FUN_00417DCE(entry, table)` → task objects; double-press via the packed-mask (bit15) | VERIFIED | ported | see B evidence |
+| B5 HotKeyCtrl capture | `FUN_00408456` (subclass/init ctor, style bits 2/4/8) + `FUN_0040AA88` (key handler): `GetKeyState` for Ctrl/Shift/Alt/Win; Del/Backspace/Enter/Esc clear; otherwise pack via `FUN_0040ABC3`; **double-press** if same key within `SetTimer(GetDoubleClickTime())` → sets bit15 (`0x8000`) | VERIFIED | ported | rebind UI + double-press capture |
+| B6 In-window keys | `FUN_0042DC18` binds menu `0x8051` ("Reset") with accelerator string `L"Shift+Esc"` (`0051F43C`); RT_ACCELERATOR id 3 exists in `.rsrc` type dir 9 | VERIFIED | ported | menu-accelerator wiring confirmed; per-key global table parse not needed |
+
+## C. Capture
+
+| Item | Native evidence (artifact) | RE state | Port state | Note |
+|------|----------------------------|----------|------------|------|
+| C1 Capture dispatcher (mode 1/2/3) | `FUN_004052E4`: mode 1 = reuse `FUN_0041B872(this+0xC)`; mode 2 = `FUN_004543C6` else `FUN_00404901` (OLEACC); mode 3 = `FUN_0043BEB2` (clipboard) | VERIFIED | ported | dispatch on MouseMode |
+| C2 Mode 1 reuse-text | `FUN_004052E4` mode 1 → `FUN_0041B872` copies the buffer | VERIFIED | ported | reuse last capture |
+| C3 Mode 2 mouse (OLEACC) | `FUN_00404901`: `GetCursorPos`→`AccessibleObjectFromPoint`→`get_accName` (else `get_accValue`) | VERIFIED | not-started | text capture, no icon |
+| C4 Mode 3 clipboard viewer | `FUN_0043EBE0`: registers `QTranslateClipboardWindowClass` (`RegisterClassExW`+`CreateWindowExW`) as a clipboard viewer; read `FUN_0043BEB2`/open `FUN_0043BE07` | VERIFIED | ported | app.py:3407 |
+| C5 Clipboard copy + synth | `FUN_004543C6`→`FUN_0043BF30` reads clipboard; `FUN_0043BD5C` synthesizes the copy | VERIFIED | ported | keyboard.send |
+| C6 Clipboard write-back | `FUN_0043BE56`: `FUN_0043BE07`(open)→`EmptyClipboard()`→`SetClipboardData(0xD=CF_UNICODETEXT, hmem)`; `hmem` from `FUN_0043C137` | VERIFIED | ported | replace path |
+| C7 Capture exclusions | `FUN_004631DE`: foreground-class from `FUN_00450C50`, skips `QTranslate_HotKeyControl`, matches Disabled/Enabled list vs `FUN_004470B7` (wcsicmp) | VERIFIED | ported | exclusions.py |
+| C8 RawInput mouse | `FUN_00417E4E`: `GetRawInputData` → normalize to `0x201`/`0x202` using `GetSystemMetrics(0x17)` handedness → `FUN_004193F6` | VERIFIED | not-started | mouse-mode input |
+| C9 Click-to-capture | `FUN_004193F6`: down-hit-test (`FUN_00450DD2`) + exclusion + region `PtInRect`/`IntersectRect`; up posts WM_APP `0x8064`/`0x8069` to the main window (`PostMessageW(hwnd,0x8064/0x8069,0,0)`) | VERIFIED | ported | **RE-clarified 2026-10-09:** `0x8064`/`0x8069` here are posted to the app's own main window, whose WndProc `FUN_00415EED` routes **both** to the mouse-selection handler `FUN_004183bd` (fires `TaskShowIcons`/`TaskShowPopupWindow` per `MouseMode` 0/1/2 when `MouseModeOn`+0x1838 is set). The menu-command ids that happen to share these numbers (`0x8064`=Show-middle-pane, `0x8069`=Ctrl+Left service-prev, in `FUN_0042DF28` accel table) are a **different message class** — no conflict; the earlier row note was ambiguous |
+| C10 Cursor-hook / mouse icon | Mouse path fully enumerated: `FUN_00417E4E`(RawInput)→`FUN_004193F6`(click capture)→`FUN_00404901`(OLEACC text, via `FUN_004052E4` mode-2); no `SetCursor`/cursor-icon hook exists anywhere in the enumerated input path (only wndclass cursors) | VERIFIED | not-started | **promoted:** the only mouse path is text capture; the "cursor-hook mouse icon" from `CHANGELOG` is our-port absence, not a native feature |
+
+## D. Orchestration
+
+> **Verified across passes 1–3** (Ghidra, `QTranslate.exe` 6.10.0, string
+> `"6.10.0"` @ `00522758`). Decompiles read: `FUN_00404A12`, `FUN_0045CEDE`,
+> `FUN_0045CC50`, `FUN_0045F6C1`, `FUN_0045F609`, `FUN_00465669`,
+> `FUN_0045FDE8`, `FUN_00460354`, `FUN_00460467`, `FUN_00460580`,
+> `FUN_004606BA`, `FUN_0040FB54`, `FUN_0045DAF5`, `FUN_0045AFDD`,
+> `FUN_00405142`, `FUN_00414904`, `FUN_0045FD6D`, `FUN_0040A3A1`,
+> `FUN_00465E36`, `FUN_0046021C`.
+> Two label tensions are recorded, not silently "corrected". Struct + loop
+> semantics are now resolved (pass 3); one uncertainty remains and is owned by
+> group F (`services::Script` identity).
+
+| Item | Native evidence (artifact) | RE state | Port state | Note |
+|------|----------------------------|----------|------------|------|
+| D1 Orchestrator dispatch | `FUN_00404A12` decompile: pick → seed → `FUN_004606BA` → `FUN_00460354`; caps gate `(*(in_EAX+4)&1)`; second entrance `FUN_0045FD6D` | VERIFIED | ported | entry struct resolved in pass 3 (see below) |
+| D2 Service picker | `FUN_0045CEDE` = head of ordered set (`FUN_0045AFDD` bounds-check); `FUN_0045CC50` = by-id via `FUN_0045DAF5`→`FUN_0045DE73` map | VERIFIED | ported | head means "first in `ServicesOrder`" |
+| D3 Executor / req loop | `FUN_00460354` (build→fetch→parse loop: `FUN_00460467`+`FUN_00460580`, no queue) + `FUN_00460467` (build+fetch) | VERIFIED | ported | **label tension:** `NATIVE_ARCH.md:1592` calls `FUN_0045F6C1` "task executor"; decompile shows it seeds options/tokens only (see D-uncertain #1) |
+| D4 serviceHeader → caps | `FUN_00465669` reads IDispatch `name`/`info`/`capabilities`(+id), `VariantChangeType(…,0x16=VT_I4)` | VERIFIED | ported | caps bitmask common.py:23 |
+| D5 Detect req/resp | `FUN_0045FDE8` (only if `caps&2`) → `FUN_0046009D` (req) + `FUN_0046021C` (resp) | VERIFIED | ported | detect_language app.py:489 |
+| D6 Translate req/resp | `FUN_00460467`→`FUN_00465D82` (req); `FUN_00460580`→`FUN_00465E36` (resp) | VERIFIED | ported | method==1 branch |
+| D7 Dictionary req/resp | `FUN_00460467`→`FUN_00465EF7` (req); `FUN_00460580`→`FUN_00465FAB` (resp) | VERIFIED | ported | method==8 branch |
+| D8 curl fetch / GET / POST | `FUN_00460467`→`FUN_00460006` (fetch), then `FUN_0045BCED` (GET) / `FUN_0045BF7D` (POST) | VERIFIED | ported | session._net_open |
+| D9 Back-translation | `FUN_004606BA`: detect-if-needed (`FUN_0045FDE8`), swap langs via `FUN_0045FF70`, defaults `DAT_00549438/43c` (runtime UI lang state, not consts) | VERIFIED | ported | flag-gated |
+| D10 Request/response loop (mislabeled "detect retry") | `FUN_00460354` decompile: build→fetch→parse loop (`FUN_00460467`+`FUN_00460580`), **no detect inside**; called from `FUN_00404A12`/`FUN_0045FF04`/`FUN_0045FD6D` after back-translation fails; returns `6` when the final result is empty | VERIFIED | ported | **native behavior of the loop is understood**; the label "detect-retry" is unsupported (recorded tension vs `NATIVE_ARCH.md:463`) |
+| D11 Options bridge | `FUN_0045F6C1` per-service seed → `FUN_00465A92` (Options setter) into `services::UtilsDispatch` (`FUN_0045F609`) | VERIFIED | ported | add_option |
+
+### D findings — dependency graph (from decompile, this pass)
+
+```
+FUN_00404A12  (orchestrator: pick -> seed -> translate/backtrans/detect)
+ ├─ param_2 == 0 ? FUN_0045CEDE()          # head of ServicesOrder
+ │                : FUN_0045CC50(id)       # by-id
+ │                   ├─ FUN_0045AFDD(...)  # bounds-checked vector index (head)
+ │                   └─ FUN_0045DAF5(...)  # map lookup -> FUN_0045DE73
+ ├─ caps gate: (*(service+4) & 1)          # TRANSLATE bit, else bail
+ ├─ FUN_0045F609(ctx)   # ctor: services::Script + services::UtilsDispatch
+ ├─ FUN_0045F6C1(ctx, service, 1)          # PER-SERVICE OPTION/TOKEN SEED
+ │     ├─ FUN_0043B777 / FUN_0043B8CE / FUN_0043B9BE  # invoke JS fns:
+ │     │     "usesAutoDetectCode"(VT_BOOL), "codeFromLanguage"(2..0x4c)
+ │     ├─ FUN_00465A92(ctx,"LanguageCode"/"PreferredDomain"/...)  # setOption
+ │     ├─ if service.id == 5  -> SeedCtx(FUN_0045E68F) -> "BingCookie/Token/Key"
+ │     ├─ if service.id == 0xc-> SeedCtx(FUN_0045EFC6) -> "PromtCookie/Xsrf/Paft"
+ │     ├─ if service.id == 0x1c->SeedCtx(FUN_0045E24E) -> "BaiduCookie/Token/Gtk"
+ │     ├─ if service.id == 0xb-> "YandexAppId" (FUN_0045EC8D)
+ │     └─ else (1/10) -> "GoogleTkk" = FUN_0040FB54()   # parses /translate_a/element.js
+ ├─ FUN_004606BA(ctx, entry, do_backtrans) # back-translation + detect-if-needed
+ │     └─ FUN_0045FDE8(ctx,..) : detect (caps&2) -> FUN_0046009D + FUN_0046021C
+ ├─ on fail -> FUN_00460354(ctx,1,entry)   # request/response LOOP
+ │     └─ FUN_00460467 -> [method==1: FUN_00465D82 req] [==8: FUN_00465EF7]
+ │                         -> FUN_00460006 fetch
+ │                         -> FUN_0045BCED GET | FUN_0045BF7D POST
+ │        FUN_00460580 -> [method==1: FUN_00465E36 resp] [==8: FUN_00465FAB]
+ └─ FUN_00465669(service)  # caps tuple: JS name/info/capabilities (+id)
+```
+
+### D evidence — what each artifact proves
+
+- **D1** `FUN_00404A12`: explicit branch `param_2==0 → FUN_0045CEDE else FUN_0045CC50`;
+  caps gate `(*service+4)&1`; then `FUN_004606BA`; on failure `FUN_00460354`.
+  This is the pick→(seed)→translate→(back-trans/detect) control flow.
+- **D2** `FUN_0045CEDE` returns `FUN_0045CC50(*FUN_0045AFDD(&DAT_005495c0,0))` = id of
+  element 0 of the ordered set = **first in `ServicesOrder`**. `FUN_0045CC50` →
+  `FUN_0045DAF5`→`FUN_0045DE73` = **id→service lookup**.
+- **D4** `FUN_00465669`: calls `FUN_004661d1(service, L"name"/L"info"/L"capabilities")`
+  and coerces with `VariantChangeType(...,0x16=VT_I4)` → caps tuple. Proves
+  capabilities come from the **JS service object**, not a native table.
+- **D5** `FUN_0045FDE8`: `if ((*(entry+0x10)>>1 & 1) != 0)` = caps&2; calls
+  `FUN_0046009D` (detect request) then `FUN_0046021C` (detect response).
+- **D6/D7/D8** `FUN_00460467`: `param_2==1`→`FUN_00465D82` (translate req);
+  `param_2==8`→`FUN_00465EF7` (dict req); then `FUN_00460006` (fetch); then
+  `FUN_0045BCED` (GET, method 1) / `FUN_0045BF7D` (POST, method 2).
+  `FUN_00460580`: `param_2==1`→`FUN_00465E36` (translate resp); `==8`→`FUN_00465FAB`.
+- **D9** `FUN_004606BA`: calls `FUN_0045FDE8` (detect), swaps `entry+8`/`entry+0x10`
+  via `FUN_0045FF70`, uses the runtime UI language state `DAT_00549438`/`DAT_0054943c`
+  as the from/to default (not constants).
+- **D11** `FUN_0045F6C1` sets JS options via `FUN_00465A92` (Options setter) —
+  and the host (`FUN_0045F609` ctor) contains `services::UtilsDispatch::vftable`
+  and `services::Script::vftable`, plus registers the `"Utils"` dispatch.
+
+### D — label tensions (recorded, not silently corrected)
+
+1. **`FUN_0045F6C1` label tension (do not silently "correct").** The decompile
+   shows it constructs a **fresh** context (`FUN_0045F609` ctor) and seeds
+   options/tokens per service id, returning 0/2/0xb. Yet `NATIVE_ARCH.md:1592`
+   calls it "task executor" and `:1444` "Options bridge" (consistent with seed).
+   These are not necessarily contradictory — its side effect (populating
+   `UtilsDispatch` options) may be *how* native "executes" a service — so this is
+   recorded as an **open label question**, not a verified correction. What is
+   certain: option/token seeding happens here; the request/response fetch loop is
+   in `FUN_00460354`.
+2. **`FUN_00460354` label.** `NATIVE_ARCH.md:463` calls it a "detect-retry loop".
+   Pass 3 decompile settles it: it is a **build→fetch→parse loop over one
+   response frame** (no queue, no detect call) — see pass 3 below. The
+   "detect-retry" label is unsupported; the loop's native behavior is
+   understood, so D10 is `VERIFIED` **as "request/response loop"** (the label is
+   recorded as a tension, not a gap).
+
+### D — uncertainty resolution (pass 2, decompile evidence)
+
+Additional functions read this pass: `FUN_00405142`, `FUN_00414904`,
+`FUN_0045FD6D`, `FUN_0040A3A1`. Resolutions:
+
+- **[resolved] Entry struct** (`param_1`) — pass 3 restatement, with the earlier
+  `entry[3]`/`entry+3` contradiction fixed. **`entry[3]` and `entry+3` are the
+  same CString at offset 0x0c** — both names were mine; the earlier label
+  "`entry[3]`=target language" and "`entry[3]`=output/definition" described one
+  slot with two wrong/duplicate names. Evidence-backed layout:
+
+  | Offset | Field | Evidence |
+  |--------|-------|----------|
+  | `+0x00` | job/context handle (dword) | `FUN_00404A12` `*param_1 = *(local_78+4)` |
+  | `+0x04` | **source CString** (`entry[1]`) | `FUN_00405142` `param_1[1]`, len at `-0xc` |
+  | `+0x08` | source lang (dword, `entry[2]`) | callers set `entry[2]=DAT_005493e8` |
+  | `+0x0c` | **output CString** (`entry[3]`==`entry+3`) | `FUN_00401ec9(entry+3, entry+1)` copies source→out; `FUN_00460354` tests `*(entry+3-0xc)` for empty (code 6) |
+  | `+0x10` | target lang (dword, `entry[4]`) | callers set `entry[4]=DAT_005493ec`; `FUN_004606BA` swaps `+8`↔`+0x10` |
+  | `+0x14` | detected-lang CString (`entry+5`) | `FUN_00460580` `FUN_00402366(entry+0x14,…)`; cleared by `FUN_00404A12` `FUN_004033fc(entry+5)` |
+
+  Word index = byte offset / 4 (`entry[3]`==`entry+3`==0x0c, `entry+5`==0x14).
+  The CString fields (`+0x04` src, `+0x0c` out, `+0x14` detected) are 4-byte
+  MFC/ATL pointers; the language fields (`+0x08`, `+0x10`) are dwords and form
+  the source→target pair. **Correction logged:** an earlier draft said
+  `+0x00`=source text and `+0x04`=non-empty guard — wrong; `+0x04` is the
+  source CString and `+0x00` is a handle.
+- **[resolved] `DAT_005493e8`/`DAT_00549438`/`DAT_0054943c`/`DAT_00549440` are
+  NOT constants.** They are BSS (`.data`, bytes `00…`), **runtime set from the
+  Options dialog combo boxes** (`FUN_0040A3A1`: reads GetDlgItem controls
+  0x409/0x414/0x417/0x462/0x463/0x464 → writes `DAT_00549438/3c/40`,
+  `DAT_00549404`, `DAT_0054941c/1d/1e`). They are **UI language/option state**
+  (from/to/default), not compile-time literals. The earlier note "consts
+  DAT_00549438/43c" in D9 is corrected.
+- **[resolved] `FUN_00460354` semantics.** It is the **request→response loop**
+  (`FUN_00460467` build+fetch, `FUN_00460580` parse, repeat while a buffer is
+  non-empty), return `6` when the final result is empty. Its **callers** are
+  `FUN_00404A12`, `FUN_0045FF04`, and `FUN_0045FD6D`. It is **not** a dedicated
+  "detect retry": no detect call inside it. → D10 is `VERIFIED` as a
+  **request/response loop** (translate/dict); the "detect-retry" label is
+  recorded as an unsupported tension.
+- **[new] Two orchestrator entrances.** `FUN_00404A12` (entry-first; builds its
+  own context via `FUN_0045F609`) and `FUN_0045FD6D(this,entry,flags)`
+  (context-first; `this+0x4c` = service) run the **same** core:
+  caps gate → detect-if-needed (`FUN_004606BA`) → `FUN_00460354`.
+  `FUN_00405142` is referenced from a **vtable** (`0051e5d0` DATA) → it is a
+  **task handler** (this is the "task pipeline" entry). Note `FUN_0045FD6D`
+  returns `8` cleanly for a non-TRANSLATE service, whereas `FUN_00404A12`'s
+  `iVar1=8` is then overwritten (branch quirk retained in the decompile).
+- **[resolved] Return codes** (observed, best-effort meaning):
+  `0`=success · `2`=null/invalid entry · `8`=service lacks TRANSLATE cap
+  (`caps&1==0`) · `0xb`=JS request-builder false · `5`=HTTP GET/POST transport
+  failure · `4`=request pre-condition · `6`=empty final result · `0xc`=detect
+  failed in backtrans · `0xd`=set-language failed · `0xe`=language validation
+  failed. (Executed as `(char)` truthiness.)
+
+### D — pass 3 (struct widths + the `FUN_00460354` loop) — decompile evidence
+
+- **[resolved] `FUN_00460354` is a terminating build→fetch→parse loop, not a queue.**
+  `FUN_00460467` runs once outside the loop (initial request build+fetch), then
+  the do/while repeats `FUN_00460467`+`FUN_00460580` while a termination field is
+  non-zero (`*(local_18-0xc)!=0`), yielding to `6` (empty result) / `0xd` / `0xe`.
+  The "load" side is `FUN_004601ad`/`FUN_004601ec` (a request object), **not a
+  queue**; the response is written into the entry by `FUN_00460580`
+  (`FUN_00402366(entry+0x14,…)` CString assign). No enqueue/dequeue exists; the
+  phrase "queue" in the earlier note was a misreading. → confirms D10 is not a
+  detect-retry (no detect anywhere in the loop).
+- **[resolved] CString vs int widths** (`FUN_00465E36`/`FUN_00460580` evidence):
+  the language pair `entry+8`/`entry+0x10` are **dwords** (source/target, set by
+  callers from UI state); the **CString fields are `entry+4` (source),
+  `entry+0xc` (output) and `entry+0x14` (detected language)**. This **corrects**
+  the pass-2 line "`entry[2]`=source lang, `entry[4]`=detected lang" — 0x08/0x10
+  are the language pair (source/target), and 0x14 is the detected language.
+- **[still open → group F]** whether `services::Script` is the `IActiveScript`
+  host; the return-code → user-facing error mapping; the exact JS method names
+  invoked at each stage. Deferred to F by design.
+
+**Uncertainty status for D: 1 open item** (`services::Script` identity, owned by
+F) + 1 label tension (`FUN_0045F6C1`, documented). No D row is promoted by pass 3.
+3. **`FUN_0040FB54` = Google tkk provider.** It builds a URL from
+   `L"/translate_a/element.js"`; it is the source of `Options.GoogleTkk`. This
+   makes **E21** (`refresh_tkk`) partially understood, but the HTTP fetch of that
+   URL is not in this function — the tkk *parse* path is still unconfirmed.
+4. **Entry struct `param_1`** (fields +0x4 src, +0x8 tgt, +0x10 detected,
+   +0x14 output) is inferred from field usage, not confirmed by a struct/ctor.
+5. **Return codes** 2 / 0xb / 0xc / 0xd / 0xe are observed; their full meaning is
+   not enumerated. `2` = invalid service/null; others pending.
+6. **`services::Script` / `services::UtilsDispatch`**: RTTI confirmed as types;
+   whether `Script` is the IActiveScript *host* (ties to group F) is inferred.
+
+
+
+## E. Services (`Services/` — one item per folder + shared Common.js)
+
+Enumerated directly from `C:\Program Files (x86)\QTranslate\Services\` (**19
+folders** + `Common.js`). Earlier draft merged 8 dict services into one row —
+that undercounted the inventory; fixed here.
+
+| Item (SERVICE_ID) | Native evidence (artifact) | RE state | Port state | Note |
+|-------------------|----------------------------|----------|------------|------|
+| E1 Common.js (shared framework) | `Services/Common.js` | VERIFIED | ported | ported 1:1 → `common.py` |
+| E2 Google Translate (1) | `Services/Google Translate/Service.js` | VERIFIED | behaviour-verified | tk()+gtx; live Win |
+| E3 Microsoft Translator (5) | `Services/Microsoft Translator/Service.js` | VERIFIED | behaviour-verified | shared cookie jar; live Win |
+| E4 DeepL (31) | `Services/DeepL/Service.js`: POST `www2.deepl.com/jsonrpc` `LMT_handle_jobs` (translate) + `LMT_split_into_sentences` (detect); caps TRANSLATE\|DETECT | VERIFIED | behaviour-verified | live Win (429 on rerun) |
+| E5 Yandex (11) | `Services/Yandex/Service.js`: POST `/api/v1/tr.json/translate` (`.text.join`) + GET `/detect`; LISTEN `tts.voicetech.yandex.net`; `YandexModel` 600-char chunker; caps 7 | VERIFIED | ported | android variant; live Win |
+| E6 Naver/Papago (30) | `Services/Naver/Service.js`: POST `papago.naver.com/apis/{n2mt\|nsmt}/translate` + `/apis/langs/dect`; `buildAuthData()` HMAC-MD5 (key `v1.6.5_956d74858f`); caps TRANSLATE\|DETECT | VERIFIED | behaviour-verified | new API; live Win |
+| E7 Baidu (28) | `Services/Baidu/Service.js`: POST `/v2transapi` (`sign(b,GoogleTkk)`+`BaiduToken`+`BaiduCookie`), `/langdetect`, LISTEN `tts.baidu.com`; caps 7 | VERIFIED | dead:needs-session-token | detect live |
+| E8 Promt (12) | `Services/Promt/Service.js`: POST `/api/getTranslation` (`ghcs`/`ghcd` + `PromtPaft`/`Cookie`/`Xsrf`); caps TRANSLATE | VERIFIED | dead:needs-session-token | needs paft |
+| E9 Youdao (26) | `Services/youdao/Service.js`: POST `fanyi.youdao.com/translate_o` (`md5` salt sign) + GET `dict.youdao.com/w/<q>`; caps 9 | VERIFIED | ported | translate_web live Win |
+| E10 Babylon (13) | `Services/Babylon/Service.js`: GET `translation.babylon-software.com/translate/babylon.php` JSONP; caps TRANSLATE | VERIFIED | dead:host-retired | host dead |
+| E11 Babylon Dictionary (20) | `Services/Babylon Dictionary/Service.js`: POST `dictionary.babylon-software.com/ajax.php`; caps DICTIONARY | VERIFIED | dead:host-retired | TLS handshake fail |
+| E12 ImTranslator (18) | `Services/ImTranslator/Service.js`: GET `imtranslator.net/translation/dictionary/DicService.asmx/lookup`; caps DICTIONARY | VERIFIED | dead:host-retired | endpoint gone |
+| E13 Reverso (22) | `Services/Reverso/Service.js`: GET `dictionary.reverso.net/<src>-<dst>/<q>`; caps **DICTIONARY** (id 22) | VERIFIED | behaviour-verified | **note: Service.js is dictionary-only; translate is our added API** |
+| E14 ABBYY Lingvo Live (25) | `Services/ABBYY Lingvo Live/Service.js`: GET `lingvolive.com/{ui}/translate/{src}-{dst}/{q}`; caps DICTIONARY | VERIFIED | behaviour-verified | live Win |
+| E15 Multitran (17) | `Services/Multitran/Service.js`: GET `multitran.com/m.exe?l1=&l2=&s=`; caps DICTIONARY | VERIFIED | behaviour-verified | live Win |
+| E16 Oxford Learner (29) | `Services/Oxford Learner Dictionary/Service.js`: GET `oxfordlearnersdictionaries.com/search/english/?q=`; caps DICTIONARY | VERIFIED | behaviour-verified | live Win |
+| E17 Urban Dictionary (24) | `Services/Urban Dictionary/Service.js`: GET `urbandictionary.com/define.php?term=`; caps DICTIONARY | VERIFIED | behaviour-verified | live Win |
+| E18 Wikipedia (14) | `Services/Wikipedia/Service.js`: GET `{lang}.m.wikipedia.org/wiki/<q>`; caps DICTIONARY | VERIFIED | behaviour-verified | live Win |
+| E19 WordReference (19) | `Services/WordReference/Service.js`: GET `wordreference.com/<src><dst>/<q>`; caps DICTIONARY | VERIFIED | behaviour-verified | headless Win |
+| E20 Google Search (10) | `Services/Google Search/Service.js`: GET `google.com/search?q=` (`stringFindSub` main→footer); caps DICTIONARY | VERIFIED | dead:bot-walled | JS+consent blocked |
+| E21 Google `refresh_tkk()` | `FUN_0040FB54` + `FUN_0040FEC9`: GET `https://translate.google.<domain>` (cp `0xFDE9`), then `CString::Find` + substring-extract between two markers = tkk parse | VERIFIED | not-started | **parse closed**; defaults "0.0" only when fetch fails |
+| E22 Bing `tlookupv3` dict | `Services/Microsoft Translator/Service.js`: `/tlookupv3` block driven by `nextRequestHandler` from the translate response (DICTIONARY bit unset) | VERIFIED | dead:bot-walled | translate path unaffected |
+
+> **E coverage note (from source enumeration):** the 19 folders carry ids
+> `1,5,10,11,12,13,14,17,18,19,20,22,24,25,26,28,29,30,31`. Ids `2,3,4,6,7,8,9,
+> 15,16,21,23,27` are **not present** in the shipped `Services/` set — they are
+> legacy/unassigned. `Yandex` and `Microsoft` expose a dictionary sub-request
+> (`/dicservice.json/lookup`, `/tlookupv3`) **without** the DICTIONARY capability
+> bit set — a real quirk to preserve.
+
+## F. JS boundary / crypto / session
+
+> **Verified this pass** (Ghidra). Decompiles read: `FUN_0043B777` (load+run
+> script), `FUN_0043E32F` (create engine), `FUN_0043E37B` (teardown),
+> `FUN_0043B8CE`/`FUN_0043B9BE`/`FUN_0043B942` (invoke-by-name wrappers),
+> `FUN_00427AD4`/`FUN_0043E51E` (GetIDsOfNames+Invoke), `FUN_0043E471`
+> (script-source concatenation), `FUN_00465A92` (calls JS `addOption`).
+> GUIDs read as raw bytes at `00528DD8` (CLSID passed to CoCreateInstance) and
+> `00528DB8`/`00528DC8` (IIDs). RTTI confirms classes `ActiveScript`,
+> `ActiveScriptSite`, `IActiveScriptSite`, `IDispDynImpl<services::UtilsDispatch,
+> GUID_NULL>`. **Method evidence (vtable offset + exact argument count at the
+> call site) is used instead of recalling GUID names from memory** — a GUID's
+> canonical name is not re-derived from training-data recall; identity is
+> established by what the call site actually does with it.
+
+| Item | Native evidence (artifact) | RE state | Port state | Note |
+|------|----------------------------|----------|------------|------|
+| F1 Engine creation | `FUN_0043E32F`: `CoCreateInstance(CLSID=00528DD8, …, IID=00528DB8, &ppv)` | VERIFIED | ported | replaced by urllib+regex; CLSID bytes = `60C214F4-C06A-CF11-B6D1-00AA00BBBB58` → canonical form `{F414C260-6AC0-11CF-B6D1-00AA00BBBB58}` = the well-known **CLSID_JScript** (classic JScript COM engine; actual backend — JScript5.8 vs Chakra — is an OS/registry choice, not decided by this binary) |
+| F2 Engine interface (IActiveScript) | `FUN_0043E32F` calls slot `0xc` (1 arg = `SetScriptSite`) and slot `0x28` (2 args = `GetScriptDispatch`) on the `IID=00528DB8` pointer | VERIFIED | not-started | IID bytes = `{BB1A2AE1-A4F9-11CF-8F20-00805F2CD064}`; arity match confirms this interface is **IActiveScript** (slot3=SetScriptSite(1), slot10=GetScriptDispatch(2)) — see F-label note below |
+| F3 Script parser (IActiveScriptParse) | `FUN_0043B777`: `QueryInterface(IID=00528DC8)` on the engine pointer, then slot `0xc` (0 args = `InitNew`) and slot `0x14` (9 args = `ParseScriptText`) | VERIFIED | ported | IID bytes = `{BB1A2AE2-A4F9-11CF-8F20-00805F2CD064}`; arity match confirms **IActiveScriptParse** (slot3=InitNew(), slot5=ParseScriptText(9 args)) |
+| F4 Script source load | `FUN_0043B777`: hash-bucket walk + `FUN_0043E471` (concatenate named fragments) builds the parsed source | VERIFIED | ported | loads `Common.js` + per-service `Service.js` text into one script |
+| F5 Script lifecycle | `FUN_0043E32F` → `SetScriptSite`→`GetScriptDispatch`; `FUN_0043B777` → `SetScriptState(2=CONNECTED)`; `FUN_0043E37B` teardown → `SetScriptState(2)` if state==5(INITIALIZED) → `SetScriptState(3=DISCONNECTED)` → `Close()`(0 args, slot7) → `Release` | VERIFIED | ported | matches textbook `IActiveScript` state machine |
+| F6 Global dispatch (invoke-by-name) | `FUN_0043B8CE` (gate `this+0x40==2`) → `FUN_00427AD4`: slot5=`GetIDsOfNames`(1 name,1 arg5th param), slot6=`Invoke` | VERIFIED | ported | this is the mechanism behind every JS call (`serviceHeader`, `serviceTranslateRequest`, `usesAutoDetectCode`, `codeFromLanguage`, …) |
+| F7 UtilsDispatch → JS `addOption` | `FUN_00465A92` calls `FUN_0043B8CE(this,L"addOption",…)` | VERIFIED | ported | **corrects D11 framing**: this is native **calling into** the JS-defined `addOption(a,b){Options[a]=b}` (matches `common.py` docstring exactly), not a native-side option setter being exposed to JS |
+| F8 `services::UtilsDispatch` (native→JS exposed object) | RTTI: `IDispDynImpl<services::UtilsDispatch,&GUID_NULL>` | VERIFIED | ported | the **reverse direction**: a native `IDispatch` the *script* can call back into (registered as `"Utils"` in `FUN_0045F609`, group D) — distinct object from F6/F7 |
+| F9 MD5 / signing (Baidu/Youdao/Promt) | crypto section; known-answer vectors | VERIFIED | ported | smoke vectors |
+| F10 Google `tk()` algo | `Service.js` | VERIFIED | ported | 1:1 + vector |
+| F11 Cookie engine (curl) | group-D `FUN_00460467`/`FUN_00460580` + curl fetch wrappers `FUN_0045BCED`(GET)/`FUN_0045BF7D`(POST) + proxy/timeout; per-call opener | VERIFIED | ported | **recast:** evidence is the fetch wrappers + Options proxy, not a "shared jar" (the shared-jar claim was our port's inference) |
+| F12 Google tkk seed | `FUN_0040FB54`/`FUN_0040FEC9` (same as E21): page fetch + `Find`-slice; seeded into JS via `GoogleTkk` in `FUN_0045F6C1` | VERIFIED | not-started | closes the tkk chain (JS `tk()` ← `Options.GoogleTkk` ← `FUN_0040FEC9` parse) |
+| F13 Script engine requested | Byte search: `CLSID_JScript {F414C260-6AC0-11CF-B6D1-00AA00BBBB58}` **present**; `Chakra/JScript9 {16D51579-A30B-4C8B-A276-0FF4DC41E755}` **absent**; no `Chakra`/`JScript`/`JavaScript`/`VBScript` strings | VERIFIED | not-started | **resolved:** native requests the `CLSID_JScript` engine and does **not** name Chakra. Which DLL backs that CLSID (classic JScript5.8 vs modern Chakra) is an **OS/registry** property, outside the binary — no engine version is claimed |
+
+### F — label corrections (superseding F1/F2 as originally drafted)
+
+The original draft (before this pass) attributed `{F414C260-…}` to "Script site"
+and `{BB1A2AE1-…}` to "IActiveScript host" — backwards and imprecise on both
+counts:
+- `F414C260-…` is **not a site GUID** — it is the **CLSID** passed directly to
+  `CoCreateInstance` (the actual script engine, CLSID_JScript).
+- `BB1A2AE1-…` is **not a CLSID / "host"** — it is an **IID** (interface
+  identifier) requested *from* that CoCreateInstance call, and call-site
+  argument arity identifies it as **IActiveScript**, not some separate "host".
+- A third GUID, `BB1A2AE2-…`, was not in the original draft at all — it is the
+  IID obtained via a subsequent `QueryInterface` for **IActiveScriptParse**.
+- **Caution on GUID→name mapping:** standard references commonly label
+  `BB1A2AE1` as `IID_IActiveScriptParse` and `BB1A2AE2` as `IID_IActiveScript`
+  — the **opposite** of what the call-arity evidence here shows. This checklist
+  trusts the call-site arity (a directly observable fact in this binary) over
+  a recalled name table (not independently re-verified here). If a future pass
+  finds an authoritative header/typelib confirming the reverse, this row must
+  be revisited — but the arity evidence should not be overridden by memory alone.
+
+## G. Rendering
+
+> **Verified this pass** (Ghidra). Decompiles read: `FUN_0040C393`,
+> `FUN_0040C475`, `FUN_004030AE`, `FUN_004266C6`, `FUN_0044FB11`,
+> `FUN_0044B4F4`, `FUN_0044D1AC`, `FUN_00449707`, `FUN_0044E5EC`,
+> `FUN_00402E7F`, `FUN_004072AA`. RTTI confirms `layout::LayoutRatioRule`,
+> `controls::RichEditCtrl`, `windows::WindowPopupBase`.
+
+| Item | Native evidence (artifact) | RE state | Port state | Note |
+|------|----------------------------|----------|------------|------|
+| G1 Popup text setter | `FUN_0040C393`: `SetWindowTextW(hwnd+4, [+0x3c])` (result), `SendMessage(WM_SETICON 0x80)`, subclass RichEdit `GetDlgItem(0x49e)`, `SetWindowTextW(hwnd+0x4c, [+0x40])` (aux), then `FUN_0044B4F4`(layout) + `FUN_0040C475`(rules) + `SetWindowPos(…,0x40b=SWP_NOSIZE\|NOZORDER\|SHOWWINDOW)` | VERIFIED | ported | show_popup; two text slots (main result + aux) |
+| G2 Layout auto-fit | `FUN_0044B4F4`: `GetWindow` walk of children, classifies by class name (Button/Static/Edit/ListBox/SysListView32/SysTreeView32/RICHEDIT50W/RichEdit20W/msctls_hotkey32/ComboBox/ComboBoxEx32/SysLink/#32770), applies per-class layout + subclass | VERIFIED | ported | recursive for `#32770` (dialogs) |
+| G3 RichEdit subclass + links | `FUN_004030AE` = subclass via `SetWindowLongW(GWL_WNDPROC=-4, _AtlThunk_DataToCode_4)`; `FUN_004266C6` = handle `L"qtdp:"` internal link (strip 5-char prefix, re-lookup) | VERIFIED | ported | tag_links |
+| G4 Control classifier | `FUN_0044FB11`: `GetClassName` → kind 1=SysListView32, 2=SysTreeView32, 3=RICHEDIT50W/RichEdit20W; stored in per-control struct | VERIFIED | ported | drives which subclass/layout applies |
+| G5 Per-control paint / double-buffer | `FUN_0044D1AC`: `GetClientRect`+style class → `FUN_0044D3C3`/`FUN_0044D502`/`FUN_0044D282`; memory DC via `FUN_0044A581` | VERIFIED | ported | Tk equivalents |
+| G6 Shadow text | `FUN_00449707`: `SelectObject`+`SetBkMode(TRANSPARENT)`; if shadow≠0xFFFFFFFF → `OffsetRect(+1,+1)`+`DrawTextW` shadow, then `DrawTextW` foreground | VERIFIED | ported | 1px drop shadow |
+| G7 Rounded corners | `FUN_0044E5EC`: `SetWindowRgn` with `CreateRoundRectRgn(…,0xb,0xb)` (type 2) or `CreatePolygonRgn` (type 1/3); gated on `DAT_005491e8+0x1c4` | VERIFIED | ported | corner style from theme |
+| G8 Positioning (on-screen) | `FUN_00402E7F`: `MonitorFromWindow`+`GetMonitorInfoW(rcWork)` → center + clamp; `FUN_004072AA`: `MonitorFromPoint` clamp of a point to work area | VERIFIED | ported | keeps popup on the active monitor |
+| G9 Visual fidelity to native | Split: **(a) native window spec is RE-recoverable and largely recovered** — DLG129 geometry `526×366`, control ids (1017/1018/1001/1002/1004…), RichEdit50W, Tahoma 9, theme colours, tray/icon resources; **(b) the *fidelity comparison* (our Tk render vs native) is a runtime screenshot-diff — NOT an RE question** | UNKNOWN | not-started | **classification (not relabelled VERIFIED):** (b) requires a runtime test harness (capture native + port, diff with a tolerance), which RE cannot provide. It is a **product-acceptance task**, not an RE gate item. Left UNKNOWN so the Gate reflects that fidelity is unproven |
+
+### G — evidence notes
+
+- **G1 aux slot.** `FUN_0040C393` sets text on `hwnd+4` from `+0x3c` and on
+  `hwnd+0x4c` from `+0x40` — i.e. the popup holds **two** text controls (main
+  result and a secondary line), and `FUN_0040C393` is reachable from both the
+  result path and the aux path.
+- **G2 vs G4.** `FUN_0044B4F4` (layout dispatcher) calls `FUN_0044b4a3` (the
+  same `GetClassName` helper used by `FUN_0044FB11`), so G4's classifier is the
+  shared primitive behind G2's walk — evidence for the "Button vs Static walk".
+- **G7 corner styles** map to the theme (`DAT_005491e8+8`: 0=square, 1/3=polygon,
+  2=rounded 11 px); consistent with `theme.py` corner handling.
+- **RTTI cross-check:** `layout::LayoutRatioRule::vftable` is written directly in
+  `FUN_0040C475` (G1b), confirming the layout engine is the `layout::` subsystem.
+- **No promotion for G9** — it stays `UNKNOWN` with an explicit reason rather
+  than being forced closed (`PROJECT_VISION.md` §0 gate rule).
+
+## H. Dictionaries / XDXF
+
+| Item | Native evidence (artifact) | RE state | Port state | Note |
+|------|----------------------------|----------|------------|------|
+| H1 Dict providers (11) | the dictionary services are the `Service.js` set verified in group E (E11–E20: Babylon Dict, ImTranslator, Reverso, Lingvo, Multitran, Oxford, Urban, Wikipedia, WordReference, Google Search, youdao-dict) | VERIFIED | ported | mixed live; see E rows for endpoints |
+| H2 XDXF offline loader | `FUN_00445BB9` (extension `.xdxf` check via `__wcsicmp`, open, else `FUN_0044600A`); `FUN_00447ED7` (map+validate container header); `FUN_0044600A` (parse `<ar>` articles) | VERIFIED | ported | container magic `0x49445451` version `1` (offsets +8/+0xC), then XDXF `<ar>` parse |
+| H3 XdxfArticle.xslt (apply) | asset `Resources/XdxfArticle.xslt` loaded by `FUN_004151C3`/`FUN_0045B752`; transform via MSXML DOMDocument: `FUN_00448BEC` `CoCreateInstance({2933BF90-7B36-11D2-B20E-00C04F983E60}=CLSID_DOMDocument, IID_IUnknown)`+`OleRun`+QI`{2933BF81-…}=IXMLDOMDocument`; `FUN_00448D2B` (load source XML, slot 0xE8), `FUN_00448AAD` (loadXML stylesheet slot 0x104 → `transformNode` 0x8C → BSTR HTML) | VERIFIED | ported | **transform link closed:** MSXML DOMDocument applies the XSLT; output is the HTML article. (GUID value read from `.data`; name mapping per MSXML family — see note) |
+| H4 RT_HTML-192 template | asset file | VERIFIED | ported | byte-identical |
+| H5 `qtdp:` internal links | FUN_00465574 | VERIFIED | ported | tags |
+| H6 Dict cross-links | `FUN_004266C6` (uses `FUN_00401f21(L"qtdp:")` + `FUN_00454482` index search, strip 5-char prefix, `FUN_00426966` re-lookup) | VERIFIED | ported | same `qtdp:` prefix as H5; `FUN_00465574` is the standalone prefix test |
+| H7 DictionaryHistory.json | `FUN_00419122` clears it on `ClearHistoryOnExit` (`DeleteFileW`); referenced by `FUN_0042274A`/`FUN_00422855` (dictionary-history load/save) | VERIFIED | ported | native persistence confirmed (absent only because no offline lookup happened) |
+| H8 Dict service resolution order | `FUN_0045869F` (Options loader) maps `DictionariesOrder`→struct `+0x27C` (order list) + `ActiveDictionaryServices`→`+0x10`; `FUN_004561F0` (Order setting) xrefs `DictionariesOrder` @ `004582A0` | VERIFIED | ported | **reclassified UNKNOWN→VERIFIED:** dict priority is the `DictionariesOrder` list (loaded like `ServicesOrder`), not an unconfirmed rule |
+
+### H — evidence: the offline-dictionary chain (data → lookup → parse → UI)
+
+- **Format (H2/H3):** `FUN_00447ED7` maps the `.xdxf` file and validates the
+  container header: `*(this+8)==0x49445451` (magic, ASCII **`"QTDI"`** stored
+  little-endian), `*(this+0xC)==1` (version 1), and an index block whose size
+  `*(this+0x14)` is a power-of-two. So the `.xdxf` file is a **QTDI v1
+  container** (header + index table + compressed/offsets), not raw XDXF XML.
+- **Article parse (H2):** `FUN_0044600A` reads the container in 1 MB chunks
+  (boundary realign on `\r`/`\n`), then scans for `"<ar"` (the XDXF
+  `<ar>` article element) and extracts fields from the packed strings at
+  `00529680` (+0x14), `0052969C` (+0x18), `005296B8` (+0x1C), `005296D8`
+  (+0x20), `005296E8`: `full_name`, `full_title`, `description`,
+  `abbreviations` — the XDXF field set. Layout map (from `FUN_00445BB9`'s
+  `FUN_00448843` pair-copies at `this+4/8/0xC/0x10`).
+- **Article → HTML/XSLT (H3):** the resource **`XdxfArticle.xslt`** (`0051d794`)
+  is the transform applied to each article to produce the display markup — this
+  is where XDXF XML becomes HTML. **Invoke site now closed:** `FUN_004151C3`
+  loads the stylesheet and calls the MSXML `DOMDocument` (`FUN_00448BEC`);
+  `FUN_00448AAD` runs `loadXML`+`transformNode`. See "Transform invoke" below.
+- **UI link handling (H5/H6):** rendered articles carry internal links with the
+  `qtdp:` scheme (`FUN_00465574` tests the prefix; `FUN_004266C6` strips 5
+  chars and re-invokes the lookup `FUN_00426966`). So a click re-enters the
+  same dictionary lookup with the linked term.
+- **Provider framing (H1/H4):** RTTI `dictionary::XdxfDictionary`, and the
+  online dictionary providers live under `Services/*/` (H1); the offline path
+  and online path both terminate in the same HTML result template (H4,
+  `RT_HTML-192`).
+- **Transform invoke (H3) — CLOSED.** `FUN_004151C3` (dictionary task) loads
+  `Resources/XdxfArticle.xslt` and calls the XSLT engine `FUN_00448BEC`, which
+  is an **MSXML DOMDocument** COM object (`CoCreateInstance` + `OleRun` +
+  `QueryInterface`), created with no `grab_query_idents = 0x17`. `FUN_00448D2B`
+  loads the **parsed article** as the source XML; `FUN_00448AAD` does
+  `loadXML(stylesheet)` (slot 0x104) then `transformNode` (slot 0x8C) → BSTR
+  HTML. So the stylesheet **is applied by MSXML**, producing the HTML article.
+  Output flows to `FUN_00446EDA` (`<br/><br/>` join) → UI post (`0x8163`).
+- **Chain statement:** `*.xdxf (QTDI v1) → FUN_00447ED7 validate → FUN_0044600A
+  parse <ar> → IXMLDOMDocument.loadXML(article) + XdxfArticle.xslt +
+  transformNode → BSTR HTML → FUN_00446EDA join → qtdp: links (FUN_004266C6
+  re-lookup) → UI`. **End-to-end proven.**
+- **GUID-name caveat (same rule as group F):** the CLSID value
+  `{2933BF90-7B36-11D2-B20E-00C04F983E60}` and IID `{2933BF81-…}` are read
+  from `.data` and match the MSXML `DOMDocument`/`IXMLDOMDocument` family; the
+  *functional* proof is the `OleRun` + `loadXML`/`transformNode` COM call
+  sequence, not the name recall.
+
+### H — correction (do not propagate the old label)
+
+- **"Dict cross-links = `FUN_0042C909`" is wrong.** `FUN_0042C909` is a
+  **destructor** (`FUN_0042C844` cleanup + optional free) — it is not spell or
+  dictionary logic. The dictionary cross-link is `FUN_004266C6` (above). The
+  spell entry `FUN_0042C909/0042C844` listed in `NATIVE_ARCH.md:982` as "Spell"
+  should be re-read as a `services::Spell*` object's dtor and spell/empty
+  vtable slots; **spell itself was not exercised in this pass**.
+
+## I. History / export
+
+| Item | Native evidence (artifact) | RE state | Port state | Note |
+|------|----------------------------|----------|------------|------|
+| I1 History load + save | `FUN_004638D8` (load `History.json`→entries, cap `DAT_00544A5C`, favorite from element idx2 → `entry+0x14`); `FUN_00463B04` (save: JSON array of `{src:[…],fav}` via `json::Integer`/`json::Boolean`); `FUN_00419122` fires save at shutdown, honoring `ClearHistoryOnExit` | VERIFIED | ported | **both directions proven** |
+| I2 DLG164 window | `.rsrc` RT_DIALOG: name-dir `0x0054B180` → id `0xA4`=**164** → data-entry chain → template @`00554E98` (style `0x10000000`=WS_CHILD child dialog, `cdit=1`, 0x20×0x68; 1st control BUTTON class `0x0080` id `0x20`); RTTI `windows::HistoryWindow`/`HistoryObserver`/`TopmostWindow` | VERIFIED | ported | **promoted:** dialog resource 164 exists with its template bytes; ATL-indirect construction doesn't remove the resource evidence. Direct `CreateDialog(164)` call mapping still unresolved (harmless for RE coverage) |
+| I3 CSV order [a,c,b,e,d] | `Plugins/History/Csv.js` | VERIFIED | ported | — |
+| I4a Export `Plugins/History/Csv.js` | `Plugins/History/Csv.js` (read verbatim) | VERIFIED | ported | `[a,c,b,e,d]` |
+| I4b Export `Plugins/History/Html.js` | `Plugins/History/Html.js` (read verbatim) | VERIFIED | ported | `quoteHtml` + table rows |
+| I4c Export `Plugins/History/Json.js` | `Plugins/History/Json.js` (read verbatim) | VERIFIED | ported | `escapeStr` ESC map |
+| I4d Export `Plugins/History/Txt.js` | `Plugins/History/Txt.js` (read verbatim) | VERIFIED | ported | — |
+| I5 Favorites | persisted as `entry+0x14` bool (`FUN_00463B04` writes `json::Boolean`; `FUN_004638D8` reads element idx2); filter option `HistoryFilterFavorites` | VERIFIED | ported | separate field, same history file (not a separate store) |
+| I6 History context menu | `FUN_004287B6` (right-click item menu; builder `FUN_00404055` `LoadMenuW`): Open `0x8028`, Copy text `0x806E`, Copy translation `0x8026`, Delete `0x8027`, Listen to text `0x8099` | VERIFIED | ported | `HistoryNavigationMenu` RTTI |
+
+### I — evidence: the two-way history flow (UI/task ↔ storage ↔ exporter)
+
+- **Storage (I1):** `History.json` (path via `FUN_0045B3D7`, under the app dir
+  `History\`). **Loader** `FUN_004638D8` → per entry: `FUN_00463492` ctor (24 B),
+  `FUN_0040380A` trs-item ctor; each trs-item is `{4 dwords from JSON array
+  elements 0..2 + element 3}`; favorite = element idx 2 → `entry+0x14`; capped
+  at `DAT_00544A5C`. **Saver** `FUN_00463B04` builds `{src:[trs…], fav}` with
+  `json::Integer` (vftable) for the numeric fields and `json::Boolean` for the
+  favorite, via the JSON object builder, then `FUN_0043E083` writes the file.
+- **Lifecycle:** `FUN_00419122` (app shutdown/save-points) calls `FUN_004561F0`
+  (persist Options) then either `FUN_00463B04` (save history) **or**
+  `DeleteFileW` of `History.json`+`DictionaryHistory.json` when
+  `ClearHistoryOnExit` (`DAT_0054941c`) is set — so clearing-on-exit is a real
+  code path, not a UI toggle only.
+- **UI → storage → UI:** the display list is a linked list at `DAT_00544A40`
+  (head) with tail at `DAT_00544A30`; `FUN_0046412D` appends an entry
+  (`entry+4` trs list, `entry+0x14` fav). So: a translate/history-add task
+  appends here **and** `FUN_00463B04` serializes the same list to disk — writer
+  and reader share one in-memory structure.
+- **Storage → exporter (I3/I4):** the JS exporter API is invoked **by name**
+  from native: `FUN_00427DA2` calls the script global `L"historyItem"` with a
+  **7-element VARIANT array** (params a–g = service, src, srcLang, tr, trLang,
+  index, total — matching `common.py`/`history.py`). The other exporter hooks
+  (`historyHeader`/`historyItemBegin`/`historyItemEnd`/`historyFooter`/
+  `historyFileExtension`/`historyFileDescription`) are present as invoked
+  strings at `0051EFD8`…`0051F098`, xref'd from the export runners
+  `FUN_00427ECA`/`FUN_00428483`/`FUN_0042856E`/`FUN_00429C6A`.
+- **Favorites ≠ separate store (I5):** favorite is a **field on each history
+  entry** (`entry+0x14`, serialized `json::Boolean`), filtered by
+  `HistoryFilterFavorites`. It is **not** a separate file or lifecycle.
+- **Export output:** `SaveHistoryPath` (Options) is the export directory; each
+  exporter writes `<desc>.<ext>` using `historyFileDescription`/`Extension`.
+
+**Chain statement:** `translate task → in-memory list (DAT_00544A40)
+→ FUN_00463B04 → History.json` and `History.json → FUN_004638D8 → list → UI`,
+with `list → FUN_00427DA2 (JS "historyItem" ×7 args) → export .csv/.html/.json/.txt`.
+**Both directions proven.**
+
+- **Save-as / export runner (I4a–I4d, refined):** `FUN_00429C6A` is the
+  "Save history as" flow: it builds the export text via the JS exporter hooks
+  (`FUN_0042856E`/`FUN_00428483`), picks the file via `GetSaveFileName`
+  (`FUN_00450EEA`), calls the script's **`historyFileExtension`** by name
+  (`FUN_0043B9BE`) with RTTI class `plugins::HistoryScript`, default dir
+  `L"History"`, and remembers the last dir in `DAT_005494F0`. This confirms the
+  exporter hook names are script globals invoked by name (matching
+  `history.py`).
+- **"Show history window" (I2/I6):** the string (`0051CECC`) is one of 17
+  action names returned by `FUN_0040B806` (an `action-id → name` dispatch:
+  0=Show main window … 3=Show history window … 16=Speech input). So the History
+  window is opened through the **action-hotkey/tray** dispatch, not a bare
+  dialog call — the concrete `CreateDialog(164)` site is ATL-indirect. I2 is
+  `VERIFIED` via the dialog **resource template bytes** (row above); only the
+  indirect call site is unmapped (harmless for RE coverage).
+- **Dialog resource map (I2):** `.rsrc` type id 5 = `RT_DIALOG`; its name
+  subdirectory (`0x0054B180`) has 19 entries. id `0xA4`=**164** is present —
+  the History dialog resource exists in the exe.
+- **Label tension (record, do not silently "fix"):** `NATIVE_ARCH.md:32` labels
+  `FUN_004638D8` as "History save". The decompile shows it **reads**
+  `History.json` into the entry list (length check + per-element parse) — it is
+  the **loader**. The actual **writer** is `FUN_00463B04` (JSON serialize →
+  `FUN_0043E083` write), invoked from `FUN_00419122`. Consistent with the
+  group-D rule, this is logged as a tension, not edited into `NATIVE_ARCH.md`.
+
+## J. TTS / audio / speech-in
+
+| Item | Native evidence (artifact) | RE state | Port state | Note |
+|------|----------------------------|----------|------------|------|
+| J1 Online mp3 fetch | `FUN_004614BB` (listen task: seed options via `FUN_0045F6C1`, get service, guard `caps&4`→code 8, else `FUN_0046027C`); `FUN_0046606C` invokes JS `serviceListenRequest` (method 4) | VERIFIED | ported | tts.py; method 4 = LISTEN |
+| J2 BASS playback | `FUN_00461642`: `FUN_00461691` free-old → `BASS_StreamCreateFile(mem=1)` → `BASS_ChannelSetSync(0x80000002=BASS_SYNC_END, cb FUN_004613EB)` → `BASS_ChannelPlay(restart=1)`; `FUN_00461691`=`BASS_StreamFree` | VERIFIED | ported | **exact 1:1 with `player.py` docstring** |
+| J3 native SAPI TTS (claim) | Exhaustive byte/string search of `QTranslate.exe`: SpVoice CLSID `{29333BF9-7B36-11D2-B20E-00C04F983E60}` bytes **absent**; `SAPI.SpVoice`/`SpVoice`/`ISpVoice`/`sapi` strings **absent**; the only `"SAPI"` hit is inside `atlTraceISAPI`; all `"Speech"` strings are speech-INPUT (SpeechRecognizer/SpeechToText/Google full-duplex) | VERIFIED | ported | **VERIFIED — no native SAPI TTS evidence found in the inspected binary; `sapi.py` is the port's fallback, not a reconstructed native behavior.** (Decision 2026-10-09: negative-but-proven conclusion about native behavior, not an unobtainable artifact. `NATIVE_ARCH.md:1622` claim is false.) |
+| J4 Slow TTS flag | `FUN_0046606C` passes arg3 = `(slow ^ 1) - 1` as a VARIANT BOOL to JS `serviceListenRequest`; slow comes from task `+0x35` ← Options `EnableSlowerListening` | VERIFIED | ported | slow maps to `ttsspeed`/`speed` in the provider JS |
+| J5 Speech-in record | `FUN_0044555D` (`BASS_RecordStart(dev,1,0,cb FUN_00445606,ctx)`); `FUN_00445606` allocates a frame (`FUN_00444D94`), enqueues (`FUN_00445659`); `FUN_00441FEE` selects a record device (`BASS_RecordGetInput`/`SetDevice`); `FUN_004434FE` builds Google full-duplex `up`/`down` URLs, launches both (async `FUN_00442D92`), Content-Type **`audio/x-flac; rate=`** | VERIFIED | dead:native-unavailable | **reverse chain proven: mic(BASS record)→frame→FLAC upload→Google speech-api full-duplex**; our port blocked (needs key/FLAC) |
+| J6 FLAC encode | init `FUN_00466509` (writes `"fLaC"` magic `0x664C6143` via `FUN_0046CBCE`; installs callbacks `FUN_00472AE1`/`0046A316`/`0046A672`/`0046AD6E` @struct+0x1C30..; read callback `FUN_00445803` @+0x1C64; returns FLAC init-status codes 1..0xd) — **call site** `FUN_00445716` (`FUN_00466509` once, then PCM int16→int32 + `FUN_00467437(encoder, samples, n)`) reached from the speech loop `FUN_004437F3`/`FUN_004439E6` | VERIFIED | not-started | **closed:** encoder init + per-buffer encode call site both traced; feeds the `audio/x-flac` upload (J5) |
+| J7 Read-phonetically (display) | flag `DAT_00549414`: loader `FUN_0045869F` + saver `FUN_004561F0` (key `ReadPhonetically`); menu `0x802d` "Read phonetically" (`FUN_0042DF28`), toggled in `FUN_00430C52` case `0x802d`; **consumer** `FUN_0042ED3F`: when flag≠0 and the phonetics field (`entry[5]`) is non-empty, appends `"\r\r"` + string-resource `0xBA` + phonetics to the **result pane** | VERIFIED | not-started | **CLOSED + relabelled:** effect is **phonetics display**, NOT TTS modulation. The old "phonetic TTS/effect untraced" label was wrong |
+
+### J — evidence: TTS / audio chains
+
+- **Listen (text→mp3), reverse direction:** `FUN_004614BB` is the listen task —
+  it seeds the script option context (`FUN_0045F609`/`FUN_0045F6C1`), resolves
+  the service, requires `caps&4` (LISTEN) else returns code `8`, and calls
+  `FUN_0046027C` (listen request: `FUN_0046606C` → JS `"serviceListenRequest"`
+  with `method=4`). The returned mp3 lands at task `+0x20`.
+- **Playback (J2):** `FUN_00461642` matches `player.py` exactly — in-memory
+  stream, END sync via callback `FUN_004613EB`→`FUN_004613FA`, restart play,
+  free-old-stream. **Byte-level behavior confirmed.**
+- **Correction (J3):** the `NATIVE_ARCH.md:1622` claim (`offline SAPI fallback =
+  FUN_00448BEC, CLSID {29333BF9-…} SpVoice`) is **wrong on both the address and
+  the GUID**. `FUN_00448BEC` is the MSXML XSLT engine (group H); the SpVoice
+  CLSID is not present; no `sapi`/`speech` import exists. So there is **no
+  native SAPI-TTS evidence**. `sapi.py` is a port-side fallback only — keep it,
+  but do not cite it as reconstructed native behavior. **Recorded as a tension
+  against `NATIVE_ARCH.md:1622`; not edited there.**
+- **Speech-in (J5), reverse chain proven:** mic → `BASS_RecordStart` → per-chunk
+  frame callback `FUN_00445606`/`FUN_00445659` → FLAC container
+  (`audio/x-flac`) → Google `speech-api/full-duplex/v1` `up` (upload) + `down`
+  (results), with options `key=AIza…`, `lang=`, `pFilter`, `maxAlternatives=1`,
+  `app=chromium`, `continuous`/`endpoint=1`. Device chosen by `FUN_00441FEE`.
+- ~~**Left open:** J6 encoder call-site, J7 flag effect (both `INFERRED`, not
+  forced). Native offline-SAPI (J3) → `UNKNOWN`.~~ **SUPERSEDED 2026-10-09:**
+  J6 → `VERIFIED` (encoder init + call site traced), J7 → `VERIFIED` (consumer =
+  phonetics display), J3 → `VERIFIED` (proven negative: no native SAPI TTS). See
+  rows above and `RE_PROGRESS.md` §B.3.
+
+## K. OCR
+
+| Item | Native evidence (artifact) | RE state | Port state | Note |
+|------|----------------------------|----------|------------|------|
+| K1 OcrSpaceProvider | `FUN_00453C25` (entry: request→parse) → `FUN_00453C8B` (build params, POST, decode) → `FUN_00453E9B` (parse `ParsedResults[0].ParsedText`, else `ErrorMessage`); registered in a function-pointer table @ `00529D0C`; RTTI `OcrSpaceProvider`/`TaskOcr` | VERIFIED | ported | services/ocr.py; params `apikey`/`language`/`filetype=PNG`/`scale=true` |
+| K2 Region select overlay | `windows::ScreenCaptureWindow` (`FUN_004377CB` key handler: `S`→save-as `FUN_0043845C`, `C`→copy `FUN_004383A2`, arrows adjust selection `OffsetRect`, Esc/Enter close, Delete; repaint `InvalidateRect`); selection → DC→HBITMAP (`FUN_00437A76`) → PNG `FUN_0044B269` → OCR `FUN_00453C25` | VERIFIED | ported | **glue closed:** overlay keys + save-as + DC→HBITMAP→PNG→OCR task all traced |
+| K3 OcrApiKey from Options | `DAT_005494EC` ↔ `OcrApiKey`: written by Options dialog (`FUN_0041029F`), read by OCR request (`FUN_00453C8B`) and error dialog (`FUN_004188B0` help text) | VERIFIED | ported | `Options > Advanced > OCR API key` |
+| K4 Native upload boundary strings | Exact multipart strings in `.rdata` and referenced from `FUN_0045C030` (OCR provider): `00529E10` field-with-file, `00529E90` field, `00529ED8` closing, `00529EF0` Content-Type+boundary | VERIFIED | ported | **reclassified UNKNOWN→VERIFIED:** format is byte-verified verbatim from the binary; matches `services/ocr.py` layout |
+
+### K — evidence: the OCR chain (screen → upload → parse)
+
+- **Request (K1):** `FUN_00453C8B` saves the captured bitmap to a temp
+  `*.png` (`FUN_0044B269`: GDI+ `GdipCreateBitmapFromHBITMAP` +
+  `GdipSaveImageToFile`, PNG encoder), builds a param map
+  (`apikey`= OcrApiKey or fallback, `language`= `FUN_00453F92(lang)`,
+  `filetype=PNG`, `scale=true`), and `POST`s to
+  `https://api.ocr.space/parse/image` via the multipart builder `FUN_0045C030`
+  (group H/K4). Response decoded as codepage `0xFDE9` (UTF-8).
+- **Parse (K1):** `FUN_00453E9B` walks the response JSON:
+  `ParsedResults` → `[0]` → `ParsedText` (success) else `ErrorMessage`.
+  Names `ParsedResults`/`ParsedText`/`ErrorMessage` are verbatim strings.
+- **Key (K3):** `DAT_005494EC` is `OcrApiKey`; the Options dialog writes it
+  (`FUN_0041029F`) and the request reads it (`FUN_00453C8B`). Empty key still
+  uploads (key=fallback) but triggers the help dialog `FUN_004188B0`.
+- **Language map (K1):** `FUN_00453F92` maps a language index to the OCR
+  language code (dispatch table). (Mapping table not fully expanded this pass.)
+- **Correction:** `EVENT_STOP_CAPTURE` (found at `FUN_0044180D`/`FUN_00441C63`)
+  is a **speech-recognizer FSM event** (`audio::SpeechEventTask`,
+  `SpeechRecognizer::FSMEventArgs`; siblings EVENT_START/AUDIO_DATA/
+  ENGINE_RESULT/…), **not** an OCR screen-capture event. Do not associate it
+  with K2. This is a **tension against `NATIVE_ARCH.md:105`**, which grouped
+  `EVENT_STOP_CAPTURE` with the OCR/TaskOcr area.
+- ~~**Left open (K2):** … selection→bitmap→OCR invocation path is not traced →
+  stays `INFERRED`.~~ **SUPERSEDED 2026-10-09:** K2 → `VERIFIED` via the overlay
+  key handler `FUN_004377CB` + DC→HBITMAP→PNG (`FUN_0044B269`) → OCR
+  (`FUN_00453C25`). See the K2 row.
+
+## L. Tray
+
+| Item | Native evidence (artifact) | RE state | Port state | Note |
+|------|----------------------------|----------|------------|------|
+| L1 Tray add | `FUN_00405C42`: fills `NOTIFYICONDATAW` (cbSize +0x3bc, hWnd +4, hIcon +0x14, uFlags +0xC=7, uCallbackMessage +0x10=0x80AA, szTip +0x18) → `Shell_NotifyIconW(0=NIM_ADD)` | VERIFIED | ported | pystray |
+| L2 State sync | `FUN_00418B69`: builds `"%s %s"` tip, picks icon by state (0→199, 2→0x8A, else 0x84) via `FUN_00454396`; calls add (`FUN_00405C42`) or modify (`FUN_00405CB2`) | VERIFIED | ported | — |
+| L3 Tray click | `FUN_00417F5B`: dispatch on msg — `0x201`(LButtonDown)/`0x203`(DblClk)→`FUN_00418E85` gated by `DAT_005494E8` (SwitchMouseModeOnTrayClick), `0x204`(RButtonUp)→`windows::TrayMenu` popup at cursor, `0x405`→post `0x8137` | VERIFIED | ported | — |
+| L4 Tray icon states | `FUN_00418B69`: ids **199 / 0x84 / 0x8A** (icon resources) | VERIFIED | ported | matches `PIPELINE.md` + `app.py _sync_icon` |
+
+## M. Options / settings (`Options.json` — one item per section)
+
+Enumerated from a real `%APPDATA%/QTranslate/Options.json` (**20 sections**).
+Earlier draft had 6 items; section-level coverage is required so no key group
+is silently dropped.
+
+| Item | Native evidence (artifact) | RE state | Port state | Note |
+|------|----------------------------|----------|------------|------|
+| M1 Options saver | `FUN_004561F0` (writes all sections; xref `DictionariesOrder` @ 004582A0) | VERIFIED | ported | config.py |
+| M2 Options pages | 9 `windows::Page<id>` RTTI (171-176, 179, 185, 205) → 9 pages | VERIFIED | ported | app.py:1742; ids in RTTI |
+| M3 `General` (37 keys) | `FUN_0045869F` reads section `General` → offsets (ActiveServices +0, LanguageFrom +0x138, FontName +0x150, TextSize +0x154, MouseMode +0x148, …) | VERIFIED | ported | largest section |
+| M4 `Appearance` (13 keys) | `FUN_0045869F`: `ThemeName` +0x1DC, `ColorBack` +0x1E8, `PopupIcons` +0x1FC, `Transparency` +0x1F4, … | VERIFIED | ported | theme/colors |
+| M5 `Contents` (4 keys) | `FUN_0045869F`: `SaveOnExit` +0x170, `EditSource` +0x174, `EditTranslation` +0x178, `EditBackTranslation` +0x17C | VERIFIED | ported | panes default text |
+| M6 `Advanced` (10 keys) | `FUN_0045869F`: `OcrApiKey` +0x23C, `DefaultBrowserId` +0x224, `CopyAction` +0x228, `PreferredDomain` +0x230, `EnableSlowerListening` +0x235, … | VERIFIED | ported | OCR key, browser |
+| M7 `Application` (4 keys) | `FUN_0045869F`: `SaveHistoryPath` +0x240, `HistoryFilter` +0x244, `HistoryFilterFavorites` +0x248, `OptionsPageIndex` +0x24C | VERIFIED | ported | startup/history paths |
+| M8 `Internet` (1 key) | `FUN_0045869F`: section `Internet` → `Timeout` +0x194 | VERIFIED | ported | — |
+| M9 `Proxy` (6 keys) | `FUN_0045869F`: `ProxyType` +0x198, `Host` +0x19C, `Port` +0x1A0, `Username` +0x1A4, `Password` +0x1A8, `Scheme` +0x1B0 | VERIFIED | ported | password decoded (`FUN_004559E6`) |
+| M10 `HotKeys` (18 keys) | `FUN_0045869F`: `EnableHotKeys` +0x1B4 + 17 `HotKey*` dwords +0x1B6..+0x1D6 | VERIFIED | ported | — |
+| M11 `OfflineDictionaries` (list) | `FUN_0045869F`: `FUN_00440A08` array → `FUN_0041E3A3` into `+0x250` | VERIFIED | ported | empty on test box |
+| M12 `Dictionary` (3 keys) | `FUN_0045869F`: `ShowServicesPane` +0x180, `DictionaryExactSearch` +0x181, `DictionaryZoom` +0x184 | VERIFIED | ported | — |
+| M13 `DictionariesOrder` (11) | `FUN_0045869F`: array → vector `+0x27C` | VERIFIED | ported | dict priority |
+| M14 `DisabledDictionaries` (list) | `FUN_0045869F`: array → `FUN_0045A6EE(…,1)` | VERIFIED | ported | — |
+| M15 `Ocr` (2 keys) | `FUN_0045869F`: section `Ocr` (`&DAT_00522BAC`) → `OcrLanguage` +0x264, `SaveImagePath` +0x268 | VERIFIED | ported | OcrApiKey lives in Advanced (M6), not here |
+| M16 `Exceptions` (3 keys) | `FUN_0045869F`: `FUN_00462B1F` into `+0x200`; `FUN_00462868` default | VERIFIED | ported | Disabled/Enabled/Mode |
+| M17 `Update` (1 key) | `FUN_0045869F`: `CheckForUpdates` +0x260 | VERIFIED | ported | server retired (R1) |
+| M18 `DisabledServices` (list) | `FUN_0045869F`: array → `FUN_0045A6EE(…,0)` | VERIFIED | ported | — |
+| M19 `DisabledLanguages` (list) | `FUN_0045869F`: array → `FUN_0045A7C6` | VERIFIED | ported | — |
+| M20 `LanguagePairs` (2 items) | `FUN_0045869F`: nested array pairs → `FUN_0043389B` into `+0x28C`; each must be exactly 2 | VERIFIED | ported | `[[57,17],[17,57]]` |
+| M21 `AutoDetection` (3 keys) | `FUN_0045869F`: `LanguageFirst` +0x188, `LanguageSecond` +0x18C, `LanguageSpeechRecognition` +0x190 | VERIFIED | ported | from/to/langs |
+| M22 Change-tracker / apply | `FUN_00434577`: filters out non-edits (disabled buttons, HotKeyControl combo boxes), enables Apply (`GetDlgItem 0x419`); on OK/Apply posts parent `0x8001`/`0x8002` and calls `FUN_004561F0` (save) | VERIFIED | ported | dirty→apply wiring |
+| M23 Binder (settings→controls) | `FUN_0040DD3B`: binds globals to dialog controls (`CheckDlgButton` 0x463/0x486-0x489, combo fill, `SetDlgItemInt` 0x478, icon buttons 0x472-0x475), subclasses RichEdits 0x444/0x443/0x442 via `FUN_004030AE` | VERIFIED | ported | — |
+
+### M — evidence: Options.json loader `FUN_0045869F` (single artifact for M3–M21)
+
+`FUN_0045869F` opens `Options.json` (via `FUN_0045B3D7`), parses it with the
+`json::` object model (`FUN_0043DF32`/`FUN_0043F71A`), and walks **each section
+by name**, assigning each key to a fixed struct offset. This is one traceable
+artifact that verifies every section row at once. Offsets observed:
+
+| Section | Keys → offsets |
+|---------|----------------|
+| `General` | ActiveServices +0, ActiveDictionaryServices +0x10, LanguageFrom +0x138, LanguageKeyboard +0x140, FontName +0x150, TextSize +0x154, MouseMode +0x148, PopupIcon-related +0x1E0.. |
+| `Appearance` | ThemeName +0x1DC, PopupAutoSize +0x1E0, ColorBack +0x1E8, Transparency +0x1F4, PopupIcons +0x1FC |
+| `Contents` | SaveOnExit +0x170, EditSource +0x174, EditTranslation +0x178, EditBackTranslation +0x17C |
+| `Dictionary` | ShowServicesPane +0x180, DictionaryExactSearch +0x181, DictionaryZoom +0x184 |
+| `AutoDetection` | LanguageFirst +0x188, LanguageSecond +0x18C, LanguageSpeechRecognition +0x190 |
+| `Internet` | Timeout +0x194 |
+| `Proxy` | ProxyType +0x198, Host +0x19C, Port +0x1A0, Username +0x1A4, Password +0x1A8, Scheme +0x1B0 |
+| `HotKeys` | EnableHotKeys +0x1B4 + 17 HotKey* +0x1B6..+0x1D6 |
+| `Exceptions` | `FUN_00462B1F` → +0x200 |
+| `Advanced` | DefaultBrowserId +0x224, CopyAction +0x228, LayoutIndicator +0x22C, PreferredDomain +0x230, OcrApiKey +0x23C |
+| `Application` | SaveHistoryPath +0x240, HistoryFilter +0x244, HistoryFilterFavorites +0x248, OptionsPageIndex +0x24C |
+| (OCR) | OcrLanguage +0x264, SaveImagePath +0x268 |
+| `Update` | CheckForUpdates +0x260 |
+| arrays | OfflineDictionaries +0x250, ServicesOrder +0x26C, DictionariesOrder +0x27C, LanguagePairs +0x28C |
+
+**Note:** `OcrApiKey` is under **`Advanced`** (+0x23C), not the `Ocr` section —
+the `Ocr` section holds `OcrLanguage`/`SaveImagePath`. `LanguageTo` +0x13C too.
+The saver `FUN_004561F0` mirrors these keys back out. M22 (`FUN_00434577`, the
+change/apply filter) and M23 (`FUN_0040DD3B`, the settings→controls binder) are
+now read and `VERIFIED` (see their rows).
+
+## N. Theme
+
+| Item | Native evidence (artifact) | RE state | Port state | Note |
+|------|----------------------------|----------|------------|------|
+| N1 Theme state dispatch | `FUN_0044C51C(this,state)`: returns the state block — state 1→this+0x14C, 3→+0x164, 4→+0x17C, else +0x134 | VERIFIED | ported | theme.py states |
+| N2 8 themes JSONC | `Themes/*.json` | VERIFIED | ported | loadable |
+| N3 GDI+ draw | `FUN_0040647F`: `GdipFillRectangle(graphics, brush, rect)` → fills a rect; returns the GDI+ status | VERIFIED | ported | Tk rebuild |
+| N4 Brightness shift (HLS) | `FUN_0044A163` | VERIFIED | ported | vector test |
+
+## O. i18n
+
+| Item | Native evidence (artifact) | RE state | Port state | Note |
+|------|----------------------------|----------|------------|------|
+| O1 lang.json loader | `FUN_0045B716`: builds `Locales\<name>` path via `FUN_0045B1CF`/`FUN_0045B9D9` (loader `FUN_0045B29A`) | VERIFIED | ported | locale.py |
+| O2 36 strings / 14 windows packs | `Locales/*/lang.json` | VERIFIED | ported | vi pack |
+| O3 help.txt default text | `FUN_0042F2CC`: default source = `"%s %s %s\n\n"` (name+version+date) + `Locales\...\help.txt` text (or resource 199 fallback); set on the source pane | VERIFIED | ported | matches `ui_match` help.txt check |
+| O4 English/lang.json pages | asset: file ends **validly** at `"Id": 10` (closing `}]}`), i.e. valid JSON but fewer pages than other locales | VERIFIED | ported | **correction:** earlier "truncated mid-Items" is imprecise — it is valid JSON ending at Id 10; fallback still handles any gap |
+
+## P. Keyboard-layout convert
+
+| Item | Native evidence (artifact) | RE state | Port state | Note |
+|------|----------------------------|----------|------------|------|
+| P1 Convert task | `windows::tasks::TaskConvertTextLayout::vftable` instantiated in the hotkey handler `FUN_0041786B`; per-char mapping `FUN_00404E09` | VERIFIED | ported | layout.py |
+| P2 EN↔RU pairs + VkKeyScan fallback | `FUN_00404E09(ch, fromHKL, toHKL)`: explicit special pairs **RU(0x40D040D)→EN(0x4090409)** `'→w, ,→b′, .→/, /→q`; **EN→RU** `'→, /→., q→/, w→'`; else `VkKeyScanExW`+`ToUnicodeEx` | VERIFIED | ported | special pairs verified exactly (see note) |
+| P3 Hotkey Ctrl+Alt+L | Options `HotKeyConvertTextLayout` (+0x1C4) bound in Options loader | VERIFIED | ported | — |
+
+### P — evidence: layout converter pairs (`FUN_00404E09`)
+
+`FUN_00404E09` takes a char + source/target HKL (layout handles
+`0x40D040D`=RU, `0x4090409`=EN). Explicit pairs (returned as VK then re-mapped
+by the task):
+- **RU→EN:** `'`→0x77 (`w`), `,`→0x27 (`'`), `.`→0x2F (`/`), `/`→0x71 (`q`)
+- **EN→RU:** `'`→0x2C (`,`), `/`→0x2E (`.`), `q`→0x2F (`/`), `w`→0x27 (`'`)
+- otherwise: `VkKeyScanExW` + `ToUnicodeEx` walk (generic fallback).
+
+So the ambiguous-key set is `q w ' , . /` — the checklist's earlier
+"`q<->/, w<->', ','<->', '.'<->/`" was **imprecise on the comma** (RU `,`→EN
+`'`, not `,`↔`,`). The full Cyrillic map is derived by the generic
+`VkKeyScanExW`/`ToUnicodeEx` path (matches `layout.py`).
+
+## Q. Crash reporter
+
+| Item | Native evidence (artifact) | RE state | Port state | Note |
+|------|----------------------------|----------|------------|------|
+| Q1 Reporter | `FUN_00462C03`: reads `Exceptions.json`, applies via `FUN_00462A82`, then `DeleteFileW` (once-report consume) | VERIFIED | ported | hook |
+| Q2 Exceptions.json read | `FUN_00462C03` opens/parses/deletes `Exceptions.json` | VERIFIED | ported | — |
+| Q3 Fail-fast | `FUN_0040345B(code)`: maps `-0x7FF8FFF2`→`0xC0000017` (out-of-memory), else `0xC000001D`, calls `FUN_00403446` (`__fastfail`/terminate) — no return | VERIFIED | ported | — |
+
+## R. Updater
+
+| Item | Native evidence (artifact) | RE state | Port state | Note |
+|------|----------------------------|----------|------------|------|
+| R1 Checker | `FUN_00461A26`: `GET https://quest-app.appspot.com/update?v=6.10.0` (codepage `0xFDE9`) → `FUN_00461ADE` | VERIFIED | dead:host-retired | server retired 2022; NATIVE_ARCH.md:1376 |
+| R2 Parser | `FUN_00461ADE`: parses manifest `{urls:[{href,provider}], version, date, changelog}` → global arrays | VERIFIED | not-started | — |
+| R3 Proxy modes | `FUN_0045BCED` (GET) / `FUN_0045BF7D` (POST) drive the fetch and honor `Options.Proxy*` + `Internet.Timeout` | VERIFIED | ported | session.net_options |
+
+### N/O/P/Q/R — evidence notes
+
+- **N (theme):** `FUN_0044C51C` is a state **selector** returning a struct
+  sub-block by state id (1/3/4/else) — the value `theme.py` consumes. `FUN_0040647F`
+  is a GDI+ `GdipFillRectangle` wrapper (fill rect with brush).
+- **O (i18n):** `FUN_0045B716` composes `Locales\<dir>` (loader `FUN_0045B29A`);
+  `FUN_0042F2CC` builds the default source text: a `"%s %s %s"` header
+  (app name+version+date) + `help.txt` content (resource 199 fallback), matching
+  the `ui_match` default-source check.
+- **Q (crash):** `FUN_00462C03` reads+applies+**deletes** `Exceptions.json`
+  (one-shot consume). `FUN_0040345B` is the fail-fast: picks `0xC0000017`
+  (OOM) / `0xC000001D` and calls `FUN_00403446`, never returning.
+- **R (updater):** `FUN_00461A26` = `GET https://quest-app.appspot.com/update?v=6.10.0`
+  → `FUN_00461ADE` parses the manifest (`urls[{href,provider}]`, `version`,
+  `date`, `changelog`). Host retired, so R1 port = `dead:host-retired`.
+
+---
+
+## Gate checklist (must all be true before Phase C)
+
+- [ ] Every row has RE state ∈ {`VERIFIED`, `UNRECOVERABLE`}. No `INFERRED`/`UNKNOWN` remaining.
+- [ ] Every `UNRECOVERABLE` row states **reason + impact** and appears in `COMPATIBILITY_MATRIX.md`.
+- [ ] Every `VERIFIED` row cites a concrete artifact (Ghidra address **with decompile**, JS source, asset hash, or test) — not a doc line.
+- [ ] Cross-document consistency pass done; no contradictions with D1–D20.
+- [ ] The working-tree `app.py` change is preserved and its behavior decision recorded.
+- [ ] User has **explicitly** approved the Gate. (Document agreement ≠ Gate approval.)

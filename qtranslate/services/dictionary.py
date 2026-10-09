@@ -304,7 +304,7 @@ REVERSO_LANGS = [None, None, None, None, None, "arabic", None, None, None,
                  None, None, None, "portuguese", "romanian", "russian",
                  None, None, None, "spanish", None, None, None, None, None,
                  None, None, None, None, None, None, None, None, None, None,
-                 None, None, None, None, None, None, None, None, None]
+                 None, None, None, None, None, None, None, None, None, None]
 
 
 REVERSO_API_HOST = "https://api.reverso.net"
@@ -525,11 +525,36 @@ def multitran_link(word) -> str:
     return multitran_host() + "/m.exe?s=" + _q(word)
 
 
+def _multitran_code(lang):
+    """Resolve a language to Multitran's numeric code.
+
+    Native buildUri(): ``codeFromLanguage(target)`` / ``codeFromLanguage(
+    source)`` index ``SupportedLanguages`` (MT array). Port accepts either an
+    ISO code (what the app's call sites pass) or an already-numeric value
+    (native-style), so both entry points behave identically. Unsupported
+    languages (MT entry is ``None``) are returned unchanged, mirroring the
+    native's lossy build rather than inventing a code.
+    """
+    if isinstance(lang, int) or lang in ("auto", "", None):
+        return lang
+    from qtranslate.services.google_translate import SUPPORTED_LANGS
+    try:
+        code = MULTITRAN_LANGS[SUPPORTED_LANGS.index(lang)]
+    except (ValueError, IndexError):
+        return lang
+    return code if code is not None else lang
+
+
 def multitran_build_uri(word, sl, tl, ui_lang=None) -> str:
-    """Port of buildUri(): /m.exe?l1={target}&l2={source}&s={word}
-    (+ &SHL=1 unless UI lang is ru). l1/l2 are numeric codes."""
+    """Port of buildUri(): ``/m.exe?l1={code(target)}&l2={code(source)}&
+    s={word}`` (+ ``&SHL=1`` unless UI lang is ru).
+
+    Note l1 is the *target* and l2 the *source* (native order). ``sl``/``tl``
+    may be ISO codes or numeric Multitran codes — see ``_multitran_code``.
+    """
     from qtranslate.common import Options
-    url = "/m.exe?l1={0}&l2={1}&s={2}".format(tl, sl, _q(word))
+    url = "/m.exe?l1={0}&l2={1}&s={2}".format(
+        _multitran_code(tl), _multitran_code(sl), _q(word))
     ui = ui_lang or Options.get("LanguageCode", "en")
     if ui != "ru":
         url += "&SHL=1"

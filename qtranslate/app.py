@@ -202,7 +202,10 @@ def _t_youdao(t, sl, tl):
 
 
 def _t_bing(t, sl, tl):
-    return _bing_tr(t, "en" if sl == "auto" else sl, tl)
+    # Microsoft/Bing accept auto source natively: serviceRequest sends
+    # fromLang=codeFromLanguage(source||AUTO_DETECT_LANGUAGE) = "auto"
+    # (Service.js). Do NOT force "en" -- pass the source through verbatim.
+    return _bing_tr(t, sl, tl)
 
 
 def _t_babylon(t, sl, tl):
@@ -210,12 +213,13 @@ def _t_babylon(t, sl, tl):
 
 
 def _t_promt(t, sl, tl):
-    try:
-        paft, xsrf, op = _promt.session(sl, tl)
-        out, _, _ = _promt.translate(t, sl, tl, paft, "", xsrf, op)
-        return out
-    except Exception as e:
-        return f"[error] {e}"
+    # Native: a failed provider request surfaces as the app-level error
+    # string, not as translation text. Let exceptions propagate so
+    # do_translate() handles them uniformly (string id 190), like every
+    # other adapter — do not fabricate an "[error] ..." pseudo-translation.
+    paft, xsrf, op = _promt.session(sl, tl)
+    out, _, _ = _promt.translate(t, sl, tl, paft, "", xsrf, op)
+    return out
 
 
 TRANSLATORS = {
@@ -236,7 +240,7 @@ DICTS = {
     "lingvo": lambda w, sl, tl: _dict.lingvo_lookup(w, sl, tl),
     "urban": lambda w, sl, tl: _dict.urban_lookup(w),
     "wikipedia": lambda w, sl, tl: _dict.wikipedia_lookup(w, sl, tl),
-    "multitran": lambda w, sl, tl: _dict.multitran_lookup(w, 1, 2),
+    "multitran": lambda w, sl, tl: _dict.multitran_lookup(w, sl, tl),
     "wordreference": lambda w, sl, tl: _dict.wordreference_lookup(w, sl, tl),
     "reverso": lambda w, sl, tl: _dict.reverso_lookup(w, sl, tl),
     "babylon": lambda w, sl, tl: _dict.babylon_dict_lookup(w, sl, tl),
@@ -1218,6 +1222,99 @@ class App:
         m.add_checkbutton(label=_T("Menus", 20, "Instant translation",
                                    menu=1),
                           variable=_inst_v, command=_toggle_instant)
+
+        # --- native Extended section + remaining menu commands -----------
+        # Each checkbutton flips and persists the same Options.json key the
+        # native menu item writes (ids from FUN_0042DF28).
+        def _persist_bool(section, key):
+            def _flip():
+                try:
+                    from qtranslate import config as _C
+                    import json as _j
+                    full = _C.load()
+                    sec = full.setdefault(section, {})
+                    sec[key] = not sec.get(key, False)
+                    with open(_C.DEFAULT_PATH, "w",
+                              encoding="utf-8") as f:
+                        _j.dump(full, f, ensure_ascii=False, indent=1)
+                except Exception:
+                    pass
+            return _flip
+
+        def _bool_var(section, key):
+            try:
+                from qtranslate import config as _C
+                return tk.BooleanVar(
+                    value=bool(_C.load().get(section, {}).get(key, False)))
+            except Exception:
+                return tk.BooleanVar(value=False)
+
+        # Spell checking (0x802b)
+        _spell_v = _bool_var("General", "SpellChecking")
+        m.add_checkbutton(label=_T("Menus", 25, "Spell checking", menu=1),
+                          variable=_spell_v,
+                          command=lambda: (_spell_v.set(not _spell_v.get()),
+                                           _persist_bool("General",
+                                                         "SpellChecking")()))
+        # Clear input on Drag && Drop (0x8063)
+        _drag_v = _bool_var("General", "ClearOnDragDrop")
+        m.add_checkbutton(label=_T("Menus", 60, "Clear input on Drag & Drop",
+                                   menu=1),
+                          variable=_drag_v,
+                          command=lambda: (_drag_v.set(not _drag_v.get()),
+                                           _persist_bool("General",
+                                                         "ClearOnDragDrop")()))
+        # Auto-cleanup of translation (0x8077)
+        _ac_v = _bool_var("General", "AutoCleanupOfTranslation")
+        m.add_checkbutton(label=_T("Menus", 61, "Auto-cleanup of translation",
+                                   menu=1),
+                          variable=_ac_v,
+                          command=lambda: (_ac_v.set(not _ac_v.get()),
+                                           _persist_bool(
+                                               "General",
+                                               "AutoCleanupOfTranslation")()))
+        # Save contents on exit (0x8075) — native key under "Contents"
+        _se_v = _bool_var("Contents", "SaveOnExit")
+        m.add_checkbutton(label=_T("Menus", 62, "Save contents on exit",
+                                   menu=1),
+                          variable=_se_v,
+                          command=lambda: (_se_v.set(not _se_v.get()),
+                                           _persist_bool("Contents",
+                                                         "SaveOnExit")()))
+        m.add_separator()
+        # Show panes (0x8071 top / 0x8064 middle / 0x8065 services)
+        m.add_command(label=_T("Menus", 70, "Show top pane", menu=1),
+                      command=lambda: self.toggle_pane("ShowTopPane", "src"))
+        m.add_command(label=_T("Menus", 71, "Show middle pane", menu=1),
+                      command=lambda: self.toggle_pane("ShowMiddlePane",
+                                                       "mid"))
+        m.add_command(label=_T("Menus", 72, "Show services pane", menu=1),
+                      command=lambda: self.toggle_pane("ShowServicesPane",
+                                                       "svc"))
+        m.add_separator()
+        # Minimize to tray (0x806f on minimize / 0x8070 on close)
+        _mm_v = _bool_var("General", "MinimizeToTrayOnMinimize")
+        m.add_checkbutton(label=_T("Menus", 75, "Minimize to tray on "
+                                                 "minimize", menu=1),
+                          variable=_mm_v,
+                          command=lambda: (_mm_v.set(not _mm_v.get()),
+                                           _persist_bool(
+                                               "General",
+                                               "MinimizeToTrayOnMinimize")()))
+        _mc_v = _bool_var("General", "MinimizeToTrayOnClose")
+        m.add_checkbutton(label=_T("Menus", 76, "Minimize to tray on close",
+                                   menu=1),
+                          variable=_mc_v,
+                          command=lambda: (_mc_v.set(not _mc_v.get()),
+                                           _persist_bool(
+                                               "General",
+                                               "MinimizeToTrayOnClose")()))
+        m.add_separator()
+        # Keyboard (0x802f) + Help (0x8030)
+        m.add_command(label=_T("Menus", 85, "Keyboard", menu=1),
+                      command=self.open_keyboard)
+        m.add_command(label=_T("Menus", 86, "Help", menu=1),
+                      command=self.show_hotkeys)
         m.add_separator()
         m.add_command(label=_T("Menus", 80, "Options...", menu=5),
                       command=self.open_options)
@@ -2962,7 +3059,23 @@ class App:
         ent.bind("<Return>", lambda e: go_all())
         _exact_v = tk.BooleanVar(
             value=bool(_dcfg.get("DictionaryExactSearch", True)))
+
+        def _save_exact(*_a):
+            # Persist DictionaryExactSearch like the native loader/saver
+            # (options +0x181); the flag gates the XDXF match breadth.
+            try:
+                full = _C.load()
+                full.setdefault("Dictionary", {})[
+                    "DictionaryExactSearch"] = bool(_exact_v.get())
+                import json as _j2
+                with open(_C.DEFAULT_PATH, "w",
+                          encoding="utf-8") as fh:
+                    _j2.dump(full, fh, ensure_ascii=False, indent=1)
+            except Exception:
+                pass
+
         tk.Checkbutton(frm, text="Exact", variable=_exact_v,
+                       command=_save_exact,
                        bg=_COLORS["back"], fg=_COLORS["text"],
                        selectcolor=_COLORS["back"]).pack(side="left")
         tk.Button(frm, text="Look up",
@@ -3024,10 +3137,12 @@ class App:
             word = ent.get().strip()[:500]
             if not word:
                 return
-            if _exact_v.get():
-                word_q = word
-            else:
-                word_q = word
+            # DictionaryExactSearch (native options +0x181): exact is the
+            # default; when off, match is broadened to substring. Only the
+            # exact-vs-broader distinction is evidence-backed (consumer
+            # FUN_004151c3); the precise native index algorithm is INFERRED.
+            word_q = word
+            exact = bool(_exact_v.get())
             sids = _sel_ids()
             out.delete("1.0", "end")
             out.insert("1.0", f"querying {len(sids)} dictionaries...")
@@ -3057,7 +3172,7 @@ class App:
                     _off = _C.load().get("OfflineDictionaries", []) or []
                     for _xp in _off:
                         try:
-                            _frag = _X.lookup(word_q, _xp)
+                            _frag = _X.lookup(word_q, _xp, exact=exact)
                             if _frag:
                                 cards.append(("xdxf", _xp.split(
                                     "/")[-1].split("\\")[-1],
@@ -3353,9 +3468,9 @@ def on_hotkey(app):
     if not text:
         print("clipboard empty — select text + Ctrl+C first")
         return
-    svc, _, tgt, _ = app.current()
+    svc, _, tgt, src = app.current()
     print(f"translating {len(text)} chars via {svc}...")
-    res = do_translate(svc, text[:5000], tgt, "auto",
+    res = do_translate(svc, text[:5000], tgt, src,
                        app.opt_detect.get(), app.opt_backtr.get())
     app.src.delete("1.0", "end")
     app.src.insert("1.0", text[:2000])

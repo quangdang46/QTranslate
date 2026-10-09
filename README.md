@@ -25,12 +25,18 @@ python -I qtranslate/tts.py "Xin chào" vi google.mp3
 python -I start_app.py
 ```
 
-## Test suites (all green 2026-10-08)
+## Test suites (last run 2026-10-08 — historical snapshot)
+
+> These counts are the **last-recorded results, not a live claim**. They have
+> not been rerun since 2026-10-08. See `tests/LIVE_RESULTS.md` for per-endpoint
+> results and `docs/TEST_STRATEGY.md` for why live suites are not merge gates.
+> (Changelog hotkey/UI-loop `ui_match` counts varied during 2026-10-08 runs as
+> the suite grew: `82/82` → `79/79` → `97/97` → `40/40` → `46/46` → `71/71`.)
 
 ```bash
-python -I tests/live_providers.py  # 21/21 vs real endpoints
-python -I tests/ui_match.py        # 97/97 vs native window/Options.json
-python -I tests/smoke_dict.py      # 9/9 (dict + config + hotkeys)
+python -I tests/live_providers.py  # 21/21 vs real endpoints (2026-10-08)
+python -I tests/ui_match.py        # 97/97 vs native window/Options.json (2026-10-08)
+python -I tests/smoke_dict.py      # 9/9 (dict + config + hotkeys) (2026-10-08)
 ```
 
 ## Provider status

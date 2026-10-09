@@ -1,0 +1,10 @@
+{
+  "app": "port",
+  "window_title": "port-synth",
+  "width": 64,
+  "height": 48,
+  "ui_state": "options",
+  "input": "none",
+  "capture_kind": "mechanics",
+  "source": "synthetic fixture (harness mechanics only)"
+}

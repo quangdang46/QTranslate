@@ -117,15 +117,20 @@ def json_item_begin(service, src):
 
 
 def json_item(service, src, src_lang, tr, tr_lang, i, n):
+    # Native Json.js historyItem: the translation object only; the comma
+    # separating top-level entries is emitted by historyItemEnd (below).
     return ('{"service":' + _json.dumps(service, ensure_ascii=False)
             + ',"srcLang":' + _json.dumps(src_lang, ensure_ascii=False)
             + ',"trLang":' + _json.dumps(tr_lang, ensure_ascii=False)
-            + ',"tr":' + _json.dumps(tr, ensure_ascii=False) + "}"
-            + ("," if i < n - 1 else ""))
+            + ',"tr":' + _json.dumps(tr, ensure_ascii=False) + "}")
 
 
 def json_item_end(service, src, i, n):
-    return "]" + ("," if i < n - 1 else "")
+    # Native Json.js historyItemEnd: "]}" closes the "trs" array AND the
+    # enclosing {"src":..,"trs":..} object; the trailing comma separates
+    # top-level entries. (Earlier port code returned "]" -- it never
+    # closed the object, so the whole export was invalid JSON.)
+    return "]}" + ("," if i < n - 1 else "")
 
 
 def json_footer():

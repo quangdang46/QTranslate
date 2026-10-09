@@ -45,13 +45,25 @@ def render_article(xml_text: str) -> str:
     return _render(root)
 
 
-def lookup(word: str, xdxf_path: str) -> str:
-    """Naive offline lookup: scan XDXF file for <k>word</k> article."""
+def lookup(word: str, xdxf_path: str, exact: bool = True) -> str:
+    """Offline lookup: scan XDXF for the article whose <k> key matches.
+
+    ``exact=True`` (native default — ``DictionaryExactSearch`` on): the key
+    must equal the query (``<k>word</k>`` / ``<kref>word``). ``exact=False``:
+    the key need only *contain* the query — the broadened search the native
+    XDXF path fans out to when the flag is off (consumer ``FUN_004151c3``,
+    options ``+0x181``). Only the exact-vs-broader distinction is
+    evidence-backed; the precise native index algorithm is INFERRED.
+    """
+    word = word.strip()
     with open(xdxf_path, encoding="utf-8", errors="replace") as f:
         data = f.read()
+    pat = (r"<k>\s*%s\s*(</k>|<kref)" if exact
+           else r"<k>\s*[^<]*%s[^<]*(</k>|<kref)")
+    rx = re.compile(pat % re.escape(word))
     for m in re.finditer(r"<ar>(.*?)</ar>", data, re.S):
         body = m.group(1)
-        if re.search(r"<k>\s*%s\s*(</k>|<kref)" % re.escape(word), body):
+        if rx.search(body):
             return render_article("<ar>" + body + "</ar>")
     return ""
 

@@ -1,0 +1,10 @@
+{
+  "app": "native",
+  "window_title": "native-synth",
+  "width": 64,
+  "height": 48,
+  "ui_state": "main",
+  "input": "none",
+  "capture_kind": "mechanics",
+  "source": "synthetic fixture (harness mechanics only)"
+}
