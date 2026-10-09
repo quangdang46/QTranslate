@@ -76,8 +76,13 @@ rather than a fidelity decision.
   line endings.
 - **Does:** pin the service element-id contract (`qt-s/h/d/l<id>`, `li<id>`,
   the 200px clip threshold) as native behavior rather than port convention.
-  If any dictionary service or `dict_render.py` emits different ids, that is
-  now a demonstrable divergence rather than a style question.
+  The port emits all four ids (`dict_render.py:26-30`) and invokes
+  `checkEntry`/`appendMenuItem` per card (`dict_render.py:32-33`), so the 200px
+  clip is honoured *by loading native's own JS* rather than by a Python
+  reimplementation. That is the stronger arrangement: the threshold cannot
+  drift from native because it is native's instruction doing the work. Note
+  the corollary — it also means a host without a working JS engine loses the
+  clipping silently, which is a real (unmeasured) risk to record elsewhere.
 - **Does not:** tell us which provider fills native's phonetics slot
   (`entry[5]`). The page above is the *dictionary* renderer; it has no
   romanization field. The per-provider logic lives in the `Services/*/Service.js`
