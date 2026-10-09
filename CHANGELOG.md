@@ -39,13 +39,24 @@ All entries are clean-room RE of QTranslate 6.10.0 for education.
   `requirements.txt` adds none, so this is a **product decision**, not RE
   work; the row keeps `not-started` with that reason instead of a silent
   `ported`. J5's `audio/x-flac` upload cannot be exercised without it.
-- **Ghidra MCP is down — no JDK on this host.** `docs/review/GHIDRA_MCP_UNAVAILABLE_2026-10-10.md`.
-  The bridge process is alive but the `:8080` server is gone, and
-  `analyzeHeadless` cannot restart it (`Unable to locate a Java Runtime`; no
-  JDK on the machine, `/usr/bin/java` is the macOS stub). The Ghidra install
-  and the 3812-function `QT_REAL.rep` are intact. Not an install-permission
-  decision I made silently. Raw-PE analysis still works and is how J6 was
-  closed; new decompiles need a host with a JDK.
+- **Ghidra MCP was down, and the first reason recorded for it was false.**
+  `docs/review/GHIDRA_MCP_UNAVAILABLE_2026-10-10.md`. The bridge process was
+  alive but the `:8080` server was gone, and `analyzeHeadless` failed with
+  `Unable to locate a Java Runtime`. The note concluded **"no JDK on this
+  host"** from four negative checks — `/Library/Java/JavaVirtualMachines/`
+  empty, `java_home -V` reporting nothing, `/usr/bin/java` being the macOS
+  stub, nothing under `~/.hermes/tools/`. All four true, the conclusion wrong:
+  `~/ghidra/ghidra.sh` — written earlier on this machine for exactly this —
+  sets `JAVA_HOME=/opt/homebrew/opt/openjdk@21/…`, and `java_home` does not
+  list **keg-only** Homebrew formulae. `openjdk@21` (21.0.12.1) was installed
+  the whole time. **A lookup tool's silence is evidence about the lookup
+  tool, not about the machine** — the same failure shape as the
+  grep-for-vocabulary error, and the fix was reading the script that had
+  already launched Ghidra successfully. GhidraMCP is a Java plugin
+  (`DEFAULT_PORT = 8080`, embedded `HttpServer`), so it restarts via
+  `ghidraRun ~/Projects/QT_REAL.rep` with `JAVA_HOME` set, not via a
+  `-postScript`. Corrected in place; the wrong version read as diligence
+  rather than as an error, which is why it needed recording.
 - Rows C3, C8, C10, F2, F13, J6, J7 reconciled; tally regenerated. **4
   `not-started` remain and all four are legitimate non-work**: C10 (proven
   negative), F13 (divergence), G9 (needs a screenshot), J6 (needs a
