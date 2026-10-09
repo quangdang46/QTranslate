@@ -3,6 +3,56 @@
 All entries are clean-room RE of QTranslate 6.10.0 for education.
 `LIVE-OK` = verified against the real provider endpoint.
 
+## Native-artifact recovery + tkk/cursor capture verified from the binary (2026-10-10)
+
+- **The native binary was recoverable, not absent.** The only PE on disk was an
+  NSIS 3.08 installer stub; the real 1,462,272-byte PE sat inside its appended
+  solid-LZMA payload (stream at `0xF621` → `0x9bfa9`). Extraction independently
+  reproduced byte-identically; see `docs/review/ARTIFACT_RECOVERY_2026-10-10.md`.
+  Before this, `docs/RE_COVERAGE_CHECKLIST.md`'s 439 cited `FUN_xxxxxxxx`
+  addresses resolved to **0** functions in the Ghidra project (which held the
+  stub). After loading the recovered image they resolve to **390 by exact name**
+  (49 are analyst-label differences), and **all 439 lie inside `.text`
+  `0x401000..0x50cc00`**. The earlier `RE_EVIDENCE_PROVENANCE_2026-10-10.md`
+  conclusion ("cannot be re-derived") was wrong and is now corrected in that file.
+- **E21/F12 (Google tkk seed) — port changed to match the binary.**
+  `FUN_0040FB54`/`FUN_0040FEC9` decompiled: two `ATL::CStringT::Find` calls slice
+  between a start and an end marker, on
+  `https://translate.google.<domain>/translate_a/element.js` (cp `0xFDE9`), with an
+  hourly refresh guard. The markers are wide strings in `.rdata`: `"_ctkk='"`
+  (`DAT_0051d57c`), `"';"` (`DAT_0051d58c`) and an **alternate start `"TKK='"`
+  (`DAT_0051d5c4`)** that native retries with when the primary slice is empty.
+  The port had a single regex over `_ctkk` with no alternate marker, so a page
+  served with only `TKK=` fell back to tkk `0.0` while native still recovered the
+  seed. `google_translate.py` now implements both marker pairs and the
+  empty-result retry. `tests/regress_tkk_markers.py` (17 checks).
+- **R2 (update manifest parser) — confirmed against the decompile.** `FUN_00461ADE`
+  reads exactly `urls`/`href`/`provider`/`version`/`date`/`changelog` and no other
+  keys, matching `updater.parse_manifest`. Port state now records it as verified
+  **of the parser only** — no live update flow exists or can (host retired 2022).
+- **C3/C8 (mouse capture) — evidence tightened, port extended.**
+  `FUN_00404901` confirms `GetCursorPos` → `AccessibleObjectFromPoint` →
+  `get_accName` with a `get_accValue` fallback. `FUN_00417E4E` confirms
+  `GetRawInputData(0x10000003)` + `GetSystemMetrics(0x17)=SM_SWAPBUTTON` mapping to
+  `0x201`/`0x202`. `FUN_004193F6` confirms the down-side own-window skip, exclusion
+  check and `PtInRect` gate. `mouse_capture.py` gained `cursor_text()` (OLEACC),
+  `_buttons_swapped()` (SM_SWAPBUTTON), `should_capture()` (own-window + PtInRect),
+  and the hook now applies those gates. app.py mode 2 (`General.MouseMode == 2`)
+  now routes OLEACC cursor text through `_translate_text()` instead of a
+  synthesized Ctrl+C, falling back to the clipboard when the read is empty.
+  `tests/regress_mouse_capture.py` (34 checks). Evidence:
+  `docs/review/C3_C8_C10_MOUSE_2026-10-10.md`.
+- **C10 — the row's prose was too strong and is corrected, not promoted.** The
+  claim "no `SetCursor`/icon hook anywhere, only wndclass cursors" does not
+  survive the real image: `SetCursor` has 14 callers and `LoadCursorW` 12. But
+  their call sites cluster in the dialog/overlay region (`0x4373xx`/`0x50d4xx`),
+  never in the mouse capture chain. The row now supports only the narrower,
+  still-true claim about that chain. `SetWindowsHookExW` has **0** callers, so the
+  port's `WH_MOUSE_LL` is a mechanism substitution, recorded as such.
+- Checklist rows E21/F12/R2 moved `not-started` → `behaviour-verified` with the
+  binary evidence named in-row; tally regenerated (`not-started` 11 → 8,
+  `behaviour-verified` 11 → 14). **Gate state unchanged: BLOCKED (1), on G9 only.**
+
 ## Reliability layer + G9/re-artifact records (2026-10-10)
 
 - `qtranslate/reliability.py`: error taxonomy (9 kinds, RELIABILITY.md §2),

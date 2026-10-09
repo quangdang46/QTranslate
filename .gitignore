@@ -4,3 +4,7 @@ __pycache__/
 .env
 *.txt
 *__pycache__*/
+
+# Recovered native artifacts (NSIS-extracted, reproduced by
+# docs/review/ARTIFACT_RECOVERY_2026-10-10.md §7 — blobs not committed)
+docs/review/artifacts/

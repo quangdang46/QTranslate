@@ -190,22 +190,49 @@ def _translate_response(obj, sl, tl):
 
 
 _TKK_CACHE = ("", 0.0)  # (tkk, fetched_at) — native caches hourly
+_TKK_START = "_ctkk='"   # native DAT_0051d57c (FUN_0040FB54 primary)
+_TKK_START_ALT = "TKK='"  # native DAT_0051d5c4 (fallback marker)
+_TKK_END = "';"          # native DAT_0051d58c (shared end marker)
+_TKK_URL = "/translate_a/element.js"  # native literal (FUN_0040fec9 path)
+
+
+def _tkk_slice(js: str) -> str:
+    """Slice the tkk between native markers.
+
+    FUN_0040FB54 builds a CString from 8 bytes at DAT_0051d57c (the wide
+    chars `_ctkk='`), then at DAT_0051d5c4 (`TKK='`) — sharing the end marker
+    `';` at DAT_0051d58c. It calls FUN_0040fec9 with each marker pair, and
+    retries with the alternate start marker when the primary slice comes back
+    empty (the `*(int *)(DAT_00549774 + -0xc) == 0` guard in the decompile).
+    """
+    for start in (_TKK_START, _TKK_START_ALT):
+        begin = js.find(start)
+        if begin < 0:
+            continue
+        begin += len(start)
+        end = js.find(_TKK_END, begin)
+        if end < 0:
+            continue
+        token = js[begin:end]
+        if token:
+            return token
+    return ""
 
 
 def refresh_tkk(force: bool = False) -> str:
     """Port of FUN_0040FB54 → FUN_0040FEC9 (GoogleTkk seed pipeline).
 
-    GET https://translate.google.<domain>/translate_a/element.js, extract the
-    TKK substring between two markers, cache hourly. Returns the "a.b"-style
+    GET https://translate.google.<domain>/translate_a/element.js, slice the TKK
+    between the native marker pair, cache hourly (native keys its cache on the
+    calendar hour, `DAT_0054977c != local_20.wHour`). Returns the "a.b"-style
     token, or "0.0" on failure (native defaults to 0.0 until the fetch works).
     """
-    import re
     import time
     global _TKK_CACHE
     now = time.time()
     if not force and _TKK_CACHE[0] and now - _TKK_CACHE[1] < 3600:
         return _TKK_CACHE[0]
-    url = service_host() + "/translate_a/element.js"
+    url = service_host() + _TKK_URL
     try:
         req = urllib.request.Request(
             url, headers={"User-Agent": "Mozilla/5.0"})
@@ -213,9 +240,7 @@ def refresh_tkk(force: bool = False) -> str:
             js = r.read().decode("utf-8", "replace")
     except Exception:
         return _TKK_CACHE[0] or "0.0"
-    # element.js contains: var _ctkk='409484.2968434358';
-    m = re.search(r"_ctkk\s*=\s*'([^']+)'", js)
-    tkk = m.group(1) if m else "0.0"
+    tkk = _tkk_slice(js) or "0.0"
     _TKK_CACHE = (tkk, now)
     try:
         Options["GoogleTkk"] = tkk

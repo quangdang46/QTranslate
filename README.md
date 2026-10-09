@@ -25,6 +25,22 @@ python -I qtranslate/tts.py "Xin chào" vi google.mp3
 python -I start_app.py
 ```
 
+> **Running the test suites.** `python -I` (isolated mode) strips the current
+> directory from `sys.path`, so it only works for the suites that add the repo
+> root relative to their own file (`regress_tkk_markers.py`,
+> `regress_mouse_capture.py`, `regress_reliability.py`). The older suites
+> bootstrap `sys.path.insert(0, ".")` — which `-I` discards — or a hardcoded
+> `C:/Users/ADMIN/qtranslate-re`, so on macOS they need the repo root on the path
+> and an interpreter that has `_tkinter` (system `python3` on macOS often does
+> not):
+>
+> ```bash
+> PYTHONPATH=. python3 tests/regress_enable_history.py
+> ```
+>
+> That is a packaging wart in those 9 files, not a failure of the code under
+> test; the commands above are documented here so exit codes are not misread.
+
 ## Test suites (last run 2026-10-08 — historical snapshot)
 
 > These counts are the **last-recorded results, not a live claim**. They have

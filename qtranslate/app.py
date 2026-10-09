@@ -3803,18 +3803,19 @@ _MOUSE_HOOK = {"on": False}
 
 def _mouse_mode_select(app, x, y):
     """Native click-to-capture callback (FUN_004183bd): a selection click
-    arrived at (x,y). Synthesize Ctrl+C to copy the selection, then run the
-    normal translate->popup path. Runs on a worker thread (the LL hook proc
-    must return fast)."""
+    arrived at (x,y). Mode 2 reads the text under the cursor via OLEACC
+    (FUN_00404901) and translates that directly; modes 0/1 synthesize Ctrl+C to
+    copy the selection, then run the normal translate->popup path. Runs on a
+    worker thread (the LL hook proc must return fast)."""
     try:
         from qtranslate import mouse_capture as _MC
         if not _MC.available():
             return
         from qtranslate import config as _CG
+        _adv = _CG.load().get("Advanced", {})
         # Advanced.EnableGuiTranslation (checkbox 0x482) gates native mode-2
         # OLEACC text-capture (FUN_00404901, DAT_005494e4); mirror it here
         # as the gate for mouse-selection capture.
-        _adv = _CG.load().get("Advanced", {})
         if not bool(_adv.get("EnableGuiTranslation", True)):
             return
         # Advanced.EnableMouseModeOnCtrl: require Ctrl held at click time.
@@ -3833,6 +3834,24 @@ def _mouse_mode_select(app, x, y):
 
     def _work():
         try:
+            # General.MouseMode 2 = native "popup + read aloud": FUN_004183bd
+            # dispatches mode 2 through the OLEACC cursor-text path instead of
+            # the clipboard copy. Prefer that text when it is non-empty.
+            mode = 0
+            try:
+                from qtranslate import config as _C2
+                mode = int(_C2.load().get("General", {}).get("MouseMode", 0))
+            except Exception:
+                pass
+            if mode == 2:
+                text = ""
+                try:
+                    text = (_MC.cursor_text(x, y) or "").strip()
+                except Exception:
+                    text = ""
+                if text:
+                    _translate_text(app, text)
+                    return
             if _HAS_KEYS:
                 try:
                     import keyboard as _kb
@@ -3847,6 +3866,34 @@ def _mouse_mode_select(app, x, y):
 
     import threading as _th
     _th.Thread(target=_work, daemon=True).start()
+
+
+def _translate_text(app, text):
+    """Translate already-captured text (no clipboard involved).
+
+    Shared by the mode-2 OLEACC path so cursor-captured text goes through the
+    same selection/detect/back-translation/history/popup flow as on_hotkey,
+    differing only in where the text came from."""
+    try:
+        svc, _, tgt, src = app.current()
+    except Exception:
+        return
+    print(f"translating {len(text)} chars via {svc} (mouse mode 2)...")
+    res = do_translate(svc, text[:5000], tgt, src,
+                       app.opt_detect.get(), app.opt_backtr.get())
+    try:
+        app.src.delete("1.0", "end")
+        app.src.insert("1.0", text[:2000])
+        app.render(res)
+        app.push_hist(svc, text[:120], res[:200])
+    except Exception:
+        pass
+    # native mode 2 = popup + read aloud; the read-aloud half needs a provider
+    # TTS sink we do not have, so only the popup is emitted here.
+    try:
+        app.root.after(0, lambda: show_popup(text[:300], res, svc, tgt))
+    except Exception:
+        pass
 
 
 def _set_mouse_hook(app, on):
