@@ -2059,10 +2059,13 @@ class App:
             _cur_lang = _gen.get("LocaleFoderName") or "English"
             if _cur_lang not in _langs:
                 _cur_lang = "English"
-            for lab, vals, default in (
-                    (_Cw(10, 1070, "Interface language:"), _langs, _cur_lang),
-                    (_Cw(10, 1075, "Font name:"), ["--- Default ---"], "--- Default ---"),
-                    (_Cw(10, 1074, "Text size:"), ["9"], str(_gen.get("TextSize", 9)))):
+            for lab, vals, default, key in (
+                    (_Cw(10, 1070, "Interface language:"), _langs,
+                     _cur_lang, "LocaleFoderName"),
+                    (_Cw(10, 1075, "Font name:"), ["--- Default ---"],
+                     "--- Default ---", "FontName"),
+                    (_Cw(10, 1074, "Text size:"), ["9"],
+                     str(_gen.get("TextSize", 9)), "TextSize")):
                 r = tk.Frame(body, bg=_COLORS["back"])
                 r.pack(fill="x", pady=1)
                 tk.Label(r, text=lab, width=18, anchor="w",
@@ -2072,6 +2075,27 @@ class App:
                                   state="readonly")
                 cb.pack(side="left")
                 cb.set(default)
+
+                def _save_general(k=key, w=cb):
+                    try:
+                        from qtranslate import config as _CSG
+                        import json as _jsg
+                        full = _CSG.load()
+                        _val = w.get()
+                        if k == "TextSize":
+                            try:
+                                _val = int(_val)
+                            except Exception:
+                                return
+                        full.setdefault("General", {})[k] = _val
+                        with open(_CSG.DEFAULT_PATH, "w",
+                                  encoding="utf-8") as fh:
+                            _jsg.dump(full, fh, ensure_ascii=False,
+                                      indent=1)
+                        _gen[k] = _val
+                    except Exception:
+                        pass
+                cb.bind("<<ComboboxSelected>>", lambda e: _save_general())
             tk.Label(body, text=_Cw(10, 1063, "Auto-detect languages"),
                      bg=_COLORS["back"], fg=_COLORS["text"],
                      font=("Segoe UI", 10, "bold")).pack(anchor="w",
@@ -2090,6 +2114,31 @@ class App:
                                   state="readonly")
                 cb.pack(side="left")
                 cb.set(_IDX2NAME.get(_ad.get(key, 17), "English"))
+
+                def _save_autodetect(k=key, w=cb):
+                    # AutoDetection.LanguageFirst/Second/
+                    # LanguageSpeechRecognition (SUPPORTED_LANGS indices).
+                    try:
+                        from qtranslate import config as _CSA
+                        import json as _jsa
+                        full = _CSA.load()
+                        _tbl = list(__import__(
+                            "qtranslate.services.google_translate",
+                            fromlist=["SUPPORTED_LANGS"]).SUPPORTED_LANGS)
+                        try:
+                            _idx = _tbl.index(
+                                LANG_CODES.get(w.get(), w.get()))
+                        except ValueError:
+                            _idx = 17
+                        full.setdefault("AutoDetection", {})[k] = _idx
+                        with open(_CSA.DEFAULT_PATH, "w",
+                                  encoding="utf-8") as fh:
+                            _jsa.dump(full, fh, ensure_ascii=False,
+                                      indent=1)
+                        _ad[k] = _idx
+                    except Exception:
+                        pass
+                cb.bind("<<ComboboxSelected>>", lambda e: _save_autodetect())
             tk.Label(body, text=_Cw(10, 1064, "History"), bg=_COLORS["back"],
                      fg=_COLORS["text"],
                      font=("Segoe UI", 10, "bold")).pack(anchor="w",
