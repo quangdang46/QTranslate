@@ -2024,8 +2024,26 @@ class App:
                 _startup = False
             _sv = tk.BooleanVar(value=_startup)
             self._opt_vars["startup"] = _sv  # keep ref: no GC-uncheck
+
+            def _toggle_startup():
+                try:
+                    _rk2 = _wr.OpenKey(
+                        _wr.HKEY_CURRENT_USER,
+                        r"Software\Microsoft\Windows\CurrentVersion\Run",
+                        0, _wr.KEY_SET_VALUE)
+                    if _sv.get():
+                        _wr.SetValueEx(_rk2, "QTranslate", 0,
+                                      _wr.REG_SZ, sys.executable)
+                    else:
+                        try:
+                            _wr.DeleteValue(_rk2, "QTranslate")
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+
             tk.Checkbutton(body, text=_Cw(10, 1045, "Start with Windows"),
-                           variable=_sv,
+                           variable=_sv, command=_toggle_startup,
                            bg=_COLORS["back"], fg=_COLORS["text"],
                            selectcolor=_COLORS["back"]).pack(anchor="w")
             try:
@@ -2128,6 +2146,20 @@ class App:
                    (_THEMES[0] if _THEMES else ""))
             th.bind("<<ComboboxSelected>>",
                     lambda e: self.apply_theme(th.get()))
+            def _save_appearance_flag(key, var):
+                try:
+                    from qtranslate import config as _CAF
+                    import json as _jaf
+                    full = _CAF.load()
+                    full.setdefault("Appearance", {})[key] = bool(
+                        var.get())
+                    with open(_CAF.DEFAULT_PATH, "w",
+                              encoding="utf-8") as fh:
+                        _jaf.dump(full, fh, ensure_ascii=False, indent=1)
+                    _ap[key] = bool(var.get())
+                except Exception:
+                    pass
+
             for lab, key in ((_Cw(14, 1158, "Enable auto size"), "PopupAutoSize"),
                              (_Cw(14, 1160, "Enable auto position"), "PopupAutoPos"),
                              (_Cw(14, 1159, "Always activate"), "PopupAutoFocus"),
@@ -2137,9 +2169,11 @@ class App:
                               "EnableWindowStyle")):
                 vv = tk.BooleanVar(value=bool(_ap.get(key, False)))
                 self._opt_vars[key] = vv
-                tk.Checkbutton(body, text=lab, variable=vv,
-                               bg=_COLORS["back"], fg=_COLORS["text"],
-                               selectcolor=_COLORS["back"]).pack(anchor="w")
+                tk.Checkbutton(
+                    body, text=lab, variable=vv, bg=_COLORS["back"],
+                    fg=_COLORS["text"], selectcolor=_COLORS["back"],
+                    command=lambda k=key, v=vv: _save_appearance_flag(
+                        k, v)).pack(anchor="w")
             tk.Label(body, text="Popup window", bg=_COLORS["back"],
                      fg=_COLORS["text"],
                      font=("Segoe UI", 10, "bold")).pack(anchor="w",
@@ -2225,8 +2259,23 @@ class App:
             self._opt_vars = getattr(self, "_opt_vars", {})
             v = tk.BooleanVar(value=bool(hk.get("EnableHotKeys", True)))
             self._opt_vars["EnableHotKeys"] = v
+
+            def _toggle_enable_hotkeys():
+                try:
+                    from qtranslate import config as _CEK
+                    import json as _jek
+                    full = _CEK.load()
+                    full.setdefault("HotKeys", {})["EnableHotKeys"] = \
+                        bool(v.get())
+                    with open(_CEK.DEFAULT_PATH, "w",
+                              encoding="utf-8") as fh:
+                        _jek.dump(full, fh, ensure_ascii=False, indent=1)
+                    hk["EnableHotKeys"] = bool(v.get())
+                except Exception:
+                    pass
+
             tk.Checkbutton(body, text=_Cw(16, 1118, "Enable hot keys"),
-                           variable=v,
+                           variable=v, command=_toggle_enable_hotkeys,
                            bg=_COLORS["back"], fg=_COLORS["text"],
                            selectcolor=_COLORS["back"]).pack(anchor="w")
             tv = ttk.Treeview(body, columns=("Hotkey",),
