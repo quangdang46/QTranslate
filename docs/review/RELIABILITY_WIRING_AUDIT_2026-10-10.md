@@ -143,3 +143,9 @@ The 116/45 split came from a 3-line lookahead for `pass` vs `return`/`_T(`
 (`_T(` is the native-string indirection used for the 190 error). Not exact
 tooling — it is a *triage* count to size the problem, not a claim that every
 one of the 116 is wrong.
+
+Re-measured after the `_mouse_mode_select` change (commit-adjacent, another
+session): **still 237 / 116 / 45**, so the audit is not invalidated by that
+edit. It *would* be invalidated by anything touching `do_translate` or
+`detect_language` — those two functions are the audit's whole subject, and a
+change to either requires the counts and §2's table to be re-run.
