@@ -189,6 +189,41 @@ def _translate_response(obj, sl, tl):
     return b, sl, tl, g
 
 
+_TKK_CACHE = ("", 0.0)  # (tkk, fetched_at) — native caches hourly
+
+
+def refresh_tkk(force: bool = False) -> str:
+    """Port of FUN_0040FB54 → FUN_0040FEC9 (GoogleTkk seed pipeline).
+
+    GET https://translate.google.<domain>/translate_a/element.js, extract the
+    TKK substring between two markers, cache hourly. Returns the "a.b"-style
+    token, or "0.0" on failure (native defaults to 0.0 until the fetch works).
+    """
+    import re
+    import time
+    global _TKK_CACHE
+    now = time.time()
+    if not force and _TKK_CACHE[0] and now - _TKK_CACHE[1] < 3600:
+        return _TKK_CACHE[0]
+    url = service_host() + "/translate_a/element.js"
+    try:
+        req = urllib.request.Request(
+            url, headers={"User-Agent": "Mozilla/5.0"})
+        with common.http_open(req) as r:
+            js = r.read().decode("utf-8", "replace")
+    except Exception:
+        return _TKK_CACHE[0] or "0.0"
+    # element.js contains: var _ctkk='409484.2968434358';
+    m = re.search(r"_ctkk\s*=\s*'([^']+)'", js)
+    tkk = m.group(1) if m else "0.0"
+    _TKK_CACHE = (tkk, now)
+    try:
+        Options["GoogleTkk"] = tkk
+    except Exception:
+        pass
+    return tkk
+
+
 def translate(text: str, sl: str = "auto", tl: str = "en", tkk: str = "0.0") -> str:
     """Port of serviceTranslateRequest + serviceTranslateResponse.
 
