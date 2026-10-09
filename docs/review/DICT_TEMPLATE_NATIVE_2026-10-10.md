@@ -57,10 +57,13 @@ rather than a fidelity decision.
 
 **Two consequences, one each way:**
 
-- **This is real verification value.** A dictionary-rendering row that depends
-  on "the template matches native" now rests on bytes compared against bytes,
-  not on inspection. It is the same class of evidence as the J7 string ids:
-  measured, reproducible from an artifact in the repo.
+- **This is real verification value — of a precondition, not of behaviour.**
+  The template the port emits is now compared against bytes from the binary
+  rather than inspected: same class of evidence as the J7 string ids, and
+  reproducible from an artifact in the repo. What it does **not** establish is
+  that the *rendering* matches native, because nothing renders this page —
+  see §3. Byte-identity of an artifact that is never executed is a
+  precondition for future behavioural verification, not that verification.
 - **The CRLF difference is a real (small) fidelity gap.** If the native
   WebBrowser control is fed the template with `\r\n` and the port feeds it
   `\n`, nothing user-visible changes in an HTML renderer — both are legal
@@ -76,13 +79,36 @@ rather than a fidelity decision.
   line endings.
 - **Does:** pin the service element-id contract (`qt-s/h/d/l<id>`, `li<id>`,
   the 200px clip threshold) as native behavior rather than port convention.
-  The port emits all four ids (`dict_render.py:26-30`) and invokes
-  `checkEntry`/`appendMenuItem` per card (`dict_render.py:32-33`), so the 200px
-  clip is honoured *by loading native's own JS* rather than by a Python
-  reimplementation. That is the stronger arrangement: the threshold cannot
-  drift from native because it is native's instruction doing the work. Note
-  the corollary — it also means a host without a working JS engine loses the
-  clipping silently, which is a real (unmeasured) risk to record elsewhere.
+  `dict_render.py:26-30` emits all four ids and `:32-33` invokes
+  `checkEntry`/`appendMenuItem` per card.
+
+  **Corrected 2026-10-10 — the §3 bullet here previously said the 200px clip
+  was "honoured by loading native's own JS rather than by a Python
+  reimplementation." That is false, and it matters because it turned a gap
+  into an arrangement.** The rendered page is **never loaded by anything**:
+  `app.py:3534` calls `DR.render_cards(cards)`, `:3536` writes the result to
+  `dict_last.html`, and `page` has no further read — the Tk `Text` widget is
+  fed `_strip_html()` text under `=====` headings instead. There is no
+  WebBrowser control, no `tkhtml`, and nothing in `qtranslate/` that could
+  load it; `requirements.txt` adds no webview dep, and the three
+  `webbrowser` uses in `app.py` (`:477`, `:1062`, `:1212`) all open an
+  external URL.
+
+  So the clip is not "silently lost on a host without a working JS engine" —
+  it is **never invoked on any host**. That is a rendering-model difference
+  (HTML page produced and discarded; plain-text panel shown), not a caveat on
+  a working arrangement. Written up separately in
+  `docs/review/DICT_TEMPLATE_UNRENDERED_2026-10-10.md`; the reason is recorded
+  here rather than deleted, because the error had a specific shape worth
+  naming: I verified that the *port calls* `checkEntry` and inferred from that
+  call that the JS *runs*. A call site in the emitted HTML is not execution.
+  Nothing invokes the page, so every behaviour inside it is inert — the
+  template's correctness is a precondition for a future webview, not the
+  current rendering path.
+
+  The corollary that survives: if a webview pane is ever added, the clip and
+  the nav menu come *free* because the template is byte-identical to native's.
+  That is the real value of the byte-comparison.
 - **Does not:** tell us which provider fills native's phonetics slot
   (`entry[5]`). The page above is the *dictionary* renderer; it has no
   romanization field. The per-provider logic lives in the `Services/*/Service.js`
@@ -104,10 +130,11 @@ rather than a fidelity decision.
   writing it from expectation.) So the J6-style question "which service writes
   `entry[5]`" remains unanswerable from this artifact, re-confirmed here
   rather than assumed.
-- **Does not:** change any checklist row or the tally. A `ported` row whose
-  template is byte-identical could arguably be `behaviour-verified`, but
-  that classification is the checklist owner's, and the distinction the row
-  would change (rendered pixel output) is a G9-class runtime question.
+- **Does not:** verify the *rendering*. Nothing loads the page — §3. This is
+  the reason the dictionary row stays `ported` and not `behaviour-verified`,
+  and it is a stronger objection than "pixel comparison is a G9 question": the
+  evidence class is wrong, not merely incomplete.
+- **Does not:** change any checklist row or the tally.
 
 ## 4. Reproduce
 
