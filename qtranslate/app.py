@@ -802,6 +802,20 @@ class App:
                            maxundo=100)
         self.out.pack(side="left", fill="both", expand=True)
         self.out.bind("<Button-3>", self.show_result_menu)
+        # Contents.EditTranslation/EditBackTranslation cache: restore the
+        # last result pane content on boot (mirrors EditSource above;
+        # EditBackTranslation was previously unconsumed).
+        try:
+            from qtranslate import config as _CET
+            _cc = _CET.load().get("Contents", {})
+            _et = (_cc.get("EditTranslation") or "").strip()
+            _ebt = (_cc.get("EditBackTranslation") or "").strip()
+            if _et:
+                _restored = _et + (
+                    f"\n\n--- back-translation ---\n{_ebt}" if _ebt else "")
+                self.out.insert("1.0", _restored)
+        except Exception:
+            pass
         outside = tk.Frame(outfrm, bg="white")
         outside.pack(side="right", fill="y", padx=2)
         tk.Frame(outside, bg="white", height=120).pack()
@@ -1677,10 +1691,21 @@ class App:
                 _so = full.get("Contents", {}).get("SaveOnExit", True)
                 if str(_so).lower() not in ("0", "false", "no", "") \
                         or _so is True or _so == 1:
+                    _full_out = self.out.get("1.0", "end").strip()
+                    _marker = "--- back-translation ---"
+                    if _marker in _full_out:
+                        _main_out, _bt = _full_out.split(_marker, 1)
+                        _main_out = _main_out.rstrip()
+                        _bt = _bt.strip()
+                    else:
+                        _main_out, _bt = _full_out, ""
                     full.setdefault("Contents", {})["EditSource"] = \
                         self.src.get("1.0", "end").strip()[:5000]
                     full["Contents"]["EditTranslation"] = \
-                        self.out.get("1.0", "end").strip()[:5000]
+                        _main_out[:5000]
+                    # EditBackTranslation (previously unconsumed): cache
+                    # the appended back-translation segment separately.
+                    full["Contents"]["EditBackTranslation"] = _bt[:5000]
                     with open(_C.DEFAULT_PATH, "w",
                               encoding="utf-8") as f:
                         _j.dump(full, f, ensure_ascii=False, indent=1)
