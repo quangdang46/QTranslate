@@ -2927,6 +2927,34 @@ class App:
         tv.heading("fav", text="★")
         tv.heading("svc", text="Service")
         tv.column("fav", width=30, stretch=False)
+        # Application.HistoryFilter: native substring filter on the history
+        # list. An Entry persists it back to Options.json.
+        _ff = tk.Frame(w, bg=_COLORS["back"])
+        _ff.pack(fill="x", padx=8)
+        tk.Label(_ff, text=_Cw(3, 1162, "Filter:"), bg=_COLORS["back"],
+                 fg=_COLORS["text"]).pack(side="left")
+        _flt = tk.Entry(_ff, width=30)
+        _flt.pack(side="left", padx=4)
+        try:
+            from qtranslate import config as _CF
+            _flt.insert(0, str(_CF.load().get(
+                "Application", {}).get("HistoryFilter", "")))
+        except Exception:
+            pass
+
+        def _save_filter(*_a):
+            try:
+                from qtranslate import config as _C2
+                import json as _j2
+                full = _C2.load()
+                full.setdefault("Application", {})[
+                    "HistoryFilter"] = _flt.get()
+                with open(_C2.DEFAULT_PATH, "w",
+                          encoding="utf-8") as fh:
+                    _j2.dump(full, fh, ensure_ascii=False, indent=1)
+            except Exception:
+                pass
+        _flt.bind("<KeyRelease>", lambda e: (_save_filter(), _paint()))
         tv.pack(fill="both", expand=True, padx=8, pady=8)
 
         def _paint():
@@ -2934,15 +2962,17 @@ class App:
                 tv.delete(i)
             try:
                 from qtranslate import config as _C
-                _fav_only = bool(_C.load().get(
-                    "Application", {}).get("HistoryFilterFavorites",
-                                           False))
+                _ac = _C.load().get("Application", {})
+                _fav_only = bool(_ac.get("HistoryFilterFavorites", False))
+                _text = str(_ac.get("HistoryFilter", "")).lower()
             except Exception:
-                _fav_only = False
+                _fav_only, _text = False, ""
             for idx, (svc, src, *_) in enumerate(self.history):
                 fav = len(self.history[idx]) > 3 \
                     and self.history[idx][3]
                 if _fav_only and not fav:
+                    continue
+                if _text and _text not in src.lower():
                     continue
                 tv.insert("", "end", iid=str(idx),
                           text=src[:70],
