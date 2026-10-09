@@ -3793,10 +3793,19 @@ def _register_native_hotkeys(app) -> list:
         svc, _, tgt, _ = app.current()
         res = do_translate(svc, text[:5000], tgt, "auto",
                            app.opt_detect.get(), app.opt_backtr.get())
+        # Advanced.CopyAction: 0 = copy to clipboard only, 1 = copy AND
+        # retype in place (write-back). Default 0 if unset.
+        try:
+            from qtranslate import config as _CRA
+            _copy_action = int(_CRA.load().get(
+                "Advanced", {}).get("CopyAction", 0))
+        except Exception:
+            _copy_action = 0
         try:
             import pyperclip as _pc2
             _pc2.copy(res)
-            keyboard.write(res[:2000])
+            if _copy_action == 1:
+                keyboard.write(res[:2000])
         except Exception:
             pass
         app.src.delete("1.0", "end")
