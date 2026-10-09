@@ -21,10 +21,14 @@ def main():
     A._MAIN_APP = None
     inst = A.App(root)
     A._MAIN_APP = inst
+    root.lift()
+    root.attributes("-topmost", True)
     root.update_idletasks()
     root.update()
-    # give Tk a moment to paint
-    root.after(300, lambda: None)
+    # give Tk + the window manager time to paint and raise the window,
+    # or ImageGrab can capture whatever was on top at call time.
+    import time
+    time.sleep(1)
     root.update()
 
     x, y = root.winfo_rootx(), root.winfo_rooty()

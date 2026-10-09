@@ -681,6 +681,20 @@ class App:
             _es = ""
         self.src.insert("1.0", _es if _es else self.default_source_text())
         self.src.bind("<KeyRelease>", lambda e: self.on_type())
+        # General.MidSplitterPos: native drag-sash between the source and
+        # result panes, persisted as a pixel/line offset (was previously
+        # unconsumed -- no sash existed at all).
+        try:
+            from qtranslate import config as _CMS
+            _mid_pos = int(_CMS.load().get("General", {}).get(
+                "MidSplitterPos", 0) or 0)
+        except Exception:
+            _mid_pos = 0
+        if _mid_pos:
+            try:
+                self.src.config(height=max(3, min(30, 12 + _mid_pos)))
+            except Exception:
+                pass
         srcside = tk.Frame(srcfrm, bg="white")
         srcside.pack(side="right", fill="y", padx=2)
         # Tahoma glyphs (emoji mic/headphone render blank on win32 Tk)
@@ -692,6 +706,43 @@ class App:
                   command=self.on_listen).pack(pady=1)
         # keep the side column narrow so the text pane keeps its width
         srcside.config(width=34)
+        # Drag sash: resize the source pane, persisting the delta to
+        # General.MidSplitterPos (native mid-pane splitter).
+        sash = tk.Frame(self.root, bg="#c1c1c2", height=3,
+                        cursor="sb_v_double_arrow")
+        sash.pack(fill="x")
+        self._mid_splitter_base = [_mid_pos]
+
+        def _sash_drag(e):
+            try:
+                delta_lines = int(e.y_root
+                                  - sash.winfo_rooty()) // 14
+            except Exception:
+                return
+            try:
+                cur = self.src.cget("height")
+                new_h = max(3, min(30, cur + delta_lines))
+                if new_h != cur:
+                    self.src.config(height=new_h)
+                    self._mid_splitter_base[0] = new_h - 12
+            except Exception:
+                pass
+
+        def _sash_release(_e=None):
+            try:
+                from qtranslate import config as _CMS2
+                import json as _jms
+                full = _CMS2.load()
+                full.setdefault("General", {})["MidSplitterPos"] = \
+                    self._mid_splitter_base[0]
+                with open(_CMS2.DEFAULT_PATH, "w",
+                          encoding="utf-8") as fh:
+                    _jms.dump(full, fh, ensure_ascii=False, indent=1)
+            except Exception:
+                pass
+
+        sash.bind("<B1-Motion>", _sash_drag)
+        sash.bind("<ButtonRelease-1>", _sash_release)
         # toolbar row: [paste] [kebab] [Auto-Detect] [swap] [target]
         # [Translate] — no mic/headphone here (they live on the panes)
         bar = tk.Frame(self.root, bg=bg)
