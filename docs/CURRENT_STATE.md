@@ -93,11 +93,27 @@ So the popup hotkey now forwards the **selected source language** instead of
 forcing `"auto"` (auto-detect). Rationale per the planning thread: respect the
 user's chosen source.
 
-**[verified] divergence to preserve awareness of:** the `"auto"` literal still
-appears at `app.py:3449` (clipboard monitor), `:3593` (`_replace`), and
-`on_listen_hotkey` `:3514` ignores `src`. This is inconsistent — the migration
-must decide one behavior for all capture paths, and the compatibility matrix
-records it. **Do not reset or overwrite this change.**
+**[resolved 2026-10-10]** The "inconsistency — decide one behavior for all
+capture paths" note that used to sit here is **closed, and the answer was
+neither of the two options it offered.** Native is not consistent in the
+port-side sense: `FUN_0045f6c1` asks the service's own `usesAutoDetectCode`
+hook and stores the answer at `request+0x50`, and `FUN_004606ba` runs detect
+only when that flag is false — or when the *destination* is also not a
+concrete code. `FUN_00404A12` additionally echoes the source and skips the
+service entirely when source == destination.
+
+So the per-call-site variance the old note asked to unify was never a
+divergence to eliminate. The port now implements both halves
+(`_USES_AUTO_DETECT` declared per provider; the `src == target` echo) and
+`docs/review/SOURCE_LANGUAGE_RULE_2026-10-10.md` carries the decompile.
+
+**Do not reset or overwrite this change** — and do not "fix" the remaining
+per-call-site variation by forcing one literal everywhere, which is what this
+note used to ask for. The honest port-side caveat: the capability table is
+declared, not native-derived, because the hook's answers live in the
+runtime-loaded `Service.js` that
+`docs/review/PLUGIN_LOADER_FOUND_2026-10-10.md` proves are absent from the
+recovered artifact.
 
 ## 5. Native RE coverage [doc-claimed, from `docs/NATIVE_ARCH.md`]
 
