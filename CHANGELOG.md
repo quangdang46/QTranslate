@@ -53,6 +53,26 @@ All entries are clean-room RE of QTranslate 6.10.0 for education.
   binary evidence named in-row; tally regenerated (`not-started` 11 → 8,
   `behaviour-verified` 11 → 14). **Gate state unchanged: BLOCKED (1), on G9 only.**
 
+## G9 native window spec measured from the recovered image (2026-10-10)
+
+- `docs/review/G9_SPEC_NATIVE_WINDOW_2026-10-10.md`: G9's part (a), the native
+  window spec, parsed straight out of the recovered PE's `RT_DIALOG`. DLG129
+  ("QTranslate") is **340×201 dialog units**, `WS_EX_CONTROLPARENT`, 17
+  controls, font **`MS Shell Dlg` 8pt** (`DS_SETFONT`).
+- 13/17 control ids pinned unambiguously: 1000/1017/1018 `RichEdit50W` (the
+  three text panes), 1002 `ComboBox`, 1004 `Translate`, 1015 `<>`, 1134/1135
+  separator statics, 1161 `SysLink "Info"`, 1009, 1029 `Fav`. The remaining 4
+  are owner-draw icon buttons whose classes/strings resolve but whose ids do
+  not — left UNKNOWN rather than guessed.
+- Three checklist G9-row claims corrected by measurement: the font is not
+  "Tahoma 9" (`Tahoma`/`Segoe UI` appear only once each, in Windows
+  font-substitution tables, not in the template; `MS Shell Dlg` appears 20×);
+  `526×366` is a runtime pixel size stated as template units; and control id
+  `1001` is not in DLG129 at all (the source ComboBox is `1002`).
+- **G9 stays `UNKNOWN`, Gate stays `BLOCKED (1)`.** Part (b) — the runtime
+  screenshot diff — is still uncapturable on this host (`G9_RESULT_2026-10-09.md`).
+  A correct spec is necessary for fidelity, not sufficient.
+
 ## Reliability layer + G9/re-artifact records (2026-10-10)
 
 - `qtranslate/reliability.py`: error taxonomy (9 kinds, RELIABILITY.md §2),
