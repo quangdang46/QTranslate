@@ -1949,18 +1949,34 @@ class App:
                      fg=_COLORS["text"],
                      font=("Segoe UI", 10, "bold")).pack(anchor="w",
                                                          pady=(8, 0))
-            for lab, default in (
-                    (_Cw(10, 1122, "Enable history"),
+            def _save_history_flag(key, var):
+                try:
+                    from qtranslate import config as _CH
+                    import json as _jh
+                    full = _CH.load()
+                    full.setdefault("General", {})[key] = bool(var.get())
+                    with open(_CH.DEFAULT_PATH, "w",
+                              encoding="utf-8") as fh:
+                        _jh.dump(full, fh, ensure_ascii=False, indent=1)
+                    _gen[key] = bool(var.get())
+                except Exception:
+                    pass
+
+            for lab, key, default in (
+                    (_Cw(10, 1122, "Enable history"), "EnableHistory",
                      _gen.get("EnableHistory", True)),
                     (_Cw(10, 1124, "Clear history on exit"),
+                     "ClearHistoryOnExit",
                      _gen.get("ClearHistoryOnExit", True)),
-                    (_Cw(10, 1123, "Expand items"),
+                    (_Cw(10, 1123, "Expand items"), "ExpandHistoryItems",
                      _gen.get("ExpandHistoryItems", False))):
                 v = tk.BooleanVar(value=bool(default))
                 self._opt_vars[lab] = v  # keep ref: no GC-uncheck
-                tk.Checkbutton(body, text=lab, variable=v,
-                               bg=_COLORS["back"], fg=_COLORS["text"],
-                               selectcolor=_COLORS["back"]).pack(anchor="w")
+                tk.Checkbutton(
+                    body, text=lab, variable=v, bg=_COLORS["back"],
+                    fg=_COLORS["text"], selectcolor=_COLORS["back"],
+                    command=lambda k=key, vv=v: _save_history_flag(
+                        k, vv)).pack(anchor="w")
 
         def show_appearance():
             # mirrors DLG 175; all values live from the real
@@ -2965,11 +2981,16 @@ class App:
                 _ac = _C.load().get("Application", {})
                 _fav_only = bool(_ac.get("HistoryFilterFavorites", False))
                 _text = str(_ac.get("HistoryFilter", "")).lower()
+                # General.ExpandHistoryItems: show the translation inline
+                # as a child row instead of requiring a selection/click.
+                _expand = bool(_C.load().get(
+                    "General", {}).get("ExpandHistoryItems", False))
             except Exception:
-                _fav_only, _text = False, ""
-            for idx, (svc, src, *_) in enumerate(self.history):
-                fav = len(self.history[idx]) > 3 \
-                    and self.history[idx][3]
+                _fav_only, _text, _expand = False, "", False
+            for idx, item in enumerate(self.history):
+                svc, src = item[0], item[1]
+                res = item[2] if len(item) > 2 else ""
+                fav = len(item) > 3 and item[3]
                 if _fav_only and not fav:
                     continue
                 if _text and _text not in src.lower():
@@ -2977,6 +2998,12 @@ class App:
                 tv.insert("", "end", iid=str(idx),
                           text=src[:70],
                           values=("★" if fav else "", svc))
+                if _expand and res:
+                    tv.insert(str(idx), "end", iid=f"{idx}-tr",
+                              text="→ " + res[:120], values=("", ""))
+            if _expand:
+                for i in list(tv.get_children()):
+                    tv.item(i, open=True)
 
         _paint()
 
