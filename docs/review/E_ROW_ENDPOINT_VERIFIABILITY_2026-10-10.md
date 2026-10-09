@@ -4,12 +4,17 @@
 > that sharpens `SERVICE_JS_PROVENANCE_2026-10-10.md` in one direction, and it
 > disagrees with one sentence in that doc's covering message.
 >
-> The peer's document says the natively compiled clients are
-> `google, Microsoft/Bing, Yandex, Baidu, OCR.space` and *"those rows are
-> verifiable from the image."* The narrower reading below is what the bytes
-> support, and the difference decides whether `E2 Google Translate` — the row
-> the entire port rests on — carries an "image-checkable" stamp it has not
-> earned.
+> **Superseded in its conclusion by `PLUGIN_LOADER_FOUND_2026-10-10.md`.**
+> The host-vs-path distinction below is still correct and still worth having,
+> but `PLUGIN_LOADER_FOUND` answers the question *this document was measuring
+> towards* — not just that the endpoints are absent, but that they **cannot be
+> present**, because `Service.js` files are read from disk at runtime
+> (`FUN_0045d6a9`). Read §6 there; the count of image-verifiable rows is
+> smaller than either document says, and the reason is stronger.
+>
+> Keeping this document because its host-vs-path rule is what caught the
+> overstatement in the first place, and because it independently reproduces
+> both neighbours' string tables.
 
 ## 1. Method
 
@@ -101,8 +106,38 @@ the Gate look *more* resolved than a reclassification should.
 - Does not claim the port's URLs are *wrong*. Live probes are legitimate
   evidence for the behaviour claim. They are just not evidence for the native
   shape claim, which is the distinction the peer's §3 already draws.
+- Does not establish that E2/E3/E5/E7 are *safe*. The rule in §3 is necessary,
+  not sufficient: E3's full path being present is real, but
+  `PLUGIN_LOADER_FOUND_2026-10-10.md` shows the compiled-in hosts also serve
+  runtime-loaded services in part (the `/tlookupv3` dictionary block cites
+  `Services/Microsoft Translator/Service.js`), so a present literal does not by
+  itself mean the row's whole claim is native.
 
-## 7. Reproduce
+## 7. Corroboration from the peer's loader, which outranks this measurement
+
+I decompiled both functions in their `QT_FULL` project and they are as
+reported. `FUN_0045d6a9` builds `<config>/Services`, bails when
+`GetFileAttributesW` returns `0xffffffff`, loads `Common.js` first, then
+enumerates subdirectories and concatenates `Service.js` per service.
+`FUN_0045d160` sets `services::Script::vftable`, registers through
+`FUN_0043b777`, loads `Service.ico`, and calls
+`FUN_0043b942(..., L"serviceHeader", 0, 0, ...)` — a real call into the
+compiled script.
+
+That is the better finding and it makes this document's narrower measurement
+look like the smaller thing it is. The host-side protocol is now readable
+(`Services/` required, `Common.js` first, one `Service.js` per subdirectory,
+`Service.ico` at 16×16, `PreferredDomain` exposed, `serviceHeader` invoked);
+the individual services' behaviour is not, and never can be from this
+artifact.
+
+**The synthesis worth keeping:** an endpoint absent from the image could be
+read two ways — "the claim is unverified here" or "the claim cannot be checked
+here." The loader converts the open rows from the first to the second, and
+`UNRECOVERABLE` is the state that says the second. Which is the checklist
+owner's call, and it changes the Gate line, not only its count.
+
+## 8. Reproduce
 
 ```python
 blob = open("docs/review/artifacts/QTranslate.6.10.0.exe", "rb").read()
