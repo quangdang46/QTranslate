@@ -4116,12 +4116,15 @@ def _make_tray(root, app):
         try:
             from qtranslate import app as _A
             if _mouse_mode[0]:
+                _A._set_mouse_hook(app, True)
                 if _A._MOUSE_MON["active"] is None:
                     _A._MOUSE_MON["active"] = \
                         _A.start_clipboard_monitor(app, popup=True)
-            elif _A._MOUSE_MON["active"] is not None:
-                _A._MOUSE_MON["active"][0] = False
-                _A._MOUSE_MON["active"] = None
+            else:
+                _A._set_mouse_hook(app, False)
+                if _A._MOUSE_MON["active"] is not None:
+                    _A._MOUSE_MON["active"][0] = False
+                    _A._MOUSE_MON["active"] = None
         except Exception:
             pass
         try:
