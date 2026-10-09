@@ -105,9 +105,16 @@ increasing severity:
    from disk and are not in the artifact, so the comment asserts a fact about
    files nobody in this repo has read. It may even be *true* — but nothing here
    can check it, which is the same evidence-class error as the 15 E rows.
-3. **`"bing"` is not a service id in this port.** `_NATIVE_AUTO` names a key that
-   does not exist in `TRANSLATORS`, so that entry is inert. A dead member in a
-   set that gates behavior is worth flagging even though it is harmless today.
+
+> **Correction to this section's first draft, which is why it is kept rather
+> than quietly fixed:** I wrote here that `"bing"` is not a service id in this
+> port and its `_NATIVE_AUTO` entry is inert. **False.** `app.py`'s
+> `TRANSLATORS` has both `"bing": _t_bing` and `"microsoft": _t_bing` (the two
+> ids alias the same function, as native's id 5 does), so `"bing"` is a live
+> key and the set member does real work. I asserted the negative from having
+> only seen `microsoft` in the config, which is the "a grep result is evidence
+> about naming, never about behavior" failure in its purest form — and it would
+> have sent a reader to delete a working line.
 
 **Consequence for the matrix row:** the row's "inconsistent
 (`app.py:3356`=src, `:3449/3593/3514`=auto)" is real, but the *rule* to decide is
