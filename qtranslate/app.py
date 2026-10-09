@@ -4317,7 +4317,7 @@ def show_popup(source, result, service="google", target="vi"):
         # Native: double-clicking the popup header shows the EXISTING main
         # window with the current text. (Previously this created a second
         # tk.Tk(), which corrupted Tk state.)
-        win.destroy()
+        _close_popup()
         try:
             from qtranslate.app import _MAIN_APP
             a = _MAIN_APP
@@ -4332,7 +4332,17 @@ def show_popup(source, result, service="google", target="vi"):
             pass
 
     txt.bind("<Double-1>", _to_main)
-    win.bind("<Escape>", lambda e: win.destroy())
+    def _close_popup(_e=None):
+        try:
+            from qtranslate import config as _CAP
+            if not _CAP.load().get("Appearance", {}).get(
+                    "PopupAutoPos", True):
+                _save_placement("WindowPopupPlacement", win)
+        except Exception:
+            pass
+        _safe_destroy(win)
+
+    win.bind("<Escape>", _close_popup)
 
     # --- Appearance popup settings (native ShowPopupWindow) --------------
     try:
@@ -4354,11 +4364,20 @@ def show_popup(source, result, service="google", target="vi"):
             win.attributes("-alpha", _tr / 255.0)
     except Exception:
         pass
-    # PopupAutoPos: place near the pointer, clamped on-screen
+    # PopupAutoPos: place near the pointer. When off, restore the
+    # remembered geometry (General.WindowPopupPlacement, previously
+    # unused) like the other aux windows.
     if _ap.get("PopupAutoPos", True):
         try:
             px, py = win.winfo_pointerx(), win.winfo_pointery()
             win.geometry(f"+{px + 12}+{py + 12}")
+        except Exception:
+            pass
+    else:
+        try:
+            win.update_idletasks()
+            _place_aux(win, "WindowPopupPlacement",
+                      f"{win.winfo_width()}x{win.winfo_height()}")
         except Exception:
             pass
     # PopupTimeout (seconds): auto-close; 0/absent = stay
