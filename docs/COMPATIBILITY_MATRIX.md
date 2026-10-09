@@ -67,12 +67,20 @@ platforms it claims. Evidence column cites `file:line` where available.
 | SendInput synth (Ctrl+C) | `FUN_0043BD5C` | `keyboard.send` `app.py:3598` | yes | Win / mac perm | — | `ported` |
 | Replace-selection write-back | `FUN_0043BE56`, `NATIVE_ARCH.md:650` | `_replace` `app.py:3592` | yes | Win / mac perm | — | `ported` |
 | Foreground exclusion list | `FUN_004631DE/004470B7` | `exclusions.py` | yes (Disabled/Enabled + mode) | Win / mac | wcsicmp vectors | `ported` |
-| **Source-language arg (auto vs selected)** | dispatcher `FUN_00404A12` | **inconsistent** (`app.py:3356`=src, `:3449/3593/3514`=auto) | **decide one rule** | Win+mac | matrix row + test | `ported` (uncommitted) |
+| **Source-language arg (auto vs selected)** | dispatcher `FUN_00404A12`; per-service `usesAutoDetectCode` hook (`FUN_0045f6c1` → `request+0x50`, consumed by `FUN_004606ba`) | `do_translate` `app.py`: echo on `src == target`; `_USES_AUTO_DETECT` declares auto-capability per provider | **decided 2026-10-10:** the rule is *capability-dependent and per-service* — the dispatcher echoes when source == destination and skips the service; detect runs only when the service does not answer `usesAutoDetectCode`, or when the destination is also unset. It is neither "all paths honor the selected source" nor "only the popup hotkey" | Win+mac | `tests/regress_source_language.py` (13) | `ported` |
 
-> The source-language row is the live uncommitted change. It is listed here so
-> the migration cannot silently regress it. Decision needed before Phase 5:
-> should *all* capture paths honor the selected source language, or only the
-> popup hotkey?
+> **This row's "decide one rule" is closed as of 2026-10-10** — it was neither
+> option it offered. Evidence and the exact branch conditions:
+> `docs/review/SOURCE_LANGUAGE_RULE_2026-10-10.md`, decompiled from the
+> recovered image in the full-analysis project `QT_FULL`.
+>
+> **One caveat that must travel with this row.** Native's rule is a *query* —
+> it calls the service's `usesAutoDetectCode` JS hook — and those `Service.js`
+> files are runtime-loaded, absent from the artifact
+> (`docs/review/PLUGIN_LOADER_FOUND_2026-10-10.md`). So the port's
+> `_USES_AUTO_DETECT` table is a **declared port-side capability, explicitly
+> not native-derived**, and the per-service truth table is unverifiable here.
+> Reading this row as "the auto-detect set is native-verified" would be wrong.
 
 ## C. Translation engine + providers
 
