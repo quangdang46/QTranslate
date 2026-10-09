@@ -121,3 +121,68 @@ Decompiling a specific function's control flow does not.
   documented divergence, G9 needs a screenshot, J6 needs a dependency).
 - Anything requiring a *new* decompile should be queued for a host with a
   JDK, or asked of the peer session which still has Ghidra working.
+
+---
+
+## Addendum 2026-10-10 (later): **Ghidra works here after all** — and the
+diagnostic trap that nearly cost it a second time
+
+This doc's headline claim was wrong (see the correction above). It is
+superseded by this addendum, kept because the *shape* of the error recurs.
+
+The headless pipeline runs fine on this host:
+
+```sh
+export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
+~/ghidra/ghidra_12.1.4_PUBLIC/support/analyzeHeadless \
+  ~/Projects QT_REAL -process "QTranslate.6.10.0.exe" -noanalysis \
+  -scriptPath tools/ghidra -postScript DecompileNamed.java FUN_00404901
+```
+
+### The trap: a compile error presents as "script not found"
+
+`tools/ghidra/DisasmNamed.java` was added during the C3 work and failed **three
+times before it ran**. Every failure looked like the same symptom — a *name*
+problem, not a *code* problem:
+
+```
+skipping /Users/.../tools/ghidra/DisasmNamed.java
+ERROR REPORT SCRIPT ERROR: DisasmNamed.java : The class could not be found.
+  It must be the public class of the .java file: DisasmNamed not found by ...
+Caused by: java.lang.ClassNotFoundException: DisasmNamed not found by ...
+```
+
+`ClassNotFoundException` for a class that plainly exists, with the right name
+in the right file, reads as "the filename doesn't match the class" — which is
+itself a documented Ghidra rule and therefore the obvious repair. It is the
+**wrong** repair. The real errors were two compile failures printed ~15 lines
+earlier in the same log:
+
+1. `error: incompatible types: InstructionIterator cannot be converted to
+   AddressIterator` — `Listing.getInstructions()` returns an
+   `InstructionIterator`, not an `AddressIterator`.
+2. `error: cannot find symbol / class InstructionIterator` — the type is not
+   implicitly imported for scripts.
+
+So the rule is: **grep `error:` in the headless log before reading its last
+line.** `skipping <path>` plus a `ClassNotFoundException` means *your script did
+not compile*; only a bare `Script not found` means the script was not found.
+Two independent sources hit this in one day (qtranslate-ed reports
+`getScriptArgs` vs `getArguments` and an ambiguous overload, both surfacing the
+same way), which is why it belongs here next to the pipeline notes rather than
+in a commit message.
+
+The related trap, from the same script: a Ghidra decompiler rendering such as
+`(*pIVar2->get_accName)(...)` **presumes** the member's vtable offset. When the
+question is "which offset", decompile the C *and* disassemble — the raw
+instruction carries it (`CALL dword ptr [ECX + 0x28]` ⇒ slot 10 on a 32-bit
+vtable). This is what turned a plausible port assumption into a measured match
+for C3.
+
+### Consequence for the note's own list of "what a dead MCP costs"
+
+The line above says "anything requiring a *new* decompile should be queued for a
+host with a JDK". No host change is needed; `JAVA_HOME` is. Two documents were
+written from a false premise and both have since been corrected in place:
+`J6_FLAC_DECOMPILE_2026-10-10.md` (FLAC chain re-decompiled) and
+`C3_C8_C10_MOUSE_2026-10-10.md` (vtable offsets, import thunks).
