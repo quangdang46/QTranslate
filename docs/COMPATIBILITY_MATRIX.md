@@ -62,7 +62,7 @@ platforms it claims. Evidence column cites `file:line` where available.
 | Feature | Native evidence | Python today | Must keep | Platforms | Test | Status |
 |---|---|---|---|---|---|---|
 | Mode 3 clipboard capture | viewer `FUN_0043EBE0` | `app.py:3407` monitor | yes | Win+mac | copy→hotkey→translate | `ported` |
-| Mode 2 mouse (OLEACC) | `FUN_00404901`, `NATIVE_ARCH.md:189` | **none** | yes (native core UX) | Win | select→hotkey→translate | `not-started` |
+| Mode 2 mouse (OLEACC) | `FUN_00404901` | `mouse_capture.cursor_text()` `app.py:3871` via `_translate_text` | yes (native core UX) | Win | OLEACC contract suite | `ported` |
 | Mode 1 reuse-text | `FUN_004052E4` | partial | yes | Win+mac | — | `ported` |
 | SendInput synth (Ctrl+C) | `FUN_0043BD5C` | `keyboard.send` `app.py:3598` | yes | Win / mac perm | — | `ported` |
 | Replace-selection write-back | `FUN_0043BE56`, `NATIVE_ARCH.md:650` | `_replace` `app.py:3592` | yes | Win / mac perm | — | `ported` |
