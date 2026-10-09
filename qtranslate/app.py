@@ -3107,6 +3107,10 @@ class App:
             _dorder = _C.load().get("DictionariesOrder",
                                     [10, 19, 20, 14, 17, 18, 22, 24, 25,
                                      26, 29])
+            # DisabledDictionaries: globally disabled dicts must not
+            # appear at all (was previously shown and queried regardless).
+            _ddis = set(_C.load().get("DisabledDictionaries", []))
+            _dorder = [sid for sid in _dorder if sid not in _ddis]
         except Exception:
             _dcfg, _dorder = {}, [10, 19, 20, 14, 17, 18, 22, 24, 25,
                                   26, 29]
