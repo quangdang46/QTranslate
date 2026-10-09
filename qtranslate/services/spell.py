@@ -1,8 +1,16 @@
-"""Spell-check / suggest providers — reversed from QTranslate.exe strings.
+"""Spell-check / suggest providers.
 
-- GoogleSuggest (common::GoogleSuggest): GET
+Native classes are evidence-backed (RTTI): ``common::GoogleSuggest``,
+``common::SpellYandexProvider``, ``common::SpellProvider``,
+``controls::ISuggestionsProvider``, ``windows::DictionarySuggestionsProvider``.
+The concrete request URLs below are **INFERRED / best-effort** — the literal
+hosts/paths are not present verbatim in the binary (they are assembled at
+runtime), so they were chosen to match the documented class behavior and are
+verified only by live behavior, not by binary bytes:
+
+- GoogleSuggest (autocomplete): GET
   google.com/complete/search?client=firefox&q=<text>  (JSONP-ish JSON)
-- SpellYandexProvider (common::SpellYandexProvider): GET
+- SpellYandexProvider (spell check): GET
   speller.yandex.net/services/spellservice.json/checkText?text=<text>
 """
 import json

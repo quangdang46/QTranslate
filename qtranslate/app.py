@@ -3489,14 +3489,63 @@ def on_hotkey(app):
 
 
 _MOUSE_MON = {"active": None}
+_MOUSE_HOOK = {"on": False}
+
+
+def _mouse_mode_select(app, x, y):
+    """Native click-to-capture callback (FUN_004183bd): a selection click
+    arrived at (x,y). Synthesize Ctrl+C to copy the selection, then run the
+    normal translate->popup path. Runs on a worker thread (the LL hook proc
+    must return fast)."""
+    try:
+        from qtranslate import mouse_capture as _MC
+        if not _MC.available():
+            return
+        from qtranslate import exclusions as _ex
+        if _ex.foreground_excluded():
+            return
+    except Exception:
+        pass
+
+    def _work():
+        try:
+            if _HAS_KEYS:
+                try:
+                    import keyboard as _kb
+                    _kb.send("ctrl+c")
+                    import time as _t
+                    _t.sleep(0.15)
+                except Exception:
+                    pass
+            on_hotkey(app)
+        except Exception:
+            pass
+
+    import threading as _th
+    _th.Thread(target=_work, daemon=True).start()
+
+
+def _set_mouse_hook(app, on):
+    """Enable/disable the Win32 low-level mouse hook for mouse modes."""
+    try:
+        from qtranslate import mouse_capture as _MC
+        if on and not _MOUSE_HOOK["on"]:
+            _MOUSE_HOOK["on"] = _MC.start(
+                lambda x, y: _mouse_mode_select(app, x, y))
+        elif not on and _MOUSE_HOOK["on"]:
+            _MC.stop()
+            _MOUSE_HOOK["on"] = False
+    except Exception:
+        _MOUSE_HOOK["on"] = False
 
 
 def _toggle_mouse_mode(app):
-    """Closest port of HotKeySwitchMouseMode without a cursor hook.
+    """Port of HotKeySwitchMouseMode.
 
-    Cycles General.MouseMode 0=off -> 1=popup-monitor -> 2=main-monitor
-    using the clipboard-sequence monitor (copy = the selection event).
-    True cursor-side icon/hover needs a Win32 hook (documented limit).
+    Cycles General.MouseMode 0=off -> 1=popup -> 2=popup+read (native
+    FUN_004183bd semantics). Uses the Win32 low-level mouse hook
+    (mouse_capture) to trigger on a real selection click when available,
+    and the clipboard-sequence monitor as the copy-event fallback.
     """
     try:
         from qtranslate import config as _C
@@ -3514,11 +3563,12 @@ def _toggle_mouse_mode(app):
         if _MOUSE_MON["active"] is not None:
             _MOUSE_MON["active"][0] = False
             _MOUSE_MON["active"] = None
+        _set_mouse_hook(app, mode != 0)
         if mode != 0:
             _MOUSE_MON["active"] = start_clipboard_monitor(
                 app, popup=(mode == 1))
-        print(f"mouse mode: {['off', 'popup on copy', 'main on copy'][mode]}"
-              " (cursor icon/hover needs Win32 hook)")
+        _label = ["off", "popup on select", "popup+read on select"][mode]
+        print(f"mouse mode: {_label}")
     except Exception as e:
         print(f"mouse mode failed: {e}")
 
