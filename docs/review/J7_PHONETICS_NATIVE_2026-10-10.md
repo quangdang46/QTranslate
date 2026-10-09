@@ -229,8 +229,7 @@ the `e[3]` slot and the four-language evidence in §4 are **qtranslate-8e's**
 measurements, not mine. The static half I did confirm directly against
 `git show HEAD:qtranslate/services/google_translate.py`: `g = ""` (169),
 `g = e[2] or ""` (177), `return b, sl, tl, g` (189), and the discarding
-`b, _, _, _ = ...` (281). If the slot ever changes upstream, §4 needs a
-re-fetch rather than an inference from this host.
+`b, _, _, _ = ...` (281). If the slot ever changes upstream, §4 needs are-fetch rather than an inference from this host.
 
 ## 5. The "no-op for TTS" docstring is a correct premise, wrong conclusion
 
@@ -270,3 +269,81 @@ implies the port matches native, when in fact the saved flag is inert.
 - **Does not:** touch `common.py`. The romanization passes through module state
   as a stopgap; moving it onto `ResponseData` is Phase 5, and is the honest
   reason the current wiring is not a claim of 1:1 fidelity.
+
+## 7. The whole consumer re-decompiled from the live image (2026-10-10, later)
+
+Ghidra is running again on this host, so the consumer was re-decompiled
+directly rather than read from the earlier session's notes. The full body,
+with the J7 branch intact:
+
+```c
+void FUN_0042ed3f(int *param_1, int *param_2)
+{
+  DAT_0054916c = DAT_0054916c + 1;
+  FUN_0042efda((int)param_1);
+  FUN_00408b83();
+  FUN_00408b83();
+  if ((param_1 == (int *)0x0) || (*param_1 == 0)) {
+    FUN_00408b83();
+    SetFocus(*(HWND *)(in_ECX + 0x9c));
+    uVar4 = FUN_0042e991();
+    FUN_00433a4b((int)uVar4, (int)((ulonglong)uVar4 >> 0x20), (int *)(in_ECX + 100));
+  }
+  else {
+    if ((char)param_2 != '\0') {
+      FUN_00408924(param_1 + 1, param_1[2]);        // <-- slots 1/2
+    }
+    uVar1 = FUN_00403897();
+    if ((char)uVar1 == '\0') {
+      FUN_00408924(param_1 + 3, param_1[4]);        // the primary result
+      uVar1 = FUN_00403897();
+      if ((((char)uVar1 == '\0') && (*(int *)(param_1[5] + -0xc) != 0))
+          && (DAT_00549414 != '\0')) {
+        FUN_00401f21((uint *)&DAT_0052284c);
+        FUN_004089fe((int *)&param_2, 0);
+        FUN_004033d1();
+        piVar2 = (int *)FUN_00451d23(&param_2, 0xba);
+        FUN_004089fe(piVar2, bVar5);
+        FUN_004033d1();
+        FUN_004089fe(param_1 + 5, 0);
+      }
+    }
+    else { /* the <Error> path: rebuild and re-set entry[3] */ }
+  }
+  DAT_0054916c = DAT_0054916c + -1;
+}
+```
+
+Every claim this doc made about J7 survives: gate 1 (`FUN_00403897`),
+gate 2 (`param_1[5] + -0xc` length), gate 3 (`DAT_00549414`), the
+separator (`DAT_0052284c`), the `0xba` resource fetch, and the append of
+`param_1 + 5`.
+
+**Two things this adds that nobody had:**
+
+1. **`FUN_00403897` is verbatim what the row says**, decompiled standalone:
+   ```c
+   uVar1 = FUN_00401fc2((ushort *)L"<Error>");
+   return CONCAT31((int3)(-uVar1 >> 8), '\x01' - (uVar1 != 0));
+   ```
+   So gate 1 is `<Error>` absent, confirmed from the function itself rather
+   than from the return convention at the call site.
+2. **The slots-1/2 call is gated on `(char)param_2 != '\0'`** — a flag in
+   *param_2*, the same struct that later receives the appended string. So
+   `FUN_00408924(entry[1], entry[2])` is **conditional display state**, set
+   only when that flag is set, and it runs *before* the result is written.
+   That is a stronger statement than "formatter state" and it is the last word
+   on `CORE_RESULT_SHAPE`'s question: slots 1/2 are not a language pair, and
+   the flag gating them is the reason — it is a "did the caller supply
+   formatting?" switch, not a payload.
+
+**`FUN_00408924` itself is not a language setter** (retraction confirmed by
+reading it): `iVar4 = 1; if (param_2 - 2U < 0x4a) iVar4 = param_2;` is a
+clamp, `*(int *)(in_ECX + 0x28) = iVar4` stores it at a fixed field, and the
+rest walks a COM vtable (`+0x20`, `+0x48`, `+0x54`, `+8`) on an object from
+`FUN_004088a9`, with an `Ordinal_6()` call. The `{5, 0x1a, 0x2a, 0x38, 0x3b}`
+special-case that made the first reading look settled is **part coincidence,
+which is worse than none**: 5 and 26 are both real `config.py` service ids
+(`microsoft`, `youdao`), while 42, 56 and 59 are not service ids at all. Two
+hits out of five is exactly the pattern that should prompt suspicion instead
+of satisfaction, and did not at the time.

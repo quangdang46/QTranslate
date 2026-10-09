@@ -91,7 +91,7 @@ site*, which is why this is evidence rather than taste:
 
 | Slot | Offset | Evidence | Proposed field |
 |---|---|---|---|
-| `entry[1]` | `+0x04` | **UNKNOWN.** Producer direction attempted and inconclusive — see §3c | UNKNOWN |
+| `entry[1]` | `+0x04` | **UNKNOWN, and now with a reason from the live image** — see §3c | UNKNOWN |
 | `entry[2]` | `+0x08` | **UNKNOWN.** Same | UNKNOWN |
 | `entry[3]` | `+0x0c` | `FUN_00408924(param_1 + 3, param_1[4])` — the **primary result** | `text` |
 | `entry[4]` | `+0x10` | the value written into `entry[3]` | (a buffer, not an output) |
@@ -146,21 +146,58 @@ number arriving by two paths that didn't know about each other. What settled it
 was reading the **callee** to learn what the argument *means*, and testing the
 claim against a counterexample before asserting it.
 
-## 3a. `FUN_00408924` is one name with two jobs
+## 3b. Slots 1/2 settled: conditional display state, from the live image
 
-`FUN_00408924` is called from `FUN_0042ED3F` with **two different shapes**:
+Ghidra is running again, so the consumer was re-decompiled rather than read
+from earlier notes (`J7_PHONETICS_NATIVE_2026-10-10.md` §7). The relevant
+part of `FUN_0042ED3F`:
 
 ```c
-FUN_00408924(edi + 0x98, &entry[1], entry[2]);   // language pair: (this, CString*, int)
-FUN_00408924(param_1 + 3, param_1[4]);            // result text:   (CString*, CString)
+else {
+    if ((char)param_2 != '\0') {
+        FUN_00408924(param_1 + 1, param_1[2]);     // conditional
+    }
+    uVar1 = FUN_00403897();
+    if ((char)uVar1 == '\0') {
+        FUN_00408924(param_1 + 3, param_1[4]);     // the primary result
+        ...J7 phonetics append...
 ```
 
-One FUN_ name, two roles — a setter reused for the language pair and for the
-result text. A reader who assumes a single semantic will read slot 3's write
-as the same kind of store as slot 2's, and it is not. Recorded here so the
-name doesn't mislead (decompile evidence: peer session, 2026-10-10).
+**The slots-1/2 call is gated on a flag in `param_2`** — the same struct that
+later receives the appended phonetics string. So it runs only when the caller
+signaled "formatting was supplied," and it runs *before* the result is
+written. That is a conditional pre-pass, not a payload: which is why the
+question "are slots 1/2 the source/translation language pair" was never going
+to be answered from the struct's shape.
 
-## 3b. What native does and does not pin (after the §3a retraction)
+`FUN_00408924` reads, in full:
+
+```c
+iVar4 = 1;
+if (param_2 - 2U < 0x4a) iVar4 = param_2;      // a CLAMP, not a range check
+*(int *)(in_ECX + 0x28) = iVar4;
+if (*(int *)(*param_1 + -0xc) == 0) { ... }    // CString length guard
+else {
+    piVar2 = (int *)FUN_004088a9(0, -1);       // an object from a factory
+    ...vtable slots +0x20, +0x48, +0x54, +8...
+    Ordinal_6();
+    if ((param_2 == 5) || (param_2 == 0x1a) || (param_2 == 0x2a)
+        || (param_2 == 0x38) || (param_2 == 0x3b)) { ... }
+```
+
+Not a language setter. The clamp plus a fixed field plus a vtable walk says
+*"set a formatting parameter on an object."* The `{5, 0x1a, 0x2a, 0x38, 0x3b}`
+special-case is **part coincidence, which is worse than none**: 5 and 26 are
+real `config.py` service ids (`microsoft`, `youdao`) while 42, 56 and 59 are
+not service ids at all. Two hits out of five is the pattern that should
+prompt suspicion rather than satisfaction.
+
+**Consequence for this sketch: unchanged.** `source_language` stays a port-side
+field (§7.2), the shape keeps `phonetics` native-pinned, and the only
+native-pinned text slot is `entry[3]`. This section exists so nobody re-walks
+slots 1/2 in hope — the consumer direction is now read *and* the producer
+direction was attempted before, both inconclusive for the *meaning*, and the
+flag-gating is the reason.
 
 **Two slots are pinned by the binary:** `entry[5]` (phonetics, via
 `ADD ESI,0x14` @ `0x0042edf9` and `PUSH ESI` into `CString::operator+=`) and
