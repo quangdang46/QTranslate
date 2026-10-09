@@ -3531,6 +3531,13 @@ def _mouse_mode_select(app, x, y):
         from qtranslate import mouse_capture as _MC
         if not _MC.available():
             return
+        from qtranslate import config as _CG
+        # Advanced.EnableGuiTranslation (checkbox 0x482) gates native mode-2
+        # OLEACC text-capture (FUN_00404901, DAT_005494e4); mirror it here
+        # as the gate for mouse-selection capture.
+        if not bool(_CG.load().get("Advanced", {}).get(
+                "EnableGuiTranslation", True)):
+            return
         from qtranslate import exclusions as _ex
         if _ex.foreground_excluded():
             return
