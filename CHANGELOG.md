@@ -3,6 +3,36 @@
 All entries are clean-room RE of QTranslate 6.10.0 for education.
 `LIVE-OK` = verified against the real provider endpoint.
 
+## Reliability layer + G9/re-artifact records (2026-10-10)
+
+- `qtranslate/reliability.py`: error taxonomy (9 kinds, RELIABILITY.md §2),
+  bounded retry with one shared budget + Retry-After (§3), FallbackRouter that
+  preserves the request and names the provider that answered (§5), HealthTracker
+  (§6). Phase 1 of `IMPLEMENTATION_PLAN.md`; imports neither tkinter nor Win32.
+- Adapter (`ProviderRouter`): routes app.py's `_t_*` callables through the
+  policy. Shaping (RemoveLineBreaks, 5000-char cut) happens once before the
+  first attempt; the detect shortcut and the back-translation append stay
+  outside the loop and run once on `provider_used`.
+- `tests/regress_reliability.py`: 9 suites' worth of checks incl. the pinning
+  test — provider 1 fails, provider 2 receives a byte-identical request.
+  Runs under `python -I` on macOS (3.11/3.12/3.14 green).
+- `docs/review/G9_RESULT_2026-10-09.md`: G9 BLOCKED. Native is i386 and cannot
+  run here; the port cannot be screenshotted without a Screen Recording grant
+  (`screencapture` exits 1, no file). No proxy baseline; `g9_evidence/` empty.
+- `docs/review/ARTIFACT_RECOVERY_2026-10-10.md`: the Downloads `.exe` is an
+  NSIS 3.08 stub; the real 1,462,272-byte PE was extracted from its solid
+  LZMA1 payload (stream at `0xF621`, image at stream `0x9bfa9`). Re-imported to
+  Ghidra: 3812 functions, 390/439 documented addresses resolve.
+- `docs/review/D10_SPOTCHECK_Contents_2026-10-10.md`: Contents.EditSource/
+  EditTranslation/EditBackTranslation verified as three distinct, persisting
+  native keys (`+0x174/+0x178/+0x17c`). The port's separator text
+  `--- back-translation ---` is NOT in the binary — port convention, not native.
+
+# Changelog (reverse-engineering log)
+
+All entries are clean-room RE of QTranslate 6.10.0 for education.
+`LIVE-OK` = verified against the real provider endpoint.
+
 ## Keys loop (2026-10-08, help.txt 100% bound)
 
 - Ctrl+K virtual keyboard; Ctrl+Space suggestion accept (label
