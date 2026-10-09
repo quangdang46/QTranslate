@@ -3046,14 +3046,37 @@ class App:
                                _up.__setitem__("CheckForUpdates",
                                                vv.get()),
                                _save_u())).pack(anchor="w")
+            def _check_now():
+                # Native R1/R2: GET the update manifest and parse it.
+                # The host retired in 2022 -> normally BLOCKED; parse the
+                # payload if one is ever served (uses updater.parse_manifest,
+                # FUN_00461ADE).
+                try:
+                    import urllib.request as _ur
+                    from qtranslate import updater as _UP
+                    _u = ("https://quest-app.appspot.com/update?v=6.10.0")
+                    _req = _ur.Request(_u, headers={"User-Agent": "QTranslate"})
+                    with _ur.urlopen(_req, timeout=8) as _r:
+                        _txt = _r.read().decode("utf-8", "replace")
+                    _man = _UP.parse_manifest(_txt)
+                    if _man.get("valid"):
+                        self.render(
+                            "Update manifest: v{0} ({1})\n{2}".format(
+                                _man["version"], _man["date"],
+                                _man["changelog"]))
+                    else:
+                        self.render("update server returned no valid "
+                                    "manifest (offline/retired).")
+                except Exception as _e:
+                    self.render(
+                        "update check BLOCKED: server unreachable "
+                        f"(retired 2022) — {_e}")
             tk.Button(body, text=_Cw(18, 1190, "Check now"),
-                      command=lambda: self.render(
-                          "update server offline (checker 404s)")).pack(
-                              anchor="w", pady=2)
-            tk.Label(body, text="QTranslate 6.10.0 — update server is "
-                                "offline (update checker 404s; nothing to "
-                                "fetch).", bg=_COLORS["back"],
-                     fg="gray", wraplength=380,
+                      command=_check_now).pack(anchor="w", pady=2)
+            tk.Label(body, text="QTranslate 6.10.0 — 'Check now' tries the "
+                                "native update manifest endpoint; it is "
+                                "retired, so the check reports BLOCKED.",
+                     bg=_COLORS["back"], fg="gray", wraplength=380,
                      justify="left").pack(anchor="w", pady=6)
 
         def on_select(_e=None):
