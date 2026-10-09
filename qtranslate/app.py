@@ -226,6 +226,22 @@ def _t_promt(t, sl, tl):
     return out
 
 
+# Port-side declared capability, mirroring the native `usesAutoDetectCode`
+# hook. Native asks each service (FUN_0045f6c1 calls the JS hook and stores
+# the boolean at request+0x50); the translate stage then runs detect itself
+# only when the answer is false, or when the destination is also unset.
+#
+# This table is NOT native-derived: the hook's answers live in the
+# runtime-loaded Services/*/Service.js, which PLUGIN_LOADER_FOUND_2026-10-10.md
+# proves are absent from the recovered artifact. True here means "this
+# provider's own API resolves an auto source", which is a port-side fact about
+# the HTTP contract we do implement. Members were carried over from the old
+# hardcoded _NATIVE_AUTO set so no behavior changed; the point of the table is
+# that the claim is now attributed to the right axis.
+#   docs/review/SOURCE_LANGUAGE_RULE_2026-10-10.md
+_USES_AUTO_DETECT = {"google": True, "microsoft": True, "bing": True,
+                     "deepl": True}
+
 TRANSLATORS = {
     "google": _t_google,
     "deepl": _t_deepl,
@@ -556,15 +572,23 @@ def do_translate(service, text, target, src="auto", auto_detect=False,
             text = _re.sub(r"\s*\n\s*", " ", text)
     except Exception:
         pass
-    # Services whose API accepts auto natively (their Service.js
-    # sends sl=auto): skip the extra detect round-trip for them.
-    _NATIVE_AUTO = {"google", "microsoft", "bing", "deepl"}
     fn = TRANSLATORS.get(service, _t_google)
     try:
-        # Native resolves auto once via the detect-retry loop, then
-        # every stage (translate + back-translation) uses the concrete
-        # code — no "en" guessing anywhere in the orchestrator.
-        if src == "auto" and service not in _NATIVE_AUTO:
+        # FUN_00404a12's dispatcher echoes the source when it equals the
+        # destination and never calls the service. Re-verified against the
+        # recovered image 2026-10-10
+        # (docs/review/SOURCE_LANGUAGE_RULE_2026-10-10.md).
+        if src == target:
+            return text
+        # Native does NOT keep a hardcoded list of auto-capable services. It
+        # calls the service's own `usesAutoDetectCode` JS hook (FUN_0045f6c1)
+        # and stores the answer at request+0x50; the translate stage
+        # (FUN_004606ba) then runs detect itself only when that flag is false,
+        # or when the *destination* is also not a concrete code. Since the JS
+        # hooks are runtime-loaded files absent from the artifact, the
+        # per-service truth table is unverifiable here — so this is a declared
+        # port-side capability, deliberately NOT presented as native-derived.
+        if src == "auto" and not _USES_AUTO_DETECT.get(service, False):
             src = detect_language(text)
         out = fn(text[:5000], src, target)
         if not out:
