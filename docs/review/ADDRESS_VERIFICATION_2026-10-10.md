@@ -50,23 +50,66 @@ unrelated function's body, which is the outcome that would mean the citations
 are fabricated. Everything either lands on a real function, on a data label, or
 on an instruction Ghidra chose not to name.
 
-## 3. The 30 `INSTRUCTION_NO_FUNC` cases are functions, not broken citations
+### The full-analysis re-check
 
-This is the finding worth having. All 30 begin with **`PUSH EBP`** — the
-standard i386 function prologue — and 29 of the 30 are exactly `PUSH EBP` with
-nothing else at that address:
+The 30 `INSTRUCTION_NO_FUNC` cases below were originally explained from
+`-noanalysis` alone, which cannot answer the question — skipping analysis
+means not finding functions, which proves nothing. Re-resolved in the
+full-analysis project (`QT_FULL`, ~9.5 min):
+
+| Class | Count |
+|---|---|
+| now `FUNCTION`, named, exact | **29** |
+| still not a function | **1** |
+
+So the conclusion below held for **29 of 30**, but the reasoning did not: I
+asserted from `PUSH EBP` prologues what I should have tested. The exception,
+`0x0045b29a`, is **0x12 bytes inside** the real function at `0x45b288`:
 
 ```
-$ awk ... | sort | uniq -c
-  29  PUSH EBP
-   1  CALL 0x00402161
+0045b288   PUSH EBP            <- the actual entry (FUNCTION FUN_0045b288)
+0045b289   MOV EBP,ESP
+...
+0045b29a   CALL 0x00402161     <- what this doc cited; a call operand
 ```
 
-So these are genuine function entry points where the analyzer created an
-*instruction* but no *function record* — the ordinary difference between two
-runs of a heuristic function-boundary finder, not missing or invented code.
-Ghidra's function-creation heuristic is not deterministic across
-analyser-options/versions in the same way an address is.
+`0x45b29a` is a `CALL` operand, not an entry point — and **nothing in `docs/`
+cites `FUN_0045b29a`**; it entered the list because the extraction regex
+matched a `CALL 0x0045b29a` operand quoted in prose. An artifact of the
+measurement, not a wrong citation, so no document needs correcting.
+
+Final, under full analysis:
+
+| Class | Count |
+|---|---|
+| `FUNCTION`, exact | **492** |
+| `DATA` label | 31 |
+| mid-instruction operand (extraction artifact) | 1 |
+| `UNLABELED` | 2 |
+
+## 3. The 30 `INSTRUCTION_NO_FUNC` cases were functions — but not for the reason given here
+
+The original text claimed this section was "the finding worth having," and that
+the 30 cases were "genuine function entry points where the analyzer created an
+*instruction* but no *function record*." That is the right answer supported by
+the wrong instrument, and the distinction is why the full-analysis re-check in
+§2 exists.
+
+What was actually available at the time: all 30 began with **`PUSH EBP`** — 29
+exactly `PUSH EBP`, one `CALL 0x00402161` — which is *consistent* with a
+function entry and is the standard i386 prologue. What was not available: any
+statement about whether Ghidra's function-boundary heuristic would find them.
+`-noanalysis` does not run that heuristic, so its silence was guaranteed and
+carried no information. A prologue is a hypothesis; `QT_FULL` is the test.
+
+Under `QT_FULL` the hypothesis held for 29 of 30. The one failure is in §2 —
+`0x0045b29a`, a call operand 0x12 bytes inside `FUN_0045b288` — and it was
+detectable at the time by the same evidence I had: the `CALL 0x00402161`
+instead of `PUSH EBP` that I recorded in the count and then explained away as
+one of the 29. **The counterexample was in my own table, one line below the
+conclusion.** Reading it as "29 PUSH EBP, 1 CALL" and reporting only the
+agreement is the same selective-evidence move as the earlier failures this
+session.
 
 Concretely, `FUN_004010d5` — one of the two addresses
 `ARTIFACT_RECOVERY_2026-10-10.md` §4 flagged as "in that 22, should be
