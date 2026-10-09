@@ -185,7 +185,9 @@ def _t_deepl(t, sl, tl):
 
 
 def _t_yandex(t, sl, tl):
-    return _yandex.translate(t, "en" if sl == "auto" else sl, tl)
+    # native serviceTranslateRequest: lang=codeFromLanguage(source);
+    # "auto" is sent verbatim (no en guess).
+    return _yandex.translate(t, sl, tl)
 
 
 def _t_baidu(t, sl, tl):
@@ -198,7 +200,8 @@ def _t_naver(t, sl, tl):
 
 
 def _t_youdao(t, sl, tl):
-    return _youdao.translate_web(t, "en" if sl == "auto" else sl, tl)
+    # native serviceTranslateRequest: from=codeFromLanguage(source).
+    return _youdao.translate_web(t, sl, tl)
 
 
 def _t_bing(t, sl, tl):
@@ -209,7 +212,8 @@ def _t_bing(t, sl, tl):
 
 
 def _t_babylon(t, sl, tl):
-    return _babylon.translate(t, "en" if sl == "auto" else sl, tl)
+    # native serviceTranslateRequest: codeFromLanguage(source).
+    return _babylon.translate(t, sl, tl)
 
 
 def _t_promt(t, sl, tl):
