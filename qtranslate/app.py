@@ -3535,9 +3535,17 @@ def _mouse_mode_select(app, x, y):
         # Advanced.EnableGuiTranslation (checkbox 0x482) gates native mode-2
         # OLEACC text-capture (FUN_00404901, DAT_005494e4); mirror it here
         # as the gate for mouse-selection capture.
-        if not bool(_CG.load().get("Advanced", {}).get(
-                "EnableGuiTranslation", True)):
+        _adv = _CG.load().get("Advanced", {})
+        if not bool(_adv.get("EnableGuiTranslation", True)):
             return
+        # Advanced.EnableMouseModeOnCtrl: require Ctrl held at click time.
+        if bool(_adv.get("EnableMouseModeOnCtrl", False)):
+            try:
+                import keyboard as _kb2
+                if not _kb2.is_pressed("ctrl"):
+                    return
+            except Exception:
+                pass
         from qtranslate import exclusions as _ex
         if _ex.foreground_excluded():
             return
@@ -4214,8 +4222,15 @@ def show_popup(source, result, service="google", target="vi"):
     except Exception:
         _pc = _COLORS
     win.configure(bg=_pc.get("border", "#7a7a7a"))
+    # Appearance.PopupWindowFrameThickness: border width in px (native 0..8).
+    try:
+        from qtranslate import config as _CFW
+        _fw = max(0, min(8, int(_CFW.load().get("Appearance", {}).get(
+            "PopupWindowFrameThickness", 2))))
+    except Exception:
+        _fw = 1
     inner = tk.Frame(win, bg=_pc.get("back", "#f0f0f0"))
-    inner.pack(fill="both", expand=True, padx=1, pady=1)
+    inner.pack(fill="both", expand=True, padx=max(1, _fw), pady=max(1, _fw))
     txt = tk.Text(inner, wrap="word",
                   bg=_pc.get("back", "#f0f0f0"),
                   fg=_pc.get("text", "#000000"),
