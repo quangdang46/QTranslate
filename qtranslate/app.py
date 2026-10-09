@@ -1631,6 +1631,15 @@ class App:
             pass
 
     def push_hist(self, svc, src, res):
+        # General.EnableHistory: when off, native does not record new
+        # history entries at all (was previously unconditional).
+        try:
+            from qtranslate import config as _CEH
+            if not bool(_CEH.load().get("General", {}).get(
+                    "EnableHistory", True)):
+                return
+        except Exception:
+            pass
         self.history.append((svc, src, res))
         self._hist_pos = len(self.history) - 1
 
