@@ -3675,8 +3675,10 @@ def _register_native_hotkeys(app) -> list:
     Dictionary/DictionaryClipboard => dictionary window, History =>
     history, Keyboard => virtual keyboard, ConvertTextLayout => fix
     layout, CopyTranslation => copy result, SpeechInput =>
-    mic (not ported, noted), TextRecognition => OCR,
-    SwitchMouseMode => toggle flag (noted),
+    offline SAPI mic (native Google full-duplex URL builder lives in
+    speech_input.py; live path is dead:native-unavailable),
+    TextRecognition => OCR, SwitchMouseMode => cycle MouseMode flag
+    (cursor-side icon/hover needs a Win32 mouse hook — see B),
     TranslateClipboard* => translate clipboard (main/popup/none).
     """
     try:
