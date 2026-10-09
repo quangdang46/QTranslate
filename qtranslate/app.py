@@ -1541,6 +1541,48 @@ class App:
         self.out.delete("1.0", "end")
         self.out.insert("1.0", text)
         self.tag_links(self.out, text, self._click_link)
+        self._apply_backtr_split(text)
+
+    def _apply_backtr_split(self, text):
+        # General.BackTranslationSplitterPos: native splits the result pane
+        # between the translation and the appended back-translation; there
+        # is no second RichEdit control (DLG129 has 17 ctls total, only one
+        # result pane 1018) so this is reconstructed as the scroll offset
+        # at which the back-translation section comes into view, draggable
+        # on the separator line itself. Evidence-limited: the SPLITTER
+        # WIDGET itself is INFERRED (no second control exists to split).
+        marker = "--- back-translation ---"
+        if marker not in text:
+            return
+        try:
+            idx = self.out.search(marker, "1.0", "end")
+            if not idx:
+                return
+            line = int(idx.split(".")[0])
+            from qtranslate import config as _CB
+            pos = int(_CB.load().get(
+                "General", {}).get("BackTranslationSplitterPos", 0) or 0)
+            if pos:
+                target = max(1, line - pos)
+                self.out.see(f"{target}.0")
+
+            def _save_split(_e=None):
+                try:
+                    cur_line = int(self.out.index("@0,0").split(".")[0])
+                    full = _CB.load()
+                    full.setdefault("General", {})[
+                        "BackTranslationSplitterPos"] = max(
+                            0, line - cur_line)
+                    import json as _jb
+                    with open(_CB.DEFAULT_PATH, "w",
+                              encoding="utf-8") as fh:
+                        _jb.dump(full, fh, ensure_ascii=False, indent=1)
+                except Exception:
+                    pass
+
+            self.out.bind("<ButtonRelease-1>", _save_split, add="+")
+        except Exception:
+            pass
 
     def _click_link_dict(self, widget, event=None):
         try:
