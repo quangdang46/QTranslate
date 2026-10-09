@@ -80,8 +80,35 @@ a non-default DPI or a scaled font), not the template size. Stating it as
 *template `340×201` DU at `MS Shell Dlg` 8pt; runtime pixel size depends on the
 machine's DPI and was never measured on a machine that could run it.*
 
-The port's README claims its window is `526×366` (matching the wrong number),
-so **the port may be sizing to a runtime artifact rather than the template.**
+The arithmetic backs this: converting DU→px needs an average character width,
+and `526×366` requires **`avg_w = 6.19` px** (`526*4/340`) — a non-integer,
+which no real font metric produces. Nearby plausible metrics give:
+
+| avg char | result |
+|----------|--------|
+| 6×13 | `510×326` |
+| 7×15 | `595×376` |
+| 8×16 | `680×402` |
+
+**None land on 526×366**, so that number did not come from this template by
+conversion. It came from a running window — a `WINDOWPLACEMENT` blob saved on
+the analyst's machine, which is exactly where `app.py:277` and `app.py:632` say
+their own `526x366` came from (`"526x366 at 876,292, show=1"`).
+
+### Consequence, and the contradiction this exposes in our own port
+
+`app.py` disagrees with itself:
+
+- `app.py:3` — *"Faithful to DLG 129 in QTranslate.exe `.rsrc` (340x201, 17 controls)"* — **correct**, matches the template.
+- `app.py:318` — `root.geometry("526x366")` — the runtime blob, used as the template size.
+- `docs/COMPATIBILITY_MATRIX.md:52` — `Main window (DLG129, 526×366, Tahoma)` — carries both errors forward.
+
+So the port has the right template number in one comment and the wrong one in
+the code that sizes the window. **This is a Phase 7 item, not Phase 1**, and it
+needs a decision rather than a blind fix: matching the *template* (340×201 DU →
+~510–595 px depending on the real font) versus matching the *saved placement*
+(which is what 6.10 would restore on the analyst's machine) are different goals.
+Recording it so the choice is deliberate.
 
 ## 4. The font is `MS Shell Dlg` 8pt, not Tahoma 9
 
