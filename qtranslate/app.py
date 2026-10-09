@@ -3931,6 +3931,8 @@ def main():
     _install_crash_hook()
     root = tk.Tk()
     app = App(root)
+    global _MAIN_APP
+    _MAIN_APP = app
     # MainWindowStartupAction (0=normal, 1=minimized, 2=tray) +
     # MainWindowShowOnLoad=false (start hidden, tray shows it).
     try:
@@ -4130,6 +4132,16 @@ def _make_tray(root, app):
     return icon
 
 
+_MAIN_APP = None  # set by main(); lets the popup reuse the existing window
+
+
+def _safe_destroy(widget):
+    try:
+        widget.destroy()
+    except Exception:
+        pass
+
+
 def show_popup(source, result, service="google", target="vi"):
     """Popup window — mirrors FUN_0040c393 render path.
 
@@ -4168,20 +4180,60 @@ def show_popup(source, result, service="google", target="vi"):
     txt.config(state="disabled")
 
     def _to_main(_e=None):
+        # Native: double-clicking the popup header shows the EXISTING main
+        # window with the current text. (Previously this created a second
+        # tk.Tk(), which corrupted Tk state.)
         win.destroy()
         try:
-            from qtranslate import app as _A
-            _r = tk.Tk()
-            _a = _A.App(_r)
-            _a.src.delete("1.0", "end")
-            _a.src.insert("1.0", source)
-            _a.render(result)
-            _r.mainloop()
+            from qtranslate.app import _MAIN_APP
+            a = _MAIN_APP
+            if a is not None:
+                a.root.deiconify()
+                a.root.lift()
+                a.root.focus_force()
+                a.src.delete("1.0", "end")
+                a.src.insert("1.0", source)
+                a.render(result)
         except Exception:
             pass
 
     txt.bind("<Double-1>", _to_main)
     win.bind("<Escape>", lambda e: win.destroy())
+
+    # --- Appearance popup settings (native ShowPopupWindow) --------------
+    try:
+        from qtranslate import config as _CA
+        _ap = _CA.load().get("Appearance", {})
+    except Exception:
+        _ap = {}
+    # PopupAutoFocus: steal focus only when enabled (default False)
+    if _ap.get("PopupAutoFocus"):
+        try:
+            win.attributes("-topmost", True)
+            win.focus_force()
+        except Exception:
+            pass
+    # Transparency 0..255 -> window alpha (only when < 255)
+    try:
+        _tr = int(_ap.get("Transparency", 255))
+        if 0 < _tr < 255:
+            win.attributes("-alpha", _tr / 255.0)
+    except Exception:
+        pass
+    # PopupAutoPos: place near the pointer, clamped on-screen
+    if _ap.get("PopupAutoPos", True):
+        try:
+            px, py = win.winfo_pointerx(), win.winfo_pointery()
+            win.geometry(f"+{px + 12}+{py + 12}")
+        except Exception:
+            pass
+    # PopupTimeout (seconds): auto-close; 0/absent = stay
+    try:
+        _to = int(_ap.get("PopupTimeout", 0))
+        if _to > 0:
+            win.after(_to * 1000, lambda: _safe_destroy(win))
+    except Exception:
+        pass
 
 
 if __name__ == "__main__":
