@@ -78,11 +78,12 @@ orphans = sorted(m for m in mods
 #              a library; it self-documents that in its docstring
 # speech_input dead:native-unavailable (checklist J5) -- the module is the
 #              RE artifact for FUN_004434FE, not a wired feature
-# reliability  temporarily: 28KB of finished logic awaiting the core.Result
-#              field-order decision. EXPECTED to be flipped, not deleted,
-#              when do_translate is rewritten.
+#
+# reliability is NOT here any more: it was wired on 2026-10-10 (app.py's
+# do_translate now routes through ProviderRouter), so these three are the
+# complete orphan set. If reliability reappears here, the wiring regressed.
 ENTRY_POINTS = {"win32app"}
-KNOWN_DEAD = {"speech_input", "reliability"}
+KNOWN_DEAD = {"speech_input"}
 
 expected = sorted(ENTRY_POINTS | KNOWN_DEAD)
 ck("orphan set is exactly the known one",
@@ -90,14 +91,14 @@ ck("orphan set is exactly the known one",
    "orphans=%r expected=%r -- a NEW orphan means something became dead code, "
    "and that is what this suite is here to catch" % (orphans, expected))
 
-# --- regression pin: reliability must NOT be an orphan once wired --------
-# Until CORE_RESULT_SHAPE is settled and do_translate is rewritten, reliability
-# is legitimately unwired. This assertion therefore pins the STATUS, and is
-# expected to be flipped -- not deleted -- when the wiring lands.
-ck("reliability is currently unwired (flip this when wired)",
-   "reliability" in orphans,
-   "reliability is no longer an orphan -- update "
-   "docs/review/RELIABILITY_UNWIRED_2026-10-10.md and this assertion")
+# --- regression pin: reliability must STAY wired ---------------------------------
+# Flipped 2026-10-10 the same day it was written: the wiring landed, the suite
+# failed as designed, and this assertion is the durable half. It fails if
+# do_translate ever stops routing through the layer again.
+ck("reliability is wired (this suite's own reason for existing)",
+   "reliability" not in orphans,
+   "reliability is an orphan again -- do_translate stopped routing through "
+   "the layer; see docs/review/RELIABILITY_UNWIRED_2026-10-10.md")
 
 # --- the app must actually reach a provider bare, not through the layer ---
 _app = open(os.path.join(ROOT, "qtranslate", "app.py"),
@@ -113,13 +114,20 @@ except SyntaxError:
     pass
 ck("do_translate found", _dt is not None)
 if _dt:
-    ck("do_translate calls a provider function directly",
-       "fn(text[:5000], src, target)" in _dt)
-    # the classifier is NOT in the path -- that is the bug this suite tracks
-    ck("do_translate does not classify yet (tracks the unwired state)",
-       "classify" not in _dt and "reliability" not in _dt,
-       "do_translate now references the reliability layer -- the wiring "
-       "landed, so flip the assertion above and update the doc")
+    ck("do_translate routes through the reliability layer",
+   "_router()" in _dt and ".translate(service, text, src, target" in _dt,
+   "do_translate no longer calls the router")
+# the None-guard matters: a failed import must degrade to the bare provider
+# call rather than failing the translation outright.
+ck("do_translate degrades gracefully if the layer is unavailable",
+   "_r is None" in _dt,
+   "no fallback if the reliability layer cannot be imported")
+# and the layer's ordering rule must hold: from the result onward the service
+# that matters is the one that ANSWERED, not the one the user picked.
+ck("do_translate rebinds service to the provider that answered",
+   "service = res.provider_used" in _dt,
+   "back-translation and J7 phonetics would use the user's pick instead of "
+   "the provider that actually answered")
 
 if fail:
     print("FAIL %d/%d" % (len(fail), n[0]))

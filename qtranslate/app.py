@@ -242,6 +242,74 @@ def _t_promt(t, sl, tl):
 _USES_AUTO_DETECT = {"google": True, "microsoft": True, "bing": True,
                      "deepl": True}
 
+# --- the reliability layer, wired 2026-10-10 ---------------------------------
+# Built once over the TRANSLATORS table above: ProviderRouter's `callables`
+# maps a service id to fn(text, src, tgt), which is exactly the signature the
+# _t_* adapters already have. `order` is the ServicesOrder fallback chain.
+#   docs/review/RELIABILITY_UNWIRED_2026-10-10.md
+_ROUTER = None
+
+
+def _router():
+    """The ProviderRouter over TRANSLATORS, built lazily and reused.
+
+    Lazy because TRANSLATORS is defined above but the import of `reliability`
+    pulls in stdlib-only deps; building eagerly at import time would cost every
+    `--help`-style path. Reused because the router owns a HealthTracker, and a
+    fresh one per call would forget every provider it had marked dead.
+    """
+    global _ROUTER
+    if _ROUTER is None:
+        try:
+            from qtranslate.reliability import ProviderRouter
+            _ROUTER = ProviderRouter(dict(TRANSLATORS),
+                                     order=["google", "microsoft", "bing",
+                                            "deepl", "yandex"])
+        except Exception:
+            return None
+    return _ROUTER
+
+
+def _cfg_safe():
+    """Options.json as a dict, or {} if it cannot be read.
+
+    ProviderRouter reads only Advanced.RemoveLineBreaks from it; do_translate
+    also applied that transform above, so this is belt-and-braces rather than
+    the only guard.
+    """
+    try:
+        from qtranslate import config as _C
+        return _C.load() or {}
+    except Exception:
+        return {}
+
+
+def _phonetics(out, service):
+    """J7 — read-phonetically, shared by both translate paths.
+
+    FUN_0042ED3F appends "\r\r" + string-resource 186 + entry[5] to the result
+    pane when General.ReadPhonetically is on. Our phonetics source is Google's
+    `dt=rm` romanization (see `google_translate._translate_response`); other
+    providers supply none, exactly as the native per-provider JS service
+    handling does. Gate 1 (`"<Error>"` absent) is the success test, so the
+    append never lands on an error result.
+
+    Takes the service explicitly because the router path must pass the
+    provider that ACTUALLY answered, not the one the user picked — that is the
+    same rule the back-translation follows.
+    """
+    try:
+        from qtranslate import phonetics as _PH
+        from qtranslate.services import google_translate as _GT
+        from qtranslate import config as _C
+        if service == "google":
+            return _PH.append_phonetics(
+                out, _GT.get_romanization(),
+                enabled=_PH.phonetics_enabled(_C.load()))
+    except Exception:
+        pass
+    return out
+
 TRANSLATORS = {
     "google": _t_google,
     "deepl": _t_deepl,
@@ -572,7 +640,6 @@ def do_translate(service, text, target, src="auto", auto_detect=False,
             text = _re.sub(r"\s*\n\s*", " ", text)
     except Exception:
         pass
-    fn = TRANSLATORS.get(service, _t_google)
     try:
         # FUN_00404a12's dispatcher echoes the source when it equals the
         # destination and never calls the service. Re-verified against the
@@ -590,36 +657,56 @@ def do_translate(service, text, target, src="auto", auto_detect=False,
         # port-side capability, deliberately NOT presented as native-derived.
         if src == "auto" and not _USES_AUTO_DETECT.get(service, False):
             src = detect_language(text)
-        out = fn(text[:5000], src, target)
-        if not out:
+        # The reliability layer is the caller from here down: it classifies
+        # the failure, retries inside ONE shared wall-clock budget, and falls
+        # back along ServicesOrder. Implemented and unwired until 2026-10-10
+        # (docs/review/RELIABILITY_UNWIRED_2026-10-10.md); ProviderRouter's
+        # translate() takes do_translate's own arguments, so it needed no
+        # adapter and never needed core.Result settled first.
+        _r = _router()
+        if _r is None:
+            # The reliability layer failed to import. Fall back to the bare
+            # provider call rather than failing the translation: the layer is
+            # an improvement, not a dependency.
+            out = TRANSLATORS.get(service, _t_google)(text[:5000], src, target)
+            if not out:
+                return _T("Strings", 190,
+                          "No data returned (timeout while sending data.)")
+            if back_translate:
+                try:
+                    back = TRANSLATORS.get(service, _t_google)(
+                        out[:5000], target, src)
+                    if back:
+                        out += f"\n\n--- back-translation ---\n{back}"
+                except Exception:
+                    pass
+            out = _phonetics(out, service)
+            return out
+        res = _r.translate(service, text, src, target,
+                           config=_cfg_safe())
+        out = res.text
+        # From here the "service" that matters is the one that ANSWERED —
+        # res.provider_used — for both the back-translation and J7's
+        # phonetics, mirroring the reliability layer's own rule.
+        service = res.provider_used or service
+        if not res.ok:
             # native error string id 190 (vi: "Không có dữ liệu trả về
             # (quá thời gian chờ..."; canonical English verified)
             return _T("Strings", 190,
                       "No data returned (timeout while sending data).")
         if back_translate and not out.startswith("No data"):
             try:
-                back = fn(out[:5000], target, src)
+                # Back-translate through the provider that ACTUALLY answered —
+                # res.provider_used, not the user's pick — because its output is
+                # what is being back-translated. Same rule as the reliability
+                # layer's own translate_with_backtranslation.
+                _bfn = TRANSLATORS.get(res.provider_used, _t_google)
+                back = _bfn(out[:5000], target, src)
                 if back:
                     out += f"\n\n--- back-translation ---\n{back}"
             except Exception:
                 pass
-        # J7 — read-phonetically. FUN_0042ED3F appends
-        # "\r\r" + string-resource 186 + entry[5] to the result pane when
-        # General.ReadPhonetically is on. Our phonetics source is Google's
-        # `dt=rm` romanization (see `google_translate._translate_response`);
-        # other providers supply none, exactly as the native per-provider
-        # JS service handling does. Gate 1 (`"<Error>"` absent) is the
-        # success test, so the append never lands on an error result.
-        try:
-            from qtranslate import phonetics as _PH
-            from qtranslate.services import google_translate as _GT
-            from qtranslate import config as _C2   # not the narrow _C above
-            if service == "google":
-                out = _PH.append_phonetics(
-                    out, _GT.get_romanization(),
-                    enabled=_PH.phonetics_enabled(_C2.load()))
-        except Exception:
-            pass
+        out = _phonetics(out, service)
         return out
     except Exception:
         return _T("Strings", 190,
