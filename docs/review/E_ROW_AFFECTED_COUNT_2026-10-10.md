@@ -1,24 +1,31 @@
-# The affected-row count is 18, not 15 — and E2/E3/E5/E7 are among them
+# The affected-row count is 20, not 15 — and E2/E3/E5/E7 are among them
 
 > Read-only. Counts precisely which rows
 > `PLUGIN_LOADER_FOUND_2026-10-10.md` rules out, and disagrees with that
 > document's §4 on two specific rows. No row state changed; the checklist has
 > a single writer and this is the measurement that writer needs.
 >
-> Also re-measures `E_ROW_ENDPOINT_VERIFIABILITY_2026-10-10.md` §6's
-> outstanding question, which is the same question from the other side.
+> **Self-corrected: the first version of this document said 18.** The count
+> was produced by a table parse that dropped two rows, and the error is in
+> §1a below because the reason is worth having. 20 is the measured number.
 
 ## 1. The count
 
 Extracted every `E` row that cites `Services/<Name>/Service.js` as its
-native artifact:
+native artifact. **Note when parsing: two rows (`E4`, `E6`) contain an
+escaped pipe `\|` inside their artifact cell** — a `split('|')` that does not
+first mask `\|` shifts their cells and silently drops or mislabels them.
 
-**18 rows**, all `VERIFIED`:
+**20 rows, all `VERIFIED`:**
 
 ```
-E2, E3, E5, E7, E8, E9, E10, E11, E12, E13,
+E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13,
 E14, E15, E16, E17, E18, E19, E20, E22
 ```
+
+Only two E rows escape the count: **E1** (cites `Services/Common.js`, the
+framework the loader provably loads first) and **E21** (cites
+`FUN_0040FB54` + `FUN_0040FEC9`, decompiled against the recovered image).
 
 The peer's loader document says **15**, and names them as "E1 (framework),
 E4, E6, E9–E20 — and the E rows that cite `Services/Microsoft
@@ -27,12 +34,36 @@ that list, all checkable in one pass:
 
 - **It is 16 items if you count its own enumeration**, not 15: E1, E4, E6,
   E9, E10, E11, E12, E13, E14, E15, E16, E17, E18, E19, E20, E22.
-- **E1 and E4/E6 are not in the checklist's E group at all.** There is no E4
-  and no E6 in the table — the ids jump E3 → E5 → E7, because 1/4/6 were
-  retired. So three of the sixteen are rows that do not exist, and the count
-  of *existing* affected rows is 13 from that list.
+- **E1 does not belong in the set.** It cites `Common.js`, which the loader
+  reads *before* the subdirectory loop — its artifact is the framework, and
+  `FUN_0045d6a9` is the address-backed evidence for E1's own claim. Counting
+  E1 as affected is the opposite of what the loader shows.
 - **It excludes E2/E3/E5/E7**, on the grounds that those rows' endpoints are
   "compiled in."
+
+E4 and E6, which it *does* have, are confirmed affected and their literals are
+entirely absent from the image in either encoding:
+`www2.deepl.com/jsonrpc`, `LMT_handle_jobs`, `papago.naver.com`,
+`/apis/nsmt`, `buildAuthData`, `v1.6.5_956d74858f` — all ABSENT.
+
+## 1a. The parse error in the first version, recorded
+
+My first extraction used `^\| (E\d+...)` against raw lines and found 18, on
+which basis I wrote that "E4 and E6 do not exist in the checklist." **They
+exist, at lines 385 and 387, both `VERIFIED`.** The rows' artifact cells
+contain `caps TRANSLATE\|DETECT` with a literal backslash-escape, so the
+naive split read the state as `DETECT` and the count came out two short.
+
+The tell was available in the same output: the parse also reported
+"VERIFIED rows citing Service.js: 20" from a second, looser regex. Two
+parsers, two numbers, one artifact — and I acted on the one that agreed with
+the number I had just committed. The same selective-agreement failure the
+session has been recording, in a new costume: **when two measurements
+disagree, the disagreement is the finding, not a nuisance to resolve by
+preferring the one you like.**
+
+The corrected parse masks `\|` before splitting, and the counts now agree
+across both methods: 20.
 
 ## 2. The exemption is wrong, and it is the part that matters
 
@@ -61,7 +92,7 @@ disagreement about judgement; it is the host-vs-path rule from
 ## 3. But the loader makes the distinction moot, which is the real conclusion
 
 `FUN_0045d6a9` reads `Services/<Name>/Service.js` **from disk at runtime**,
-compiles it, and calls `serviceHeader` into it. Every one of the 18 rows
+compiles it, and calls `serviceHeader` into it. Every one of the 20 rows
 asserts a URL shape, a parameter order, or a caps mask *for code that ships
 in that file*. The file is not in `QTranslate.6.10.0.exe` and, by the loader's
 own mechanism, **cannot be**.
@@ -76,13 +107,13 @@ runtime-loaded plugin produced that request. Those two facts can only
 coexist if the row conflates the compiled client with the plugin, which is
 the exact thing §6 of my earlier document flagged as unproven.
 
-**The honest state for all 18 is the same**, regardless of which hosts happen
+**The honest state for all 20 is the same**, regardless of which hosts happen
 to be in the binary: their cited artifact is a file the artifact cannot
 contain.
 
 ## 4. What this changes
 
-The number the Gate line needs is **18**, not 15, and the composition is
+The number the Gate line needs is **20**, not 15, and the composition is
 different from the peer's list. Specifically:
 
 - The peer's list includes rows **that do not exist** (E4, E6) and excludes
@@ -108,7 +139,7 @@ this document is the input it needs.
 ## 5. What this does not do
 
 - Does not reclassify anything. Not my file, not my call.
-- Does not claim these 18 rows are wrong. The peers measured the endpoints
+- Does not claim these 20 rows are wrong. The peers measured the endpoints
   live and they respond correctly. The claim is narrow: **the row's stated
   native artifact is not obtainable from this artifact**, so the row's RE
   axis cannot be `VERIFIED` and its behaviour axis stands on live evidence.
