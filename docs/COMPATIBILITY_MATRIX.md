@@ -188,7 +188,7 @@ recorded — a service may never quietly disappear between the two docs.
 |---|---|---|---|
 | Extension SDK (provider/workflow/theme/UI) | design only | `not-started` | `EXTENSION_SDK.md` |
 | Extension override + fail-open | design only | `not-started` | §Override rules |
-| Reliability layer (classify/retry/fallback) | design only | `not-started` | `RELIABILITY.md` |
+| Reliability layer (classify/retry/fallback) | `FUN_004606BA` route + per-call retry | `ProviderRouter` via `do_translate` `app.py:666` | yes | Win+mac | `regress_wiring.py` + `regress_reliability.py` | `ported` (wired 2026-10-10) |
 | macOS adapters (hotkey/clipboard/capture/audio) | none | `not-started` | macOS never tested |
 | Stable-id registry (unify 3 sources) | audit | `not-started` | `ARCHITECTURE.md` §3.2 |
 
