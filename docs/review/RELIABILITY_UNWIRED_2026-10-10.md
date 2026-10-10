@@ -56,14 +56,39 @@ code, which is the more misleading of the two:
 
 - **It does not establish that the reliability layer is correct.** Nothing has
   run it against a live provider.
-- **It does not establish that wiring it is trivial.** `do_translate` currently
-  calls `fn(text[:5000], src, target)` and gets a `str` back;
-  `reliability.run_provider` wants a request object and returns a `Result`. The
-  `CORE_RESULT_SHAPE_2026-10-10.md` proposal exists precisely because those two
-  contracts do not meet, so the wiring and the type change are one piece of work,
-  not two.
 - **It does not establish which behavior native exposes to the user.** That is a
   §F RE question and it is separate.
+
+### CORRECTION 2026-10-10, later the same session — §3's second bullet was wrong
+
+I wrote here that wiring was *not* trivial, that `do_translate` calls
+`fn(text[:5000], src, target)` and gets a `str` back while `run_provider`
+"wants a request object", and that the wiring therefore had to wait on the
+`CORE_RESULT_SHAPE` decision.
+
+**That was wrong, and the correction is the useful part.** I read
+`run_provider` — a low-level helper — and assumed it was the entry point.
+The entry point is `ProviderRouter.translate`, whose signature is:
+
+```python
+ProviderRouter.translate(self, service, text, src, tgt, *, config=None,
+                         on_event=None) -> Result
+```
+
+…which is `do_translate`'s own signature, argument for argument. Verified by
+construction, not by reading: a router built over `{"google": <fake fn>}`
+returns `Result(provider_used='google', failures=(), attempts=1, ok=True)`
+with no adapter, no request object and no type change. `translate()` accepts a
+plain Options.json dict for `config` or `None`.
+
+So the interface already matches, and `CORE_RESULT_SHAPE` is not a
+prerequisite. The reason I had it backwards is worth naming: **I generalised
+from the wrong function.** `run_provider` is the per-call retry loop (it does
+take a zero-arg `fn`), and I stopped reading at the first plausible entry
+point two hundred lines above the one designed for this caller. A docstring
+that says "Route a translate request across app.py's service callables — the
+same signature app.py's `_t_*` adapters already have" was sitting right
+there.
 
 ## 4. The cheap fix, and why I am not doing it here
 
