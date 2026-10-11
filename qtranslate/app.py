@@ -340,7 +340,7 @@ def _t_call(fn, text, src, tgt, sink):
     return fn(text, src, tgt, _sink=sink) if wants else fn(text, src, tgt)
 
 
-def _phonetics(out, service, romanization=""):
+def _apply_phonetics(out, service, romanization=""):
     """J7 — read-phonetically, shared by both translate paths.
 
     FUN_0042ED3F appends "\r\r" + string-resource 186 + entry[5] to the result
@@ -352,12 +352,16 @@ def _phonetics(out, service, romanization=""):
 
     Takes the service explicitly because the router path must pass the
     provider that ACTUALLY answered, not the one the user picked — that is the
-    same rule the back-translation follows.
+    same rule the back-translation follows. The ``service == "google"`` guard
+    is load-bearing: the sink is filled by Google's callable, so a stale value
+    from a failed Google attempt must not survive into a non-Google answer.
 
-    `romanization` is that call's own value, carried explicitly. Before
-    2026-10-10 it was read out of `google_translate`'s module global, which was
-    a stopgap: shared mutable state could hand this result another call's
-    romanization, and nothing tied the value to the call that produced it.
+    ``romanization`` is that call's own value, carried explicitly. It now
+    arrives on ``core.Result.phonetics`` (populated by ``ProviderRouter.translate``
+    from the per-call sink) rather than from ``google_translate``'s module
+    global, which was a stopgap: shared mutable state could hand this result
+    another call's romanization, and nothing tied the value to the call that
+    produced it.
     """
     try:
         from qtranslate import phonetics as _PH
@@ -748,10 +752,10 @@ def do_translate(service, text, target, src="auto", auto_detect=False,
                         out += f"\n\n--- back-translation ---\n{back}"
                 except Exception:
                     pass
-            out = _phonetics(out, service, _sink[0])
+            out = _apply_phonetics(out, service, _sink[0])
             return out
         res = _r.translate(service, text, src, target,
-                           config=_cfg_safe())
+                           config=_cfg_safe(), phonetics_sink=_sink)
         out = res.text
         # From here the "service" that matters is the one that ANSWERED —
         # res.provider_used — for both the back-translation and J7's
@@ -774,7 +778,7 @@ def do_translate(service, text, target, src="auto", auto_detect=False,
                     out += f"\n\n--- back-translation ---\n{back}"
             except Exception:
                 pass
-        out = _phonetics(out, service, _sink[0])
+        out = _apply_phonetics(out, service, res.phonetics)
         return out
     except Exception:
         return _T("Strings", 190,

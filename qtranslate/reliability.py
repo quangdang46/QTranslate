@@ -684,12 +684,19 @@ class ProviderRouter:
         self.router.health.mark_unavailable(providers, note)
 
     def translate(self, service, text, src, tgt, *, config=None,
-                  on_event=None) -> Result:
+                  on_event=None, phonetics_sink=None) -> Result:
         """Translate with bounded retry + ServicesOrder fallback.
 
         ``config`` is read only for the shaping flags this class owns
         (``Advanced.RemoveLineBreaks``); nothing else is consumed, so a caller
         can pass a real Options.json dict or None.
+
+        ``phonetics_sink``, when given, is a one-element mutable list that the
+        caller's google callable fills with the ``dt=rm`` romanization (J7).
+        After a successful route the value is read onto ``Result.phonetics``;
+        on failure it is left empty. The sink is the channel from the callable
+        to this method — the ``_t_*`` contract is a bare ``str``, so the value
+        cannot ride in the return.
         """
         cfg = config if config is not None else {}
         remove_line_breaks = bool(
@@ -706,9 +713,12 @@ class ProviderRouter:
         route = self.router.route(text, src, tgt, service or None,
                                   on_event=on_event)
         if route.ok:
+            phon = ""
+            if phonetics_sink is not None:
+                phon = phonetics_sink[0] or ""
             return Result(route.provider_used, route.text,
                           route.requested, route.failures, route.attempts,
-                          route.note)
+                          route.note, phonetics=phon)
         # A failed route carries its own diagnostic note; the UI surfaces the
         # native "no data" string for the text and this note for the reason.
         return Result("", "", route.requested, route.failures, route.attempts,
@@ -716,7 +726,7 @@ class ProviderRouter:
 
     def translate_with_backtranslation(self, service, text, src, tgt, *,
                                        back_translate=False, config=None,
-                                       on_event=None) -> Result:
+                                       on_event=None, phonetics_sink=None) -> Result:
         """Same route, then append the back-translation ONCE, after the loop.
 
         The back-translation uses the provider that actually answered — not
@@ -725,7 +735,7 @@ class ProviderRouter:
         split it back apart for persistence (see app.py's EditBackTranslation).
         """
         primary = self.translate(service, text, src, tgt, config=config,
-                                 on_event=on_event)
+                                 on_event=on_event, phonetics_sink=phonetics_sink)
         if not primary.ok or not back_translate:
             return primary
         try:

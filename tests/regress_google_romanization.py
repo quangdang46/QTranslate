@@ -159,8 +159,11 @@ ck("app.py hands a fresh sink per do_translate call",
    "without a fresh sink the value is shared, which is the old bug")
 ck("app.py passes that sink to the router",
    "_router(_sink)" in _app, "the router must receive the per-call sink")
-ck("app.py reads the romanization from the sink, not a global",
-   "get_romanization" not in _app and "_sink[0]" in _app,
+ck("app.py passes the sink to ProviderRouter.translate",
+   "phonetics_sink=_sink" in _app,
+   "the router must receive the per-call sink to populate Result.phonetics")
+ck("app.py reads phonetics from the Result, not a global",
+   "get_romanization" not in _app and "res.phonetics" in _app,
    "the production path must not read the module state")
 
 # --- the request must still ask for dt=rm ---
