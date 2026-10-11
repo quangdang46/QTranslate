@@ -12,10 +12,19 @@ THEMES_DIR = "C:/Program Files (x86)/QTranslate/Themes"
 
 
 def _hex(v: str) -> str:
+    """Normalise a colour string to `#rrggbb`, or `""` when unparseable.
+
+    Mirrors `FUN_0046457a` (THEME_LOADER_AND_BGR_RETRACTION_2026-10-11.md §1):
+    accepts 1/2/3/6 hex digits, anything else → `0xffffffff`. The port's
+    sentinel is `""` (falsy), which `slot()` maps to `UNSET` — so a malformed
+    value never reaches the renderer as a colour.
+    """
     v = (v or "").strip()
     if not v:
-        return "#000000"
+        return ""
     v = v.lstrip("#")
+    if v.strip("0123456789abcdefABCDEF") or len(v) not in (1, 2, 3, 6):
+        return ""
     if len(v) == 3 and not len(set(v)) == 1:
         # CSS shorthand: abc -> aabbcc (but bbb stays grayscale bbbbbb)
         v = "".join(c * 2 for c in v)

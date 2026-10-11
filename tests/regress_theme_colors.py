@@ -78,6 +78,26 @@ else:
     ck('_hex("1") is #111111, NOT 0x00000001',
        T._hex("1") == "#111111",
        "the retracted BGR reading claimed 0x00000001")
+    # --- _hex malformed input: native returns 0xffffffff, port returns "" ---
+    # THEME_LOADER_AND_BGR_RETRACTION_2026-10-11.md §1: FUN_0046457a accepts
+    # 1/2/3/6 hex digits, anything else → 0xffffffff. The port's sentinel is
+    # "" (falsy), which slot() maps to UNSET. Before this fix, _hex("xyz")
+    # silently produced "#" — six characters reaching the renderer as a colour.
+    for raw, label in (("", "empty"), ("xyz", "illegal hex"),
+                       ("12345", "5 digits"), ("1234", "4 digits"),
+                       ("gg", "non-hex"), ("#", "hash only"),
+                       ("1234567", "7 digits")):
+        ck("_hex(%r) is \"\" (%s), not a colour string" % (raw, label),
+           T._hex(raw) == "",
+           "got %r -- native returns 0xffffffff for this" % T._hex(raw))
+    # Valid lengths still work after the guard
+    for raw, want in (("1d8abd", "#1d8abd"), ("20", "#202020"),
+                      ("09c", "#0099cc"), ("b", "#bbbbbb"),
+                      ("#1d8abd", "#1d8abd"), ("1", "#111111"),
+                      ("fe", "#fefefe")):
+        ck("_hex(%r) is still %r after the guard" % (raw, want),
+           T._hex(raw) == want,
+           "got %r" % T._hex(raw))
 
     # --- FUN_00464724: absent or unparseable -> 0xffffffff, NOT 0 ----------
     for raw, label in ((None, "None"), ("", "empty"), ("xyz", "illegal hex"),
