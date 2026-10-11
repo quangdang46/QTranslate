@@ -304,24 +304,47 @@ Two consequences worth recording:
 
   **Correction, because my first version of this bullet over-claimed.** I
   wrote that "the two must be resolved rather than one replacing the other."
-  I had not measured any resolution, and there is **none**. `StructRefs` (the
-  one-pass offset scan) finds 19 functions touching these four keys, and the
-  ones that touch several are the **Options dialog**, not a resolver:
-  `FUN_004866f0` is a control-ID switch (`0x4eae` → `ThemeName`,
-  `0x4f4d` → `ColorBack`, `0x4f4f` → `ColorFrame`, `0x283e` → `ColorText`)
-  that stores each into its own field of the settings object;
-  `FUN_00410c70` is the `OptionsWindow` constructor with a `PageAppearance`
-  and three `windows::ColorButton` sub-objects — the colour pickers
-  themselves.
+  I had not measured any resolution, and there is **none** — the question has
+  a false premise, so nothing wins.
 
-  What the measurements actually support: the theme file owns
-  `theme::ColorThemeFile`'s own fields, and `Appearance` holds four
-  independent settings. The native main window is documented as using
-  `Appearance` colours (`app.py`'s own `_default_colors` says the popup uses
-  the theme); **which one wins where is still unmeasured**, and I am
-  recording that rather than asserting a precedence the code has not shown
-  me. This is the fourth time in this document that a tidy two-subsystem
-  story outran the evidence.
+  `FUN_00455e25` (the defaults initialiser) is one straight-line store each,
+  no `or`, no comparison, no shared branch:
+
+  ```asm
+  LEA  ECX, [ESI + 0x1dc]                  ; ThemeName -- a STRING slot
+  MOV  dword ptr [ESI + 0x1e0], 0x1000101
+  MOV  dword ptr [ESI + 0x1e4], 0x5        ; PopupTimeout
+  MOV  dword ptr [ESI + 0x1e8], 0xf0f0f0   ; ColorBack
+  MOV  dword ptr [ESI + 0x1ec], 0x0        ; ColorText
+  MOV  dword ptr [ESI + 0x1f0], 0x7a6c5d   ; ColorFrame
+  MOV  byte ptr [ESI + 0x1f4], 0xd9        ; Transparency
+  ```
+
+  **The reason nothing resolves them: they have different consumers.**
+  `Themes/*.json` reaches the **popup** (via `FUN_004654ca` →
+  `FUN_0044b44f`); `ColorBack`/`ColorText`/`ColorFrame` colour the **main
+  window**. There is no code path where one must be chosen over the other,
+  so the port resolving them independently is *correct*, not a shortcut.
+
+  **How I nearly got this wrong, in the same session.** My first tool for
+  this question was an *offset* scan of every instruction whose operand is
+  `+0x1dc`/`+0x1e8`/`+0x1ec`/`+0x1f0`. It returned 19 functions and most were
+  false positives: `FUN_00483740` **invokes** `param_1 + 0x1e8` as a vtable
+  pointer; `FUN_004866f0` is a command-ID switch whose cases land near those
+  offsets; `FUN_0048c890` has `CMP [EDI+0x1f0],0x2` where the field is a
+  small state, not a colour. I almost reported the vtable one as the answer.
+  The tell is the same one this document is full of: **I found it by
+  searching for what I already believed.**
+
+  The *value* scan that settled it has almost no false-positive budget — an
+  immediate store of `0xf0f0f0` occurs **exactly once** in the entire image
+  (`0x456005`, inside `FUN_00455e25`) and `0x7a6c5d` likewise (`0x45600f`).
+  That is also independent byte-order evidence for §1, and stronger than the
+  defaults-value argument: the *writer* and the *reader* are the same two
+  offsets, and no other function writes those numbers.
+
+  This was my fourth over-claim in this document, and the correction was
+  reachable the whole time by asking a narrower question.
 
 ## 4. Reproduce
 

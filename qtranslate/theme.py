@@ -116,22 +116,31 @@ DEFAULT_THEME_GRAYS = (0x191919, 0x5e5e5e, 0xf9f9f9, 0x393939,
 def default_theme() -> dict:
     """The palette native installs when no theme file loads.
 
-    `theme::DefaultColorTheme` (`FUN_0044c9a6`) sets its radii, then takes the
-    user's Windows system colours — `COLOR_BTNFACE`, `COLOR_BTNHIGHLIGHT`,
-    `COLOR_3DDKSHADOW`, `COLOR_WINDOWTEXT`, `COLOR_GRAYTEXT`, `COLOR_WINDOW` —
-    and derives the remaining slots from those through `FUN_0044a163`, our
-    `adjust_brightness`.
+    `theme::DefaultColorTheme` (`FUN_0044c9a6`) sets its radii, then writes
+    five five-dword colour records. Two of the five are entirely
+    `GetSysColor`-derived and one more is a copy of an earlier record:
 
-    Only its hardcoded greys are reproducible here. The `GetSysColor` values
-    are Windows runtime state this host cannot supply, so those slots stay
-    unset and `None` flows out of `state_colors`, which `tk_colors` then
-    projects onto Tk's own system colours — the nearest equivalent available.
+    | record | source |
+    |---|---|
+    | `Window/Normal` | `BTNFACE`, `3DDKSHADOW`+0x14 via `FUN_0044a163`, `BTNHIGHLIGHT`, `WINDOWTEXT`, `0xffffffff` |
+    | `Window/Disabled` | same family, no compiled constant |
+    | `WindowButton/Normal` | `#191919`, `#5e5e5e`, `#f9f9f9` |
+    | `WindowButton/Hover` | `#393939`, `#7e7e7e`, `#ffffff` |
+    | `WindowButton/Pressed` | `#111111`, `#383838`, `#c1c1c1` |
+
+    So the **window is entirely runtime state and the buttons are entirely
+    compiled constants** — which is why this function carries the greys and
+    deliberately has no `Window` section. Claiming window values here would
+    mean inventing the host's Win32 palette.
+
+    The unset window slots flow out of `state_colors` as `None`, and
+    `tk_colors` projects them onto Tk's own system colours — the nearest
+    equivalent a non-Windows host can supply, and the same *intent*
+    (paint with the platform, not with a hardcoded guess).
     """
     g = ["#%06x" % v for v in DEFAULT_THEME_GRAYS]
     return {
         "Common": {"ButtonRadius": 2, "WindowBorderRadius": 1},
-        # FUN_0044c9a6 writes [0x11..0x13] and [0x16..0x18] for the window
-        # buttons, then repeats the same nine greys at [0x65..0x6d].
         "WindowButton": {
             "Normal": {"Back": g[0], "Text": g[2], "Border": g[1]},
             "Hover": {"Back": g[3], "Text": g[5], "Border": g[4]},
