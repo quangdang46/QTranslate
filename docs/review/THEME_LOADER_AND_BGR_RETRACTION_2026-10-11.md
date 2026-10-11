@@ -563,3 +563,20 @@ See [[text-assertion-is-not-behaviour-assertion]].
 Their report described the `app.py` divergence it would otherwise fix
 (`_default_colors` loading a theme file for the main window) and pinned it
 rather than editing my file — the ownership split working as intended.
+
+### Measured remainder: the port never selects a state (2026-10-12)
+
+`NATIVE_ARCH.md:1518` records `FUN_0044FE1B` as the theme-state selector:
+disabled → 3, focused → 4, has-text → 1, empty → 0, resolved through
+`FUN_0044C51C` on the shared theme store. All three `app.py` theme consumers
+(`:73`, `:1716`, `:4754`) call `window_colors(theme)` with the default
+`state="Normal"` — the port **never requests Disabled/Hover/Pressed/Focused**.
+So the numeric-index dispatch has no consumer-side port.
+
+Why this is a remainder and not a defect: on this host the states would only
+matter for disabled/focused Tk widgets actually wired to theme state, which
+the UI never does. `state_colors`/`_state` implement the per-section records
+*and* the inherit-from-Normal rule correctly (279 assertions), so the data
+path is ready if a consumer ever asks — it is the *selection* that is
+unported, not the data. Deliberately not built: adding state selection with
+no widget to drive it would be untestable code.
