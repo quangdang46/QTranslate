@@ -83,12 +83,39 @@ that overstates what the code does; the *behaviour* looks intentional.
 check("xdxf-k", "<div><b>hello</b></div>" in _html, _html[:80])
 ```
 
-An `in` assertion passes whether or not `<ar>` is present, and
-`in _html[:80]` passes for the fragment *and* for any prefix of it. So the
-suite is green on this and would stay green if the passthrough were
-removed, re-added, or narrowed to only one of the two tags. That is the
-same shape the peer's own mutation work found elsewhere: *"an assertion
-matching only five of seven attributes let a mutant survive."*
+An `in` assertion passes whether or not `<ar>` is present. So the suite is
+green on this and would stay green if the passthrough were removed,
+re-added, or narrowed to only one of the two tags. That is the same shape
+the peer's own mutation work found elsewhere: *"an assertion matching only
+five of seven attributes let a mutant survive."*
+
+### 3a. A correction to my own first draft, which over-weighted this
+
+My first version of this section called the two-`<ar>`-siblings case "the
+case where unwrapping is observable" and implied it was the real risk.
+**It is not reachable through the port's only consumer.** `lookup()` does
+not render a document — it scans the file and returns **one** article:
+
+```python
+for m in re.finditer(r"<ar>(.*?)</ar>", data, re.S):
+    body = m.group(1)
+    if rx.search(body):
+        return render_article("<ar>" + body + "</ar>")   # one <ar>, always
+```
+
+Measured: a two-article file returns `'<div><b>alpha</b></div>'` for
+`lookup('alpha', path)` and `'<div><b>beta</b></div>'` for `lookup('beta', …)`
+— never a concatenation. So the flat-merge I demonstrated in §2 is reachable
+only by calling `render_article` on a multi-`<ar>` document directly, which
+nothing in the repo does.
+
+That **lowers the severity from "output can silently merge articles" to "the
+docstring overstates fidelity and a latent trap exists if the consumer ever
+changes."** It does not remove the docstring/test gap, and it is the reason
+ask #1 below is written as an optional pin rather than a required one. I
+nearly shipped a higher-severity claim than the evidence supported, which is
+the same failure I criticised in the peer's §4b — a confident mechanism
+attached to a case I had not walked to its consumer.
 
 ## 4. What I'd want, in the peer's file and therefore not mine to write
 
