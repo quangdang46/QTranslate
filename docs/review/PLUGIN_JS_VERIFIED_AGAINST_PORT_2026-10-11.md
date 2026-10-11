@@ -126,9 +126,21 @@ be checked entry-by-entry for the first time.
 ## 4. What this does and does not license
 
 **It licenses:** re-reading the port against source, which is the verification
-the `VERIFIED` rows were always entitled to. Two providers checked line-for-line
-here; 14 dictionary providers remain unread against source, and that list is
-now the work.
+the `VERIFIED` rows were always entitled to. Four providers are now checked
+line-for-line — WordReference, Reverso, Oxford (from the first pass) and
+**ABBYY Lingvo Live (25)**, read this session: the five-way `<div name="#…">`
+slice start, the `HLjpm`→`<footer` end-marker fallback, the four removed
+attributes (`data-reactid` is the easy one to drop), `removeElements(["button",
+"svg"])`, the `_QT6_ALLs` style block, `buildUri`'s `/m.exe`-style shape, and
+`langToUiLang`'s four cases.
+
+**The provider count, corrected against the source rather than my own prose.**
+An earlier version of this document said "14 dictionary providers remain
+unread". Counting `Capability.DICTIONARY` in the recovered JS gives **11**,
+of which **4** are now read and **7** unread. The 16 came from a loose
+substring count, which is the same error mode as the one this document exists
+to document. youdao (26) is the eleventh: it declares both TRANSLATE and
+DICTIONARY. Ten are pure dictionary; one is mixed.
 
 **It does not license:** calling a row `VERIFIED` on the strength of the source
 existing. Each row still needs its own read. The honest statement for a row
@@ -137,6 +149,58 @@ file, not the directory.
 
 **It does not change** the Gate line or any tally. This document adds evidence;
 it does not reclassify.
+
+## 4b. `SupportedLanguages`: shipped for 11 providers, consulted by zero
+
+This is the notable gap the Lingvo read surfaced, and it is **not** Lingvo's.
+
+Every `Services/*/Service.js` declares a `SupportedLanguages` array indexed by
+the app's shared language id, with `-1` meaning unsupported. The port ships
+all eleven as `*_LANGS` tables (verified entry-by-entry for Lingvo: 76
+entries, 55 unsupported, zero mismatches against the JS after normalising
+`-1`→`None`). Ten of the eleven are **never read by anything**:
+
+| table | referenced outside its own definition |
+|---|---|
+| `BABYLON_LANGS`, `BABYLON_DICT_LANGS`, `LINGVO_LANGS`, `REVERSO_LANGS`, `WORDREF_LANGS`, `OXFORD_LANGS`, `IMTRANS_LANGS`, `URBAN_LANGS`, `WIKI_LANGS`, `GSEARCH_LANGS` | no |
+| `MULTITRAN_LANGS` | yes — one call, from `_multitran_code` |
+
+The peer flagged LINGVO_LANGS and it is real. The generalisation is bigger than
+the instance, and the generalisation is the part worth recording.
+
+**What native does with an unsupported entry, stated honestly, because it is
+NOT measured.** No service JS gates on it — I checked all 19 for an
+`== -1`-style test and found none. The gate belongs to the framework
+(`Common.js`), and `Common.js` is **absent from both artifacts**: 0 byte
+occurrences of `Common.js` in the 2,263,053-byte NSIS payload, and exactly one
+wide-string hit in the exe, which is the loader's `L"Common.js"` filename
+(`FUN_0045d6a9`), not its source. So the framework's own gate — refuse, fall
+back, or pass the raw value through — is **not recoverable from this repo**,
+and a port that "refuses the request" would be guessing at the framework's
+policy rather than porting it.
+
+The port's own precedent for the same ambiguity is the honest one: native
+Multitran's `buildUri` interpolates `codeFromLanguage(c)` and, for an
+unsupported entry, that yields the raw entry — so `_multitran_code` returns the
+value unchanged rather than inventing a code ("mirroring the native's lossy
+build"). That is a measured convention from the 12 services that DO have a
+readable `buildUri`.
+
+**The reachable state, measured rather than assumed.** `app.py:3708` calls
+`fn(word_q, "en", self.target)` — a **string** code, not a language index — so
+the dictionary path currently never indexes these tables at all. That is why
+they are dead: the resolution stage that would index them (ISO code →
+`SupportedLanguages` index, which `language_from_code` already implements in
+`common.py`) is not wired into the dictionary path. `multitran` is the one
+provider with it, via `_multitran_code`'s lookup through `SUPPORTED_LANGS`.
+
+**Consequence for the port, without a claim about native.** The live defect is
+narrower than "requests unsupported pairs": for a provider whose table entry
+is `None`, nothing currently consults it, so the request is issued with
+whatever the caller passed. A gate is worth adding, but its *policy* is a
+design call (raise, return `""`, or pass through as Multitran does) and no
+artifact in this repo settles it. Recording that is the honest state; the
+alternative is implementing a guess and calling it a port.
 
 ## 5. The method note that generalizes
 

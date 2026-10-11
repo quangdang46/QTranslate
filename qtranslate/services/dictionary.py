@@ -545,6 +545,46 @@ def _multitran_code(lang):
     return code if code is not None else lang
 
 
+def _codes(table, sl, tl):
+    """(source_code, target_code) for a provider's own ``SupportedLanguages``.
+
+    ``sl``/``tl`` may be ISO codes (what the port's call sites pass) or native
+    language indices. A ``None``/absent entry resolves to ``-1`` -- the value
+    native's ``codeFromLanguage`` interpolates past -- rather than to a
+    substitute, so an unsupported pair stays distinguishable from a
+    mistranslated one.
+
+    The framework's own gate is not implemented here on purpose. It lives in
+    ``Common.js`` (see
+    ``docs/review/PLUGIN_JS_VERIFIED_AGAINST_PORT_2026-10-11.md` 4b), which is
+    absent from both artifacts, so what native does with a request for an
+    unsupported pair is not measurable from this repo. Porting a guess as
+    though it were measured is the failure mode this project's honesty rules
+    exist to prevent; ``supported()`` is exposed so a caller can make the call
+    with the real information available to it.
+    """
+    out = []
+    for lang in (sl, tl):
+        if isinstance(lang, int):
+            v = common.code_from_language(lang, table)
+            out.append(-1 if v in (None, "") else v)
+        else:
+            out.append(lang)
+    return tuple(out)
+
+
+def supported(table, sl, tl) -> bool:
+    """True when both legs resolve to a code this provider supports.
+
+    ``code_from_language``'s bounds test is not enough on its own -- it is true
+    for unsupported entries too. This asks the stricter question the array
+    encodes, so a caller that wants to skip (rather than issue) a request for
+    an unsupported pair has one predicate instead of four ad-hoc ``is None``
+    comparisons.
+    """
+    return all(c not in (None, -1, "") for c in _codes(table, sl, tl))
+
+
 def multitran_build_uri(word, sl, tl, ui_lang=None) -> str:
     """Port of buildUri(): ``/m.exe?l1={code(target)}&l2={code(source)}&
     s={word}`` (+ ``&SHL=1`` unless UI lang is ru).
