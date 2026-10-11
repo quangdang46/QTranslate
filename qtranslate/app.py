@@ -692,10 +692,15 @@ def speak(text, lang):
 
 def do_translate(service, text, target, src="auto", auto_detect=False,
                  back_translate=False):
-    """Mirrors FUN_00404A12 orchestrator: pick -> execute -> fallbacks."""
+    """Mirrors FUN_00404A12 orchestrator: pick -> execute -> fallbacks.
+
+    Returns a ``core.Result`` — the text is ``.text``, the provider that
+    answered is ``.provider_used``, and J7's phonetics is ``.phonetics``.
+    """
     text = (text or "").strip()
     if not text:
-        return ""
+        from qtranslate.core import Result
+        return Result("", "", service or "", note="empty request")
     # Advanced.RemoveLineBreaks: collapse newlines before sending
     try:
         from qtranslate import config as _C
@@ -710,7 +715,9 @@ def do_translate(service, text, target, src="auto", auto_detect=False,
         # recovered image 2026-10-10
         # (docs/review/SOURCE_LANGUAGE_RULE_2026-10-10.md).
         if src == target:
-            return text
+            from qtranslate.core import Result
+            return Result(service or "", text, service or "",
+                          note="src == target: echo")
         # Native does NOT keep a hardcoded list of auto-capable services. It
         # calls the service's own `usesAutoDetectCode` JS hook (FUN_0045f6c1)
         # and stores the answer at request+0x50; the translate stage
@@ -742,8 +749,9 @@ def do_translate(service, text, target, src="auto", auto_detect=False,
             out = _t_call(TRANSLATORS.get(service, _t_google), text[:5000],
                           src, target, _sink)
             if not out:
-                return _T("Strings", 190,
-                          "No data returned (timeout while sending data.)")
+                from qtranslate.core import Result
+                return Result("", "", service or "",
+                              note="no data returned (timeout)")
             if back_translate:
                 try:
                     back = TRANSLATORS.get(service, _t_google)(
@@ -753,7 +761,9 @@ def do_translate(service, text, target, src="auto", auto_detect=False,
                 except Exception:
                     pass
             out = _apply_phonetics(out, service, _sink[0])
-            return out
+            from qtranslate.core import Result
+            return Result(service or "", out, service or "",
+                          phonetics=_sink[0])
         res = _r.translate(service, text, src, target,
                            config=_cfg_safe(), phonetics_sink=_sink)
         out = res.text
@@ -764,8 +774,9 @@ def do_translate(service, text, target, src="auto", auto_detect=False,
         if not res.ok:
             # native error string id 190 (vi: "Không có dữ liệu trả về
             # (quá thời gian chờ..."; canonical English verified)
-            return _T("Strings", 190,
-                      "No data returned (timeout while sending data).")
+            from qtranslate.core import Result
+            return Result("", "", service or "",
+                          note="no data returned (timeout)")
         if back_translate and not out.startswith("No data"):
             try:
                 # Back-translate through the provider that ACTUALLY answered —
@@ -779,10 +790,14 @@ def do_translate(service, text, target, src="auto", auto_detect=False,
             except Exception:
                 pass
         out = _apply_phonetics(out, service, res.phonetics)
-        return out
+        from qtranslate.core import Result
+        return Result(res.provider_used, out, res.requested,
+                      res.failures, res.attempts, res.note,
+                      phonetics=res.phonetics)
     except Exception:
-        return _T("Strings", 190,
-                  "No data returned (timeout while sending data).")
+        from qtranslate.core import Result
+        return Result("", "", service or "",
+                      note="exception: no data returned (timeout)")
 
 
 # ------------------------------------------------------------------ UI
@@ -2017,8 +2032,8 @@ class App:
             res = do_translate(targets[0], text, tgt, src,
                                self.opt_detect.get(),
                                self.opt_backtr.get())
-            self.render(res)
-            self.push_hist(targets[0], text[:120], res[:200])
+            self.render(res.text)
+            self.push_hist(targets[0], text[:120], res.text[:200])
         else:
             import threading as _th
 
@@ -2031,9 +2046,9 @@ class App:
                                          self.opt_backtr.get())
                     except Exception as e:
                         r = f"[error] {e}"
-                    parts.append(f"===== {s} =====\n{r}")
+                    parts.append(f"===== {s} =====\n{r.text}")
                     try:
-                        self.push_hist(s, text[:120], r[:200])
+                        self.push_hist(s, text[:120], r.text[:200])
                     except Exception:
                         pass
                 combined = "\n\n".join(parts)
@@ -3992,12 +4007,12 @@ def on_hotkey(app):
                        app.opt_detect.get(), app.opt_backtr.get())
     app.src.delete("1.0", "end")
     app.src.insert("1.0", text[:2000])
-    app.render(res)
-    app.push_hist(svc, text[:120], res[:200])
+    app.render(res.text)
+    app.push_hist(svc, text[:120], res.text[:200])
     # native hotkey flow shows a separate popup (TaskShowPopupWindow),
     # not just the main window
     try:
-        app.root.after(0, lambda: show_popup(text[:300], res, svc, tgt))
+        app.root.after(0, lambda: show_popup(text[:300], res.text, svc, tgt))
     except Exception:
         pass
 
@@ -4089,14 +4104,14 @@ def _translate_text(app, text):
     try:
         app.src.delete("1.0", "end")
         app.src.insert("1.0", text[:2000])
-        app.render(res)
-        app.push_hist(svc, text[:120], res[:200])
+        app.render(res.text)
+        app.push_hist(svc, text[:120], res.text[:200])
     except Exception:
         pass
     # native mode 2 = popup + read aloud; the read-aloud half needs a provider
     # TTS sink we do not have, so only the popup is emitted here.
     try:
-        app.root.after(0, lambda: show_popup(text[:300], res, svc, tgt))
+        app.root.after(0, lambda: show_popup(text[:300], res.text, svc, tgt))
     except Exception:
         pass
 
@@ -4196,10 +4211,10 @@ def start_clipboard_monitor(app, interval_ms: int = 800,
                                        app.opt_backtr.get())
                     app.src.delete("1.0", "end")
                     app.src.insert("1.0", text[:2000])
-                    app.render(res)
-                    app.push_hist(svc, text[:120], res[:200])
+                    app.render(res.text)
+                    app.push_hist(svc, text[:120], res.text[:200])
                     if popup:
-                        show_popup(text[:300], res, svc, tgt)
+                        show_popup(text[:300], res.text, svc, tgt)
                 except Exception:
                     pass
         try:
@@ -4349,14 +4364,14 @@ def _register_native_hotkeys(app) -> list:
             _copy_action = 0
         try:
             import pyperclip as _pc2
-            _pc2.copy(res)
+            _pc2.copy(res.text)
             if _copy_action == 1:
-                keyboard.write(res[:2000])
+                keyboard.write(res.text[:2000])
         except Exception:
             pass
         app.src.delete("1.0", "end")
         app.src.insert("1.0", text[:2000])
-        app.render(res)
+        app.render(res.text)
 
     def _copy_result():
         try:

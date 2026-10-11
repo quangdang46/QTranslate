@@ -187,7 +187,7 @@ class MainWindow:
             res = do_translate("google", text, "vi")
         except Exception as e:
             res = f"[error] {e}"
-        win32gui.SetWindowText(self.out, res)
+        win32gui.SetWindowText(self.out, res.text)
 
     def run(self):
         win32gui.ShowWindow(self.hwnd, win32con.SW_SHOW)
