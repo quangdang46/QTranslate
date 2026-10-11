@@ -4742,17 +4742,16 @@ def show_popup(source, result, service="google", target="vi"):
     win.attributes("-topmost", True)
     win.overrideredirect(True)
     try:
-        from qtranslate.theme import (load_theme_native, tk_colors,
-                                       window_colors)
+        from qtranslate.theme import active_theme, tk_colors, window_colors
         from qtranslate import config as _C
         _tn = _C.load().get("Appearance", {}).get("ThemeName", "")
-        # FUN_00464c2f: a ThemeName that names no file on disk leaves every
-        # value unset -- it does NOT substitute another theme, and there is no
-        # compiled-in theme name to substitute with. `_tn or "Flat Dark"` did
-        # the one thing the loader provably never does.
-        _theme = load_theme_native(_tn)
-        _pc = (tk_colors(window_colors(_theme)) if _theme is not None
-               else _COLORS)
+        # FUN_0044b44f: a ThemeName that names no file on disk leaves the
+        # loader empty, and the *installer* then substitutes
+        # theme::DefaultColorTheme — the GetSysColor palette, never another
+        # file. `_tn or "Flat Dark"` did the one thing native never does, and
+        # its FileNotFoundError was swallowed by the `except` below, so a stale
+        # ThemeName silently produced _COLORS while reading as success.
+        _pc = tk_colors(window_colors(active_theme(_tn)))
     except Exception:
         _pc = _COLORS
     win.configure(bg=_pc.get("border", "#7a7a7a"))

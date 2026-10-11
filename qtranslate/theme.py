@@ -83,13 +83,17 @@ def list_themes(themes_dir: str = THEMES_DIR) -> list:
 
 
 def load_theme_native(name: str, themes_dir: str = THEMES_DIR) -> dict | None:
-    """`FUN_00464c2f`'s loader: `None` when the theme cannot be applied.
+    """`FUN_00464c2f`'s file loader: `None` when no theme file can be applied.
 
     Native builds `<dir>\\<ThemeName>.json`, checks it exists, parses it, and
-    on any failure returns without setting a single value — it does **not**
-    substitute a default theme, and there is no compiled-in theme name to
-    substitute with (no theme name appears in the image in any encoding).
-    `ThemeName == ""` is therefore normal and simply means unthemed.
+    on any failure returns 0. `ThemeName == ""` is normal — the *file* stage
+    simply produces nothing.
+
+    Returns `None` for "no theme file" only. It is **not** the fallback
+    palette: native's factory `FUN_004654ca` returns NULL on failure and its
+    caller `FUN_0044b44f` then installs `theme::DefaultColorTheme`, a
+    `GetSysColor`-derived palette. Use `active_theme()` for the full
+    "theme or default" behaviour.
     """
     if not name:
         return None
@@ -100,6 +104,49 @@ def load_theme_native(name: str, themes_dir: str = THEMES_DIR) -> dict | None:
         return load_theme_at(path)
     except (OSError, ValueError):
         return None
+
+
+# theme::DefaultColorTheme's hardcoded slots (FUN_0044c9a6). All are
+# achromatic; the rest of that object is GetSysColor() plus FUN_0044a163
+# derivatives of those system colours, which only exist at runtime.
+DEFAULT_THEME_GRAYS = (0x191919, 0x5e5e5e, 0xf9f9f9, 0x393939,
+                       0x7e7e7e, 0xffffff, 0x111111, 0x383838, 0xc1c1c1)
+
+
+def default_theme() -> dict:
+    """The palette native installs when no theme file loads.
+
+    `theme::DefaultColorTheme` (`FUN_0044c9a6`) sets its radii, then takes the
+    user's Windows system colours — `COLOR_BTNFACE`, `COLOR_BTNHIGHLIGHT`,
+    `COLOR_3DDKSHADOW`, `COLOR_WINDOWTEXT`, `COLOR_GRAYTEXT`, `COLOR_WINDOW` —
+    and derives the remaining slots from those through `FUN_0044a163`, our
+    `adjust_brightness`.
+
+    Only its hardcoded greys are reproducible here. The `GetSysColor` values
+    are Windows runtime state this host cannot supply, so those slots stay
+    unset and `None` flows out of `state_colors`, which `tk_colors` then
+    projects onto Tk's own system colours — the nearest equivalent available.
+    """
+    g = ["#%06x" % v for v in DEFAULT_THEME_GRAYS]
+    return {
+        "Common": {"ButtonRadius": 2, "WindowBorderRadius": 1},
+        # FUN_0044c9a6 writes [0x11..0x13] and [0x16..0x18] for the window
+        # buttons, then repeats the same nine greys at [0x65..0x6d].
+        "WindowButton": {
+            "Normal": {"Back": g[0], "Text": g[2], "Border": g[1]},
+            "Hover": {"Back": g[3], "Text": g[5], "Border": g[4]},
+            "Pressed": {"Back": g[6], "Text": g[7], "Border": g[8]},
+        },
+    }
+
+
+def active_theme(name: str, themes_dir: str = THEMES_DIR) -> dict:
+    """Theme file if one loads, `DefaultColorTheme` otherwise (`FUN_0044b44f`).
+
+    Never returns `None`: native always has an active colour theme object.
+    """
+    theme = load_theme_native(name, themes_dir)
+    return default_theme() if theme is None else theme
 
 
 _STATE_SLOTS = ("Back", "Text", "Border", "BorderInner", "Caption")

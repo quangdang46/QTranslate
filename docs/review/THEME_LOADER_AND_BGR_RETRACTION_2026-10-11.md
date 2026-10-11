@@ -118,13 +118,18 @@ so this is the only way a theme file is named.
 
 Four facts the port does not currently have:
 
-1. **A missing theme file is a hard failure, not a fallback.**
+1. **A missing theme file is a failure — but *not* a fallback to nothing,
+   which is what I originally wrote here and had to correct.**
    `GetFileAttributesW(...) == 0xffffffff` → `return 0`, and the JSON-parse
-   failure path is also `return 0`. There is no substitution of a default
-   theme. Combined with §3 this means: **no theme name appears anywhere in
-   the exe** — not `Blue`, not `Default`, not in either encoding — so native
-   has no built-in default to fall back *to*. Its behaviour on a bad
-   `ThemeName` is to render without theme values.
+   failure path is also `return 0`. The loader itself substitutes nothing.
+
+   My first version said "so native has no built-in default to fall back *to*
+   and its behaviour on a bad `ThemeName` is to render without theme values."
+   **That second sentence is false, and §3a below shows why.** The default is
+   not a *file*, so searching the image for a theme *name* cannot find it —
+   `theme::DefaultColorTheme` is a **C++ class with a hardcoded
+   `GetSysColor`-based initialiser**. See §3a.
+
 2. **`Common` is optional.** Every `Common` key is read inside
    `if ((char)uVar6 != '\0')` after `FUN_004409c6(... L"Common" ...)`, so a
    theme file with no `Common` section is valid and simply leaves those
@@ -170,6 +175,88 @@ reaching for a byte-reversal reading — arriving in a second place in the
 same file family. Here the data settles it before anyone has to guess: the
 two symmetric defaults cannot decide anything, and the one asymmetric value
 decides it in the port's favour.
+
+### 3b. The default theme is a **C++ class**, not a file — correcting §2 again
+
+My §2 said native "has no built-in default to fall back *to*" on a bad
+`ThemeName`. That reasoning came from searching the image for a theme
+**name** and finding none. The absence is real; the conclusion drawn from it
+was not, and this is the third instance of the same mistake in one document —
+inferring a behaviour from the absence of a string rather than from the code.
+
+`FUN_00464c2f` has exactly one caller, `FUN_004654ca`, which is a **factory**:
+
+```c
+int *FUN_004654ca(int *param_1) {
+  if (*(int *)(*param_1 + -0xc) != 0) {            // ThemeName non-empty
+    _Dst = (int *)FUN_004b3df0(0x1d0);             // alloc
+    FUN_0044c0de(_Dst);                            // base ctor
+    *_Dst = (int)common::ColorThemeFile::vftable;  // RTTI
+    cVar1 = FUN_00464c2f(_Dst, param_1);           // load the JSON
+    if (cVar1 != '\0') return _Dst;                // success -> the object
+    (**(code **)(*_Dst + 8))(1);                   // release it
+  }
+  return (int *)0x0;                               // NULL on any failure
+}
+```
+
+and its result is installed by `FUN_0044b44f`, which **does** substitute:
+
+```c
+void FUN_0044b44f(undefined4 *param_1, undefined1 param_2) {
+  … release the current DAT_005491e8 …
+  if (param_1 == (undefined4 *)0x0) {              // no theme loaded
+    param_1 = (undefined4 *)FUN_004b3df0(0x1d0);
+    FUN_0044c0de(param_1);
+    *param_1 = (int *)theme::DefaultColorTheme::vftable;   // <-- the default
+    FUN_0044c9a6(param_1);                                  //     populate it
+  }
+  *(undefined1 *)(param_1 + 0x71) = param_2;
+  DAT_005491e8 = param_1;                          // install as active theme
+}
+```
+
+So the chain is: **JSON theme if it loads, `theme::DefaultColorTheme`
+otherwise** — never "no values." `DefaultColorTheme::FUN_0044c9a6` populates
+the same `0x1d0`-byte layout the JSON loader fills:
+
+```c
+param_1[1] = 2;  param_1[2] = 1;                   // radii
+DVar1 = GetSysColor(0xf);   …  param_1[7] = DVar1;   // COLOR_BTNFACE
+DVar2 = GetSysColor(0x14);  …  param_1[9] = DVar2;   // COLOR_BTNHIGHLIGHT
+CVar3 = FUN_0044a163(GetSysColor(0x15), 0x14); …      // 3DDKSHAD, brightened
+param_1[0xb] = 0xffffffff;  …  param_1[10] = GetSysColor(8);   // WINDOWTEXT
+DVar1 = GetSysColor(0x11);  …                              // COLOR_GRAYTEXT
+… GetSysColor(5) …                                          // COLOR_WINDOW
+param_1[0x11]=0x191919; [0x12]=0x5e5e5e; [0x13]=0xf9f9f9; [0x16]=0x393939;
+param_1[0x17]=0x7e7e7e; [0x18]=0xffffff; [0x1b]=0x111111; [0x1c]=0x383838;
+[0x1d]=0xc1c1c1; 0x65..0x6d the same eight greys again
+```
+
+**The default theme is the user's Windows system colours**, with the
+remaining slots taken from eight hardcoded greys and derived through
+`FUN_0044a163` — the very function the port already implements as
+`adjust_brightness()`. All eight hardcoded values are achromatic
+(`#191919`, `#5e5e5e`, `#f9f9f9`, `#393939`, `#7e7e7e`, `#ffffff`, `#111111`,
+`#383838`, `#c1c1c1`).
+
+Two consequences:
+
+- **A sorry-default-theme port is not correct, and neither is unthemed.**
+  `load_theme_native()` returning `None` is right about the *file* load and
+  wrong about the *result*: the caller must then build the system-colour
+  palette. My doc's "renders without theme values" would have shipped a black
+  or default-faced popup where native paints the user's Windows theme.
+- **Those values are not measurable on this host.** `GetSysColor` reads the
+  Windows theme, and this machine is macOS — so the default palette's exact
+  RGB is genuinely unmeasurable here while its *structure* is fully measured.
+  What a port can do is use the platform's equivalent (Tk's own system
+  colours, which is exactly what `tk_colors` already maps to).
+
+This also explains §2's observation without it meaning what I said: the
+default is a class, so **no theme filename exists in the image for a search
+to find** — the absence I measured was real and the inference from it was
+not.
 
 ## 3. Where `ThemeName` comes from — `Options.json`, under `Appearance`
 
