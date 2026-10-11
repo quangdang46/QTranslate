@@ -26,6 +26,11 @@ Migration order (per the sketch §4, alias-first):
 from __future__ import annotations
 
 import dataclasses
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from qtranslate.reliability import Failure
+
 
 # APPEND-ONLY RULE: new fields go at the END of this dataclass, after the
 # existing fields, keyword-defaulted. ``ProviderRouter.translate`` builds a
