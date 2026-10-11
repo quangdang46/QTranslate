@@ -165,6 +165,20 @@ else:
     ck("tk_colors is a total function on the None-theme path too",
        T.tk_colors(T.window_colors(None))["back"] is not None,
        "load_theme_native returns None when no theme applies")
+    # Structural invariant, placed BEFORE the first button_colors() call.
+    # button_colors indexes its record by hardcoded name -- c["Main"],
+    # c["Back"], c["Shadow"] -- so if SECTION_SLOTS ever stops containing
+    # those three, the module raises KeyError instead of reporting unset. A
+    # KeyError mutant IS caught, but the suite then CRASHES with no output
+    # rather than failing cleanly, which is a useless diagnostic. Ordering is
+    # the whole point: this pin first at line 168 still ran too late, because
+    # line 184 crashed before it was reached.
+    for _sec, _needed in (("WindowButton", ("Main", "Back", "Shadow")),):
+        ck("button_colors indexes only keys SECTION_SLOTS guarantees",
+           set(_needed) <= set(T.SECTION_SLOTS[_sec]),
+           "button_colors does c['Main']/c['Back']/c['Shadow'] directly; if "
+           "SECTION_SLOTS[%r] loses one of those it raises KeyError rather "
+           "than reporting None" % _sec)
     # `button_colors` reads the *WindowButton* section, and Blue's WindowButton
     # DOES define Hover -- so Hover must differ from Normal there. (My first
     # draft asserted they were equal, which conflated `WindowButton` with the
@@ -523,10 +537,35 @@ else:
            "against each other")
 
 
-if fail:
-    print("FAIL %d/%d" % (len(fail), n[0]))
-    for f in fail:
-        print("  -", f)
-    raise SystemExit(1)
-print("regress_theme_colors: all checks ok (%d assertions%s)"
-      % (n[0], ", payload used" if os.path.exists(PAYLOAD) else ", NO PAYLOAD"))
+_reported = [False]
+
+
+def _report():
+    if _reported[0]:
+        return 0
+    _reported[0] = True
+    if fail:
+        print("FAIL %d/%d" % (len(fail), n[0]))
+        for f in fail:
+            print("  -", f)
+        return 1
+    print("regress_theme_colors: all checks ok (%d assertions%s)"
+          % (n[0], ", payload used" if os.path.exists(PAYLOAD) else ", NO PAYLOAD"))
+    return 0
+
+
+# The body above is a straight-line script, so an exception anywhere in it
+# used to kill the process BEFORE the report ran and print NOTHING at all --
+# not even the failures already recorded. A KeyError mutant proved it: the
+# structural invariant caught the drift, but the report was lost to a later
+# crash on the same defect, so the run looked like a crash rather than a
+# failure. `ck()` detail arguments are a repeat offender, because Python
+# evaluates the detail string even when the condition already failed.
+#
+# atexit alone carries the clean-exit path; SystemExit from __main__ still
+# runs the atexit handler, so registering both made every passing run print
+# its summary twice. The guard is what keeps it to one line.
+import atexit
+atexit.register(lambda: _report())
+if __name__ == "__main__":
+    raise SystemExit(_report())
