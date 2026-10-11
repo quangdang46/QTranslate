@@ -196,9 +196,15 @@ def babylon_dict_lookup(word, sl, tl):
     Faithful to native: BISApi body -> strip onload attrs -> absolutize
     links. The ResponseData link field is
     host/{sl}/{tl}/ — see babylon_dict_link().
+
+    The body's ``sourceLanguage``/``targetLanguage`` are
+    ``codeFromLanguage(b)``/``codeFromLanguage(c)`` in the JS -- resolved
+    through this service's own table, so the request carries Babylonian
+    Dictionary's language names, not the raw language indices.
     """
+    src, tgt = _codes(BABYLON_DICT_LANGS, sl, tl)
     body = "term={0}&sourceLanguage={1}&targetLanguage={2}&action=BISApi".format(
-        urllib.parse.quote_plus(str(word)), sl, tl)
+        urllib.parse.quote_plus(str(word)), src, tgt)
     page = _post(BABYLON_DICT_HOST + "/ajax.php/", body)
     page = _remove_attributes(page, ["onload"])
     page = _update_links(page, BABYLON_DICT_HOST)
@@ -238,14 +244,18 @@ def lingvo_host() -> str:
 
 
 def lingvo_build_uri(word, sl, tl, ui_lang=None) -> str:
-    """Port of buildUri(): /{ui}/translate/{sl}-{tl}/{word}.
+    """Port of buildUri(): ``/{ui}/translate/{src}-{tgt}/{word}``.
 
     ui defaults to langToUiLang(Options.LanguageCode) like the native
-    (ru->ru-ru, es->es-mx, pt-BR->pt-br, else en-us).
+    (ru->ru-ru, es->es-mx, pt-BR->pt-br, else en-us). The source and target
+    are language **indices** resolved through ``LINGVO_LANGS`` by native's
+    ``codeFromLanguage``, so the URL carries the codes (``en-ru``), never the
+    indices (``17-46``).
     """
     from qtranslate.common import Options
     ui_lang = ui_lang or _lingvo_ui_lang(Options.get("LanguageCode", "en"))
-    return "/{0}/translate/{1}-{2}/{3}".format(ui_lang, sl, tl, _q(word))
+    src, tgt = _codes(LINGVO_LANGS, sl, tl)
+    return "/{0}/translate/{1}-{2}/{3}".format(ui_lang, src, tgt, _q(word))
 
 
 def lingvo_link(word, sl, tl, ui_lang=None) -> str:
@@ -294,8 +304,17 @@ def reverso_link() -> str:
 
 
 def reverso_build_uri(word, sl, tl) -> str:
-    """Port of buildUri(): /{sl}-{tl}/{word} (codes, not indices)."""
-    return "/{0}-{1}/{2}".format(sl, tl, _q(word))
+    """Port of buildUri(): ``/{source}-{target}/{word}``.
+
+    Native: ``format("/{0}-{1}/{2}", codeFromLanguage(a), codeFromLanguage(c),
+    encodeGetParam(b))`` -- the arguments are language **indices** and the
+    table turns them into Reverso's own names (``english``, ``russian`` …), so
+    the URL carries a name, not an index. ``_codes`` does that resolution;
+    passing an already-resolved code through unchanged keeps both entry points
+    working.
+    """
+    src, tgt = _codes(REVERSO_LANGS, sl, tl)
+    return "/{0}-{1}/{2}".format(src, tgt, _q(word))
 REVERSO_LANGS = [None, None, None, None, None, "arabic", None, None, None,
                  None, None, "chinese", "chinese", None, None, None, "dutch",
                  "english", None, None, None, "french", None, "german",
@@ -410,8 +429,15 @@ def wordreference_link() -> str:
 
 
 def wordreference_build_uri(word, sl, tl) -> str:
-    """Port of buildUri(): /{sl}{tl}/{word} (codes concatenated)."""
-    return "/{0}{1}/{2}".format(sl, tl, _q(word))
+    """Port of buildUri(): ``/{source}{target}/{word}``.
+
+    Native concatenates the two **codes** with no separator:
+    ``format("/{0}{1}/{2}", codeFromLanguage(a), codeFromLanguage(c), …)``, so
+    en→ru is ``/enru/``. Interpolating the raw indices instead would build
+    ``/1746/``, which is not a URL the native client ever requests.
+    """
+    src, tgt = _codes(WORDREF_LANGS, sl, tl)
+    return "/{0}{1}/{2}".format(src, tgt, _q(word))
 
 
 def wordreference_lookup(word, sl, tl, headless_fallback=True):
@@ -545,32 +571,100 @@ def _multitran_code(lang):
     return code if code is not None else lang
 
 
+def _idx(lang):
+    """Native language id for ``lang``, or ``None`` if it is not one.
+
+    The native ``buildUri`` receives **indices** -- the framework turns a code
+    into an id (``languageFromCode``) before any service sees it -- so a port
+    called with an ISO code has to make the same conversion first. Kept as its
+    own function so index→code and code→index stay legible in both directions.
+    """
+    if isinstance(lang, int):
+        return lang
+    if lang in ("auto", "", None):
+        return None
+    from qtranslate.services.google_translate import SUPPORTED_LANGS
+    try:
+        return SUPPORTED_LANGS.index(lang)
+    except ValueError:
+        return None
+
+
+def _resolve(table, lang):
+    """One leg, native-style: an **index** or an ISO code -> this service's code.
+
+    ``codeFromLanguage`` operates on language ids, so a native caller passes an
+    index (``46`` = ru) and gets that service's own value from ``table``
+    (``"russian"`` for Reverso, ``2`` for Multitran). An ISO code is mapped to
+    an id first -- the framework's own ``languageFromCode`` step -- so both
+    spellings of the same language converge.
+
+    An entry that is ``None``/empty is **unsupported**, and resolves to ``-1``
+    exactly as native interpolates it -- it must NOT fall back to the input,
+    or index ``60`` would echo ``60`` into the URL and look like a code. An
+    index outside the array is ``-1`` for the same reason.
+
+    A *code* that is not any language at all (``"vi"``, where the app's table
+    has no such entry) is passed through unchanged: that is an unresolvable
+    input, not an unsupported language, and keeping it visible is better than
+    flattening it into the same ``-1``.
+    """
+    if isinstance(lang, int):
+        v = common.code_from_language(lang, table)
+        return -1 if v in (None, "") else v
+    idx = _idx(lang)
+    if idx is None:
+        return lang                     # not a language the app knows at all
+    v = common.code_from_language(idx, table)
+    return -1 if v in (None, "") else v
+
+
 def _codes(table, sl, tl):
     """(source_code, target_code) for a provider's own ``SupportedLanguages``.
 
-    ``sl``/``tl`` may be ISO codes (what the port's call sites pass) or native
-    language indices. A ``None``/absent entry resolves to ``-1`` -- the value
-    native's ``codeFromLanguage`` interpolates past -- rather than to a
+    ``sl``/``tl`` are native language **indices** (what ``buildUri`` receives
+    from the framework) or the ISO codes the port's own call sites pass; both
+    resolve through ``_resolve`` to this service's value. An unsupported entry
+    resolves to ``-1`` -- the value native interpolates -- never to a
     substitute, so an unsupported pair stays distinguishable from a
     mistranslated one.
 
-    The framework's own gate is not implemented here on purpose. It lives in
-    ``Common.js`` (see
-    ``docs/review/PLUGIN_JS_VERIFIED_AGAINST_PORT_2026-10-11.md` 4b), which is
-    absent from both artifacts, so what native does with a request for an
-    unsupported pair is not measurable from this repo. Porting a guess as
-    though it were measured is the failure mode this project's honesty rules
-    exist to prevent; ``supported()`` is exposed so a caller can make the call
-    with the real information available to it.
+    The framework's own behaviour here is now **measured**, and it is why this
+    returns the raw entry rather than a substitute. From `Common.js` (chunk[5]
+    of the NSIS stream at `0x13af4`, 6,203 bytes, sha256 `a03d677a8b3788b5...`,
+    ``docs/review/COMMON_JS_RECOVERED_2026-10-11.md``)::
+
+        var SupportedLanguages=null,UNKNOWN_LANGUAGE_CODE=-1,
+            UNKNOWN_LANGUAGE=0,AUTO_DETECT_LANGUAGE=1,ENGLISH_LANGUAGE=17;
+        function isLanguage(a){return a>AUTO_DETECT_LANGUAGE&&
+                                    a<SupportedLanguages.length}
+        function codeFromLanguage(a){return a===AUTO_DETECT_LANGUAGE||isLanguage(a)
+                                    ?SupportedLanguages[a]:UNKNOWN_LANGUAGE_CODE}
+
+    Three things follow, each a measurement rather than an inference:
+
+    * ``codeFromLanguage`` returns the entry **unguarded** -- it tests the
+      index, never the value, so an unsupported entry interpolates as ``-1``.
+    * The framework contains **no refusal path at all** for it:
+      ``return null`` / ``return !1`` / ``return false`` appear zero times in
+      `Common.js`, and the framework never calls ``codeFromLanguage`` itself
+      -- only a service's own ``buildUri`` does.
+    * ``SupportedLanguages`` is ONE shared global, ``null`` in the framework
+      and reassigned by each of the 19 `Service.js` files at load, so every
+      provider's table is the *same* slot with different contents.
+
+    So native does not skip or refuse an unsupported pair; it builds the URL
+    with ``-1`` in it and sends it. This port reproduces that exactly, and
+    ``supported()`` exists so a caller that prefers not to send can ask first.
+    Adding a refusal of our own would be inventing policy the artifact does
+    not have.
+
+    One deliberate difference, and it is a port limitation rather than a claim:
+    a code that is not any language at all (``"vi"`` where the app's table has
+    no such entry) is passed through unchanged rather than being interpolated
+    as ``-1``, so it stays visible instead of masquerading as "unsupported".
     """
-    out = []
-    for lang in (sl, tl):
-        if isinstance(lang, int):
-            v = common.code_from_language(lang, table)
-            out.append(-1 if v in (None, "") else v)
-        else:
-            out.append(lang)
-    return tuple(out)
+    return tuple(_resolve(table, x) for x in (sl, tl))
 
 
 def supported(table, sl, tl) -> bool:
@@ -589,8 +683,12 @@ def multitran_build_uri(word, sl, tl, ui_lang=None) -> str:
     """Port of buildUri(): ``/m.exe?l1={code(target)}&l2={code(source)}&
     s={word}`` (+ ``&SHL=1`` unless UI lang is ru).
 
-    Note l1 is the *target* and l2 the *source* (native order). ``sl``/``tl``
-    may be ISO codes or numeric Multitran codes — see ``_multitran_code``.
+    Note l1 is the *target* and l2 the *source* (native order). Resolution is
+    ``_multitran_code``'s, not ``_codes``': for Multitran an int argument is
+    already a Multitran **code** (``2`` is ru), whereas native's
+    ``buildUri`` inputs are language **indices** (``46`` is ru). Both spellings
+    appear at Multitran call sites in this repo, and re-labeling one as the
+    other would turn ``l1=2`` into ``l1=31``. See ``_multitran_code``.
     """
     from qtranslate.common import Options
     url = "/m.exe?l1={0}&l2={1}&s={2}".format(
@@ -659,10 +757,15 @@ def imtranslator_lookup(word, sl, tl):
     link (serviceLink + ResponseData link field) — see
     imtranslator_link(); the fragment alone is returned here to keep
     all dictionary.py lookups string-typed.
+
+    ``lang``/``langs`` carry ``codeFromLanguage(source)``/
+    ``codeFromLanguage(target)``, resolved through this service's own table, so
+    the query spells ImTranslator's language names rather than raw indices.
     """
+    src, tgt = _codes(IMTRANS_LANGS, sl, tl)
     url = (IMTRANS_HOST + "/translation/dictionary/DicService.asmx/lookup"
            "?text={0}&dicID=&lang={1}%2F{2}&langs={1}%2F{2}&flags=DEFAULT"
-           ).format(_q(word), sl, tl)
+           ).format(_q(word), src, tgt)
     page = _get(url)
     frag = _sub(page, '<translation status="ok" format="html">', False,
                 "</translation>", False)
@@ -759,20 +862,32 @@ WIKI_LANGS = [None, "", "af", "az", "sq", "ar", "hy", "eu", "be", "bg",
 
 
 def _wiki_host(lang_code):
-    """Port of serviceHost(): https://{lang}.m.wikipedia.org.
+    """Port of serviceHost(): ``https://{lang}.m.wikipedia.org``.
 
-    Native: lang = codeFromLanguage(DICTIONARY ? target : source);
-    UNKNOWN (-1/"") falls back to ENGLISH (index 17 = "en").
+    Native::
+
+        a = codeFromLanguage(DICTIONARY ? c : b);          // the index
+        a == UNKNOWN_LANGUAGE_CODE && (a = SupportedLanguages[ENGLISH_LANGUAGE]);
+        return format("https://{0}.m.wikipedia.org", a);
+
+    So the language is **resolved through this service's own table** and the
+    fallback is that array's ``ENGLISH_LANGUAGE`` entry -- not a literal
+    ``"en"``, which would only coincide while the entry stays ``en``. An index
+    reaching this function as a bare int therefore resolves (``17`` -> ``en``)
+    rather than being interpolated, which would build ``17.m.wikipedia.org``.
     """
-    code = lang_code or ""
+    if isinstance(lang_code, int):
+        code = _codes(WIKI_LANGS, lang_code, lang_code)[0]
+    else:
+        code = lang_code
     if code in ("", -1, None):
-        code = "en"
+        code = WIKI_LANGS[17]
     return "https://{0}.m.wikipedia.org".format(code)
 
 
 def wikipedia_host_for(sl, tl):
     """Host for a dictionary lookup always uses the *target* lang."""
-    return _wiki_host(tl)
+    return _wiki_host(_codes(WIKI_LANGS, sl, tl)[1])
 
 
 def wikipedia_link() -> str:
@@ -832,8 +947,16 @@ def gsearch_link(word) -> str:
 
 
 def gsearch_build_uri(word, tl) -> str:
-    """Port of buildUri(): /search?q=<word>&ie=UTF-8&hl=<target code>."""
-    return "/search?q={0}&ie=UTF-8&hl={1}".format(_q(word), tl)
+    """Port of buildUri(): ``/search?q=<word>&ie=UTF-8&hl=<target code>``.
+
+    Native resolves ``tl`` through this service's own ``SupportedLanguages``
+    (``codeFromLanguage``), so the index 46 becomes ``hl=ru``. Index 1 maps to
+    ``""`` natively -- the auto-detect slot -- and interpolating that leaves
+    ``hl=`` empty, which is what the native client sends.
+    """
+    return "/search?q={0}&ie=UTF-8&hl={1}".format(
+        _q(word), common.code_from_language(tl, GSEARCH_LANGS)
+        if isinstance(tl, int) else tl)
 GSEARCH_LANGS = [None, "", "af", "az", "sq", "ar", "hy", "eu", "be", "bg",
                  "ca", "zh-CN", "zh-TW", "hr", "cs", "da", "nl", "en", "et",
                  "fi", "tl", "fr", "gl", "de", "el", "ht", "iw", "hi", "hu",

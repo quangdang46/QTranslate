@@ -168,23 +168,59 @@ entries, 55 unsupported, zero mismatches against the JS after normalising
 The peer flagged LINGVO_LANGS and it is real. The generalisation is bigger than
 the instance, and the generalisation is the part worth recording.
 
-**What native does with an unsupported entry, stated honestly, because it is
-NOT measured.** No service JS gates on it — I checked all 19 for an
-`== -1`-style test and found none. The gate belongs to the framework
-(`Common.js`), and `Common.js` is **absent from both artifacts**: 0 byte
-occurrences of `Common.js` in the 2,263,053-byte NSIS payload, and exactly one
-wide-string hit in the exe, which is the loader's `L"Common.js"` filename
-(`FUN_0045d6a9`), not its source. So the framework's own gate — refuse, fall
-back, or pass the raw value through — is **not recoverable from this repo**,
-and a port that "refuses the request" would be guessing at the framework's
-policy rather than porting it.
+**What native does with an unsupported entry — now MEASURED, and the first
+version of this section had it wrong.**
 
-The port's own precedent for the same ambiguity is the honest one: native
-Multitran's `buildUri` interpolates `codeFromLanguage(c)` and, for an
-unsupported entry, that yields the raw entry — so `_multitran_code` returns the
-value unchanged rather than inventing a code ("mirroring the native's lossy
-build"). That is a measured convention from the 12 services that DO have a
-readable `buildUri`.
+The first draft said the framework gate was unrecoverable, because
+`Common.js` was "absent from both artifacts: 0 byte occurrences in the
+payload, one wide-string hit in the exe". **The 0 was true and the conclusion
+was false.** I searched for the *filename*; the payload stores files as
+positional length-prefixed bodies with no filename field, so a name search
+cannot find them. `Common.js` is there — chunk `[5]` at `0x13af4`, 6,203
+bytes, sha256 `a03d677a8b3788b5…`
+(`docs/review/COMMON_JS_RECOVERED_2026-10-11.md`, peer commit `773918f`). I
+verified the chunk walk independently: chunk[5]'s length field sits at
+`0x13af0`, the body at `0x13af4`, and hashing the body reproduces the peer's
+digest prefix exactly. This is the same blind spot as the 25-row proposal, in
+a new costume, and it survived a document I wrote *while* writing that one.
+
+With the framework in hand, the gate is readable and it is not a gate at all:
+
+```js
+var SupportedLanguages=null,UNKNOWN_LANGUAGE_CODE=-1,
+    UNKNOWN_LANGUAGE=0,AUTO_DETECT_LANGUAGE=1,ENGLISH_LANGUAGE=17;
+function isLanguage(a){return a>AUTO_DETECT_LANGUAGE&&
+                            a<SupportedLanguages.length}
+function codeFromLanguage(a){return a===AUTO_DETECT_LANGUAGE||isLanguage(a)
+                            ?SupportedLanguages[a]:UNKNOWN_LANGUAGE_CODE}
+```
+
+Three measurements, not inferences:
+
+1. **`codeFromLanguage` returns the entry unguarded.** It tests the *index*,
+   never the *value*, so an unsupported (`-1`) entry interpolates into the URL
+   as `-1`.
+2. **The framework has no refusal path whatsoever.** `return null`,
+   `return !1`, and `return false` appear **zero** times in `Common.js`
+   (6,203 bytes). The framework also never calls `codeFromLanguage` itself —
+   only a service's own `buildUri` does.
+3. **`SupportedLanguages` is one shared global**, `null` in the framework and
+   reassigned by each of the 19 `Service.js` files on load — so each
+   provider's table is the same slot with different contents, which is exactly
+   why the port's 11 `*_LANGS` tables are per-provider.
+
+So native does **not** skip, refuse, or fall back for an unsupported pair: it
+builds the URL with `-1` in it and sends it. `dictionary.py`'s `_codes()`
+now reproduces that exactly, and `supported()` exists for a caller that would
+rather ask first. The port's own `_multitran_code` precedent ("return the
+value unchanged rather than inventing a code") turns out to be the faithful
+reading, not merely the cautious one.
+
+**The rule this adds, which is the reusable part:** for every file named in
+the installer manifest, ask for its **content**, never its **name**. The test
+that finds a file in this payload is walking the `<len><body>` chain or
+matching a content marker that only exists inside that file — a filename test
+reports "absent" for files that are demonstrably present.
 
 **The reachable state, measured rather than assumed.** `app.py:3708` calls
 `fn(word_q, "en", self.target)` — a **string** code, not a language index — so
@@ -194,11 +230,13 @@ they are dead: the resolution stage that would index them (ISO code →
 `common.py`) is not wired into the dictionary path. `multitran` is the one
 provider with it, via `_multitran_code`'s lookup through `SUPPORTED_LANGS`.
 
-**Consequence for the port, without a claim about native.** The live defect is
-narrower than "requests unsupported pairs": for a provider whose table entry
-is `None`, nothing currently consults it, so the request is issued with
-whatever the caller passed. A gate is worth adding, but its *policy* is a
-design call (raise, return `""`, or pass through as Multitran does) and no
+**Consequence for the port, without a claim about native.** With the
+framework's policy now known, nothing here needs a design call: the faithful
+port is the one already implemented — resolve through the table, pass
+unsupported values through as `-1`, and let the caller consult `supported()`
+if it wants to skip. The remaining defect is that no dictionary `*_lookup`
+consults its table at all, which is a wiring gap rather than a policy
+question, and it is recorded here as such.
 artifact in this repo settles it. Recording that is the honest state; the
 alternative is implementing a guess and calling it a port.
 
