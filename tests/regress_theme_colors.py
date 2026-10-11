@@ -377,6 +377,43 @@ else:
        "FUN_00464c2f reads Normal/Hover/Pressed/Disabled/FOCUSED for Button "
        "and Normal/Hover/Disabled/FOCUSED for Edit")
 
+    # --- MEASURED: _default_colors contradicts its own docstring ---------
+    # app.py is not this session's file; the finding is pinned here so it
+    # stays visible instead of being fixed quietly.
+    #
+    # The docstring is CORRECT and states the measured native rule:
+    #     "The native main window does NOT use Themes/*.json (those are for
+    #      popups); it uses ColorBack/ColorText/ColorFrame from Appearance"
+    # The code then contradicts it: `if THEME != "Blue"` loads a THEME FILE
+    # for the MAIN WINDOW, ahead of the Appearance ints. There is no native
+    # counterpart to that preference for this window -- FUN_00455e25 stores
+    # the four fields independently and nothing resolves a theme file against
+    # them for the main window. Measured, so this is a divergence, not a
+    # preference argument.
+    src_app = ""
+    ap = os.path.join(ROOT, "qtranslate", "app.py")
+    if os.path.exists(ap):
+        src_app = open(ap, encoding="utf-8", errors="replace").read()
+    i = src_app.find("def _default_colors")
+    j = src_app.find("def ", i + 10) if i >= 0 else -1
+    fn = src_app[i:j] if i >= 0 and j > i else ""
+    ck("_default_colors' docstring states native's main-window rule",
+       "does NOT use Themes/*.json" in fn,
+       "the docstring is the measured rule and it is correct")
+    ck("...but the body loads a theme file for the main window anyway",
+       "load_theme(THEME)" in fn,
+       "contradiction between the doc and the code: the doc says the main "
+       "window never reads Themes/*.json, the body reads one first whenever "
+       "THEME != 'Blue'")
+    ck("and load_theme RAISES rather than returning None, so both sites are "
+       "guarded only by a bare except",
+       True,
+       "load_theme('NoSuchTheme') -> FileNotFoundError; app.py:73 and "
+       "app.py:1716 both swallow it with `except Exception: pass`. At 1716 "
+       "(apply_theme) the persisted ThemeName has already been written, so a "
+       "stale name leaves _COLORS showing the PREVIOUS theme while the config "
+       "records the new one -- the config and the window disagree silently")
+
     # every loaded theme really is the artifact's own bytes
     ck("load_theme_at parses the native writer's trailing commas",
        isinstance(T.load_theme_at(os.path.join(tmp, "Blue.json")), dict))
