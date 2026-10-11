@@ -70,8 +70,8 @@ def _default_colors():
     """
     if THEME != "Blue":
         try:
-            from qtranslate.theme import load_theme, window_colors
-            return window_colors(load_theme(THEME))
+            from qtranslate.theme import load_theme, tk_colors, window_colors
+            return tk_colors(window_colors(load_theme(THEME)))
         except Exception:
             pass
     try:
@@ -1713,9 +1713,9 @@ class App:
         except Exception:
             pass
         try:
-            from qtranslate.theme import load_theme, window_colors
+            from qtranslate.theme import load_theme, tk_colors, window_colors
             global _COLORS
-            _COLORS = window_colors(load_theme(name))
+            _COLORS = tk_colors(window_colors(load_theme(name)))
             self.root.configure(bg=_COLORS["back"])
         except Exception:
             pass
@@ -4742,10 +4742,17 @@ def show_popup(source, result, service="google", target="vi"):
     win.attributes("-topmost", True)
     win.overrideredirect(True)
     try:
-        from qtranslate.theme import load_theme, window_colors
+        from qtranslate.theme import (load_theme_native, tk_colors,
+                                       window_colors)
         from qtranslate import config as _C
         _tn = _C.load().get("Appearance", {}).get("ThemeName", "")
-        _pc = window_colors(load_theme(_tn or "Flat Dark"))
+        # FUN_00464c2f: a ThemeName that names no file on disk leaves every
+        # value unset -- it does NOT substitute another theme, and there is no
+        # compiled-in theme name to substitute with. `_tn or "Flat Dark"` did
+        # the one thing the loader provably never does.
+        _theme = load_theme_native(_tn)
+        _pc = (tk_colors(window_colors(_theme)) if _theme is not None
+               else _COLORS)
     except Exception:
         _pc = _COLORS
     win.configure(bg=_pc.get("border", "#7a7a7a"))
