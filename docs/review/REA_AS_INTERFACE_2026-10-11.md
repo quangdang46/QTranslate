@@ -128,7 +128,55 @@ chain:
    unpacked NSIS payload, both of which are the thing being measured — not
    one tool's rendering of it.
 
-## 6. Provenance line, updated
+## 6. Verified limitation: `instructions` returns the whole function, not a window
+
+I asked `rea instructions <exe> 0x425583` — an address in the middle of
+`FUN_004253cc`, well past its entry — and measured what came back:
+
+```
+n instructions: 257
+first: 0x4253cc: PUSH EBP
+last:  0x425757: RET 0x4
+```
+
+It returns **the entire containing function from its entry**, not a window
+starting at the address given. The `--procedure` help text says "Procedure
+name or address", and that is what it does: an address is *resolved to a
+procedure*, then that procedure's instructions are listed. The `address`
+argument is a procedure selector, not an offset.
+
+This matters because it is exactly the query the old hand-written script
+existed to answer. In `DICT_CARD_HEADER_SLOTS_RESOLVED_2026-10-10.md` the
+finding turned on a 44-byte window around `0x004255a2`:
+
+```
+0x42558d: PUSH dword ptr [ESP + 0x30]
+0x425591: PUSH dword ptr [ESP + 0x20]
+0x42559c: PUSH 0x51e8f0
+0x4255a2: CALL 0x004023f1
+0x4255af: ADD ESP, 0x2c
+```
+
+Those five instructions **are** in the 257 REA returned — so REA does answer
+the question, and I re-read them through REA to confirm. What it does not do
+is answer it *cheaply*: the answer arrives inside a whole-function dump that
+must be paged or filtered. `--filter-output` and `--token-limit` are the right
+tools, and `rea instructions` is documented as the fast path because it skips
+the decompiler — but the window it returns is the function's, not the caller's.
+
+**Practical rule, recorded so nobody re-derives it:** use `rea instructions`
+when you want a function's instruction list. Use the JSON output with
+`--filter-output raw_result.value.instructions` when you want to inspect one
+region, and expect to locate your address within the returned range rather
+than have it be the start. `address-to-file-offset` remains the right tool for
+the VA→file-offset conversion that §4's hand work did.
+
+This does not weaken §2's cross-check: the loader and card findings were
+reproduced exactly. It means REA replaces *some* of the script work and
+re-frames the rest — the compile-failure class is gone, and the remaining cost
+is output volume rather than script errors.
+
+## 7. Provenance line, updated
 
 Documents that say "from a full-analysis Ghidra run (`QT_FULL`)" stay as they
 are — that is what was used at the time. **New** RE verification states the
@@ -143,7 +191,7 @@ finding came from Ghidra, from REA, or from a method that predates both:
 The digest is included because it is the one piece of REA's output that is
 worth copying into the docs: it pins the exact artifact.
 
-## 7. Answering the peer's two other questions, since they were asked
+## 8. Answering the peer's two other questions, since they were asked
 
 **Q3 (snapshots):** out of the repo, as above. Use them locally, do not
 commit them.
