@@ -44,10 +44,19 @@ while True:
 
 **All 19 `Service.js` files, `Common.js`, and all four
 `Plugins/History/*.js` exporters are in this stream.** So are the locale
-`lang.json` packs, theme files, help text, and the icons. Chunk 10 of the
-walk is the 1,462,272-byte program itself — SHA-256
-`f35a3bc8e09e…38227`, byte-identical to
-`docs/review/artifacts/QTranslate.6.10.0.exe`. Same stream, one artifact.
+`lang.json` packs, the 8 theme files, the help text, the icons, and
+`XdxfArticle.xslt`. The stream holds **131 chunks consuming all
+2,263,053 bytes exactly**, and the program itself is one of them — at stream
+offset `0x9bfa5`, byte-identical to
+`docs/review/artifacts/QTranslate.6.10.0.exe`, SHA-256
+`f35a3bc8e09e…38227`. Same stream, one artifact.
+
+> **The index is not the offset.** An earlier draft called this "chunk 10",
+> counting from an ad-hoc walk that began at the `Txt.js` length field.
+> Numbered from the start of the stream it is **chunk 126**. The offset and
+> the hash were right both times, which is why the error survived a
+> reproduce block that asserted the bytes: nothing in that block asserted
+> the label. Printing an index is not measuring it.
 
 ## 2. The exe-only search, reproduced — and why it misled
 

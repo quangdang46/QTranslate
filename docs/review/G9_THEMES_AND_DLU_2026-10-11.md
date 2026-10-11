@@ -14,13 +14,18 @@
 
 The same solid stream that carries all 19 `Service.js` files carries the
 theme files. Walking `<uint32-LE len><body>` contiguously from the end of
-`Plugins/History/Txt.js` (`0x977ec`) yields:
+`Plugins/History/Txt.js` (`0x977ec`) yields nine chunks, the last being the
+program itself:
 
 ```
 [0] 0x977ec     832  XdxfArticle.xslt          (UTF-8 BOM + <?xml)
 [1..8]          8 ×  theme JSON
 [9] 0x9bfa5 1462272  the program itself
 ```
+
+The `[9]` is an index in this local walk, not a position in the stream —
+from offset 0 the program is chunk 126. The offsets are what the reproduce
+block in §5 asserts.
 
 The installer's own manifest names them, in order, in
 `\Themes\`: `Blue.json`, `Brackets.json`, `Flat Dark.json`,
