@@ -86,13 +86,19 @@ t("keyword ctor, existing attempts", r2.attempts == 2, repr(r2.attempts))
 t("keyword ctor, existing note", r2.note == "note", repr(r2.note))
 
 # --- the proposed Phase 5 fields, IF AND WHEN they land ---
-# They do not exist yet — the sketch that proposes them is a document, not
-# code (docs/review/CORE_RESULT_SHAPE_2026-10-10.md). So this suite asserts
-# the invariant that makes adding them safe, rather than asserting the
-# fields themselves. When Phase 5 lands, these become the real assertions.
-t("the proposed new fields are not present yet (Phase 5 pending)",
-   not hasattr(R.Result, "phonetics")
-   and not hasattr(R.Result("p", "t", "q"), "phonetics"))
+# --- the Phase 5 fields, landed (step 2: reliability.Result = core.Result) ---
+# Step 2 landed in 45073e1: reliability.Result is now core.Result, which
+# carries phonetics and source_language appended after the original fields.
+# Positional construction is unchanged (APPEND-ONLY rule).
+t("Phase 5 fields present: phonetics",
+   hasattr(R.Result, "phonetics")
+   and R.Result("p", "t", "q").phonetics == "")
+t("Phase 5 fields present: source_language",
+   hasattr(R.Result, "source_language")
+   and R.Result("p", "t", "q").source_language is None)
+t("original fields still positional and unchanged",
+   R.Result("p", "t", "q", (), 3, "n").provider_used == "p"
+   and R.Result("p", "t", "q", (), 3, "n").attempts == 3)
 
 # --- ok semantics unchanged ---
 t("ok is True when a provider answered", R.Result("p", "t").ok is True)
