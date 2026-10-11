@@ -420,14 +420,45 @@ assert native("09c") == _hex("09c") == "#0099cc"
 
 ## 5. What this does not establish
 
-- **Not** that the port's theme *rendering* is correct. `window_colors()`
-  reads `Window/<state>` without the native inheritance rule and without the
-  `#RRGGBB`-vs-`0xffffffff` distinction for absent colours, both of §2.
+- **Not** that the port's theme *rendering* is correct. The port now has
+  `slot`/`state_colors` (0xffffffff ≠ black), the inherit-from-Normal rule,
+  `load_theme_native` (the file stage) and `active_theme` (the installer's
+  substitution) — all pinned by `tests/regress_theme_colors.py`. The
+  `GetSysColor`-derived slots of `DefaultColorTheme` remain unset, because
+  Windows runtime state is not obtainable on this host.
 - **Not** a change to `G9_THEMES_AND_DLU_2026-10-11.md`. §2 of that document
-  carries the false claim; this one is the correction, and the fix to that
-  document is its owner's call, not mine.
+  carries the false BGR claim; this one is the correction, and the fix to
+  that document is its owner's call, not mine.
 - **Not** that `Options.json` contains a theme at all in a default install.
   It is the *only* place the key is read from, but no `Options.json` is in
   this payload, so the shipped default value is not measured here — only that
   no theme name is compiled in.
+- **Not** which colour source wins where `ThemeName` and the `Appearance`
+  colour keys are both set. §3's final bullet says so explicitly; the
+  `StructRefs` scan found no resolver.
 - **Not** G9's part (b). Still a Windows host plus a Screen Recording grant.
+
+## 6. Four retractions in one document, and the shape they share
+
+Kept in one place because the individual corrections are scattered and the
+*pattern* is the reusable part:
+
+| # | claim | how it was wrong |
+|---|---|---|
+| 1 | theme colours are "BGR nibble strings" | inferred byte order from short values that are all grayscale, so both readings fit; I also mis-transcribed the decompiler twice |
+| 2 | native has no default theme, "renders without theme values" | inferred behaviour from the absence of a *filename*; the default is a C++ class, `theme::DefaultColorTheme` |
+| 3 | `Appearance` colours and `ThemeName` "must be resolved" | asserted a precedence no code shows; 19 offset-touching functions, all dialog machinery |
+| 4 | (my own draft arithmetic) `0x005d6c7a` = 6123514 | the value is 6122618; caught by the assert added to pin it |
+
+Three of the four came from having a **tidy story spanning two subsystems**
+— a reversal pattern appearing twice, a user-override-vs-theme resolution,
+a missing default — and reading the story as measured. The tell is the same
+each time: I had a mechanism *before* I had walked it to its consumer or its
+writer. #1 I caught by removing the instruction stream and testing the data
+against what a designed palette must look like; #2 by following the loader's
+one caller; #3 by scanning every operand and finding only the dialog.
+
+The lesson worth keeping is not "check twice." It is that **absence is not
+evidence of absence unless you have named the thing whose absence you
+measured** — a missing *filename* says nothing about a class, and a missing
+*string* says nothing about a behaviour.
