@@ -22,6 +22,7 @@ Two things are pinned here, both measured against the live endpoint on
 The offline cases use the exact live payloads. `--live` re-fetches them.
 """
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -94,17 +95,44 @@ G.set_romanization("Nǐ hǎo")
 ck("accessor stores the value", G.get_romanization() == "Nǐ hǎo")
 
 # --- stale state must not survive into a later, different result ---
-# translate() overwrites the slot on the gtx path and clears it on the
-# dict-chrome-ex fallback (which sends no dt=rm). Without that clear, a
-# previous call's romanization would be appended to an unrelated result.
+# The romanization travels in a caller-supplied sink, so a fresh sink starts
+# empty and no clearing call is needed at all. Two things are pinned here: the
+# sink contract (a fresh sink carries THIS call's value only), and that the
+# module global is no longer on the production path — a module global was the
+# stopgap that let one call read another call's romanization, and do_translate
+# runs on worker threads.
 _src = open(os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "qtranslate", "services",
     "google_translate.py"), encoding="utf-8").read()
-ck("the 429 fallback clears the slot",
-   _src.count('set_romanization("")') == 1,
-   "expected exactly one clearing call (the fallback)")
-ck("the gtx path always overwrites the slot",
-   "set_romanization(g)" in _src)
+ck("the gtx path fills the caller's sink",
+   re.search(r"if out is not None:\s*\n\s*out\[0\] = g", _src) is not None,
+   "the primary path no longer reports through the sink")
+ck("the 429 fallback clears the sink, not a global",
+   re.search(r"if out is not None:\s*\n\s*out\[0\] = \"\"", _src) is not None,
+   "the fallback must report an empty romanization for ITS call")
+# The accessors survive only as a test seam; production must not use them.
+# Count CALLS, not mentions: the two `def` lines and the comment that names
+# them are not calls. `translate(...)` itself calls each exactly once, on its
+# no-sink path, so a caller that declines the sink still gets the old behavior.
+_src_nc = re.sub(r"\s*#.*", "", _src)          # strip comments
+# `\b` after the paren-free name, and exclude the `def` line: count CALLS. The
+# two real calls are the no-sink path's (gtx writes, fallback clears) — one per
+# branch, which is what keeps a sinkless caller correct.
+_calls = [l.strip() for l in _src_nc.splitlines()
+          if re.match(r"\s*set_romanization\(", l)]
+ck("production calls the setter only on the no-sink path",
+   len(_calls) == 2 and any("set_romanization(g)" in c for c in _calls)
+   and any('set_romanization("")' in c for c in _calls),
+   "expected 2 calls (gtx writes, fallback clears), got %r" % (_calls,))
+ck("the module state is documented as a test seam",
+   "TEST SEAM" in _src)
+
+# The accessors still round-trip, because the suite uses them to drive
+# phonetics' three gates below.
+G.set_romanization(None)
+ck("accessor resets to empty", G.get_romanization() == "")
+G.set_romanization("Nǐ hǎo")
+ck("accessor stores the value", G.get_romanization() == "Nǐ hǎo")
 
 # --- the three J7 gates now have data to act on ---
 out = "Hello"
@@ -118,6 +146,22 @@ ck("all three open -> native append",
    == "Hello\r\r" + "Romanization: " + "Nǐ hǎo")
 ck("empty romanization -> unchanged (gate 2)",
    P.append_phonetics(out, "", enabled=True) == "Hello")
+
+# --- the caller's own value is delivered, and only its own ---
+# The bug the global had: a second call with no romanization inherited the
+# first call's. Pinned at the app seam rather than in the service, because the
+# sink is what carries it.
+_app = open(os.path.join(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))), "qtranslate", "app.py"),
+    encoding="utf-8", errors="replace").read()
+ck("app.py hands a fresh sink per do_translate call",
+   re.search(r"_sink = \[\"\"\]", _app) is not None,
+   "without a fresh sink the value is shared, which is the old bug")
+ck("app.py passes that sink to the router",
+   "_router(_sink)" in _app, "the router must receive the per-call sink")
+ck("app.py reads the romanization from the sink, not a global",
+   "get_romanization" not in _app and "_sink[0]" in _app,
+   "the production path must not read the module state")
 
 # --- the request must still ask for dt=rm ---
 _src = open(os.path.join(os.path.dirname(os.path.dirname(

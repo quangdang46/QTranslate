@@ -270,19 +270,32 @@ def refresh_tkk(force: bool = False) -> str:
 
 
 # ------------------------------------------------------------------ J7
-# dt=rm romanization from the last translate() call — the phonetics field
-# for `qtranslate/phonetics.py` (J7, FUN_0042ED3F's `entry[5]`).
+# dt=rm romanization — the phonetics field for `qtranslate/phonetics.py`
+# (J7, FUN_0042ED3F's `entry[5]`).
 #
-# It lives here, as module state, only because the `_t_*` adapter contract
-# is a bare `str`. Native carries it in the result struct at index 5; our
-# `ResponseData` (common.py) has no such field, which is Phase 5 work
-# (ARCHITECTURE.md §3.1 — TranslationRequest/Result value object).
-# A list so the setter needs no `global` and tests can reset it.
+# Native carries it in the result struct at index 5. Until 2026-10-10 the port
+# carried it in THIS GLOBAL, which was a documented stopgap: the `_t_*` adapter
+# contract is a bare `str`, so the only channel back to `app._phonetics()` was
+# module state. That global was a real bug surface, not merely inelegant —
+# a second thread, or a later unrelated translate, could read a value this call
+# never produced, and the fallback path had to remember to clear it by hand.
+#
+# The channel now is EXPLICIT: `translate()` takes an optional mutable sink
+# (`out`) and writes the romanization there, and the caller keeps the same
+# value for precisely the call it made. The global is gone from the production
+# path. `set_romanization`/`get_romanization` survive for the one caller that
+# genuinely has no out-parameter to offer — `tests/regress_google_romanization.py`,
+# which pins the 429 fallback's clear-on-absence behavior at the accessor level
+# — and they are marked as a test seam rather than left looking like the design.
 _ROMANIZATION = [""]
 
 
 def set_romanization(value: str | None) -> None:
-    """Record the `dt=rm` romanization for the render path."""
+    """Record the `dt=rm` romanization — TEST SEAM, not the production path.
+
+    Kept because the romanization suite pins the fallback's clear-on-absence
+    through the accessors. The production channel is `translate(..., out=...)`.
+    """
     _ROMANIZATION[0] = value or ""
 
 
@@ -291,11 +304,20 @@ def get_romanization() -> str:
     return _ROMANIZATION[0]
 
 
-def translate(text: str, sl: str = "auto", tl: str = "en", tkk: str = "0.0") -> str:
+def translate(text: str, sl: str = "auto", tl: str = "en", tkk: str = "0.0",
+             out: list | None = None) -> str:
     """Port of serviceTranslateRequest + serviceTranslateResponse.
 
     Primary: original client=gtx + tk token. Fallback: dict-chrome-ex
     (no token needed) when Google rate-limits gtx (HTTP 429).
+
+    ``out``, when given, is a one-element mutable sink: `translate` writes the
+    `dt=rm` romanization to `out[0]` ("" when none), so a caller that passes a
+    fresh `[""]` gets exactly this call's value and no earlier call's — see the
+    module comment above on why this replaced the module global. It is a `list`
+    rather than a return value because the `_t_*` contract that
+    `reliability.FallbackRouter` calls is a bare `str`, and widening that would
+    mean editing every provider table entry and the retry loop.
     """
     import urllib.error
     if tkk == "0.0":
@@ -323,10 +345,12 @@ def translate(text: str, sl: str = "auto", tl: str = "en", tkk: str = "0.0") -> 
             b, _, _, g = _translate_response(obj, sl, tl)
             # J7's phonetics source. The request has always asked for
             # `dt=rm`, and this line has always parsed it — the value was
-            # then discarded. Kept as module state because the `_t_*`
-            # contract is a bare string; a `phonetics` field on
-            # `ResponseData` is Phase 5 (ARCHITECTURE.md §3.1).
-            set_romanization(g)
+            # then discarded for nine months. Now reported through the
+            # caller's own sink rather than module state.
+            if out is not None:
+                out[0] = g or ""
+            else:
+                set_romanization(g)
             return b
     except urllib.error.HTTPError as e:
         if e.code != 429:
@@ -336,9 +360,13 @@ def translate(text: str, sl: str = "auto", tl: str = "en", tkk: str = "0.0") -> 
     req = urllib.request.Request(
         service_host() + fb, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
     # The dict-chrome-ex fallback sends no `dt=rm`, so it yields no
-    # romanization. Clear the slot: leaving the previous call's value here
-    # would append a stale romanization to this result.
-    set_romanization("")
+    # romanization. Clear the channel rather than leave a previous value in
+    # place: the sink contract is "this call's value", and the fallback IS
+    # this call. A caller passing a fresh sink needs no separate clearing.
+    if out is not None:
+        out[0] = ""
+    else:
+        set_romanization("")
     with common.http_open(req) as r:
         return _parse(parse_json_lenient(r.read().decode("utf-8")))
 

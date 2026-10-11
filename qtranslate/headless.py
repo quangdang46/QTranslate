@@ -80,5 +80,9 @@ if __name__ == "__main__":
     url = sys.argv[1] if len(sys.argv) > 1 else \
         "https://www.wordreference.com/enru/hello"
     html = fetch_html(url)
-    print(f"len={len(html)} "
-          f"article={'articleWRD' in html or 'id=\"article\"' in html}")
+    # Not inside an f-string expression: a backslash in an f-string expression
+    # is a SyntaxError on Python < 3.12 (PEP 701), and this module is a tool
+    # the repo's own regress_wiring.py parses under 3.11. Hoisting the test out
+    # to a local keeps one source parses on every supported interpreter.
+    article = ("articleWRD" in html) or ('id="article"' in html)
+    print(f"len={len(html)} " f"article={article}")

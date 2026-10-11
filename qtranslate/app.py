@@ -24,6 +24,7 @@ Requires: pip install keyboard pyperclip
   python -I qtranslate/app.py [service] [target_lang] [theme]
   (or: python -I start_app.py ...)
 """
+import inspect
 import sys
 import threading
 import tkinter as tk
@@ -174,8 +175,12 @@ def _strip_html(h):
 
 
 # ------------------------------------------------------- service registry
-def _t_google(t, sl, tl):
-    return _google.translate(t, sl, tl)
+def _t_google(t, sl, tl, _sink=None):
+    # `_sink` carries dt=rm's romanization back to do_translate for J7
+    # (FUN_0042ED3F's entry[5]). The `_t_*` contract is a bare str, so the
+    # field rides out through an optional mutable one-element list rather than
+    # a second HTTP call or module state; see google_translate.translate.
+    return _google.translate(t, sl, tl, out=_sink)
 
 
 def _t_deepl(t, sl, tl):
@@ -250,13 +255,22 @@ _USES_AUTO_DETECT = {"google": True, "microsoft": True, "bing": True,
 _ROUTER = None
 
 
-def _router():
+def _router(sink=None):
     """The ProviderRouter over TRANSLATORS, built lazily and reused.
 
     Lazy because TRANSLATORS is defined above but the import of `reliability`
     pulls in stdlib-only deps; building eagerly at import time would cost every
     `--help`-style path. Reused because the router owns a HealthTracker, and a
     fresh one per call would forget every provider it had marked dead.
+
+    ``sink``, when given, returns a per-CALL clone whose Google entry fills the
+    sink with the `dt=rm` romanization (J7). The shared singleton cannot do
+    that: its callables are shared by every concurrent do_translate, and
+    do_translate runs on worker threads (translate, OCR, speech), so a sink on
+    the singleton would hand one call another call's phonetics — exactly the
+    module-global bug this removes. The clone shares the health tracker and the
+    policy so a provider already marked dead stays dead, and costs one small
+    object per translate.
     """
     global _ROUTER
     if _ROUTER is None:
@@ -267,7 +281,31 @@ def _router():
                                             "deepl", "yandex"])
         except Exception:
             return None
-    return _ROUTER
+    if sink is None:
+        return _ROUTER
+    try:
+        from qtranslate import reliability as _rel
+
+        def _google_for_this_call(t, sl, tl, _s=sink):
+            # Same body as _t_google, with this call's sink closed over. Kept
+            # as a three-arg callable so reliability.py:533
+            # (`_fn(text, src, tgt)`) can invoke it unchanged — the sink rides
+            # in the closure, not in the argument list.
+            _s[0] = ""          # a fresh call must not inherit a prior value
+            return _t_google(t, sl, tl, _sink=_s)
+
+        callables = dict(_ROUTER.router.callables)
+        callables["google"] = _google_for_this_call
+        return _rel.ProviderRouter(
+            callables, order=list(_ROUTER.router.order),
+            health=_ROUTER.health, policy=_ROUTER.router.policy,
+            max_chars=_ROUTER.max_chars,
+            remove_line_breaks=_ROUTER.remove_line_breaks)
+    except Exception:
+        # A phonetics-only enhancement must never cost a translation: fall
+        # back to the shared router, which is correct except that it carries
+        # no romanization.
+        return _ROUTER
 
 
 def _cfg_safe():
@@ -284,27 +322,49 @@ def _cfg_safe():
         return {}
 
 
-def _phonetics(out, service):
+def _t_call(fn, text, src, tgt, sink):
+    """Invoke a `_t_*` adapter, handing it the romanization sink if it takes one.
+
+    Only `_t_google` has a `dt=rm` value to report, and it accepts the sink;
+    every other adapter keeps the bare `(t, sl, tl)` contract. The probe is
+    structural — does the callable declare a `_sink` parameter? — rather than an
+    identity check against `_t_google`, so re-binding the table (the router does
+    exactly that, and so does a test) keeps the phonetics flowing. A signature
+    probe costs one `inspect.signature`; the network call it guards costs far
+    more, and this runs once per translate, not per retry.
+    """
+    try:
+        wants = "_sink" in inspect.signature(fn).parameters
+    except (TypeError, ValueError):
+        wants = False
+    return fn(text, src, tgt, _sink=sink) if wants else fn(text, src, tgt)
+
+
+def _phonetics(out, service, romanization=""):
     """J7 — read-phonetically, shared by both translate paths.
 
     FUN_0042ED3F appends "\r\r" + string-resource 186 + entry[5] to the result
     pane when General.ReadPhonetically is on. Our phonetics source is Google's
-    `dt=rm` romanization (see `google_translate._translate_response`); other
-    providers supply none, exactly as the native per-provider JS service
-    handling does. Gate 1 (`"<Error>"` absent) is the success test, so the
-    append never lands on an error result.
+    `dt=rm` romanization (see `google_translate.translate`); other providers
+    supply none, exactly as the native per-provider JS service handling does.
+    Gate 1 (`"<Error>"` absent) is the success test, so the append never lands
+    on an error result.
 
     Takes the service explicitly because the router path must pass the
     provider that ACTUALLY answered, not the one the user picked — that is the
     same rule the back-translation follows.
+
+    `romanization` is that call's own value, carried explicitly. Before
+    2026-10-10 it was read out of `google_translate`'s module global, which was
+    a stopgap: shared mutable state could hand this result another call's
+    romanization, and nothing tied the value to the call that produced it.
     """
     try:
         from qtranslate import phonetics as _PH
-        from qtranslate.services import google_translate as _GT
         from qtranslate import config as _C
         if service == "google":
             return _PH.append_phonetics(
-                out, _GT.get_romanization(),
+                out, romanization,
                 enabled=_PH.phonetics_enabled(_C.load()))
     except Exception:
         pass
@@ -663,12 +723,20 @@ def do_translate(service, text, target, src="auto", auto_detect=False,
         # (docs/review/RELIABILITY_UNWIRED_2026-10-10.md); ProviderRouter's
         # translate() takes do_translate's own arguments, so it needed no
         # adapter and never needed core.Result settled first.
-        _r = _router()
+        # One fresh sink per do_translate() call, so J7's phonetics travels
+        # with this call's own result. It was a module global in google_translate
+        # until 2026-10-10, which made the value shared across threads —
+        # do_translate runs on worker threads (see the translate/OCR/speech
+        # callers) — and left the fallback path responsible for clearing the
+        # previous call's value by hand.
+        _sink = [""]
+        _r = _router(_sink)
         if _r is None:
             # The reliability layer failed to import. Fall back to the bare
             # provider call rather than failing the translation: the layer is
             # an improvement, not a dependency.
-            out = TRANSLATORS.get(service, _t_google)(text[:5000], src, target)
+            out = _t_call(TRANSLATORS.get(service, _t_google), text[:5000],
+                          src, target, _sink)
             if not out:
                 return _T("Strings", 190,
                           "No data returned (timeout while sending data.)")
@@ -680,7 +748,7 @@ def do_translate(service, text, target, src="auto", auto_detect=False,
                         out += f"\n\n--- back-translation ---\n{back}"
                 except Exception:
                     pass
-            out = _phonetics(out, service)
+            out = _phonetics(out, service, _sink[0])
             return out
         res = _r.translate(service, text, src, target,
                            config=_cfg_safe())
@@ -706,7 +774,7 @@ def do_translate(service, text, target, src="auto", auto_detect=False,
                     out += f"\n\n--- back-translation ---\n{back}"
             except Exception:
                 pass
-        out = _phonetics(out, service)
+        out = _phonetics(out, service, _sink[0])
         return out
     except Exception:
         return _T("Strings", 190,

@@ -41,9 +41,12 @@ def ck(name, cond, detail=""):
 # ---- read the native format string straight out of the artifact -------------
 _ART = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                     "docs", "review", "artifacts", "QTranslate.6.10.0.exe")
-# 298 CHARS = 595 BYTES of UTF-16LE. (The doc's first draft said "298 bytes",
+# 298 CHARS = 596 BYTES of UTF-16LE. (An earlier draft said "298 bytes",
 # which silently truncated the string to half its length and made the <input>
-# assertions fail -- corrected rather than quietly widened.)
+# assertions fail -- corrected rather than quietly widened. A second draft then
+# said 595, which is one byte short: 298 code units x 2 bytes is 596. The
+# string IS NUL-terminated exactly at its own </div></div>, so a NUL-scan and a
+# structural cut agree here.)
 _OFF, _CHARS = 0x11d8f0, 298
 
 if os.path.exists(_ART):

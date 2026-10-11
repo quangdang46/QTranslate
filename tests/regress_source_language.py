@@ -55,8 +55,23 @@ ck("do_translate located", m is not None)
 if m:
     body = m.group(0)
     ck("do_translate references the src==dst echo", "src == target" in body)
-    # the echo must come before the provider is invoked
-    _call = body.find("fn(text[:5000], src, target)")
+    # the echo must come before the provider is invoked. The provider call is
+    # NOT a fixed literal: bbe9909 (the reliability wiring) replaced the bare
+    # `TRANSLATORS.get(service, _t_google)(text[:5000], src, target)` with
+    # `_r.translate(service, text, src, target, ...)`, so an assertion anchored
+    # to one spelling fails on the next legitimate refactor while the rule it
+    # was protecting still holds. Pin the rule -- the FIRST provider-invoking
+    # construct must come after the echo -- by locating every candidate.
+    _CALL_SPELLINGS = (
+        "_r.translate(",
+        "TRANSLATORS.get(service",
+        "TRANSLATORS.get(res.provider_used",
+        "text[:5000], src, target",
+    )
+    _calls = [body.find(s) for s in _CALL_SPELLINGS if body.find(s) >= 0]
+    ck("a provider-invoking construct is present in do_translate",
+       bool(_calls), "found none of %r" % (_CALL_SPELLINGS,))
+    _call = min(_calls) if _calls else -1
     _echo = body.find("src == target")
     ck("echo precedes the provider call",
        _echo >= 0 and _call >= 0 and _echo < _call,
@@ -64,6 +79,12 @@ if m:
     # and it must return the (already line-collapsed) text, not call out
     ck("echo returns the text",
        re.search(r"if src == target:\s*\n\s*return text", body) is not None)
+    # Structural, and stronger than any single spelling: between the echo and
+    # the first provider call there must be no `return` that produces output.
+    # A provider call hidden before the echo would make the echo's guarantee
+    # false even if the echo itself is first in the file.
+    ck("no provider call text precedes the echo",
+       all(p < 0 or p > _echo for p in _calls))
 
 # --- 2. the capability is a module-level table, not an inline set
 m2 = re.search(r"_USES_AUTO_DETECT\s*=\s*\{([^}]*)\}", app_src)

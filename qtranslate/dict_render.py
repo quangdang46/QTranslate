@@ -24,7 +24,7 @@ def render_cards(results: list) -> str:
     for i, (sid, title, frag) in enumerate(results):
         # Card markup is native FUN_004253cc's format string, verbatim
         # (docs/review/DICT_CARD_BUILDER_2026-10-10.md): one wide literal at
-        # file offset 0x11d8f0, 297 chars / 594 bytes, with NINE substitutions
+        # file offset 0x11d8f0, 298 chars / 596 bytes, with NINE substitutions
         # in order:  %u %u %u | %s %s | %u %u %u | %s
         #              s   h   t    icon title   d   l   full   frag
         # The four things a port most easily gets wrong are pinned here:

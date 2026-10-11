@@ -114,9 +114,20 @@ except SyntaxError:
     pass
 ck("do_translate found", _dt is not None)
 if _dt:
+    # The intent is "do_translate actually reaches the reliability layer", not
+    # "it spells the call exactly one way": the router takes an optional
+    # romanization sink, so `_router()`, `_router(_sink)` and
+    # `_router(sink=_sink)` all satisfy the rule. Matched structurally — a
+    # call to _router with any argument list — so a legitimate change to the
+    # argument list does not read as "the wiring was removed".
+    _routes = any(
+        isinstance(n, ast.Call) and (
+            (isinstance(n.func, ast.Name) and n.func.id == "_router")
+            or (isinstance(n.func, ast.Attribute) and n.func.attr == "_router"))
+        for n in ast.walk(ast.parse(_dt)))
     ck("do_translate routes through the reliability layer",
-   "_router()" in _dt and ".translate(service, text, src, target" in _dt,
-   "do_translate no longer calls the router")
+       _routes and ".translate(service, text, src, target" in _dt,
+       "do_translate no longer calls the router")
 # the None-guard matters: a failed import must degrade to the bare provider
 # call rather than failing the translation outright.
 ck("do_translate degrades gracefully if the layer is unavailable",
