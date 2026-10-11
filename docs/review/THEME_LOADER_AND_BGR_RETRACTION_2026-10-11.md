@@ -138,10 +138,38 @@ Four facts the port does not currently have:
    inherits `Normal`** — and only if the child key is absent. The copy is a
    five-word struct copy (`for (iVar9 = 5; iVar9 != 0; iVar9--)`), i.e. a
    colour record is five dwords wide, not one. `window_colors()` in
-   `theme.py` reads `Window`/`<state>` directly and does not implement this
-   inheritance, so a theme that omits `Disabled` (none of the recovered 8 do,
-   but the loader explicitly handles it) gets zeros instead of `Normal`'s
-   values.
+   `theme.py` read `Window`/`<state>` directly and did not implement this
+   inheritance, so an omitted state got zeros instead of `Normal`'s values.
+   **This is a live path, not a defensive branch:** 20 section/state pairs are
+   genuinely absent across the seven themes — `Window` × `Hover` in all
+   seven, `Window` × `Pressed` in all seven, `Button` × `Hover` in four, and
+   `WindowButton` × `Hover` in two (Holo Dark, Holo Light). `Disabled` is
+   present everywhere, so the rule never fires for it on the shipped themes.
+
+### 3a. The config's colour ints are `#RRGGBB` too — measured, not assumed
+
+`ColorBack`/`ColorText`/`ColorFrame` arrive as **plain ints** through
+`FUN_00440942`, which is a generic int getter returning the stored value
+unmodified — no byte swapping at parse time. So the byte order was decided
+by whoever *wrote* the file, and that is measurable from the defaults:
+
+| key | default int | hex | as `#RRGGBB` | as `COLORREF 0x00BBGGRR` |
+|---|---|---|---|---|
+| `ColorBack` | 15790320 | `0x00f0f0f0` | `#f0f0f0` | `#f0f0f0` (symmetric) |
+| `ColorText` | 0 | — | black | black |
+| `ColorFrame` | 8023133 | `0x007a6c5d` | `#7a6c5d` | `#5d6c7a` |
+
+Only `ColorFrame` can discriminate, and it settles it: **`0x7a6c5d` is exactly
+`int("7a6c5d", 16)`**, which is what a writer produces from the string
+`#7a6c5d`. A `COLORREF` writer would have emitted `0x005d6c7a` = 6122618
+instead. The config therefore stores `#RRGGBB` as a plain int, and
+`config.py`'s `"#%06x" % v` is correct.
+
+Worth recording because it is the same class of error as §1's retraction —
+reaching for a byte-reversal reading — arriving in a second place in the
+same file family. Here the data settles it before anyone has to guess: the
+two symmetric defaults cannot decide anything, and the one asymmetric value
+decides it in the port's favour.
 
 ## 3. Where `ThemeName` comes from — `Options.json`, under `Appearance`
 
@@ -228,6 +256,34 @@ def hue(rgb):
     return h*60
 hs = [hue(v) for v in vals if hue(v) is not None]
 assert max(hs) - min(hs) < 10          # one blue palette as written
+```
+
+The §3a config-int claim, and the 20 absent pairs, both offline:
+
+```python
+# ColorFrame is the only asymmetric default, so it is the only one that can
+# decide the config's byte order.
+assert 8023133 == int("7a6c5d", 16)          # exactly a #RRGGBB writer's output
+assert 8023133 != 0x005d6c7a                 # not a COLORREF writer's
+assert 15790320 == int("f0f0f0", 16)         # symmetric: uninformative either way
+
+p = open("docs/review/artifacts/nsis_payload_unpacked.bin", "rb").read()
+import json, re
+off = 0x97b30
+absent = []
+for _ in range(7):
+    ln = int.from_bytes(p[off:off+4], "little")
+    d = json.loads(re.sub(r"//[^\n]*", "", p[off+4:off+4+ln].decode("utf-8")))
+    for sec in ("Window", "WindowButton", "Button"):
+        for st in ("Hover", "Pressed", "Disabled"):
+            if st not in d.get(sec, {}):
+                absent.append((sec, st))
+    off += 4 + ln
+assert len(absent) == 20
+assert absent.count(("Window", "Hover")) == 7
+assert absent.count(("Window", "Pressed")) == 7
+assert absent.count(("Button", "Hover")) == 4
+assert absent.count(("WindowButton", "Hover")) == 2
 ```
 
 The parser model, checked against the real port on all 8 themes:
