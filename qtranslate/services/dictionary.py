@@ -147,9 +147,17 @@ def babylon_link() -> str:
     return babylon_host()
 
 
-def babylon_dict_link(word) -> str:
-    """The ResponseData link field: host/word/."""
-    return babylon_dict_host() + "/" + _q(word) + "/"
+def babylon_dict_link(sl, tl) -> str:
+    """The ResponseData link field: ``host/{target}/{source}/``.
+
+    Native: ``format("{0}/{1}/{2}/", serviceHost(), codeFromLanguage(c),
+    codeFromLanguage(d))`` where ``ResponseData(text, source, target, …)`` --
+    so the order is **target then source**, and the word does not appear in the
+    link at all. An earlier version returned ``host/word/``, which borrows the
+    shape of the *other* Babylon's link and matches no line of the JS.
+    """
+    src, tgt = _codes(BABYLON_DICT_LANGS, sl, tl)
+    return "{0}/{1}/{2}/".format(babylon_dict_host(), tgt, src)
 
 
 def babylon_lookup(word, sl, tl):
@@ -746,8 +754,15 @@ def imtranslator_host() -> str:
 
 
 def imtranslator_link() -> str:
-    """Port of serviceLink(): the dictionary subdomain + ResponseData link."""
-    return "http://dictionary.imtranslator.net/"
+    """The ResponseData link field: ``serviceHost(DICTIONARY) + /translation/``.
+
+    Native: ``b = format("{0}/translation/", serviceHost(Capability.DICTIONARY))``
+    in ``serviceDictionaryResponse``. ``serviceHost`` for ImTranslator returns
+    ``http://imtranslator.net`` -- the ``dictionary.`` subdomain is
+    ``serviceLink``'s job, not the response link's, so this returns
+    ``http://imtranslator.net/translation/``.
+    """
+    return "{0}/translation/".format(imtranslator_host())
 
 
 def imtranslator_lookup(word, sl, tl):
@@ -792,8 +807,16 @@ def urban_host() -> str:
 
 
 def urban_link(word) -> str:
-    """Port of serviceLink() + ResponseData link field."""
-    return urban_host() + "/define.php?term=" + _q(word)
+    """The ResponseData link field: ``host/<word>``.
+
+    Native: ``format("{0}/{1}", serviceHost(DICTIONARY), encodeGetParam(b))``
+    inside ``serviceDictionaryResponse`` -- so the link is the host plus the
+    bare word, with **no** ``/define.php?term=`` path. That path belongs to the
+    *request*; reusing it here made the link a duplicate of the request URL
+    instead of the page the entry lives on, which is what ``serviceLink``
+    returns too.
+    """
+    return "{0}/{1}".format(urban_host(), _q(word))
 
 
 URBAN_API_HOST = "https://api.urbandictionary.com"
@@ -891,7 +914,13 @@ def wikipedia_host_for(sl, tl):
 
 
 def wikipedia_link() -> str:
-    """Port of serviceLink(): always https://www.wikipedia.org/."""
+    """Port of serviceLink(): always ``https://www.wikipedia.org/``.
+
+    That constant is ``serviceLink``'s, and it is *not* the link the
+    ``ResponseData`` carries -- the response's link is the article URL, which is
+    ``wikipedia_article_url()``. Two different fields; an earlier version of
+    this module conflated them.
+    """
     return "https://www.wikipedia.org/"
 
 
