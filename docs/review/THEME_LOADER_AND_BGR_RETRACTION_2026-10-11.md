@@ -1,0 +1,271 @@
+# The theme loader, and a correction to my own "BGR nibble strings" claim
+
+> Read-only. Two things: a **recoverable** fact G9's part (a) did not have
+> (how native *selects* and *parses* a theme), and a retraction of a claim I
+> made in `G9_THEMES_AND_DLU_2026-10-11.md` §2 that this work disproved.
+>
+> **G9 still stays `UNKNOWN` and the Gate stays `BLOCKED (1)`.** Part (b) is a
+> screenshot diff. Nothing here changes a row's RE state or the tally.
+>
+> Measured with **Ghidra 12.1.4 headless, via REA 6.4.0**, on
+> `docs/review/artifacts/QTranslate.6.10.0.exe`, SHA-256
+> `f35a3bc8e09e217130ff97efe85ba02bd86573b2e0796b003526604454338227`.
+
+## 1. Retraction: theme colours are **not** BGR nibble strings
+
+`G9_THEMES_AND_DLU_2026-10-11.md` §2 says:
+
+> Colours are BGR nibble strings, not `RRGGBB` — `ClientBackColor: "20"` in
+> Flat Dark is `0x00202020` = `#202020`, and `"1"` in Holo Dark is
+> `0x00000001`. This is the same reversed-slot format already documented for
+> the dict-card header … before anyone writes `int("20", 16)` and gets 32.
+
+**That is wrong, and it was never warranted by the evidence I had.** I
+inferred byte order from short values, and every short value in every theme
+is *grayscale* — so the two readings are indistinguishable for exactly the
+data I looked at. The claim that survived was the one I wanted (a second
+instance of a reversal pattern already found elsewhere) rather than one I had
+shown.
+
+The parser that decides it is `FUN_0046457a`, reached from the theme loader:
+
+```
+theme loader FUN_00464c2f
+  └─ FUN_00464724   colour-string getter  (key absent -> 0xffffffff)
+       └─ FUN_0046457a   string -> COLORREF
+```
+
+`FUN_0046457a` is hand-rolled and the decompiler's `CONCAT11(...)<<8 | ...>>8`
+chain is easy to mis-read. So rather than trust my transcription twice, I
+settled byte order from **outside the instruction stream**: a colour palette
+must be a *designed* hue family, and one reading preserves that family while
+the other destroys it.
+
+Blue theme — its ten 6-digit values, which the same document calls the
+QTranslate brand blue:
+
+```
+value      as literal #RRGGBB          through the COLORREF construction
+1d8abd     #1d8abd   hue 199.1         #b0babd   hue 193.8
+1586bb     #1586bb   hue 199.2         #b0b6bb   hue 207.3
+0c4b73     #0c4b73   hue 203.3         #707b73   hue 136.4
+469fc6     #469fc6   hue 198.3         #c0cfc6   hue 144.0
+429fca     #429fca   hue 199.0         #c0cfca   hue 160.0
+61add1     #61add1   hue 199.3         #d0ddd1   hue 124.6
+...
+
+literal hue spread:     5.0 degrees   (one blue palette)
+COLORREF hue spread:   70.9 degrees  (cyan through grey-green)
+```
+
+The reversed reading also gives every Blue value `R = 0` and `G ≥ B`, i.e. it
+turns a coherent blue palette into a family of desaturated cyan-greys. **The
+strings are `RRGGBB`.** The `20` → `#202020` case in §2 happens to be right
+for the wrong reason, and the `"1"` → `0x00000001` claim beside it is where
+the error shows: native parses `1` as `#111111`, not as `0x00000001`.
+
+### What the parser really does, and the port already matches it
+
+`FUN_0046457a` accepts a leading `#`, skips leading whitespace, and accepts
+**1, 2, 3 or 6** hex digits (anything else → `0xffffffff`):
+
+| length | rule | native | port |
+|---|---|---|---|
+| 1 | duplicate the nibble three times | `b` → `#bbbbbb` | same |
+| 2 | duplicate the byte three times | `20` → `#202020` | same |
+| 3 | CSS expansion, per-channel | `09c` → `#0099cc` | same |
+| 6 | as-is | `1d8abd` → `#1d8abd` | same |
+
+Verified against the **real** `qtranslate/theme.py:_hex`, on **all 123
+distinct colour strings in all 8 recovered themes**:
+
+```
+checked 123 distinct colour strings ... mismatches: 0
+```
+
+The port's `_hex` is correct, and the `len(set(v)) == 1` guard in it is a
+clever route to the same place. The one thing native does that the port does
+not is reject a *malformed* value; `_hex("")` returns `#000000` where native
+returns `0xffffffff`, and there is no check at all for a string with illegal
+hex or an unsupported length — `_hex("xyz")` silently produces `#`.
+
+## 2. The theme loader, which G9's part (a) did not have
+
+`FUN_00464c2f` (`this`, `param_1`) is the whole loader. Its structure:
+
+```c
+local_1c = <base dir>;                              // FUN_00402cbd
+if (!FUN_0045b7b3((uint *)*param_1, &local_1c))     // "<base>\<ThemeName>.json"
+    return 0;
+if (GetFileAttributesW(local_1c) == 0xffffffff)     // INVALID_FILE_ATTRIBUTES
+    return 0;                                       // <-- NO FALLBACK
+if (!FUN_0043df32(local_1c, &local_24))  return 0;  // parse the JSON
+piVar4 = FUN_0043f71a(&local_38, &local_24);        // -> JSON object
+cVar3 = (**(code **)(*piVar4 + 0x20))(&local_18);
+```
+
+and `FUN_0045b7b3`, the path builder, is three appends:
+
+```c
+FUN_0045b1cf(L"Themes", param_2);        // <base>\Themes
+FUN_00401f21(&local_8, param_1);         // + <ThemeName>
+FUN_00402366(&local_8, L".json");        // + ".json"
+FUN_0045b9d9(param_2, &local_8);         // join
+```
+
+**`FUN_0045b7b3` has exactly one caller** (`0x464c53`, inside `FUN_00464c2f`),
+so this is the only way a theme file is named.
+
+Four facts the port does not currently have:
+
+1. **A missing theme file is a hard failure, not a fallback.**
+   `GetFileAttributesW(...) == 0xffffffff` → `return 0`, and the JSON-parse
+   failure path is also `return 0`. There is no substitution of a default
+   theme. Combined with §3 this means: **no theme name appears anywhere in
+   the exe** — not `Blue`, not `Default`, not in either encoding — so native
+   has no built-in default to fall back *to*. Its behaviour on a bad
+   `ThemeName` is to render without theme values.
+2. **`Common` is optional.** Every `Common` key is read inside
+   `if ((char)uVar6 != '\0')` after `FUN_004409c6(... L"Common" ...)`, so a
+   theme file with no `Common` section is valid and simply leaves those
+   fields untouched. Same guard shape for `Window`, `WindowButton`,
+   `Button`.
+3. **`ClientBackColor` and the `GroupBox*` colours use a dedicated getter**
+   (`FUN_00464724`), while `ButtonRadius`/`PaintClassicFocus` use the int and
+   bool getters. Absent colour key → `0xffffffff`, which is *distinct* from
+   `0` — so the port storing `#000000` for a missing colour is not native.
+4. **`Disabled` inherits `Normal`, `Hover` inherits `Normal`, `Pressed`
+   inherits `Normal`** — and only if the child key is absent. The copy is a
+   five-word struct copy (`for (iVar9 = 5; iVar9 != 0; iVar9--)`), i.e. a
+   colour record is five dwords wide, not one. `window_colors()` in
+   `theme.py` reads `Window`/`<state>` directly and does not implement this
+   inheritance, so a theme that omits `Disabled` (none of the recovered 8 do,
+   but the loader explicitly handles it) gets zeros instead of `Normal`'s
+   values.
+
+## 3. Where `ThemeName` comes from — `Options.json`, under `Appearance`
+
+`ThemeName` is a persistent config key, not a runtime constant. Its UTF-16LE
+literal is at file offset `0x122014` / **VA `0x523014`**, in the same block
+as the other config keys, and it has exactly two referencing sites in
+`.text`: `0x45792d` (in `FUN_004561f0`, the `Options.json` **writer**) and
+`0x459875` (in the **reader**).
+
+Read via REA, the reader loads it with the **string** getter, where every
+neighbouring key uses the int getter:
+
+```c
+FUN_00401f21(&stack0xffffff50, L"Appearance");
+uVar6 = FUN_004409c6(root, &stack0xffffff50, &appearance);
+if ((char)uVar6 != '\0') {
+    FUN_00401f21(&stack0xffffff50, L"EnableWindowStyle");
+    FUN_00440921(appearance, &stack0xffffff50, p + 0x1d8);   // bool
+    FUN_00401f21(&stack0xffffff50, L"ThemeName");
+    FUN_00440984(appearance, &stack0xffffff50, p + 0x1dc);   // string
+    FUN_00401f21(&stack0xffffff50, L"PopupAutoSize");
+    FUN_00440921(appearance, &stack0xffffff50, p + 0x1e0);   // bool
+    FUN_00401f21(&stack0xffffff50, L"PopupAutoPos");         // bool
+    FUN_00401f21(&stack0xffffff50, L"PopupAutoFocus");       // bool
+    FUN_00401f21(&stack0xffffff50, L"PopupTimeout");         // int
+    FUN_00401f21(&stack0xffffff50, L"ColorBack");            // int
+    FUN_00401f21(&stack0xffffff50, L"ColorText");            // int
+    FUN_00401f21(&stack0xffffff50, L"ColorFrame");           // int
+    FUN_00401f21(&stack0xffffff50, L"Transparency");         // int
+    FUN_00401f21(&stack0xffffff50, L"PopupWindowFrameThickness");
+    FUN_00401f21(&stack0xffffff50, L"PopupIcons");
+}
+```
+
+Two consequences worth recording:
+
+- **`Options.json`, not `QTranslate.json`, is the settings file.** The
+  writer's first act is `FUN_0045b3d7(base, L"Options.json", '\0')`. My
+  G9 doc said "the recovered `QTranslate.json` (the config, later in the
+  stream) can confirm the selected theme name" — **there is no
+  `QTranslate.json` in this payload**, and the string does not occur in the
+  exe in either encoding. That pointer was wrong.
+- **`ColorBack`/`ColorText`/`ColorFrame` are separate config keys that sit
+  in the same section as `ThemeName`.** So a user colour override exists
+  alongside the theme file, and the two must be resolved rather than one
+  replacing the other. Neither the port nor my earlier doc knew this.
+
+## 4. Reproduce
+
+```python
+import struct, re
+p = open("docs/review/artifacts/nsis_payload_unpacked.bin", "rb").read()
+
+# the loader's path builder and the Appearance keys, read from the image
+exe = open("docs/review/artifacts/QTranslate.6.10.0.exe", "rb").read()
+e = struct.unpack_from("<I", exe, 0x3c)[0]
+assert exe[e:e+4] == b"PE\0\0" and e == 0x120       # PE32, i386
+assert struct.unpack_from("<H", exe, e+4)[0] == 0x14c
+assert "ThemeName".encode("utf-16-le") in exe
+assert "Themes".encode("utf-16-le") in exe
+for name in ("Blue", "Brackets", "Flat Dark", "Holo Dark",
+             "Holo Light", "Metro", "Outlook Gray", "Photoshop Dark"):
+    assert name.encode("ascii") not in exe and name.encode("utf-16-le") not in exe
+assert b"QTranslate.json" not in exe
+assert "QTranslate.json".encode("utf-16-le") not in exe
+assert "Options.json".encode("utf-16-le") in exe          # the config file
+assert b"Options.json" not in exe                         # wide only
+```
+
+The byte-order claim is reproducible without any decompilation, which is the
+point — it should never have needed one:
+
+```python
+# Blue theme, hue spread under each reading
+import math
+vals = ["1d8abd", "1586bb", "0c4b73", "469fc6", "429fca", "61add1",
+        "16688e", "1b7fad", "1b82b3", "0d7aad"]
+def hue(rgb):
+    r, g, b = (int(rgb[i:i+2], 16)/255 for i in (0, 2, 4))
+    mx, mn = max(r, g, b), min(r, g, b)
+    if mx == mn: return None
+    d = mx - mn
+    h = ((g-b)/d) % 6 if mx == r else ((b-r)/d + 2 if mx == g else (r-g)/d + 4)
+    return h*60
+hs = [hue(v) for v in vals if hue(v) is not None]
+assert max(hs) - min(hs) < 10          # one blue palette as written
+```
+
+The parser model, checked against the real port on all 8 themes:
+
+```python
+from qtranslate.theme import _hex
+
+U8 = lambda v: v & 0xff
+C11 = lambda hi, lo: (U8(hi) << 8) | U8(lo)
+
+def native(s):                          # FUN_0046457a, len<=6 path
+    n = [int(c, 16) for c in s]
+    if len(n) == 1:
+        bVar7 = U8((n[0] << 4) | n[0]); uVar10 = U8(bVar7) << 8; bVar6 = bVar7
+    elif len(n) == 2:
+        bVar7 = U8(n[1] | (n[0] << 4)); uVar10 = U8(bVar7) << 8; bVar6 = bVar7
+    elif len(n) == 3:
+        bVar7 = U8((n[0] << 4) | n[0]); uVar10 = U8(bVar7) << 8
+        bVar6 = U8((n[1] << 4) | n[1]); bVar7 = U8((n[2] << 4) | n[2])
+    else:
+        return None
+    cr = ((C11(bVar7, bVar6) << 8) | (uVar10 >> 8)) & 0xffffffff
+    return "#%02x%02x%02x" % (cr & 0xff, (cr >> 8) & 0xff, (cr >> 16) & 0xff)
+
+assert native("20") == _hex("20") == "#202020"
+assert native("09c") == _hex("09c") == "#0099cc"
+```
+
+## 5. What this does not establish
+
+- **Not** that the port's theme *rendering* is correct. `window_colors()`
+  reads `Window/<state>` without the native inheritance rule and without the
+  `#RRGGBB`-vs-`0xffffffff` distinction for absent colours, both of §2.
+- **Not** a change to `G9_THEMES_AND_DLU_2026-10-11.md`. §2 of that document
+  carries the false claim; this one is the correction, and the fix to that
+  document is its owner's call, not mine.
+- **Not** that `Options.json` contains a theme at all in a default install.
+  It is the *only* place the key is read from, but no `Options.json` is in
+  this payload, so the shipped default value is not measured here — only that
+  no theme name is compiled in.
+- **Not** G9's part (b). Still a Windows host plus a Screen Recording grant.
