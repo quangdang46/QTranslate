@@ -165,6 +165,49 @@ ck("cards present -> no no-results message",
 ck("cards present -> the card element is there",
    'id="qt-s1"' in DR.render_cards([("1", "A", "x")], "hello"))
 
+# ---- header slots 1+2: icon markup and the browser link ----------------------
+# Native's header is TWO substitution slots ("%s%s"): slot 1 = the service
+# icon <img>, slot 2 = <a href=...>title</a> or the bare title. The port
+# emitted only the bare title, so slot 2 never linked and slot 1 was empty.
+#   docs/review/DICT_CARD_HEADER_SLOTS_RESOLVED_2026-10-10.md
+#
+# SLOT 1 (icon): an absent Service.ico yields NO <img> at all -- native's
+# GetFileAttributesW branch at 0x004254c3 jumps (JZ 0x004254e3) past the
+# file:/// format (PUSH 0x51e7d4). 0x522a78 ("Default.ico") is referenced
+# from a different function and never appears on this path, so there is no
+# default to port. Asserted as absence, not as a string: the header for any
+# service must carry no <img> on this host.
+# SLOT 2 (link-or-title): native's serviceLink() per service. Asserted
+# against the recovered Service.js bodies, not against the port's own
+# table, so a JS/port drift fails here.
+_hdr_lingvo = DR.render_cards([("25", "ABBYY Lingvo Live", "x")], "hello")
+ck("slot 1: no <img> in any header (the .ico is absent on this host)",
+   "<img" not in _hdr_lingvo,
+   "native emits no <img> when GetFileAttributesW says absent")
+ck("slot 2: a service with a home page links its title",
+   '<a href="https://www.lingvolive.com" class="qt-link-browser" '
+   'title="Open in browser">ABBYY Lingvo Live</a>' in _hdr_lingvo,
+   "native: FUN_004023f1(&local_78, L\"<a href=...\">...\")")
+ck("slot 2: the wrapper is the artifact's own literal, not a paraphrase",
+   DR._LINK_WRAP == '<a href="%s" class="qt-link-browser" '
+   'title="Open in browser">%s</a>',
+   repr(DR._LINK_WRAP))
+_hdr_unknown = DR.render_cards([("99", "Unknown Service", "x")], "hello")
+ck("slot 2: a service with no home page renders the bare title",
+   'class="qt-header" ondblclick="toggle(99);" '
+   'onselectstart="return false;">Unknown Service</div>' in _hdr_unknown,
+   "native's FUN_00401ec9 else-branch: the title alone, no <a>")
+ck("the link table covers every service the port can render",
+   all(DR.service_link(t) for _, t, _ in
+       [("10", "Google Search", ""), ("14", "Wikipedia", ""),
+        ("17", "Multitran", ""), ("18", "ImTranslator", ""),
+        ("19", "WordReference", ""), ("20", "Babylon Dictionary", ""),
+        ("22", "Reverso", ""), ("24", "Urban Dictionary", ""),
+        ("25", "ABBYY Lingvo Live", ""),
+        ("29", "Oxford Learner Dictionary", "")]),
+   "a service the port renders must have a home page or an explicit "
+   "no-link decision, never a silent omission")
+
 
 if fail:
     print("FAIL %d/%d" % (len(fail), n[0]))

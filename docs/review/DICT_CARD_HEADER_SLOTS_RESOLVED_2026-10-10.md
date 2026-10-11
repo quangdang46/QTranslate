@@ -1,5 +1,14 @@
 # The two header `%s` slots, resolved — and a correction to the count
 
+> **Ported 2026-10-12.** Slot 2 (the browser link) is now emitted by
+> `qtranslate/dict_render.py`; slot 1 (the icon) stays empty **because
+> measured, not because skipped** — see §6 for both halves and for the
+> reclassification from "not started" to "done", together with the one thing
+> that still is absent.
+>
+> **No port file changed** by the analysis below (that line described the
+> measurement pass only); §6 records what changed afterwards.
+
 > Read-only. Closes the one `UNKNOWN` recorded in
 > `DICT_CARD_UNRECORDED_DIVERGENCES_2026-10-10.md` §1, and corrects a
 > number in the peer's commit that has since propagated into a comment
@@ -140,6 +149,64 @@ assert blob.find("No results found for '%s'.".encode('utf-16-le')) == 0x11dbc8
 The argument order needs the disassembly, not the format string — the pushes
 at `0x00425583`–`0x004255a1` in reverse, with `E = EBP−0x98` from the
 `0x00425598` `LEA EAX,[ESP+0x38]` anchor.
+
+## 6. What got ported, and what stays absent — on purpose
+
+**Slot 1 (icon).** Disassembled 2026-10-12 with Ghidra 12.1.4 headless over
+`QT_REAL` (`dis_one.java`, `0x004253cc–0x004255b0`), and this decides the
+port shape:
+
+```
+0x0042546a: PUSH 0x522b00            ; wide "Service.ico"
+0x004254c3: CALL dword ptr [0x0050d3b4]  ; GetFileAttributesW
+0x004254c9: CMP EAX,-0x1
+0x004254cc: JZ 0x004254e3            ; absent -> SKIP the <img> build
+0x004254d3: PUSH 0x51e7d4            ; wide "file:///%s"  (only on the taken path)
+0x004254e3: (lands past the format — then JMP 0x00425502)
+```
+
+An absent `.ico` yields **no `<img>` in slot 1**, not a `Default.ico`
+reference: `0x522a78` ("Default.ico") is referenced from a different function
+(file `0x5a903`, VA `0x45b4df` region) and never appears on this path. On a
+host without installed services the file never exists, so the faithful port
+emits the same empty slot native would. `dict_render.py` carries this as
+`icon_html = ""` with the reasoning in the comment — **the absence is now
+measured, not skipped**.
+
+**Slot 2 (link-or-title).** Ported: `SERVICE_LINKS` + `service_link()` in
+`qtranslate/dict_render.py`, keyed by display name (what `app.py` passes as
+the card title), each entry traced to its `services/*/Service.js`:
+
+| display name | browser link (native `serviceLink()`) |
+|---|---|
+| Google Search | `https://www.google.com` |
+| Wikipedia | `https://www.wikipedia.org/` |
+| Multitran | `https://www.multitran.com` |
+| ImTranslator | `http://dictionary.imtranslator.net/` |
+| WordReference | `https://www.wordreference.com` |
+| Babylon Dictionary | `https://dictionary.babylon-software.com` |
+| Reverso | `http://dictionary.reverso.net` |
+| Urban Dictionary | `https://www.urbandictionary.com` |
+| ABBYY Lingvo Live | `https://www.lingvolive.com` |
+| Oxford Learner Dictionary | `https://www.oxfordlearnersdictionaries.com` |
+
+The per-service `ResponseData` links (`Reverso`'s `d=serviceHost+buildUri`,
+`WordReference`'s `d+=b`, `Lingvo`'s `f+a`, `Google Search`'s `e+b`) all
+confirm `serviceHost()+buildUri()` as the link shape, which is the `*_link`
+family `dictionary.py` already verified — so the browser link and the
+response-data link are the same value, not two facts to keep in sync.
+
+When `service_link()` returns `""` the header emits the bare title,
+matching native's `FUN_00401ec9` else-branch (verified on the `0x0042556a`
+arm, which that conditional reaches when the home-page pointer is null).
+
+**What is still absent:** a live `Services/<name>/Service.ico` on the
+rendering host. That is an installed-file question, not a code question —
+the branch that would fill slot 1 is fully ported (empty when absent), and
+only the file's presence would change the output. `tests/regress_dict_card.py`
+pins all three states (40 assertions): no `<img>` anywhere, the link wrapper
+byte-identical to the artifact literal at VA `0x51e868`, and the bare-title
+fallback for an unlinked service.
 
 ## 5. Method note
 
