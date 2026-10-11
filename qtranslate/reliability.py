@@ -626,10 +626,16 @@ class Result:
     failures: tuple = ()
     attempts: int = 0
     note: str = ""
+    phonetics: str = ""
+    source_language: int | None = None
 
     @property
     def ok(self) -> bool:
         return bool(self.provider_used)
+
+
+from qtranslate.core import Result as _CoreResult
+Result = _CoreResult
 
 
 def normalize_request(text, src, tgt, *, remove_line_breaks=False,

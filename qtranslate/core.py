@@ -27,9 +27,6 @@ from __future__ import annotations
 
 import dataclasses
 
-from qtranslate.reliability import Failure
-
-
 # APPEND-ONLY RULE: new fields go at the END of this dataclass, after the
 # existing fields, keyword-defaulted. ``ProviderRouter.translate`` builds a
 # Result with six positional arguments, and a dataclass's positional
