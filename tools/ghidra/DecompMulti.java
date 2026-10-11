@@ -49,7 +49,15 @@ public class DecompMulti extends GhidraScript {
                     continue;
                 }
                 String c = r.getDecompiledFunction().getC();
-                println(c == null ? "  (null C)" : c);
+                if (c == null) { println("  (null C)"); }
+                else if (c.trim().isEmpty()) {
+                    // An empty body is not a successful decompile: it means the
+                    // decompiler produced nothing, and printing it as a blank
+                    // line reads exactly like "this function has no body".
+                    println("  (EMPTY decompiled body; error="
+                            + r.getErrorMessage() + ")");
+                }
+                else { println(c); }
             }
         } finally {
             di.dispose();

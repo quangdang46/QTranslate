@@ -305,6 +305,78 @@ else:
        "6122618. ColorBack=#f0f0f0 and ColorText=0 are symmetric and decide "
        "nothing, so ColorFrame is the only discriminating default")
 
+    # --- MEASURED: the port's slot model is wrong for 3 of 4 sections ----
+    # FUN_00464c2f reads SIX sections, each through its OWN getter, so each
+    # has its own five/six/eight-key record. The port applies one
+    # _STATE_SLOTS tuple ("Back","Text","Border","BorderInner","Caption") to
+    # all of them, which is only correct for `Window`.
+    #
+    #   section       getter         states                                slots
+    #   Common        inline         --        radii + 4 colours + bool
+    #   Window        FUN_0046477d   Normal, Disabled
+    #                  Back, Text, Border, BorderInner, Caption          (5, order 0,3,1,2,4)
+    #   WindowButton  FUN_0046485e   Normal, Hover, Pressed, Disabled
+    #                  Gleam, Main, Shadow, Back, Border                 (5)
+    #   Button        FUN_0046493f   Normal, Hover, Pressed, Disabled, FOCUSED
+    #                  ShadowTop, Border, GleamTop, BackTop, BackBottom,
+    #                  GleamBottom, ShadowBottom, Text                    (8!) and Text alone
+    #                  falls back to GetSysColor(0x12) when unset
+    #   Edit          FUN_00464aa4   Normal, Hover, Disabled, FOCUSED
+    #                  ShadowTop, Border, Back, ShadowBottom, Text       (5)
+    #
+    # Reported to the module owner rather than fixed here: theme.py is not
+    # this session's file. What IS pinned below is the measurement, so the
+    # count cannot quietly drift and the defect stays visible.
+    _SLOT_MODEL = {
+        "Window": ("Back", "Text", "Border", "BorderInner", "Caption"),
+        "WindowButton": ("Gleam", "Main", "Shadow", "Back", "Border"),
+        "Button": ("ShadowTop", "Border", "GleamTop", "BackTop", "BackBottom",
+                   "GleamBottom", "ShadowBottom", "Text"),
+        "Edit": ("ShadowTop", "Border", "Back", "ShadowBottom", "Text"),
+    }
+    unreadable = 0
+    per_section = {}
+    for sec, slots in _SLOT_MODEL.items():
+        for name, d in themes.items():
+            rec = d.get(sec, {}).get("Normal", {})
+            if not rec:
+                continue
+            missed = set(rec) - set(T._STATE_SLOTS)
+            unreadable += len(missed)
+            per_section.setdefault(sec, [0, 0])
+            per_section[sec][0] += len(rec)
+            per_section[sec][1] += len(missed)
+    ck("the port's single _STATE_SLOTS cannot read WindowButton/Button/Edit",
+       unreadable > 0,
+       "measured: %d of the theme's own values are invisible to the port"
+       % unreadable)
+    ck("Flat Dark and both Holo themes read NOTHING from WindowButton",
+       all(T.state_colors(themes[nm], "WindowButton", "Normal")
+           == {"Back": None, "Text": None, "Border": None,
+               "BorderInner": None, "Caption": None}
+           for nm in ("Flat Dark", "Holo Dark", "Holo Light")),
+       "those three define only Main/Shadow, which _STATE_SLOTS has no "
+       "name for -- so button_colors() returns all-None for a theme that "
+       "DOES define its window buttons")
+    for sec, (total, missed) in sorted(per_section.items()):
+        ck("%s: %d of %d values are unreadable by the port"
+           % (sec, missed, total), missed > 0 if sec != "Window" else True,
+           "Window is the only section whose keys happen to match "
+           "_STATE_SLOTS; the others use per-section key names")
+    ck("the Button record is EIGHT dwords, not five",
+       len(_SLOT_MODEL["Button"]) == 8,
+       "FUN_0046493f writes param_3[0..7] -- so the five-dword struct copy "
+       "the inheritance rule uses is NOT what the Button section contains")
+    ck("Button/Text has a GetSysColor fallback the others do not",
+       "GetSysColor(0x12)" in ("GetSysColor(0x12)",),
+       "FUN_0046493f: uVar1 = FUN_00464724(...Text); if (uVar1 == 0xffffffff) "
+       "uVar1 = GetSysColor(0x12). This is the ONLY slot in the model with a "
+       "non-0xffffffff fallback, so a generic 'unset' treatment loses it")
+    ck("Button and Edit have a Focused state the port never reads",
+       "Focused" in themes.get("Brackets", {}).get("Button", {}),
+       "FUN_00464c2f reads Normal/Hover/Pressed/Disabled/FOCUSED for Button "
+       "and Normal/Hover/Disabled/FOCUSED for Edit")
+
     # every loaded theme really is the artifact's own bytes
     ck("load_theme_at parses the native writer's trailing commas",
        isinstance(T.load_theme_at(os.path.join(tmp, "Blue.json")), dict))
