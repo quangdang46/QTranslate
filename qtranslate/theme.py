@@ -64,7 +64,9 @@ def load_theme_at(path: str) -> dict:
         text = f.read()
     text = re.sub(r"//[^\n]*", "", text)
     text = re.sub(r",(\s*[}\]])", r"\1", text)
-    return json.loads(text)
+    theme = json.loads(text)
+    theme["Common"] = _normalize_common(theme.get("Common", {}))
+    return theme
 
 
 def load_theme(name: str, themes_dir: str = THEMES_DIR) -> dict:
@@ -190,6 +192,55 @@ SECTION_SLOTS = {
 # port substitutes Tk's button-text colour rather than reporting unset.
 _SYSCOLOR_TEXT = {("Button", "Text"), ("Edit", "Text")}
 
+# The loader's Common reader is not one of the colour record getters. It uses
+# FUN_00440942 (hex string -> int) for ButtonRadius and WindowBorderRadius,
+# FUN_00464724 (hex -> 0xffffffff on fail) for ClientBackColor,
+# GroupBoxColor and GroupBoxHighlightColor, and FUN_00440921 (int, 0 when
+# absent) for PaintClassicFocus. And the semantics are not the colour ones:
+# ButtonRadius is clamped to >= 0; WindowBorderRadius is written only when the
+# value is <= 3 (0x464d5d: CMP EAX,0x3 / JA skips the store), so a value of 4
+# or more keeps the default rather than being applied — the opposite of the
+# colour slots, where an absent key yields 0xffffffff. ClientBackColor /
+# GroupBoxColor / GroupBoxHighlightColor are plain #RRGGBB, not BGR.
+# PaintClassicFocus is an int/bool, not a colour. Common is flat, not per-state.
+COMMON_SLOTS = ("ButtonRadius", "WindowBorderRadius", "ClientBackColor",
+                "GroupBoxColor", "GroupBoxHighlightColor", "PaintClassicFocus")
+
+
+def _normalize_common(record: dict) -> dict:
+    """The loader's Common section, with the loader's own semantics.
+
+    Native fills the theme object with 0 (FUN_004654ca) and then writes only
+    the keys that are present in the file, through its own getters.
+    """
+    out = {}
+    for k in COMMON_SLOTS:
+        raw = record.get(k)
+        if raw is None:
+            out[k] = 0
+            continue
+        if k == "ButtonRadius":
+            out[k] = max(int(str(raw).strip()), 0)
+        elif k == "WindowBorderRadius":
+            # Only 0..3 reach the field (unsigned-above at 0x464d5d); 4+ skips
+            # the store, and the object was memset to 0 before the loader ran,
+            # so an out-of-range value leaves the field at its cleared value.
+            v = int(str(raw).strip())
+            out[k] = v if 0 <= v <= 3 else 0
+        elif k == "PaintClassicFocus":
+            # Native writer emits the strings "True"/"False" (or an empty/absent
+            # key => 0). No bool() coercion of the raw JSON type — the file
+            # stores it as text.
+            v = str(raw).strip()
+            out[k] = (v.lower() not in ("", "false", "0", "no"))
+        else:  # colour ints
+            body = str(raw).strip().lstrip("#")
+            if body.strip("0123456789abcdefABCDEF") or len(body) not in (1, 2, 3, 6):
+                out[k] = 0xffffffff  # the 0xffffffff => GetSysColor(COLOR_BTNFACE) path
+            else:
+                out[k] = int(body, 16)
+    return out
+
 
 def _state(theme, section: str, state: str) -> dict:
     """One state's colour record, with native's inherit-from-Normal fallback.
@@ -204,17 +255,28 @@ def _state(theme, section: str, state: str) -> dict:
     Measured: 20 section/state pairs are genuinely absent across the seven
     recovered themes, so this is the reachable path, not a defensive branch.
 
+    The record width is taken from `SECTION_SLOTS` for this section, so the
+    inherited dict always has the shape a consumer expects (see `slot()`).
+
     `None` is accepted and yields no slots — the *unthemed* state.
     `load_theme_native` returns `None` when there is no theme to apply, and
     native renders without theme values rather than raising.
     """
     if not isinstance(theme, dict):
         return {}
+    keys = SECTION_SLOTS.get(section, _STATE_SLOTS)
     sec = theme.get(section, {})
     own = sec.get(state) or {}
-    if own or state == "Normal":
+    if state == "Normal":
         return own
-    return sec.get("Normal", {}) or {}
+    # inherit every slot of this section's record width from Normal;
+    # an absent slot becomes UNSET rather than the empty-string/0 JSON
+    # default, matching `FUN_00464724`'s behaviour on a copied record
+    out = dict(own)
+    normal = sec.get("Normal", {})
+    for k in keys:
+        out.setdefault(k, normal.get(k, UNSET))
+    return out
 
 
 def state_colors(theme, section: str, state: str = "Normal") -> dict:

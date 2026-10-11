@@ -433,6 +433,86 @@ else:
                for s in ("Window", "WindowButton", "Edit")),
        "matches the loader's inheritance loops: iVar9 = 8 for Button, 5 for "
        "Window/WindowButton/Edit (measured from FUN_00464c2f)")
+    # --- inheritance width: the record copy is the SECTION's, not a fixed 5 ----
+    # FUN_00464c2f's inherit-from-Normal is a whole-record move, so the width
+    # comes from the section's own getter. A fixed five-dword copy would drop
+    # three of Button's eight slots whenever a state is inherited -- and Blue's
+    # Button/Hover inherits nothing from Normal, so the only protection is the
+    # width itself. Asserted on the SHAPE, not on a value: a consumer that
+    # indexes c["Main"] or iterates the dict must see every slot.
+    for sec, slots in _SLOT_MODEL.items():
+        for nm in themes:
+            for state in ("Hover", "Pressed", "Disabled"):
+                got = T.state_colors(themes[nm], sec, state)
+                ck("%s/%s inherits with all %d keys present"
+                   % (sec, state, len(slots)),
+                   set(got) == set(slots),
+                   "missing %r -- the inherited record lost the section's own"
+                   " width" % (set(slots) - set(got)))
+    # An inherited slot resolves to Normal's VALUE, not to the JSON default.
+    # This is the half that catches a copy that widens the dict without
+    # carrying the values across.
+    for sec, slots in _SLOT_MODEL.items():
+        for nm in themes:
+            sec_d = themes[nm].get(sec, {})
+            if sec_d.get("Hover") or not sec_d.get("Normal"):
+                continue
+            want = T.state_colors(themes[nm], sec, "Normal")
+            got = T.state_colors(themes[nm], sec, "Hover")
+            ck("%s in %s: an inherited Hover equals Normal, slot by slot" % (sec, nm),
+               got == want,
+               "got %r want %r" % (got, want))
+    # --- the PARTIAL state: omitted keys inherit, present keys keep their own ---
+    # The only two partial states in all seven themes: Blue Button/Pressed and
+    # Button/Disabled each omit ShadowBottom. The old `_state` (return the
+    # partial dict as-is) gave ShadowBottom=None here; the measured native is a
+    # whole-record move, so it is Normal's #1b82b3. This is the pin the old
+    # code's revert MUST die on -- T2 survived the first mutation run because
+    # no assertion exercised a partial state.
+    _blue_btn_n = T.state_colors(themes["Blue"], "Button", "Normal")
+    for st in ("Pressed", "Disabled"):
+        got = T.state_colors(themes["Blue"], "Button", st)
+        ck("Blue Button/%s inherits ShadowBottom from Normal" % st,
+           "ShadowBottom" not in themes["Blue"]["Button"][st]
+           and got["ShadowBottom"] == _blue_btn_n["ShadowBottom"] == "#1b82b3",
+           "got %r -- an omitted key is Normal's value, not None" % got["ShadowBottom"])
+        # and the keys the state DOES define keep their own values, not Normal's
+        for k in T.SECTION_SLOTS["Button"]:
+            if k == "ShadowBottom" or k not in themes["Blue"]["Button"][st]:
+                continue
+            ck("Blue Button/%s keeps its own %s" % (st, k),
+               got[k] == T.slot(themes["Blue"]["Button"][st], k),
+               "got %r, the state's own value is %r" % (got[k], themes["Blue"]["Button"][st][k]))
+    # --- Common: the flat section with the loader's own semantics -------------
+    # `_normalize_common` has no caller-independent consumer, so no assertion
+    # below this line exercises it except these. Without them the whole
+    # function is unguarded -- T3 survived for exactly this reason.
+    _cb = T._normalize_common(themes["Blue"].get("Common", {}))
+    ck("Common/ClientBackColor is an int the renderer can use, not a JSON string",
+       _cb["ClientBackColor"] == int("1d8abd", 16) == 1936061,
+       repr(_cb["ClientBackColor"]))
+    ck("Common absent keys are the cleared object (0), not a colour sentinel",
+       T._normalize_common({}) ==
+       {"ButtonRadius": 0, "WindowBorderRadius": 0, "ClientBackColor": 0,
+        "GroupBoxColor": 0, "GroupBoxHighlightColor": 0, "PaintClassicFocus": 0},
+       repr(T._normalize_common({})))
+    ck("Common unparseable colour takes the 0xffffffff=>GetSysColor(BTNFACE) path",
+       T._normalize_common({"ClientBackColor": "xyz"})["ClientBackColor"] == 0xffffffff,
+       "FUN_00464724 returns 0xffffffff when FUN_0046457a cannot parse")
+    ck("Common ButtonRadius clamps negative to 0, like FUN_00440942",
+       T._normalize_common({"ButtonRadius": -3})["ButtonRadius"] == 0,
+       "a negative radius is not a value the native writer can emit")
+    ck("Common WindowBorderRadius >= 4 keeps the cleared value, not the input",
+       T._normalize_common({"WindowBorderRadius": 9})["WindowBorderRadius"] == 0,
+       "0x464d5d: CMP EAX,0x3 / JA skips the store; the field stays 0")
+    ck("Common PaintClassicFocus is the writer's True/False text, not JSON bool",
+       T._normalize_common({"PaintClassicFocus": "True"})["PaintClassicFocus"] is True
+       and T._normalize_common({"PaintClassicFocus": "False"})["PaintClassicFocus"] is False,
+       "the native writer emits the STRINGS True/False")
+    ck("the loader normalizes Common on read, not in a helper nobody calls",
+       T.load_theme_at.__code__.co_names.count("_normalize_common") == 1,
+       "load_theme_at applies it to theme['Common'] -- otherwise raw JSON ships")
+
     # Was `"GetSysColor(0x12)" in ("GetSysColor(0x12)",)` -- a string compared
     # against a tuple containing itself, which is True whatever the code does.
     # Replaced with the behaviour the sentence describes: Button/Text and
