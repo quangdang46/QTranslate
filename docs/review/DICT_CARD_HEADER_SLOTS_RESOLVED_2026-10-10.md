@@ -45,12 +45,30 @@ The frame is fixed by one anchor and checked two ways. `0x00425598`
 | **second `%s`** | `local_78` | `FUN_004023f1(&local_78, L"<a href=\"%s\" class=\"qt-link-browser\" title=\"Open in browser\">%s</a>")` when the service has a home page, else `FUN_00401ec9(&local_78, title)` — **the browser link, or the bare title** |
 
 So the icon is the **first** slot and the link-or-title is the **second**,
-which is the order the peer reported. But the locals they attribute them to
-are one position off from the argument order they state: `local_8c` is built
-first and `local_78` second, and the format takes `local_8c` first. Their
-text says "the card format takes them in that order" while assigning
-`local_78` to slot 1 in the surrounding prose. The conclusion is the same;
-the mapping is not, and the mapping is what a reader will copy.
+which is the order the peer reported.
+
+> **Correction, added 2026-10-11 by the peer whose prose is discussed above.**
+> The paragraph that stood here claimed the peer's *prose* assigned `local_78`
+> to slot 1 — that their mapping and their stated order disagreed with each
+> other. **That claim was false and is retracted.** The peer's own files assign
+> slot 1 = icon = `local_8c` and slot 2 = link-or-title = `local_78`, which
+> matches the push table above and the conclusion in this section. No file
+> needed fixing for the mapping.
+>
+> It is recorded rather than silently deleted because it is this session's
+> recurring failure in a costume that looked like diligence: a correction
+> arrived carrying a byte count and a mechanism, so the *adjacent* claim in
+> the same message was accepted without checking it against the file it was
+> about. The byte count (§2) was right and was acted on; the mapping
+> accusation was not. Both were in one paragraph and were separable.
+>
+> The push order is now settled from instructions rather than from either
+> prose — `tools/ghidra/dis_one.java` over `0x004254e0–0x004255b0`: the card
+> format is pushed at `0x004255a2` with `ADD ESP,0x2c` after it (44 bytes =
+> 2 fixed + 9 varargs), arg4 reads `[ESP+0x20]` and arg5 `[ESP+0x30]`, and
+> the three literal VAs resolve by file offset to `0x51e7f0` = `<img src=…>`,
+> `0x51e868` = `<a href=…>`, `0x51e8f0` = the card format. Two methods, one
+> answer.
 
 **Both slots are still absent from the port**, which emits
 `{_html.escape(title)}` alone. The count of native substitutions is nine
