@@ -128,6 +128,11 @@ def default_theme() -> dict:
     | `WindowButton/Hover` | `#393939`, `#7e7e7e`, `#ffffff` |
     | `WindowButton/Pressed` | `#111111`, `#383838`, `#c1c1c1` |
 
+    Those three dwords per state are the `WindowButton` record's own first
+    three slots in order — `Gleam`, `Main`, `Shadow` (`FUN_0046485e`) — so
+    they are stored under those names, not under `Window`'s `Back`/`Text`/
+    `Border`. `Back` and `Border` are absent for every state here.
+
     So the **window is entirely runtime state and the buttons are entirely
     compiled constants** — which is why this function carries the greys and
     deliberately has no `Window` section. Claiming window values here would
@@ -142,9 +147,9 @@ def default_theme() -> dict:
     return {
         "Common": {"ButtonRadius": 2, "WindowBorderRadius": 1},
         "WindowButton": {
-            "Normal": {"Back": g[0], "Text": g[2], "Border": g[1]},
-            "Hover": {"Back": g[3], "Text": g[5], "Border": g[4]},
-            "Pressed": {"Back": g[6], "Text": g[7], "Border": g[8]},
+            "Normal": {"Gleam": g[0], "Main": g[1], "Shadow": g[2]},
+            "Hover": {"Gleam": g[3], "Main": g[4], "Shadow": g[5]},
+            "Pressed": {"Gleam": g[6], "Main": g[7], "Shadow": g[8]},
         },
     }
 
@@ -158,16 +163,43 @@ def active_theme(name: str, themes_dir: str = THEMES_DIR) -> dict:
     return default_theme() if theme is None else theme
 
 
+# FUN_00464c2f reads each section through its OWN getter, so each section has
+# its own key names AND its own record width. Applying one tuple to all of
+# them is only correct for Window -- verified against the seven themes, the
+# port could not read 16 of WindowButton's 22 values, 35 of Button's 49,
+# or 8 of Edit's 26.
+#
+#   section       getter         record   slots
+#   Window        FUN_0046477d   5 dwords Back, Text, Border, BorderInner, Caption
+#   WindowButton  FUN_0046485e   5        Gleam, Main, Shadow, Back, Border
+#   Button        FUN_0046493f   8        ShadowTop, Border, GleamTop, BackTop,
+#                                          BackBottom, GleamBottom, ShadowBottom, Text
+#   Edit          FUN_00464aa4   5        ShadowTop, Border, Back, ShadowBottom, Text
 _STATE_SLOTS = ("Back", "Text", "Border", "BorderInner", "Caption")
+SECTION_SLOTS = {
+    "Window": _STATE_SLOTS,
+    "WindowButton": ("Gleam", "Main", "Shadow", "Back", "Border"),
+    "Button": ("ShadowTop", "Border", "GleamTop", "BackTop", "BackBottom",
+               "GleamBottom", "ShadowBottom", "Text"),
+    "Edit": ("ShadowTop", "Border", "Back", "ShadowBottom", "Text"),
+}
+
+# Button/Text and Edit/Text are the two slots that do NOT stay at
+# FUN_00464724's 0xffffffff when absent: each does
+# `if (uVar1 == 0xffffffff) uVar1 = GetSysColor(COLOR_BTNTEXT)`, so the
+# port substitutes Tk's button-text colour rather than reporting unset.
+_SYSCOLOR_TEXT = {("Button", "Text"), ("Edit", "Text")}
 
 
 def _state(theme, section: str, state: str) -> dict:
-    """One state's colour slots, with native's inherit-from-Normal fallback.
+    """One state's colour record, with native's inherit-from-Normal fallback.
 
     `FUN_00464c2f` copies the whole record from `Normal` when the requested
     state's key is absent, so an omitted `Disabled`/`Hover`/`Pressed` is
     rendered with `Normal`'s values rather than with nothing. The copy is a
-    five-dword struct move, so all five slots inherit together.
+    whole-record move -- five dwords for Window/WindowButton/Edit, **eight**
+    for Button, whose getter `FUN_0046493f` writes `param_3[0..7]` -- so every
+    slot of that section inherits together, not just five of them.
 
     Measured: 20 section/state pairs are genuinely absent across the seven
     recovered themes, so this is the reachable path, not a defensive branch.
@@ -186,13 +218,27 @@ def _state(theme, section: str, state: str) -> dict:
 
 
 def state_colors(theme, section: str, state: str = "Normal") -> dict:
-    """All five colour slots of one section/state, `None` where unset.
+    """One section/state's colour slots, `None` where unset.
+
+    Uses each section's own slot list from `SECTION_SLOTS`, because native
+    reads WindowButton through `FUN_0046485e` (Gleam/Main/Shadow/Back/Border)
+    and Button through `FUN_0046493f` (eight keys) — applying Window's names to
+    those read nothing at all.
 
     Uses `slot()`, so an unparseable or absent value is reported as `None`
-    rather than as a colour.
+    rather than as a colour. `Button/Text` and `Edit/Text` are the two
+    exceptions: their getters substitute `GetSysColor(COLOR_BTNTEXT)` for the
+    absent case, so those two report Tk's button-text colour instead of `None`.
     """
+    keys = SECTION_SLOTS.get(section, _STATE_SLOTS)
     rec = _state(theme, section, state)
-    return {k: slot(rec, k) for k in _STATE_SLOTS}
+    out = {}
+    for k in keys:
+        value = slot(rec, k)
+        if value is None and (section, k) in _SYSCOLOR_TEXT:
+            value = TK_UNSET["text"]
+        out[k] = value
+    return out
 
 
 def window_colors(theme, state: str = "Normal") -> dict:
@@ -208,9 +254,27 @@ def window_colors(theme, state: str = "Normal") -> dict:
 
 
 def button_colors(theme, state: str = "Normal") -> dict:
-    """Colors for the window buttons — same inheritance rule."""
+    """Colors for the window buttons — same inheritance rule.
+
+    `WindowButton` has **no `Text` key**: `FUN_0046485e` fills five slots in
+    order, `Gleam, Main, Shadow, Back, Border`, where `Main` is the button's
+    own face and `Gleam`/`Shadow` are its highlight and shade. So `back` is
+    `Main`, `border` is `Shadow`, and `text` is `Back` — the only remaining
+    slot, which is `None` for the three themes that define their buttons with
+    `Main`/`Shadow` alone. Those `None`s flow on to `tk_colors` rather than
+    becoming a colour the theme never named.
+
+    Field alignment with `DefaultColorTheme` confirms the slot order:
+    `FUN_00464c2f` writes the four `WindowButton` states at byte offsets
+    0x44/0x58/0x6c/0x80 of the theme object, and `FUN_0044c9a6`'s nine greys
+    land at exactly 0x44..0x4c, 0x58..0x60 and 0x6c..0x74 — the first three
+    dwords of each state, i.e. `Gleam`, `Main`, `Shadow`, leaving `Back` and
+    `Border` unset. `theme::DefaultColorTheme` and `common::ColorThemeFile`
+    are both 0x1d0 bytes with the same constructor, so the two layouts are the
+    same object and the indices are directly comparable.
+    """
     c = state_colors(theme, "WindowButton", state)
-    return {"back": c["Back"], "text": c["Text"], "border": c["Border"]}
+    return {"back": c["Main"], "text": c["Back"], "border": c["Shadow"]}
 
 
 # Native's own "no colour from the theme" rendering. `FUN_00464c2f` leaves the

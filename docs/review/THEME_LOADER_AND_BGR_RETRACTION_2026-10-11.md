@@ -485,3 +485,81 @@ The lesson worth keeping is not "check twice." It is that **absence is not
 evidence of absence unless you have named the thing whose absence you
 measured** — a missing *filename* says nothing about a class, and a missing
 *string* says nothing about a behaviour.
+
+---
+
+## §7. The slot model was wrong for three of the four sections (2026-10-11, 19:00)
+
+The peer reported it, and I verified every part of it myself before touching
+`theme.py`. The finding: `FUN_00464c2f` reads **four** colour sections, each
+through **its own getter**, so each has its own key names and its own record
+width. The port applied one tuple, `_STATE_SLOTS = (Back, Text, Border,
+BorderInner, Caption)`, to all of them.
+
+### Measured, per section (the seven themes in the NSIS payload)
+
+`tools/measure_theme_slots.py` counts every value the port can reach — it
+expands absent states through the inherit-from-`Normal` rule — so its totals
+are larger: `WindowButton` 112, `Button` 243, `Edit` 130. The table below uses
+the narrower **`Normal`-record** basis, matching the peer's own count loop, so
+the two figures are directly comparable. Both are in the reproduce block.
+
+| section | getter | record | `Normal`-record values | invisible to the old model | all-states values |
+|---|---|---|---|---|---|
+| `Window` | `FUN_0046477d` | 5 dwords | 33 | 0 | 165 |
+| `WindowButton` | `FUN_0046485e` | 5 | 22 | **16** | 112 |
+| `Button` | `FUN_0046493f` | **8** | 49 | **35** | 243 |
+| `Edit` | `FUN_00464aa4` | 5 | 26 | **8** | 130 |
+
+Reproduce with `python3 -B tools/measure_theme_slots.py`. `Flat Dark`, `Holo
+Dark` and `Holo Light` style `WindowButton` with `Main`/`Shadow` only, so
+`button_colors()` returned all-`None` for three themes that genuinely style
+their window buttons. `tools/measure_theme_slots.py` is the measurement;
+`SECTION_SLOTS` in `theme.py` is the fix.
+
+### Slot order, and why `Back` is not the button face
+
+`FUN_0046485e` fills `param_3[0..4]` in the order
+**Gleam, Main, Shadow, Back, Border** — which the field alignment proves
+rather than the naming suggesting. `FUN_00464c2f` writes the four
+`WindowButton` states at byte offsets `0x44`, `0x58`, `0x6c`, `0x80` of the
+theme object, and `FUN_0044c9a6`'s nine greys land on `0x44..0x4c`,
+`0x58..0x60`, `0x6c..0x74` — the **first three dwords of each state**:
+
+```
+dword 0x11 -> byte 0x44   Normal  Gleam   0x191919
+dword 0x12 -> byte 0x48           Main    0x5e5e5e
+dword 0x13 -> byte 0x4c           Shadow  0xf9f9f9
+dword 0x16 -> byte 0x58   Hover   Gleam   0x393939  ... etc
+```
+
+`theme::DefaultColorTheme` and `common::ColorThemeFile` both allocate `0x1d0`
+bytes and both call `FUN_0044c0de`, so the two layouts are one object and the
+indices are directly comparable. **`Back` and `Border` are unset in the default
+theme**, which is what settled the mapping: `back` is `Main`, not `Back`.
+
+The inheritance copy is a whole-record move, so its width follows the section
+— measured from `FUN_00464c2f`'s loops, `iVar9 = 8` for `Button` and `iVar9 = 5`
+for `Window`/`WindowButton`/`Edit`. **Button does not use five-dword copies.**
+
+### Two corrections to the peer's own report
+
+1. **`Button/Text` is not the only `GetSysColor` slot.** The peer wrote "this
+   is the ONLY slot in the model with a non-`0xffffffff` fallback".
+   `FUN_00464aa4` — `Edit` — contains the identical
+   `if (uVar1 == 0xffffffff) uVar1 = GetSysColor(0x12)`. It is two slots, and
+   `0x12` is `COLOR_BTNTEXT`, not "system button text" generally.
+2. **Their unreadable counts were slightly off**: `Button` 35 not 39, `Edit` 8
+   not 6. The totals (22 / 49 / 26) match exactly. The difference is that
+   `Metro`'s `Edit` section has no `Normal` record at all, so it contributes
+   nothing to a `Normal`-only count — the port's own inheritance then finds
+   nothing to inherit. Per-theme provenance is in the reproduce block.
+
+The peer also pinned the defect with an assertion that asserted nothing:
+`"GetSysColor(0x12)" in ("GetSysColor(0x12)",)` — a string against a tuple
+containing itself, True whatever the code does. Replaced with the behaviour.
+See [[text-assertion-is-not-behaviour-assertion]].
+
+Their report described the `app.py` divergence it would otherwise fix
+(`_default_colors` loading a theme file for the main window) and pinned it
+rather than editing my file — the ownership split working as intended.

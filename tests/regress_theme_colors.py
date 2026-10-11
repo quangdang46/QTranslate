@@ -124,10 +124,19 @@ else:
 
     # Blue's Button section has no "Back" at all -- it is a gradient
     # (BackTop/BackBottom). That absence must read as unset, not as black.
-    ck("Blue Button/Normal has no Back key (gradient) and reads unset",
-       "Back" not in blue.get("Button", {}).get("Normal", {})
-       and T.state_colors(blue, "Button", "Normal")["Back"] is None,
-       repr(blue.get("Button", {}).get("Normal", {}).get("Back")))
+    # NOTE: `Back` is not a Button key in the first place -- FUN_0046493f
+    # reads ShadowTop/Border/GleamTop/BackTop/BackBottom/GleamBottom/
+    # ShadowBottom/Text. The slot that IS absent in Blue and present in
+    # Brackets is GleamTop, so that is what carries the "unset, not black"
+    # assertion now that Button uses its own key names.
+    ck("Blue Button/Normal omits GleamTop (a Button key) and reads unset",
+       "GleamTop" not in blue.get("Button", {}).get("Normal", {})
+       and T.state_colors(blue, "Button", "Normal")["GleamTop"] is None,
+       repr(blue.get("Button", {}).get("Normal", {}).get("GleamTop")))
+    ck("Blue's Button gradient really is BackTop/BackBottom, with no Back key",
+       set(blue["Button"]["Normal"]) & {"BackTop", "BackBottom"}
+       and "Back" not in T.SECTION_SLOTS["Button"],
+       repr(sorted(blue["Button"]["Normal"])))
 
     # --- native fidelity, and the Tk boundary the port draws --------------
     # `window_colors` returns `None` for an unset slot because
@@ -161,10 +170,24 @@ else:
     # draft asserted they were equal, which conflated `WindowButton` with the
     # `Button` section; the live inheritance branch for this helper is under
     # Holo Dark/Holo Light, whose WindowButton omits Hover.)
+    #
+    # CORRECTED 10-11 19:0x: this pin originally expected Blue Hover back
+    # == #61add1 and Normal back == #1d8abd, i.e. that the `Back` KEY is the
+    # button face. The slot order FUN_0046485e writes is
+    # Gleam, Main, Shadow, Back, Border -- Main is the face -- and the field
+    # alignment proves it: FUN_00464c2f's WindowButton states sit at 0x44,
+    # 0x58, 0x6c, 0x80 in the theme object, and FUN_0044c9a6's nine greys land
+    # on 0x44..0x4c / 0x58..0x60 / 0x6c..0x74, the FIRST THREE dwords of each
+    # state. So the compiled greys are Gleam/Main/Shadow; `Back` is unset in
+    # the default theme, which the previous pin could not survive.
     ck("button_colors reads the WindowButton section and respects its Hover",
-       T.button_colors(blue, "Hover")["back"] == "#61add1"
-       and T.button_colors(blue, "Normal")["back"] == "#1d8abd",
+       T.button_colors(blue, "Hover")["back"] == "#ffffff"
+       and T.button_colors(blue, "Hover")["text"] == "#61add1"
+       and T.button_colors(blue, "Normal")["back"] == "#fefefe",
        repr(T.button_colors(blue, "Hover")))
+    ck("button_colors takes the face from Main and the glyph from Back",
+       T.button_colors(blue, "Normal")["text"] == "#1d8abd",
+       "Main is the face; Back is the only other slot the section names")
     ck("button_colors inherits Normal where WindowButton omits the state",
        all("Hover" not in themes[nm].get("WindowButton", {})
            and T.button_colors(themes[nm], "Hover")
@@ -334,6 +357,10 @@ else:
                    "GleamBottom", "ShadowBottom", "Text"),
         "Edit": ("ShadowTop", "Border", "Back", "ShadowBottom", "Text"),
     }
+    # The measured symptom stays pinned, but the contract now under test is
+    # `state_colors`'s per-section choice rather than "_STATE_SLOTS misses
+    # things". Both halves matter: the raw measurement (which is why the fix
+    # was needed) and the assertion that the live path no longer has the hole.
     unreadable = 0
     per_section = {}
     for sec, slots in _SLOT_MODEL.items():
@@ -346,34 +373,82 @@ else:
             per_section.setdefault(sec, [0, 0])
             per_section[sec][0] += len(rec)
             per_section[sec][1] += len(missed)
-    ck("the port's single _STATE_SLOTS cannot read WindowButton/Button/Edit",
+    ck("the measurement that motivated the fix still holds numerically",
        unreadable > 0,
-       "measured: %d of the theme's own values are invisible to the port"
+       "measured: %d values are invisible to a single shared slot tuple"
        % unreadable)
-    ck("Flat Dark and both Holo themes read NOTHING from WindowButton",
-       all(T.state_colors(themes[nm], "WindowButton", "Normal")
-           == {"Back": None, "Text": None, "Border": None,
-               "BorderInner": None, "Caption": None}
+    ck("state_colors now uses each section's OWN slot list",
+       all(set(T.state_colors(themes[nm], sec, "Normal")) <= set(slots)
+           for sec, slots in _SLOT_MODEL.items() for nm in themes),
+       "the fix: SECTION_SLOTS replaces one tuple applied to all sections")
+    ck("the live path reads every value a section names",
+       all(
+           T.state_colors(themes[nm], sec, "Normal")
+           == {k: T.slot(themes[nm][sec]["Normal"], k) for k in slots}
+           for sec, slots in _SLOT_MODEL.items() for nm in themes
+           if themes[nm].get(sec, {}).get("Normal")),
+       "each key resolves to exactly what slot() would give it, with the "
+       "GetSysColor(COLOR_BTNTEXT) substitution where the getter applies it")
+    # FLIPPED 10-11 19:1x: this pin originally asserted the DEFECT -- that Flat
+    # Dark, Holo Dark and Holo Light read NOTHING from WindowButton because
+    # they define only Main/Shadow, keys the old single _STATE_SLOTS had no
+    # name for. Those themes now read their real values through
+    # SECTION_SLOTS, so the pin is inverted: it asserts the fix, and would
+    # fail again if the port regressed to one shared slot tuple.
+    ck("Flat Dark and both Holo themes read their real WindowButton values",
+       all(T.state_colors(themes[nm], "WindowButton", "Normal")["Main"]
+           == T.slot(themes[nm]["WindowButton"]["Normal"], "Main")
+           and T.state_colors(themes[nm], "WindowButton", "Normal")["Main"]
+           is not None
            for nm in ("Flat Dark", "Holo Dark", "Holo Light")),
-       "those three define only Main/Shadow, which _STATE_SLOTS has no "
-       "name for -- so button_colors() returns all-None for a theme that "
-       "DOES define its window buttons")
+       "those three define only Main/Shadow, so they read real values only "
+       "once WindowButton uses its OWN key names rather than Window's")
     for sec, (total, missed) in sorted(per_section.items()):
-        ck("%s: %d of %d values are unreadable by the port"
+        ck("%s: %d of %d keys are outside Window's slot tuple"
            % (sec, missed, total), missed > 0 if sec != "Window" else True,
            "Window is the only section whose keys happen to match "
-           "_STATE_SLOTS; the others use per-section key names")
+           "_STATE_SLOTS; the others use per-section key names, which is why "
+           "SECTION_SLOTS exists")
     ck("the Button record is EIGHT dwords, not five",
        len(_SLOT_MODEL["Button"]) == 8,
        "FUN_0046493f writes param_3[0..7] -- so the five-dword struct copy "
        "the inheritance rule uses is NOT what the Button section contains")
-    ck("Button/Text has a GetSysColor fallback the others do not",
-       "GetSysColor(0x12)" in ("GetSysColor(0x12)",),
+    ck("the port models Button as eight dwords and WindowButton as five",
+       len(T.SECTION_SLOTS["Button"]) == 8
+       and all(len(T.SECTION_SLOTS[s]) == 5
+               for s in ("Window", "WindowButton", "Edit")),
+       "matches the loader's inheritance loops: iVar9 = 8 for Button, 5 for "
+       "Window/WindowButton/Edit (measured from FUN_00464c2f)")
+    # Was `"GetSysColor(0x12)" in ("GetSysColor(0x12)",)` -- a string compared
+    # against a tuple containing itself, which is True whatever the code does.
+    # Replaced with the behaviour the sentence describes: Button/Text and
+    # Edit/Text substitute a system colour when the getter got 0xffffffff,
+    # and no other slot does.
+    #
+    # Note the original comment also claimed this was "the ONLY slot in the
+    # model with a non-0xffffffff fallback" -- FALSE. FUN_00464aa4 (Edit) does
+    # the identical `if (uVar1 == 0xffffffff) uVar1 = GetSysColor(0x12)` on its
+    # own Text slot, so it is two slots, not one.
+    ck("Button/Text substitutes a system colour rather than staying unset",
+       T.state_colors({"Button": {}}, "Button", "Normal")["Text"]
+       == T.TK_UNSET["text"],
        "FUN_0046493f: uVar1 = FUN_00464724(...Text); if (uVar1 == 0xffffffff) "
-       "uVar1 = GetSysColor(0x12). This is the ONLY slot in the model with a "
-       "non-0xffffffff fallback, so a generic 'unset' treatment loses it")
-    ck("Button and Edit have a Focused state the port never reads",
-       "Focused" in themes.get("Brackets", {}).get("Button", {}),
+       "uVar1 = GetSysColor(0x12) = COLOR_BTNTEXT")
+    ck("Edit/Text does the same substitution",
+       T.state_colors({"Edit": {}}, "Edit", "Normal")["Text"]
+       == T.TK_UNSET["text"],
+       "FUN_00464aa4 has the identical GetSysColor(0x12) fallback")
+    ck("no OTHER slot gets a substitute -- Window/Text stays None",
+       T.state_colors({"Window": {}}, "Window", "Normal")["Text"] is None
+       and T.state_colors({"WindowButton": {}}, "WindowButton",
+                           "Normal")["Back"] is None
+       and T.state_colors({"Button": {}}, "Button",
+                          "Normal")["ShadowTop"] is None,
+       "the substitution is specific to the two Text slots")
+    ck("Button and Edit have a Focused state, now readable",
+       "Focused" in themes.get("Brackets", {}).get("Button", {})
+       and T.state_colors(themes["Brackets"], "Button", "Focused")["BackTop"]
+       is not None,
        "FUN_00464c2f reads Normal/Hover/Pressed/Disabled/FOCUSED for Button "
        "and Normal/Hover/Disabled/FOCUSED for Edit")
 
