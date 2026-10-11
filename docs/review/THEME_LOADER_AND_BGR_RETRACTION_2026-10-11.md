@@ -300,9 +300,28 @@ Two consequences worth recording:
   `QTranslate.json` in this payload**, and the string does not occur in the
   exe in either encoding. That pointer was wrong.
 - **`ColorBack`/`ColorText`/`ColorFrame` are separate config keys that sit
-  in the same section as `ThemeName`.** So a user colour override exists
-  alongside the theme file, and the two must be resolved rather than one
-  replacing the other. Neither the port nor my earlier doc knew this.
+  in the same section as `ThemeName`.**
+
+  **Correction, because my first version of this bullet over-claimed.** I
+  wrote that "the two must be resolved rather than one replacing the other."
+  I had not measured any resolution, and there is **none**. `StructRefs` (the
+  one-pass offset scan) finds 19 functions touching these four keys, and the
+  ones that touch several are the **Options dialog**, not a resolver:
+  `FUN_004866f0` is a control-ID switch (`0x4eae` → `ThemeName`,
+  `0x4f4d` → `ColorBack`, `0x4f4f` → `ColorFrame`, `0x283e` → `ColorText`)
+  that stores each into its own field of the settings object;
+  `FUN_00410c70` is the `OptionsWindow` constructor with a `PageAppearance`
+  and three `windows::ColorButton` sub-objects — the colour pickers
+  themselves.
+
+  What the measurements actually support: the theme file owns
+  `theme::ColorThemeFile`'s own fields, and `Appearance` holds four
+  independent settings. The native main window is documented as using
+  `Appearance` colours (`app.py`'s own `_default_colors` says the popup uses
+  the theme); **which one wins where is still unmeasured**, and I am
+  recording that rather than asserting a precedence the code has not shown
+  me. This is the fourth time in this document that a tidy two-subsystem
+  story outran the evidence.
 
 ## 4. Reproduce
 
