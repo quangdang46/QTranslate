@@ -360,6 +360,220 @@ else:
        is not None,
        "the array is present but unreferenced")
 
+    # --- ResponseData's LINK field, which is not serviceLink() --------------
+    # Common.js: `function ResponseData(a,b,c,d,e){this.translation=a||"";
+    # this.sourceLanguage=b; this.translationLanguage=c;this.data=d||"";
+    # this.nextRequestHandler=e||""}` -- so the link is the FOURTH argument.
+    # serviceLink() is a different field, and conflating them produced three
+    # wrong links (7be0014). The link is asserted against the JS's own
+    # format() call, not against a literal the port could share by accident.
+    rd = re.search(r'function ResponseData\(a,b,c,d,e\)\s*\{\s*'
+                   r'this\.translation=a\|\|"";\s*this\.sourceLanguage=b;'
+                   r'\s*this\.translationLanguage=c;\s*this\.data=d\|\|"";'
+                   r'\s*this\.nextRequestHandler=e\|\|""\}', cj_src)
+    ck("Common.js: ResponseData's 4th field is `data`, so a link passed 4th "
+       "lands there", rd is not None,
+       "the constructor moved; every link assertion below would be wrong")
+
+    def js_link(name):
+        """The ``x = format(...)`` a service's response builds its link from.
+
+        Paren-balanced: a naive ``[^)]*`` stops inside ``encodeGetParam(b)``
+        and silently truncates the expression, which makes the expected string
+        below unmatchable -- and an assertion that can never match is worse than
+        a missing one.
+        """
+        s = sources.get(name, "")
+        i = s.find("function serviceDictionaryResponse")
+        if i < 0:
+            return ""
+        seg = s[i:i + 1600]
+        for m in re.finditer(r'([a-z])=format\(', seg):
+            st, d, j = m.end() - 1, 0, m.end() - 1
+            while j < len(seg):
+                if seg[j] == "(":
+                    d += 1
+                elif seg[j] == ")":
+                    d -= 1
+                    if d == 0:
+                        return seg[m.start():j + 1]
+                j += 1
+        return ""
+
+    # Urban: format("{0}/{1}", host, word) -- NOT the /define.php?term= request
+    ck("Urban: the link is host/<word>, not the request URL",
+       'b=format("{0}/{1}",e,encodeGetParam(b))' in js_link("Urban Dictionary")
+       and re.search(r'return\s+"\{0\}/\{1\}"\.format\(\s*urban_host\(\),\s*'
+                     r'_q\(word\)\)', port) is not None,
+       "reusing the request path here makes the link a duplicate of it")
+    ck("Urban: the link contains no ?term=", "?term=" not in re.search(
+        r'def urban_link\(word\)[^:]*:\s*"""(.|\n)*?"""\s*\n\s*return\s+([^\n]+)',
+        port).group(2), "the request's query string leaked into the link")
+
+    # ImTranslator: format("{0}/translation/", serviceHost()) -- the dictionary
+    # subdomain is serviceLink's field, not this one's.
+    ck("ImTranslator: the link is serviceHost + /translation/",
+       'b=format("{0}/translation/",b)' in js_link("ImTranslator")
+       and re.search(r'return\s+"\{0\}/translation/"\.format\(\s*'
+                     r'imtranslator_host\(\)\)', port) is not None,
+       "imtranslator_host() is http://imtranslator.net; the dictionary. "
+       "subdomain belongs to serviceLink")
+    ck("ImTranslator: serviceHost is the bare domain, not dictionary.*",
+       'return"http://imtranslator.net"' in sources.get("ImTranslator", ""),
+       "if this changes, imtranslator_link() follows it")
+
+    # Babylon Dictionary: host/{code(target)}/{code(source)}/, target first
+    ck("Babylon Dictionary: the link is host/{target}/{source}/ with no word",
+       'b=format("{0}/{1}/{2}/",b,codeFromLanguage(c),codeFromLanguage(d))'
+       in js_link("Babylon Dictionary")
+       and re.search(r'return\s+"\{0\}/\{1\}/\{2\}/"\.format\(\s*'
+                     r'babylon_dict_host\(\),\s*tgt,\s*src\)', port) is not None,
+       "c is the target and d the source in ResponseData(text, source, "
+       "target, data) -- so the ORDER is target-then-source")
+
+    # Wikipedia: two distinct fields, and an earlier draft deleted the
+    # distinction. Both are pinned so neither can be merged into the other.
+    ck("Wikipedia: serviceLink and the ResponseData link are distinct",
+       re.search(r'return\s+"https://www\.wikipedia\.org/"', port) is not None
+       and re.search(r'return\s+host\s*\+\s*"/wiki/"', port) is not None,
+       "wikipedia_link() is serviceLink; wikipedia_article_url() is the "
+       "ResponseData link -- both must exist separately")
+
+    # Liveness: every *_LANGS table is either read, or provably nothing to read.
+    ck("a language table that no request uses is dead BY DESIGN, not by "
+       "omission",
+       all(re.search(r'\b' + t + r'\b', re.sub(
+               r'^\s*' + t + r'\s*=.*$', "", port, flags=re.M))
+           for t in ("LINGVO_LANGS", "REVERSO_LANGS", "WORDREF_LANGS",
+                     "MULTITRAN_LANGS", "WIKI_LANGS", "GSEARCH_LANGS",
+                     "BABYLON_DICT_LANGS", "IMTRANS_LANGS")),
+       "one of the eight request-relevant tables is unreferenced again")
+    for name in ("Oxford Learner Dictionary", "Urban Dictionary"):
+        s = sources.get(name, "")
+        ck(f"{name}: its table is legitimately unused (no language in the "
+           f"request)",
+           "codeFromLanguage" not in
+           re.search(r'function serviceDictionaryRequest\([^)]*\)\{(.*?)'
+                     r'return', s).group(1)
+           and not re.search(r'\b' +
+                             ("OXFORD_LANGS" if name.startswith("Oxford")
+                              else "URBAN_LANGS") + r'\b',
+                             re.sub(r'^\s*(OXFORD|URBAN)_LANGS\s*=.*$', "",
+                                    port, flags=re.M)),
+           "a fixed-path request cannot consume a language table; if the JS "
+           "gains one, this check is the signal")
+
+    # --- the BEHAVIOUR, called rather than matched ---------------------------
+    # All the checks above compare text, and text-comparison is not enough:
+    # five mutants reintroduced the exact defects fixed in 1146d6d and 7be0014
+    # (raw indices interpolated, an unsupported entry falling back to its input,
+    # `WIKI_LANGS[17]` replaced by a literal "en") and every one of them passed
+    # a 97-assertion suite that pinned the format strings. The functions have to
+    # be CALLED. Note this suite is offline -- these are pure string builders, so
+    # calling them needs no network and no mocked service.
+    try:
+        sys.path.insert(0, ROOT)
+        from qtranslate.services import dictionary as _D
+    except Exception as exc:  # pragma: no cover - import path issue
+        ck("dictionary.py imports", False, repr(exc))
+    else:
+        # A native language index must resolve to that provider's CODE. If the
+        # index leaks into the URL, the port is building URLs native never does.
+        for label, fn, args, want in (
+            ("Lingvo", _D.lingvo_build_uri, ("hello", 17, 46, "en"),
+             "/en/translate/en-ru/hello"),
+            ("Lingvo (ISO)", _D.lingvo_build_uri, ("hello", "en", "ru", "en"),
+             "/en/translate/en-ru/hello"),
+            ("Reverso", _D.reverso_build_uri, ("hello", 17, 46),
+             "/english-russian/hello"),
+            ("WordReference", _D.wordreference_build_uri, ("hello", 17, 46),
+             "/enru/hello"),
+            ("Google Search", _D.gsearch_build_uri, ("hello", 46),
+             "/search?q=hello&ie=UTF-8&hl=ru"),
+            ("MultiTran", _D.multitran_build_uri, ("hello", "en", "ru", "en"),
+             "/m.exe?l1=2&l2=1&s=hello&SHL=1"),
+        ):
+            got = fn(*args)
+            ck("%s: a native index resolves to the provider's own code"
+               % label, got == want, "got %r want %r" % (got, want))
+        # No URL may carry a bare language index. The digits 17/46/60/2 are
+        # checked positionally (not as a bare substring) because some legit
+        # codes contain them, e.g. Google Search's hl= is fine and Reverso's
+        # `-1` for unsupported is required.
+        for label, fn, args in (
+            ("Lingvo", _D.lingvo_build_uri, ("hello", 17, 46, "en")),
+            ("Reverso", _D.reverso_build_uri, ("hello", 17, 46)),
+            ("WordReference", _D.wordreference_build_uri, ("hello", 17, 46)),
+        ):
+            got = fn(*args)
+            ck("%s: no raw language index reaches the URL" % label,
+               not re.search(r'(?<![\w-])(17|46|60)(?![\w-])', got),
+               "an index leaked into %r" % got)
+
+        # An unsupported entry must interpolate as -1, the value native sends,
+        # NOT fall back to the input. Falling back makes index 60 look like a
+        # code, which is how one of these mutants survived. Index 0 is NOT a
+        # test of this: common.is_language's `1 < a` bounds check already
+        # returns -1 there, so the table is never consulted and the fallback
+        # branch never runs. Index 60 is IN RANGE and unsupported, which is the
+        # only shape that reaches it.
+        for label, fn, args, want in (
+            ("Lingvo target unsupported", _D.lingvo_build_uri,
+             ("hello", 17, 60, "en"), "/en/translate/en--1/hello"),
+            ("Lingvo source unsupported", _D.lingvo_build_uri,
+             ("hello", 60, 17, "en"), "/en/translate/{0}-en/hello"
+             .format(_D._codes(_D.LINGVO_LANGS, 60, 17)[0])),
+        ):
+            got = fn(*args)
+            ck("%s: interpolates -1, not the input" % label,
+               got == want, "got %r want %r" % (got, want))
+        ck("supported() reports that pair unsupported",
+           _D.supported(_D.REVERSO_LANGS, 17, 0) is False
+           and _D.supported(_D.LINGVO_LANGS, 17, 60) is False
+           and _D.supported(_D.REVERSO_LANGS, 17, 46) is True,
+           "the bounds test in common.is_language is not a support test; an "
+           "in-range unsupported index is the case that distinguishes them")
+
+        # Wikipedia: the host resolves the index, and the ENGLISH fallback comes
+        # from the ARRAY, not a literal. A "en" literal passes until the entry
+        # changes, which is exactly what the mutant did.
+        ck("Wikipedia: host resolves an index to its code",
+           _D._wiki_host(46) == "https://ru.m.wikipedia.org",
+           repr(_D._wiki_host(46)))
+        ck("Wikipedia: an index does not reach the hostname",
+           "17.m.wikipedia" not in _D._wiki_host(17),
+           repr(_D._wiki_host(17)))
+        ck("Wikipedia: the fallback is WIKI_LANGS[17], not a literal",
+           _D._wiki_host("") == "https://%s.m.wikipedia.org"
+           % _D.WIKI_LANGS[17]
+           and re.search(r'code\s*=\s*WIKI_LANGS\[17\]', port) is not None,
+           repr(_D._wiki_host("")))
+
+        # The four link fields, called rather than matched.
+        for label, got, want in (
+            ("Urban", _D.urban_link("hello"),
+             "https://www.urbandictionary.com/hello"),
+            ("ImTranslator", _D.imtranslator_link(),
+             "http://imtranslator.net/translation/"),
+            ("Babylon Dictionary", _D.babylon_dict_link("en", "ru"),
+             "https://dictionary.babylon-software.com/russian/english/"),
+            ("Wikipedia article", _D.wikipedia_article_url("hello", "en", "ru"),
+             "https://ru.m.wikipedia.org/wiki/hello"),
+        ):
+            ck("%s: the ResponseData link is native's shape" % label,
+               got == want, "got %r want %r" % (got, want))
+        ck("Urban's link carries no request querystring",
+           "?term=" not in _D.urban_link("hello"))
+        ck("Babylon Dictionary's link has the word NOWHERE in it",
+           "hello" not in _D.babylon_dict_link("en", "ru"),
+           "native's link is host/{target}/{source}/ -- it takes no word at all")
+        ck("Babylon Dictionary's link is target-then-source",
+           _D.babylon_dict_link("en", "ru")
+           == "https://dictionary.babylon-software.com/russian/english/"
+           and _D.babylon_dict_link("en", "en") ==
+           "https://dictionary.babylon-software.com/english/english/",
+           "target first, source second -- an asymmetric pair proves the order")
+
 
 if fail:
     print("FAIL %d/%d" % (len(fail), n[0]))
