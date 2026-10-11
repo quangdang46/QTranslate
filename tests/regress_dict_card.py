@@ -111,6 +111,60 @@ for sid in (1, 2):
 ck("two cards -> showNavigation still guarded",
    p2.count("showNavigation") == 2)   # definition + the conditional call
 
+# ---- native's zero-result message (FUN_00425767's card counter == 0) ------
+# FUN_00451dbd returns the definition when one exists and
+# L"No results found for '%s'." otherwise; the pane state machine calls it when
+# the counter at +0x180 is zero -- the SAME counter that gates showNavigation
+# below. The port emitted nothing at all before 2026-10-11: zero cards, an
+# empty qt-content div, no message. docs/review/DICT_CARD_BUILDER_2026-10-10.md
+# 2b measured the gap; this is the fix, pinned against the artifact's own
+# literal so the wording cannot drift.
+#
+# NOTE on the three assertions below: the template ALWAYS ships the JS function
+# definitions (appendMenuItem, showNavigation) and the .qt-card CSS rule, so
+# counting those substrings would pass trivially. What distinguishes the
+# zero-result state is the emitted CALLS inside window.onload, and that is what
+# is asserted -- a definition is native's, a missing call is our divergence.
+_NATIVE_NO_RESULTS = None
+if _have_art:
+    _blob = open(_ART, "rb").read()
+    _s = _blob[0x11dbc8:0x11dbc8 + 200].decode("utf-16-le", errors="replace")
+    _NATIVE_NO_RESULTS = _s[:_s.find("\x00")]
+    ck("native no-results literal is at 0x11dbc8 and has the %s verbatim",
+       _NATIVE_NO_RESULTS == "No results found for '%s'.", repr(
+           _NATIVE_NO_RESULTS))
+
+ck("the port's NO_RESULTS renders exactly what native's literal renders",
+   _NATIVE_NO_RESULTS is not None
+   and DR.NO_RESULTS % "hello" == _NATIVE_NO_RESULTS % "hello",
+   "%r vs %r" % (DR.NO_RESULTS, _NATIVE_NO_RESULTS))
+
+# zero cards -> the message, and the query word is substituted in
+_empty = DR.render_cards([], "hello")
+ck("zero cards emits the message inside qt-content",
+   'class="qt-content">No results found for \'hello\'.' in _empty, repr(
+       _empty[_empty.find("qt-content"):][:60]))
+ck("zero cards emits no card element", 'id="qt-s' not in _empty)
+ck("zero cards emits no appendMenuItem CALL",
+   "appendMenuItem(7," not in _empty and "appendMenuItem(1," not in _empty)
+# the conditional showNavigation call is native's own onload and always ships;
+# the zero-result branch is the absence of the per-card checkEntry calls.
+ck("zero cards emits no checkEntry CALL", "checkEntry(" not in _empty.split(
+    "window.onload")[0].replace("function checkEntry", ""),
+   "checkEntry is defined in the template but must not be CALLED")
+
+# the query is HTML-escaped: it is user input reaching HTML
+_esc = DR.render_cards([], "<script>")
+ck("the query word is escaped",
+   "&lt;script&gt;" in _esc,
+   repr(_esc[_esc.find("qt-content"):][:60]))
+
+# with cards, the message must NOT appear -- native's counter is nonzero
+ck("cards present -> no no-results message",
+   "No results found" not in DR.render_cards([("1", "A", "x")], "hello"))
+ck("cards present -> the card element is there",
+   'id="qt-s1"' in DR.render_cards([("1", "A", "x")], "hello"))
+
 
 if fail:
     print("FAIL %d/%d" % (len(fail), n[0]))
