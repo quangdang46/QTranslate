@@ -194,16 +194,50 @@ else:
     ck("a missing theme file returns None -- no default substituted",
        T.load_theme_native("NoSuchTheme", tmp) is None,
        "FUN_00464c2f: GetFileAttributesW == 0xffffffff -> return 0")
-    ck('ThemeName == "" is normal (unthemed), not an error',
+    ck('ThemeName == "" produces no theme file, and not an error',
        T.load_theme_native("", tmp) is None)
-    ck("a theme that could not be applied renders unthemed, without raising",
+    ck("a theme that could not be applied does not raise at any layer",
        T.window_colors(None) == {"back": None, "text": None, "border": None}
        and T.button_colors(None) == {"back": None, "text": None,
                                      "border": None}
        and T.state_colors(None, "Window", "Hover")["Back"] is None,
-       "load_theme_native returns None for a missing/empty ThemeName, and "
-       "native renders without values -- it does not raise, and it does not "
-       "substitute another theme")
+       "load_theme_native returns None for a missing/empty ThemeName")
+
+    # --- FUN_0044b44f: the installer substitutes DefaultColorTheme ----------
+    # The loader substitutes nothing (above). The *installer* is where the
+    # default appears, so "no theme file" and "no active theme" are different
+    # states -- conflating them was the error the retraction doc records.
+    for name in ("", "NoSuchTheme"):
+        ck("active_theme(%r) is the default, never None" % name,
+           T.active_theme(name, tmp) == T.default_theme(),
+           "FUN_0044b44f installs theme::DefaultColorTheme when the load fails")
+    ck("active_theme loads a theme file when one exists",
+       T.active_theme("Blue", tmp) != T.default_theme()
+       and T.window_colors(T.active_theme("Blue", tmp))["back"] == "#1586bb",
+       "a loadable ThemeName wins over the default")
+    ck("DefaultColorTheme's radii are the ones FUN_0044c9a6 sets",
+       T.default_theme()["Common"]["ButtonRadius"] == 2
+       and T.default_theme()["Common"]["WindowBorderRadius"] == 1,
+       "param_1[1] = 2, param_1[2] = 1")
+    ck("DefaultColorTheme's hardcoded greys are achromatic, as compiled in",
+       all(len(set(v[i:i+2] for i in (1, 3, 5))) == 1
+           for v in ("#%06x" % g for g in T.DEFAULT_THEME_GRAYS)),
+       "FUN_0044c9a6 writes only greys: 0x191919, 0x5e5e5e, ...")
+    ck("the greys reach the renderer through the normal path",
+       all(T.button_colors(T.default_theme(), st)["back"]
+           in set("#%06x" % g for g in T.DEFAULT_THEME_GRAYS)
+           for st in ("Normal", "Hover", "Pressed")),
+       repr([T.button_colors(T.default_theme(), st) for st in
+             ("Normal", "Hover", "Pressed")]))
+    ck("GetSysColor slots stay unset here -- Windows state, not REPO data",
+       T.state_colors(T.default_theme(), "Window", "Normal")["Back"] is None,
+       "the default theme's window colours are runtime values; claiming them "
+       "from a macOS host would be inventing them")
+    ck("the unset slots project to a real Tk colour, never None",
+       all(isinstance(v, str)
+           for v in T.tk_colors(T.window_colors(T.default_theme())).values()),
+       repr(T.tk_colors(T.window_colors(T.default_theme()))))
+
     # every loaded theme really is the artifact's own bytes
     ck("load_theme_at parses the native writer's trailing commas",
        isinstance(T.load_theme_at(os.path.join(tmp, "Blue.json")), dict))
