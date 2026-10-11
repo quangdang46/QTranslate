@@ -238,6 +238,73 @@ else:
            for v in T.tk_colors(T.window_colors(T.default_theme())).values()),
        repr(T.tk_colors(T.window_colors(T.default_theme()))))
 
+    # --- MEASURED GAP, not a claim about the port -------------------------
+    # FUN_0044c9a6 writes FIVE five-dword colour records, at indices
+    # [0xb..0xf], [0x10..0x14], [0x1b..0x1f] and [0x6e..0x72], and the last
+    # one is left at its memset(0) value -- so native's default theme really
+    # does have empty sections, and an empty section is NOT an absent one.
+    # The port's default_theme() reproduces only WindowButton, so this
+    # asserts the boundary the port draws rather than pretending it is full.
+    for sec in ("Window", "WindowButton", "Button", "Common"):
+        got = T.state_colors(T.default_theme(), sec, "Normal")
+        ck("default_theme's %s section is either filled or honestly None" % sec,
+           isinstance(got, dict),
+           repr(got))
+    ck("default_theme fills WindowButton for all four states, as compiled in",
+       all(T.button_colors(T.default_theme(), st)["back"] is not None
+           for st in ("Normal", "Hover", "Pressed")),
+       "FUN_0044c9a6 writes WindowButton's nine greys twice, [0x11..0x13]+"
+       "[0x16..0x18] and again [0x65..0x6d]")
+    ck("the port's default_theme does NOT claim a Window section it never read",
+       "Window" not in T.default_theme(),
+       "the greys and the GetSysColor family are compiled in; the Window "
+       "record they land in is a runtime derivation this host cannot supply. "
+       "Asserted so a later edit cannot quietly invent one -- and so the gap "
+       "stays visible rather than being papered over with #000000")
+
+    # --- ThemeName vs ColorBack/ColorText/ColorFrame: they never meet -----
+    # This was an open question: the port resolved all four independently and
+    # nobody knew whether native resolved them against each other. Measured,
+    # and the answer is that the question has a false premise -- the two
+    # families are consumed by different windows, so nothing ever picks.
+    #
+    #   FUN_0045869f (Options.json reader)  : four separate stores
+    #       ThemeName -> +0x1dc  string getter FUN_00440984
+    #       ColorBack -> +0x1e8  int getter    FUN_00440942
+    #       ColorText -> +0x1ec  int getter    FUN_00440942
+    #       ColorFrame-> +0x1f0  int getter    FUN_00440942
+    #       -- no comparison, no `or`, no shared branch
+    #   FUN_00455e25 (defaults initialiser): the same four fields, each its
+    #       own straight-line store. An immediate scan for the two
+    #       DISCRIMINATING constants finds exactly two stores in the whole
+    #       image -- both here, both at the offsets above:
+    #         [ESI+0x1e8] <- 0xf0f0f0     ColorBack
+    #         [ESI+0x1f0] <- 0x7a6c5d     ColorFrame
+    #         [ESI+0x1ec] <- 0            ColorText
+    #       A COLORREF writer would have emitted 0x005d6c7a for ColorFrame,
+    #       so this scan is also the byte-order evidence for the port's
+    #       "#%06x" rendering of the config ints.
+    #
+    # Asserted as a boundary on the PORT, since the native facts above are
+    # Ghidra reads and this suite is offline. What is pinned here is that the
+    # port does not invent a winner where native has none.
+    ck("the port reads ThemeName and the three colour ints independently",
+       not any(k in open(os.path.join(ROOT, "qtranslate", "theme.py"),
+                         encoding="utf-8", errors="replace").read()
+               for k in ("ColorBack", "ColorText", "ColorFrame")),
+       "theme.py must not read the Appearance colour overrides: the popup "
+       "takes Themes\\*.json via FUN_004654ca/FUN_0044b44f and the main "
+       "window takes ColorBack/ColorText/ColorFrame -- different consumers, "
+       "so no precedence rule exists to implement")
+    ck("config.py's #%06x is the byte order the defaults were written with",
+       (0x7a6c5d == int("7a6c5d", 16) and 0x7a6c5d != 0x5d6c7a
+        and 8023133 == int("7a6c5d", 16) and 8023133 != 6122618
+        and 15790320 == int("f0f0f0", 16)),
+       "FUN_00455e25 stores 0x7a6c5d, which is exactly int('7a6c5d',16): a "
+       "#RRGGBB writer. A COLORREF writer would have stored 0x005d6c7a = "
+       "6122618. ColorBack=#f0f0f0 and ColorText=0 are symmetric and decide "
+       "nothing, so ColorFrame is the only discriminating default")
+
     # every loaded theme really is the artifact's own bytes
     ck("load_theme_at parses the native writer's trailing commas",
        isinstance(T.load_theme_at(os.path.join(tmp, "Blue.json")), dict))
