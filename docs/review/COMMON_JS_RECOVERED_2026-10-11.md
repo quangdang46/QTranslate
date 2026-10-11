@@ -15,7 +15,14 @@
 ## 1. It is chunk 5 of the stream
 
 Chunk `[5]` at `0x13af0`, immediately after chunk `[4]` (`System.dll`) and
-before the service icons. It begins:
+before the service icons.
+
+**Offset convention used throughout my documents:** `0x13af0` is the
+**length field**, and the body is `p[offset+4 : offset+4+n]`. The peer's
+`dictionary.py` docstring writes the same chunk as `0x13af4`, which is the
+**body start**. Both are correct and they differ by exactly 4. Nothing here
+depends on which you use, but a reader mixing them will read four bytes of
+the previous field as a length and get 544,366,966. It begins:
 
 ```js
 var Const={MAX_URI_LEN:1800,MAX_SOURCE_LEN:5E3,NL:"\r\n",NL2:"\r\n\r\n"},
