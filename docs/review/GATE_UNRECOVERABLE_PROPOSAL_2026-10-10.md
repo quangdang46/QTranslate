@@ -1,5 +1,46 @@
 # Gate line proposal: 15 JS-service rows are `UNRECOVERABLE`, not `VERIFIED`
 
+> # WITHDRAWN 2026-10-11 — the premise is measurably false. DO NOT ACTION.
+>
+> **The `Service.js` sources are in this repo.** All 19 extract byte-exact from
+> `docs/review/artifacts/nsis_payload_unpacked.bin`, the 2,263,053-byte NSIS
+> solid stream `ARTIFACT_RECOVERY_2026-10-10.md` §2 already recovered and §6
+> already listed in its file table. So the rows below can cite real JS source,
+> `VERIFIED` stands, and the "reason" in §3 — "no service endpoint exists in the
+> recovered artifact to verify against" — is false for every one of them.
+>
+> Verification: walking the archive as `<uint32-LE len><body>` yields 131
+> chunks consuming all 2,263,053 bytes exactly, chunk 10 is the committed exe
+> itself (SHA-256 `f35a3bc8…38227`), and 19 chunks contain
+> `new ServiceHeader(id,"Name",…)` matching the installer's own manifest. The
+> four `Plugins/History/*.js` artifacts the I rows cite are verbatim too:
+> `escapeValue(a),escapeValue(c),escapeValue(b),escapeValue(e),escapeValue(d)`
+> for I3/I4a, `quoteHtml` for I4b, the `escMap` ESC table for I4c, and a 381-byte
+> Txt.js for I4d.
+>   docs/review/PLUGIN_JS_RECOVERED_2026-10-11.md (peer commit `cd021c8`)
+>
+> **What replaces it is strictly better.** §4 of
+> `SERVICE_JS_PROVENANCE_2026-10-10.md` said `dictionary.py`'s "Reversed from …
+> `Services/*/Service.js`" was unsupported by anything on disk. It now has 19
+> hash-pinned files to be checked against — a re-read of the port against real
+> source, which is worth more than the reclassification this proposal was heading
+> toward. Two spot-checks already done: `Google.js`'s `serviceHost` and its
+> `/translate_a/single?client=gtx&sl=auto&dt=ld&ie=UTF-8&oe=UTF-8&tk=` with the
+> GET/POST-on-`MAX_URI_LEN` switch match `google_translate.py` line for line,
+> and `Microsoft.js`'s `cn.bing.com`/`www.bing.com` domain switch matches
+> `microsoft.py`.
+>
+> Kept, not deleted, because the *reasoning error* is the reusable part and it
+> is mine: three searches each returned a locally correct fact — `Service.js`
+> content absent from the exe, each endpoint literal absent from the exe — and
+> the conclusion "not in this repo" was false, because only one of the two
+> artifacts in `docs/review/artifacts/` was ever searched. The tell was in a
+> table I wrote myself: `Service.js | PRESENT — 0x121aa4 (wide)` beside
+> `Services/ | ABSENT`. **A filename present with no path prefix means it is
+> loaded at runtime from somewhere** — a pointer to where the file lives, not
+> evidence it is gone. Before concluding an artifact is absent, state which
+> artifact you searched.
+
 > A **proposal**, not an edit. The rows' RE state belongs to whoever owns them,
 > and the Gate line is the number the project's honesty rests on, so this
 > document exists to make the change reviewable rather than to make it.

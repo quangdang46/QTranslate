@@ -3710,7 +3710,7 @@ class App:
                                 sid)), frag[:8000]))
                     except Exception:
                         pass
-                page = DR.render_cards(cards)
+                page = DR.render_cards(cards, word_q)
                 try:
                     open("dict_last.html", "w",
                          encoding="utf-8").write(page)

@@ -10,13 +10,20 @@ import os
 
 _TEMPLATE_PATH = os.path.join(os.path.dirname(__file__), "dict_template.html")
 
+# Native's empty-result message, verbatim from the recovered image at file
+# offset 0x11dbc8 (26 chars, VA 0x51ebc8) — single quotes are the native
+# literal's, not a placeholder repr, so this is formatted with % and not
+# with %r, which would double-quote and escape differently.
+#   docs/review/DICT_CARD_BUILDER_2026-10-10.md 2b
+NO_RESULTS = "No results found for '%s'."
+
 
 def load_template() -> str:
     with open(_TEMPLATE_PATH, encoding="utf-8") as f:
         return f.read()
 
 
-def render_cards(results: list) -> str:
+def render_cards(results: list, query: str = "") -> str:
     """results: [(service_id, title, html_fragment)]. Returns full page."""
     tpl = load_template()
     cards = []
@@ -61,9 +68,15 @@ def render_cards(results: list) -> str:
             f'{frag}</div></div>')
         menu_calls.append(
             f"appendMenuItem({sid}, {title!r}, '');checkEntry({sid});")
+    # FUN_00425767's zero-result state. The card counter at +0x180 is the SAME
+    # counter that gates showNavigation() below, so "no cards" is one branch
+    # in native, not a case the renderer forgets. The query word is substituted
+    # in, and it is escaped because it is user input reaching HTML.
+    body = "\n".join(cards) if cards else (
+        NO_RESULTS % _html.escape(query or ""))
     page = tpl.replace(
         '<div id="qt-content" class="qt-content"></div>',
-        '<div id="qt-content" class="qt-content">' + "\n".join(cards) + "</div>")
+        '<div id="qt-content" class="qt-content">' + body + "</div>")
     page = page.replace(
         "</body>",
         "<script>window.onload=function(){" + "".join(menu_calls)

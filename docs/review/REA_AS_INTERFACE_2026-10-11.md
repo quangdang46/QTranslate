@@ -211,5 +211,43 @@ with a definite reason, whereas the `Plugins/History/*.js` rows have no
 loader located at all. Same destination label, different and weaker reason.
 Recording that distinction is the honest part.
 
+> **This paragraph is retracted. It is wrong in both halves, and the second
+> half is wrong in the direction that cost the most.** Two corrections,
+> both measured by me rather than taken on trust (`docs/review/
+> PLUGIN_JS_RECOVERED_2026-10-11.md`, peer commit `cd021c8`):
+>
+> 1. **The `Plugins/History/*.js` files ARE in the repo**, byte-exact, inside
+>    `docs/review/artifacts/nsis_payload_unpacked.bin` — the 2,263,053-byte
+>    NSIS solid stream `ARTIFACT_RECOVERY_2026-10-10.md` §2 had already
+>    recovered and §6 had already listed in its file table. Walking it as
+>    `<uint32-LE len><body>` reproduces 131 chunks consuming all 2,263,053
+>    bytes exactly, and chunk 10 is the committed exe itself.
+> 2. **A loader IS located.** `FUN_0042836e` (`0x42836e`, 277 bytes) builds
+>    `<config>/Plugins`, appends `History\`, enumerates `*.js` from disk and
+>    runs each through `FUN_00428096` with `plugins::HistoryScript::vftable`
+>    on the stack. Exactly one xref to the wide string `Plugins` at
+>    `0x523d84`, landing at `0x428396`, which
+>    `rea instructions` places inside that function. So the asymmetry I asked
+>    the peer to preserve was **inverted**: the Plugins side has a located
+>    loader, and the Services side has a stronger one — both load from disk.
+>
+> **Why this paragraph is kept rather than deleted.** It is the failure the
+> whole session has been documenting, and it happened to me one turn after I
+> wrote a document about it. Three consecutive searches each returned a
+> correct local fact — `Service.js` content is absent from the exe (true),
+> each endpoint literal is absent from the exe (true) — and the conclusion
+> drawn, "not present in this repo", was false, because the search only ever
+> looked at ONE artifact while a second, 55% larger, sat in the same
+> directory, named in the file table of a document I had written. The tell was
+> in my own table: `Service.js | PRESENT — 0x121aa4` next to `Services/ |
+> ABSENT`. A filename present with no path prefix is a *runtime datum* — it
+> means something loads that file from somewhere. I read it as "only the name
+> survived" when it was a pointer to where the file lives.
+>
+> The reusable rule, which costs one sentence and would have caught this:
+> **before concluding an artifact is absent, state which artifact you
+> searched.** "Absent from the exe" and "absent from the repo" are different
+> claims, and only one of them was ever checked.
+
 No row state changed by this document; the reclassification remains the row
 owner's decision.
