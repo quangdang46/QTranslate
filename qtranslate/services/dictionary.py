@@ -568,6 +568,14 @@ def _multitran_code(lang):
     (native-style), so both entry points behave identically. Unsupported
     languages (MT entry is ``None``) are returned unchanged, mirroring the
     native's lossy build rather than inventing a code.
+
+    **ASYMMETRY, deliberately preserved: an ``int`` here means an
+    ALREADY-RESOLVED MultiTran code, not a language index.** That is the
+    opposite of what ``_codes`` does with an int, and the difference is real
+    rather than sloppy: at a MultiTran call site ``2`` is ru, while ``46`` is
+    ru as a language index. Routing this through ``_codes`` therefore turned
+    ``l1=2`` into ``l1=31`` and broke ``regress_dict_args.py``. Do not unify
+    the two -- the next reader will want to. See ``multitran_build_uri``.
     """
     if isinstance(lang, int) or lang in ("auto", "", None):
         return lang

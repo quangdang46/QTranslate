@@ -327,6 +327,7 @@ else:
        lv.count("_QT6_ALLs") >= 4 and port.count("_QT6_ALLs") >= 4,
        "the wrapper div, three CSS rules and the injected <div><div>")
 
+
     # SupportedLanguages, compared entry-by-entry rather than by "an array
     # exists". The two spellings differ (JS -1 vs Python None, quoted vs bare
     # strings), so they are normalised before comparison -- and the check is on
@@ -549,7 +550,23 @@ else:
            and re.search(r'code\s*=\s*WIKI_LANGS\[17\]', port) is not None,
            repr(_D._wiki_host("")))
 
-        # The four link fields, called rather than matched.
+        # The DEFAULT ui_lang path, which every other Lingvo check here
+        # bypasses by passing ui_lang explicitly. Native calls
+        # langToUiLang(Options.LanguageCode) and "en" falls to the switch's
+        # default -> "en-us", so the port must return /en-us/... with no
+        # ui_lang supplied. The peer reported a divergence here from reading
+        # ``/en/translate/...`` in my own test table as native's literal
+        # output -- it is the SLOT name, not the value, and that confusion
+        # is exactly why the default has to be asserted rather than assumed.
+        ck("Lingvo: no ui_lang given resolves to native's en-us default",
+           _D.lingvo_build_uri("hello", 17, 46).startswith("/en-us/translate/"),
+           repr(_D.lingvo_build_uri("hello", 17, 46)))
+        ck("Lingvo: the four langToUiLang cases resolve as native's switch",
+           all(_D._lingvo_ui_lang(code) == want
+               for code, want in (("ru", "ru-ru"), ("es", "es-mx"),
+                                  ("pt-BR", "pt-br"), ("en", "en-us"))),
+           "native: switch(a){case 'ru' ... default:return'en-us'}")
+
         for label, got, want in (
             ("Urban", _D.urban_link("hello"),
              "https://www.urbandictionary.com/hello"),
