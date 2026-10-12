@@ -44,10 +44,12 @@ finally:
     app._bing_tr = _orig
 
 # microsoft/bing are in the native-auto set (no detect round-trip expected).
-_native_auto = [c for c in app.do_translate.__code__.co_consts
-                if isinstance(c, frozenset)]
+# The inline _NATIVE_AUTO frozenset was replaced by _USES_AUTO_DETECT
+# (a dict at module level) in c0d7904. Check the dict directly.
+_cap = getattr(app, "_USES_AUTO_DETECT", {})
 check("microsoft/bing are native-auto services",
-      any({"bing", "microsoft"} <= c for c in _native_auto))
+      _cap.get("bing") is True and _cap.get("microsoft") is True,
+      repr(_cap))
 
 
 # yandex / youdao / babylon must ALSO forward "auto" verbatim: native sends

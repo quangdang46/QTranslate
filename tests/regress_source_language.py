@@ -138,8 +138,14 @@ if _tried and hasattr(A, "do_translate"):
     try:
         A.TRANSLATORS = dict((k, _boom) for k in saved)
         out = A.do_translate("google", "hello", "en", src="en")
+        # do_translate now returns core.Result (step 4), not a bare str.
+        # The echo text lives in .text; provider_used confirms the provider
+        # was not invoked (it would have raised via _boom).
+        out_text = getattr(out, "text", out)
+        out_provider = getattr(out, "provider_used", None)
         ck("src == dst echoes the text without calling the provider",
-           out == "hello", repr(out)[:80])
+           out_text == "hello" and out_provider == "google",
+           repr(out)[:80])
     except AssertionError as e:
         ck("src == dst echoes the text without calling the provider",
            False, str(e))
