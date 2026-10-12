@@ -440,15 +440,17 @@ def _always_dead(t, s, g):
 
 app.TRANSLATORS.clear()
 app.TRANSLATORS.update({"promt": _always_dead})
+app._ROUTER = None  # force router rebuild with new TRANSLATORS
 try:
     out = app.do_translate("promt", "hello", "vi", src="en")
 finally:
     app.TRANSLATORS.clear()
     app.TRANSLATORS.update(_orig)
+out_text = getattr(out, "text", out)
 check("do_translate still surfaces the native 'no data' string",
-      isinstance(out, str) and out.startswith("No data returned"), repr(out))
+      isinstance(out_text, str) and out_text.startswith("No data returned"), repr(out))
 check("no fabricated translation text on total failure",
-      "hello" not in out, repr(out))
+      "hello" not in out_text, repr(out))
 
 
 

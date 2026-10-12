@@ -44,16 +44,22 @@ try:
 finally:
     _promt.session = _orig_session
 
+# Patch ALL providers to raise, not just promt, so the router cannot fall back.
+_orig_t = app.TRANSLATORS.copy()
+app.TRANSLATORS.clear()
+app.TRANSLATORS.update({"promt": _boom})
+app._ROUTER = None  # force router rebuild with new TRANSLATORS
 # 2. do_translate must return the native error string when a provider raises.
 _promt.session = _boom
 try:
     out = app.do_translate("promt", "hello", "vi", src="en")
 finally:
     _promt.session = _orig_session
+out_text = getattr(out, "text", out)
 check("do_translate returns native 'no data' string on provider failure",
-      out.startswith("No data returned"), repr(out))
+      out_text.startswith("No data returned"), repr(out))
 check("do_translate never returns an '[error]' pseudo-translation",
-      "[error]" not in out, repr(out))
+      "[error]" not in out_text, repr(out))
 
 # 3. No translator adapter anywhere fabricates an "[error] ..." result.
 import inspect  # noqa: E402

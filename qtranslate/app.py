@@ -295,7 +295,8 @@ def _router(sink=None):
             return _t_google(t, sl, tl, _sink=_s)
 
         callables = dict(_ROUTER.router.callables)
-        callables["google"] = _google_for_this_call
+        if "google" in callables:
+            callables["google"] = _google_for_this_call
         return _rel.ProviderRouter(
             callables, order=list(_ROUTER.router.order),
             health=_ROUTER.health, policy=_ROUTER.router.policy,
@@ -750,7 +751,9 @@ def do_translate(service, text, target, src="auto", auto_detect=False,
                           src, target, _sink)
             if not out:
                 from qtranslate.core import Result
-                return Result("", "", service or "",
+                return Result(service or "",
+                              "No data returned (timeout while sending data.)",
+                              service or "",
                               note="no data returned (timeout)")
             if back_translate:
                 try:
@@ -775,7 +778,9 @@ def do_translate(service, text, target, src="auto", auto_detect=False,
             # native error string id 190 (vi: "Không có dữ liệu trả về
             # (quá thời gian chờ..."; canonical English verified)
             from qtranslate.core import Result
-            return Result("", "", service or "",
+            return Result(service or "",
+                          "No data returned (timeout while sending data.)",
+                          service or "",
                           note="no data returned (timeout)")
         if back_translate and not out.startswith("No data"):
             try:
@@ -796,7 +801,9 @@ def do_translate(service, text, target, src="auto", auto_detect=False,
                       phonetics=res.phonetics)
     except Exception:
         from qtranslate.core import Result
-        return Result("", "", service or "",
+        return Result(service or "",
+                      "No data returned (timeout while sending data.)",
+                      service or "",
                       note="exception: no data returned (timeout)")
 
 
@@ -2067,7 +2074,7 @@ class App:
             from qtranslate import config as _C
             if _C.load().get("General", {}).get(
                     "AutoCleanupOfTranslation", False) and res \
-                    and not res.startswith("No data"):
+                    and not res.text.startswith("No data"):
                 self.src.delete("1.0", "end")
         except Exception:
             pass
