@@ -6,6 +6,7 @@ Item signature historyItem(a,b,c,d,e,f,g) =
 (service, src, srcLang, tr, trLang, index, total).
 """
 import json as _json
+import os as _os
 
 # ------------------------------------------------------------------- Csv.js
 CSV_DESCRIPTION = "CSV file"
@@ -186,3 +187,51 @@ def txt_export(items):
 
 EXPORTERS = {"csv": csv_export, "html": html_export,
              "json": json_export, "txt": txt_export}
+
+# Extension -> exporter, and a human description per extension, mirroring
+# the `historyFileDescription` string native pairs with each
+# `historyFileExtension` (FUN_00428483). Native's history export is not
+# hardwired to HTML: it walks the registered `plugins::HistoryScript`
+# objects, asks each for its `historyFileExtension`, and uses the first
+# plugin whose extension matches `PathFindExtensionW(path)`. The port
+# ships the same four formats as built-ins rather than plugin DLLs, so
+# the dispatch shape is reproduced with a dict instead of a vtable walk;
+# the selection RULE (first match on the file's own extension) is native's.
+EXT_DESCRIPTIONS = {
+    "html": "HTML file",
+    "csv": "CSV file",
+    "json": "JSON file",
+    "txt": "Text file",
+}
+
+# Native's first registered format wins a collision. dict insertion order
+# gives us that for free, so keep this list in the order the port's
+# exporters were registered above.
+EXPORT_ORDER = ("html", "csv", "json", "txt")
+
+
+def exporter_for(path):
+    """The exporter native's FUN_00428483 would pick for ``path``.
+
+    PathFindExtensionW yields the file's extension INCLUDING the dot;
+    native compares it against each plugin's historyFileExtension. We
+    normalise to lowercase and strip the dot. Returns ``None`` when no
+    built-in handles the extension -- the caller must then report that,
+    because native would either fall through to its remaining plugins or
+    write nothing, never silently write HTML.
+    """
+    ext = _os.path.splitext(str(path or ""))[1].lower().lstrip(".")
+    if not ext:
+        # No extension at all: FUN_00428483 bails before asking any plugin
+        # ("if (*(int *)(LPCWSTR)*param_2 + -6) == 0)" -> return 0), so an
+        # extension-less path selects nothing.
+        return None
+    for cand in EXPORT_ORDER:
+        if cand == ext:
+            return EXPORTERS[cand]
+    return None
+
+
+def describe_extension(ext):
+    """Human label for an extension (native's historyFileDescription)."""
+    return EXT_DESCRIPTIONS.get(str(ext or "").lower().lstrip("."), "")

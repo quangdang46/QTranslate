@@ -3557,9 +3557,19 @@ class App:
         except Exception:
             pass
         try:
+            # Native (FUN_00428483) picks the history writer from the
+            # file's own extension via each HistoryScript plugin's
+            # historyFileExtension -- it does NOT hardwire HTML. The port
+            # used to always write HTML regardless of the chosen filename;
+            # use the same extension dispatch through H.exporter_for.
             from qtranslate import history as H
-            data = H.html_export([(s, src, "auto", res, self.target)
-                                  for (s, src, res, *_) in self.history])
+            _fn = H.exporter_for(path)
+            if _fn is None:
+                self.render("[export error] no history writer for %s "
+                            "(known: %s)" % (path, ", ".join(H.EXPORT_ORDER)))
+                return
+            data = _fn([(s, src, "auto", res, self.target)
+                        for (s, src, res, *_) in self.history])
             with open(path, "w", encoding="utf-8") as f:
                 f.write(data if isinstance(data, str) else str(data))
             self.render(f"exported {len(self.history)} items -> {path}")
