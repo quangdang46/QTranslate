@@ -69,3 +69,18 @@ class Result:
         ``provider_used=''`` and a non-empty ``note``: not ok, correctly.
         """
         return bool(self.provider_used)
+
+    @property
+    def source_language_code(self) -> str:
+        """The detected/concrete source as an ISO code (popup header needs
+        the code, but the field stays an int index — the shared vocabulary
+        across all five provider tables. ``""`` when unset, so call sites
+        can fall back with ``or``."""
+        if self.source_language is None:
+            return ""
+        try:
+            from qtranslate.services.google_translate import SUPPORTED_LANGS
+            code = SUPPORTED_LANGS[self.source_language]
+            return "" if code == -1 else str(code)
+        except Exception:
+            return ""

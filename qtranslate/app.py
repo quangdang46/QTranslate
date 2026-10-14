@@ -4025,7 +4025,9 @@ def on_hotkey(app):
     # native hotkey flow shows a separate popup (TaskShowPopupWindow),
     # not just the main window
     try:
-        app.root.after(0, lambda: show_popup(text[:300], res.text, svc, tgt))
+        app.root.after(0, lambda: show_popup(
+            text[:300], res.text, svc, tgt,
+            res.source_language_code or src))
     except Exception:
         pass
 
@@ -4124,7 +4126,8 @@ def _translate_text(app, text):
     # native mode 2 = popup + read aloud; the read-aloud half needs a provider
     # TTS sink we do not have, so only the popup is emitted here.
     try:
-        app.root.after(0, lambda: show_popup(text[:300], res.text, svc, tgt))
+        app.root.after(0, lambda: show_popup(text[:300], res.text, svc, tgt,
+                                             res.source_language_code or src))
     except Exception:
         pass
 
@@ -4227,7 +4230,8 @@ def start_clipboard_monitor(app, interval_ms: int = 800,
                     app.render(res.text)
                     app.push_hist(svc, text[:120], res.text[:200])
                     if popup:
-                        show_popup(text[:300], res.text, svc, tgt)
+                        show_popup(text[:300], res.text, svc, tgt,
+                                   res.source_language_code or src)
                 except Exception:
                     pass
         try:
@@ -4758,7 +4762,8 @@ def _safe_destroy(widget):
         pass
 
 
-def show_popup(source, result, service="google", target="vi"):
+def show_popup(source, result, service="google", target="vi",
+               src_lang="auto"):
     """Popup window — mirrors FUN_0040c393 render path.
 
     Native order: SetWindowTextW(title) -> WM_SETICON(service icon) ->
@@ -4796,6 +4801,41 @@ def show_popup(source, result, service="google", target="vi"):
         _fw = 1
     inner = tk.Frame(win, bg=_pc.get("back", "#f0f0f0"))
     inner.pack(fill="both", expand=True, padx=max(1, _fw), pady=max(1, _fw))
+    # Header line = the native popup CAPTION (FUN_0040C393:
+    # SetWindowTextW(hwnd+4, [+0x3c])). Shipped order (user-verified
+    # screenshots): "<Source> to <Target>…", a favourite star, then the
+    # PopupIcons glyph row. `win.title()` sets the OS title, which is
+    # invisible in an overrideredirect window -- so this Label IS the header.
+    _hdr_src = LANG_DISPLAY.get(src_lang or "auto", "Auto-Detect")
+    _hdr_tgt = LANG_DISPLAY.get(target, target)
+    _hdr = tk.Frame(inner, bg=_pc.get("back", "#f0f0f0"))
+    _hdr.pack(fill="x", padx=4, pady=(3, 0))
+    tk.Label(_hdr, text="%s to %s…" % (_hdr_src, _hdr_tgt),
+             bg=_pc.get("back", "#f0f0f0"),
+             fg=_pc.get("text", "#000000")).pack(side="left")
+    tk.Label(_hdr, text="★", bg=_pc.get("back", "#f0f0f0"),
+             fg=_pc.get("text", "#000000")).pack(side="left", padx=(2, 0))
+    try:
+        from qtranslate import config as _CPH
+        _icons_h = int(_CPH.load().get("Appearance", {}).get(
+            "PopupIcons", 30))
+    except Exception:
+        _icons_h = 30
+    if _icons_h:
+        _bar = tk.Frame(_hdr, bg=_pc.get("back", "#f0f0f0"))
+        _bar.pack(side="left", padx=(2, 0))
+        if _icons_h & 2:
+            tk.Label(_bar, text="\U0001F4D6",
+                     bg=_pc.get("back", "#f0f0f0")).pack(side="left", padx=1)
+        if _icons_h & 4:
+            tk.Label(_bar, text="\U0001F50A",
+                     bg=_pc.get("back", "#f0f0f0")).pack(side="left", padx=1)
+        if _icons_h & 8:
+            tk.Label(_bar, text="\U0001F4CB",
+                     bg=_pc.get("back", "#f0f0f0")).pack(side="left", padx=1)
+        if _icons_h & 16:
+            tk.Label(_bar, text="↻",
+                     bg=_pc.get("back", "#f0f0f0")).pack(side="left", padx=1)
     txt = tk.Text(inner, wrap="word",
                   bg=_pc.get("back", "#f0f0f0"),
                   fg=_pc.get("text", "#000000"),
@@ -4808,35 +4848,9 @@ def show_popup(source, result, service="google", target="vi"):
     txt.insert("1.0", result)
     txt.config(state="disabled")
 
-    # Appearance.PopupIcons bitmask (native checkboxes 1138-1141):
-    # 2=dict, 4=listen-text, 8=copy, 16=replace. Render an icon row for
-    # whichever bits are set (default 30 = all).
-    try:
-        from qtranslate import config as _CPI
-        _icons = int(_CPI.load().get("Appearance", {}).get(
-            "PopupIcons", 30))
-    except Exception:
-        _icons = 30
-    # Native popup is button-less (borderless; interaction is click-drag /
-    # double-click-header / Esc only -- see ui_match "popup-no-buttons").
-    # PopupIcons therefore renders as a passive indicator row (Label, not
-    # Button) reflecting which icons the user enabled; it does not add new
-    # clickable affordances the native popup never had.
-    if _icons:
-        bar = tk.Frame(inner, bg=_pc.get("back", "#f0f0f0"))
-        bar.pack(fill="x", padx=4, pady=(0, 4))
-        _glyphs = []
-        if _icons & 2:
-            _glyphs.append("\U0001F4D6")  # dictionary
-        if _icons & 4:
-            _glyphs.append("\U0001F50A")  # listen
-        if _icons & 8:
-            _glyphs.append("\U0001F4CB")  # copy
-        if _icons & 16:
-            _glyphs.append("↻")      # replace
-        for g in _glyphs:
-            tk.Label(bar, text=g, bg=_pc.get("back", "#f0f0f0"),
-                     fg=_pc.get("text", "#000000")).pack(side="left", padx=1)
+    # (The icon glyph row lives in the header Labels above -- the old copy
+    # of this block that rendered below the text was removed 2026-10-14 when
+    # the header moved up, matching the native title-glyph order.)
 
     def _to_main(_e=None):
         # Native: double-clicking the popup header shows the EXISTING main
