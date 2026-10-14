@@ -731,9 +731,62 @@ SCREENS = {
 }
 
 
+def tray_menu(root):
+    """Reference sheet for the tray menu's CONTENTS only.
+
+    The real app never draws this: the tray menu is the OS's own, shown on
+    right-clicking the taskbar icon (spec §5 hard rule 5), which is what
+    ``app._make_tray``'s pystray icon does. This function exists so the
+    item order can be eyeballed against the screenshot without a live
+    taskbar icon, and is deliberately NOT self-styled beyond the colours
+    the OS uses (no rounding, no shadow).
+    """
+    win = tk.Toplevel(root)
+    win.configure(bg=FACE)
+    win.geometry(f"{TRAY_W}x{TRAY_H}")
+    menu = tk.Frame(win, bg=MENU_BG, bd=0, highlightthickness=0)
+    menu.place(x=68, y=23, width=213, height=244)
+    tk.Frame(menu, bg=MENU_BORDER, bd=0,
+             highlightthickness=0).place(x=0, y=0, width=213, height=244)
+    tk.Frame(menu, bg=MENU_BG, bd=0,
+             highlightthickness=0).place(x=1, y=1, width=211, height=242)
+    y = 5
+    tk.Label(menu, text="QTranslate", bg=MENU_BG, fg="#000",
+             font=("Segoe UI", 9, "bold")).place(x=38, y=y)
+    for i, item in enumerate(TRAY_ITEMS[1:]):
+        tk.Label(menu, text=item, bg=MENU_BG, fg="#000",
+                 font=FONT).place(x=38, y=27 + i * 22)
+    _hline(menu, 1, 160, 211, MENU_SEP)
+    _check(menu, 14, 169, "Enable global hotkeys", on=True)
+    tk.Label(menu, text="Mouse mode", bg=MENU_BG, fg="#000",
+             font=FONT).place(x=38, y=190)
+    tk.Label(menu, text="›", bg=MENU_BG, fg="#000",
+             font=FONT).place(x=190, y=190)
+    _hline(menu, 1, 213, 211, MENU_SEP)
+    tk.Label(menu, text="Exit", bg=MENU_BG, fg="#000",
+             font=FONT).place(x=38, y=221)
+    return win
+
+
 def launch(screen="main"):
     root = tk.Tk()
     root.withdraw()
+    if screen == "tray":
+        # the real thing: a taskbar icon whose right-click menu is the
+        # OS's own (app._make_tray). Only if pystray + PIL are present.
+        try:
+            from qtranslate import app as _A
+            _stub = _A.App.__new__(_A.App)
+            _tray = _A._make_tray(root, _stub)
+            if _tray is not None:
+                import threading
+                threading.Thread(target=_tray.run, daemon=True).start()
+                print("tray icon running -- right-click it for the menu")
+                root.mainloop()
+                return
+        except Exception as e:
+            print("native tray unavailable (%r); falling back to the "
+                  "reference sheet" % (e,))
     SCREENS[screen](root)
     root.mainloop()
 
