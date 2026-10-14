@@ -30,6 +30,7 @@ from qtranslate.common import (
     language_from_code,
     limit_source,
     parse_json_lenient,
+    read_response_text,
     post_header,
     prepare_source,
     string_split,
@@ -276,6 +277,36 @@ def _dictionary_response(obj: dict) -> str:
     if b:
         b = NL + b
     return b
+
+
+DISK_PUBLIC_URL = ("https://cloud-api.yandex.net/v1/disk/public/"
+                     "resources/download?public_key=%s&fields=href")
+
+
+def resolve_public_href(public_key: str, opener=None) -> str:
+    """Port of FUN_0046185d: resolve a Yandex.Disk public key to a href.
+
+    Native formats ``DISK_PUBLIC_URL`` with the key, fetches it (using the
+    empty-params POST wrapper FUN_0045ba87 drives, so a plain GET here is
+    the honest equivalent), and pulls the ``href`` member out of the JSON
+    root. Returns the href string, or "" when the fetch fails, the JSON
+    is not a dict, or there is no ``href`` -- native returns 0 in exactly
+    those cases, never a partial URL.
+    """
+    if not public_key:
+        return ""
+    url = DISK_PUBLIC_URL % urllib.parse.quote(public_key, safe="")
+    try:
+        req = urllib.request.Request(url, headers={
+            "User-Agent": "Mozilla/5.0"})
+        open_ = opener.open if opener is not None else urllib.request.urlopen
+        with open_(req) as r:
+            obj = parse_json_lenient(read_response_text(r))
+    except Exception:
+        return ""
+    if isinstance(obj, dict) and obj.get("href"):
+        return str(obj["href"])
+    return ""
 
 
 def listen_url(text: str, lang: str = "en", slow: bool = False) -> str:
