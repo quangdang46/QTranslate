@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>QTranslate UI – bản tái hiện</title>
+<style>
+:root{
+  --face:#f0f0f0;--window:#fff;--border:#7e7e7e;--text:#000;--text-dim:#6d6d6d;
+  --accent:#0078d7;--link:#0066cc;--thumb:#858585;--colsep:#e5e5e5;
+  --btn-top:#e3e3e3;--btn-bottom:#d4d4d4;--btn-hl:#fff;--btn-shade:#cacaca;
+  --dis-bg:#e1e1e1;--dis-text:#dcdcdc;
+  --popup-bg:#d0d0d0;--popup-border:#53606c;--popup-icon:#3a3a3a;--popup-text:#040404;
+  --menu-bg:#f9f9f9;--menu-border:#e5e5e5;--menu-sep:#d7d7d7;
+  --page:#fafafa;--page-ink:#222;--editor:#1e1e1e;
+}
+@media (prefers-color-scheme:dark){:root{--page:#1b1b1b;--page-ink:#ddd}}
+:root[data-theme="light"]{--page:#fafafa;--page-ink:#222}
+:root[data-theme="dark"]{--page:#1b1b1b;--page-ink:#ddd}
+*{box-sizing:border-box}
+html,body{margin:0}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{background:var(--page);color:var(--page-ink);font:14px/1.4 system-ui,"Segoe UI",sans-serif;min-height:100vh}
+header{padding:14px 16px 0;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+header button{font:inherit;color:inherit;background:transparent;border:1px solid #8888;padding:5px 12px;cursor:pointer}
+header button[aria-pressed="true"]{background:var(--page-ink);color:var(--page)}
+header .sp{flex:1}
+p.note{margin:10px 16px 0;max-width:70ch;opacity:.75;font-size:13px}
+.wrap{overflow-x:auto;padding:16px}
+.stage{display:none;width:max-content}
+.stage.on{display:block}
+body.z2 .stage{zoom:2}
+
+/* ---------- Win32/Qt base ---------- */
+.win{position:relative;background:var(--face);font:12px/15px "Segoe UI",Tahoma,sans-serif;color:var(--text);overflow:hidden;border:1px solid #555}
+.win *{position:absolute}
+.win .rel,.win .rel *{position:static}
+.btn{border:1px solid var(--border);background:linear-gradient(var(--btn-top),var(--btn-bottom));box-shadow:inset 0 1px var(--btn-hl),inset 0 -1px var(--btn-shade);display:flex;align-items:center;justify-content:center;height:21px;overflow:hidden;white-space:nowrap}
+.btn.dis{background:var(--dis-bg);color:var(--dis-text);box-shadow:none}
+.combo{justify-content:flex-start;padding:0 0 0 5px}
+.combo i{right:0;top:0;width:15px;height:19px;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:8px}
+.hline{height:1px;background:var(--border);left:0;right:0}
+svg.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round;position:absolute}
+.thumb{width:2px;background:var(--thumb)}
+
+/* ---------- Main window 516x423 ---------- */
+#main{width:516px;height:423px}
+#main .title{left:0;top:0;width:514px;height:30px;background:#eff4f9}
+#main .title .logo{left:9px;top:8px;width:13px;height:13px;border-radius:50%;background:#6d6d6d}
+#main .title b{left:31px;top:7px;font-weight:400}
+#main .title .wc{top:0;height:30px;width:46px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.tb{left:0;top:30px;width:514px;height:30px;background:var(--face)}
+.tb .nb{top:2px;width:24px;height:22px;color:var(--text-dim)}
+.tb a{left:62px;top:7px;color:var(--link);text-decoration:underline}
+.tb .kb{right:8px;top:6px;font-size:14px}
+.pane{left:0;width:514px;background:var(--window)}
+.pane.top{top:60px;height:151px;padding:3px 6px;line-height:14px;white-space:pre}
+.pane.top .rel{position:static}
+.ctl{top:217px}
+.spl{top:212px;left:0;width:514px;height:5px;background:var(--face)}
+.spl::before,.spl::after{content:"";position:absolute;left:0;right:0;height:1px;background:var(--border)}
+.spl::before{top:1px}.spl::after{top:2px}
+.dots{left:249px;top:1px;width:16px;height:3px;background:radial-gradient(circle,#555 1px,transparent 1.2px) 0 0/5px 3px}
+.pane.bot{top:243px;height:149px;padding:3px 6px}
+#main .tabs{left:0;top:392px;width:514px;height:30px;background:var(--face)}
+#main .tab{top:5px;width:57px;height:22px;justify-content:flex-start;padding-left:4px;gap:4px}
+.sq{position:static;width:12px;height:12px;display:inline-block;flex:none}
+
+/* ---------- Popup 200x68 on editor ---------- */
+#popup .ed{position:relative;width:265px;height:115px;background:var(--editor);font:12px/16px Consolas,monospace;color:#d4d4d4;overflow:hidden}
+#popup .ed *{position:absolute}
+#popup .sel{left:-2px;top:12px;width:24px;height:16px;background:#264f78;color:#ce9178;padding-left:2px}
+#popup .pp{left:28px;top:30px;width:200px;height:68px;background:var(--popup-bg);border:1px solid var(--popup-border);color:var(--popup-text);font:12px/15px "Segoe UI",sans-serif}
+#popup .pp .row{left:0;top:0;width:198px;height:24px;display:flex;align-items:center;gap:7px;padding:0 6px;color:var(--popup-icon);position:absolute}
+#popup .pp .row *{position:static}
+#popup .pp .row svg.ic{position:static;width:14px;height:14px}
+#popup .pp .row .dd{white-space:nowrap}
+#popup .pp .res{left:6px;top:30px}
+
+/* ---------- Options 663x388 ---------- */
+#opt{width:663px;height:388px}
+#opt .title{left:0;top:0;width:661px;height:24px;background:#fff}
+#opt .title b{left:11px;top:4px;font-weight:400}
+#opt .title span{right:0;top:0;width:46px;height:24px;display:flex;align-items:center;justify-content:center;font-size:14px}
+#opt .side{left:10px;top:28px;width:142px;height:323px;background:var(--window);border:1px solid var(--border)}
+#opt .side div{left:0;width:140px;height:13px;padding-left:2px;line-height:13px}
+#opt .side div.sel{background:var(--accent);color:#fff}
+#opt .cb{left:159px;top:34px;width:13px;height:13px;background:var(--window);border:1px solid var(--border)}
+#opt .cb::after{content:"";position:absolute;left:3px;top:0;width:4px;height:8px;border:solid #191919;border-width:0 1.5px 1.5px 0;transform:rotate(40deg)}
+#opt .cbl{left:178px;top:34px}
+#opt .tbl{left:159px;top:60px;width:465px;height:251px;background:var(--window);border:1px solid var(--border);overflow:hidden}
+#opt .tbl .h{left:6px;top:4px}
+#opt .tbl .cs{left:317px;top:0;width:1px;height:250px;background:var(--colsep)}
+#opt .tbl .r{left:6px;width:300px}
+#opt .tbl .k{left:323px}
+#opt .tbl .thumb{left:469px;top:14px;height:164px}
+#opt .tbl .sb{left:0;top:0}
+#opt .bt{top:361px;width:75px}
+
+/* ---------- Tray menu ---------- */
+#tray .ed{position:relative;width:367px;height:295px;background:var(--editor);overflow:hidden}
+#tray .ed *{position:absolute}
+#tray .menu{left:68px;top:23px;width:213px;height:244px;background:var(--menu-bg);border:1px solid var(--menu-border);border-radius:8px;box-shadow:0 4px 14px #0008;font:12px/16px "Segoe UI",sans-serif;color:#000}
+#tray .menu div{left:38px}
+#tray .menu .ck{left:14px}
+#tray .menu .ar{left:190px}
+#tray .menu hr{left:0;width:211px;height:1px;margin:0;border:0;background:var(--menu-sep)}
+#tray .bar{left:0;top:240px;width:367px;height:55px;background:#e4effa}
+.win div{white-space:nowrap}
+.fld{background:#fff;border:1px solid var(--border);overflow:hidden}
+.dfld{background:var(--face);border:1px solid var(--text-dim);color:var(--text-dim);padding:1px 0 0 5px}
+.btn.dim{color:var(--text-dim)}
+.combo.dd{background:var(--face);border-color:var(--text-dim);color:var(--text-dim);box-shadow:none}
+.gb{border:1px solid var(--border);box-shadow:inset 1px 1px #fff,1px 1px #fff}
+.ck{width:13px;height:13px;background:#fff;border:1px solid var(--border)}
+.ck.on{background:#005eb8;border-color:#005eb8}
+.ck.on::after{content:"";position:absolute;left:3px;top:0;width:4px;height:8px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(40deg)}
+.wcc{height:30px;width:46px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.of{width:646px;height:389px}
+.of .side{background:#fff;border:1px solid var(--border)}
+.of .side div{width:139px;height:13px;padding-left:2px;line-height:13px}
+.of .side div.sel{background:var(--accent);color:#fff}
+.combo i{display:block;text-align:center;line-height:7px;padding-top:3px;font-size:8px}
+.btn.on2{background:#c4c4c4;box-shadow:inset 1px 1px #8a8a8a}
+.hd{color:#005eb8}
+.link{color:var(--link);text-decoration:underline}
+</style>
+</head>
+<body>
+<header>
+  <button data-v="main" aria-pressed="true">Cửa sổ chính</button>
+  <button data-v="popup" aria-pressed="false">Popup (Ctrl+Q)</button>
+  <button data-v="opt" aria-pressed="false">Options · Hotkeys</button>
+  <button data-v="tray" aria-pressed="false">Tray menu</button>
+  <button data-v="dict" aria-pressed="false">Dictionary</button>
+  <button data-v="hist" aria-pressed="false">History</button>
+  <button data-v="kbd" aria-pressed="false">Keyboard</button>
+  <button data-v="net" aria-pressed="false">Opt · Internet</button>
+  <button data-v="svc" aria-pressed="false">Opt · Services</button>
+  <button data-v="lang" aria-pressed="false">Opt · Languages</button>
+  <button data-v="app" aria-pressed="false">Opt · Appearance</button>
+  <button data-v="exc" aria-pressed="false">Opt · Exceptions</button>
+  <button data-v="adv" aria-pressed="false">Opt · Advanced</button>
+  <button data-v="upd" aria-pressed="false">Opt · Updates</button>
+  <span class="sp"></span>
+  <button id="zoom" aria-pressed="false">Zoom 2×</button>
+</header>
+<p class="note">Kích thước và tọa độ lấy từ số đo pixel. Font Segoe UI 12px là suy luận. Title bar và tray menu thực tế do OS vẽ, ở đây chỉ mô phỏng để so bố cục.</p>
+
+<div class="wrap">
+
+<!-- ===== MAIN ===== -->
+<div class="stage on" id="main-s"><div class="win" id="main">
+  <div class="title"><div class="logo"></div><b>QTranslate</b>
+    <div class="wc" style="right:92px">–</div><div class="wc" style="right:46px">☐</div><div class="wc" style="right:0">✕</div></div>
+  <div class="tb">
+    <div class="btn nb" style="left:4px;border-radius:0">◀</div><div class="btn nb" style="left:30px">▶</div>
+    <a>Google</a><span class="kb">⋮</span>
+  </div>
+  <div class="hline" style="top:59px"></div>
+  <div class="pane top"><span class="rel">QTranslate Version  6.10.0
+
+Global hotkeys (default values):
+Double Ctrl => Show main window (with translation of selected text, if any)
+Ctrl+Q => Translate selected text and show it in popup window
+Ctrl+Shift+Q => Show dictionary window
+Ctrl+E => Listen to selected text
+
+Main window hotkeys:
+Ctrl+Enter => Translate text
+Ctrl+N => Clear current translation</span>
+    <div class="thumb" style="left:502px;top:2px;height:40px"></div>
+    <svg class="ic" style="left:451px;top:129px" viewBox="0 0 16 16"><use href="#mic"/></svg>
+    <svg class="ic" style="left:472px;top:129px" viewBox="0 0 16 16"><use href="#hp"/></svg>
+  </div>
+  <div class="spl"><div class="dots"></div></div>
+  <div class="btn ctl" style="left:4px;width:31px"><svg class="ic" style="position:static" viewBox="0 0 16 16"><use href="#doc"/></svg></div>
+  <div class="ctl" style="left:41px;top:219px;font-size:14px">⋮</div>
+  <div class="btn ctl combo" style="left:67px;width:150px">Auto-Detect<i>▴<br>▾</i></div>
+  <div class="btn ctl" style="left:223px;width:27px">⇄</div>
+  <div class="btn ctl combo" style="left:256px;width:177px">Vietnamese<i>▴<br>▾</i></div>
+  <div class="btn ctl" style="left:438px;width:73px">Translate</div>
+  <div class="hline" style="top:242px"></div>
+  <div class="pane bot">No data returned (timeout while sending data).
+    <svg class="ic" style="left:472px;top:125px" viewBox="0 0 16 16"><use href="#hp"/></svg>
+  </div>
+  <div class="hline" style="top:392px"></div>
+  <div class="tabs">
+    <div class="btn tab" style="left:4px"><span class="sq" style="background:#4b8bf5"></span>Go…</div>
+    <div class="btn tab" style="left:61px"><span class="sq" style="background:#1b9bb0"></span>Mi…</div>
+    <div class="btn tab" style="left:118px"><span class="sq" style="background:#3aa757"></span>Pr…</div>
+    <div class="btn tab" style="left:175px"><span class="sq" style="background:#2d6cdf"></span>Ba…</div>
+    <div class="btn tab" style="left:232px"><span class="sq" style="background:#d33"></span>Ya…</div>
+    <div class="btn tab" style="left:289px"><span class="sq" style="background:#e53"></span>yo…</div>
+    <div class="btn tab" style="left:346px"><span class="sq" style="background:#2d6cdf"></span>Ba…</div>
+    <div class="btn tab" style="left:403px"><span class="sq" style="background:#3a7bd5"></span>Pa…</div>
+    <div class="btn tab" style="left:460px"><span class="sq" style="background:#0f2b46"></span>DeepL</div>
+  </div>
+</div></div>
+
+<!-- ===== POPUP ===== -->
+<div class="stage" id="popup-s"><div id="popup"><div class="ed">
+  <div class="sel" style="width:44px">record</div>
+  <div style="left:44px;top:12px;color:#ce9178">",</div>
+  <div class="pp">
+    <div class="row">
+      <span>✕</span>
+      <span class="dd">English to Viet… </span>
+      <svg class="ic" viewBox="0 0 16 16"><use href="#star"/></svg>
+      <svg class="ic" viewBox="0 0 16 16"><use href="#book"/></svg>
+      <svg class="ic" viewBox="0 0 16 16"><use href="#hp"/></svg>
+      <svg class="ic" viewBox="0 0 16 16"><use href="#copy"/></svg>
+      <span style="font-size:11px">tā</span>
+    </div>
+    <div class="res">người_record</div>
+  </div>
+</div></div></div>
+
+<!-- ===== OPTIONS ===== -->
+<div class="stage" id="opt-s"><div class="win" id="opt">
+  <div class="title"><b>Options</b><span>✕</span></div>
+  <div class="side">
+    <div style="top:3px">Basics</div><div class="sel" style="top:15px">Hotkeys</div><div style="top:28px">Internet</div>
+    <div style="top:41px">Services</div><div style="top:54px">Languages</div><div style="top:67px">Appearance</div>
+    <div style="top:80px">Exceptions</div><div style="top:93px">Advanced</div><div style="top:106px">Updates</div>
+  </div>
+  <div class="cb"></div><div class="cbl">Enable hotkeys</div>
+  <div class="tbl">
+    <div class="h">Action</div><div class="h" style="left:323px">Hotkey</div><div class="cs"></div>
+    <div class="r" style="top:24px">Show main window</div>
+    <div class="r" style="top:41px">Show popup window</div><div class="k" style="top:41px">Ctrl + Q</div>
+    <div class="r" style="top:58px">Show dictionary window</div>
+    <div class="r" style="top:75px">Show history window</div>
+    <div class="r" style="top:92px">Show keyboard window</div>
+    <div class="r" style="top:109px">Listen to selected text</div>
+    <div class="r" style="top:126px">Copy translation to clipboard</div>
+    <div class="r" style="top:143px">Replace selected text</div><div class="k" style="top:143px">Alt + W</div>
+    <div class="r" style="top:160px">Switch mouse mode</div>
+    <div class="r" style="top:177px">Translate clipboard content</div>
+    <div class="r" style="top:194px">Translate clipboard in main window</div>
+    <div class="r" style="top:211px">Translate clipboard in popup window</div>
+    <div class="r" style="top:228px">Dictionary from clipboard</div>
+    <div class="thumb" style="left:469px;top:14px;height:164px"></div>
+  </div>
+  <div class="btn bt" style="left:408px">OK</div>
+  <div class="btn bt" style="left:489px">Cancel</div>
+  <div class="btn bt dis" style="left:570px">Apply</div>
+</div></div>
+
+<!-- ===== TRAY ===== -->
+<div class="stage" id="tray-s"><div id="tray"><div class="ed">
+  <div class="menu">
+    <div style="top:5px;font-weight:700">QTranslate</div>
+    <div style="top:27px">Dictionary</div>
+    <div style="top:49px">Text recognition</div>
+    <div style="top:71px">History</div>
+    <div style="top:93px">Keyboard</div>
+    <div style="top:115px">Options</div>
+    <div style="top:137px">About QTranslate</div>
+    <hr style="top:160px">
+    <div class="ck" style="top:169px">✓</div><div style="top:169px">Enable global hotkeys</div>
+    <div style="top:190px">Mouse mode</div><div class="ar" style="top:190px">›</div>
+    <hr style="top:213px">
+    <div style="top:221px">Exit</div>
+  </div>
+  <div class="bar"></div>
+</div></div></div>
+
+</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="hp" viewBox="0 0 16 16"><path d="M3 10V8a5 5 0 0 1 10 0v2"/><rect x="2.5" y="9.5" width="3" height="4.5"/><rect x="10.5" y="9.5" width="3" height="4.5"/></symbol>
+  <symbol id="mic" viewBox="0 0 16 16"><rect x="6" y="2" width="4" height="7" rx="2"/><path d="M4 8a4 4 0 0 0 8 0M8 12v2.5"/></symbol>
+  <symbol id="star" viewBox="0 0 16 16"><path d="M8 2l1.8 3.8 4.2.5-3.1 2.9.8 4.1L8 11.2 4.3 13.3l.8-4.1L2 6.3l4.2-.5z"/></symbol>
+  <symbol id="book" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12"/><path d="M6 2v12M8 5h3M8 8h3"/></symbol>
+  <symbol id="copy" viewBox="0 0 16 16"><rect x="5" y="2.5" width="8" height="9"/><path d="M3 5v8.5h7"/></symbol>
+  <symbol id="doc" viewBox="0 0 16 16"><path d="M4 1.5h5.5L12 4v10.5H4z" fill="#fff"/><path d="M9.5 1.5V4H12"/></symbol>
+</svg>
+
+<script>
+const bs=document.querySelectorAll('header button[data-v]');
+bs.forEach(b=>b.addEventListener('click',()=>{
+  bs.forEach(x=>x.setAttribute('aria-pressed',x===b));
+  document.querySelectorAll('.stage').forEach(s=>s.classList.toggle('on',s.id===b.dataset.v+'-s'));
+}));
+const z=document.getElementById('zoom');
+z.addEventListener('click',()=>{const on=document.body.classList.toggle('z2');z.setAttribute('aria-pressed',on)});
+(()=>{
+document.querySelector('svg symbol').parentNode.insertAdjacentHTML('beforeend','<symbol id="kbd" viewBox="0 0 16 16"><rect x="1.5" y="4" width="13" height="8"/><path d="M4 7h1M7 7h1M10 7h1M4 10h8"/></symbol><symbol id="clock" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></symbol>');
+const P=(l,t,w,h,c,x,s)=>`<div class="${c||''}" style="left:${l}px;top:${t}px;${w?`width:${w}px;`:''}${h?`height:${h}px;`:''}${s||''}">${x||''}</div>`;
+const T=(l,t,x,s)=>P(l,t,0,0,'',x,s);
+const BTN=(l,t,w,x,c)=>P(l,t,w,21,'btn '+(c||''),x);
+const CMB=(l,t,w,x,c)=>P(l,t,w,20,'btn combo '+(c||''),x+'<i>▴<br>▾</i>');
+const CK=(l,c,on,x)=>P(l,c-6,13,13,'ck'+(on?' on':''))+T(l+18,c-7,x);
+const GB=(l,t,w,h,g)=>P(l,t,w,h,'gb')+T(l+9,t-7,g,'background:var(--face);padding:0 2px;line-height:14px');
+const LB=(l,c,x)=>T(l,c-7,x);
+const IC=(n,l,t,s)=>`<svg class="ic" style="left:${l}px;top:${t}px;${s||''}" viewBox="0 0 16 16"><use href="#${n}"/></svg>`;
+const SQ=(l,t,c)=>P(l,t,14,14,'',' ','background:'+c);
+const WT=(t,w,ic)=>P(0,0,w-2,30,'',IC(ic,9,7)+T(30,7,t)+P(w-140,0,46,30,'wcc','–')+P(w-94,0,46,30,'wcc','☐')+P(w-48,0,46,30,'wcc','✕'),'background:#eff4f9');
+const WIN=(id,w,h,body)=>`<div class="stage" id="${id}-s"><div class="win" style="width:${w}px;height:${h}px">${body}</div></div>`;
+const OPT=['Basics','Hotkeys','Internet','Services','Languages','Appearance','Exceptions','Advanced','Updates'];
+const FR=(id,sel,body)=>WIN(id,646,389,'').replace('class="win"','class="win of"').replace('></div></div>','>'+
+ P(0,0,644,26,'',T(6,5,'Options')+P(598,0,46,24,'wcc','✕','height:24px'),'background:#fff')+
+ P(5,30,141,323,'side',OPT.map((n,i)=>P(0,1+i*13,0,0,i==sel?'sel':'',n)).join(''))+body+
+ BTN(404,364,73,'OK')+BTN(484,364,73,'Cancel')+BTN(565,364,73,'Apply','dis')+'</div></div>');
+let H='';
+
+/* ---- Dictionary ---- */
+H+=WIN('dict',476,333,WT('Dictionary',476,'book')+CMB(4,35,153,'English')+P(163,34,274,21,'fld')+T(170,38,'◀ ▶','color:var(--text-dim);font-size:10px')+T(407,35,'⌕','font-size:16px')+T(427,36,'◷','font-size:15px')+T(457,36,'⋮','font-size:14px')+
+ P(455,60,19,240,'',T(5,4,'⌃','color:var(--text-dim)')+T(5,208,'⌄','color:var(--text-dim)'),'background:#f9f9f9')+
+ ['G.','W','B.','W','M.','I.','R.','U.','A.','y.','O.'].map((x,i)=>P(4+i*42,306,42,21,'btn'+(i?'':' on2'),'<span class="sq" style="background:'+['#4285f4','#d9534f','#1a73c8','#999','#2d6cdf','#7a3d9e','#2d6cdf','#e8890c','#e53935','#d33','#8a8a2a'][i]+'"></span>&nbsp;'+x,'justify-content:flex-start;padding-left:3px')).join(''));
+
+/* ---- History ---- */
+H+=WIN('hist',476,320,WT('History',476,'clock')+P(4,34,467,21,'fld',T(447,2,'✕','font-weight:700'))+P(4,61,467,225,'fld',
+ P(1,1,465,17,'','','background:var(--face)')+T(6,3,'★','color:#555')+T(24,3,'<b>person_record</b>')+SQ(22,22,'#4285f4')+T(44,25,'người_record'))+
+ BTN(4,294,73,'Clear')+BTN(83,294,108,'Save as…')+BTN(197,294,20,'<span style="color:#e6c800">★</span>')+BTN(398,294,73,'OK'));
+
+/* ---- Keyboard ---- */
+const KR=(y,a)=>{const tot=a.reduce((s,k)=>s+k[1],0),u=(448-3*(a.length-1))/tot;let x=8;return a.map(k=>{const w=k[1]*u,o=P(x,y,w,20,'btn',k[0],'height:20px');x+=w+3;return o}).join('')};
+const R=(s,w)=>s.split(' ').map(k=>[k,w||1]);
+let K=WT('Keyboard',464,'kbd')+P(8,37,27,20,'btn','Esc','height:20px')
+ +[52,84,116,148,196,228,260,292,336,368,400,430].map((x,i)=>P(x,37,28,20,'btn','F'+(i+1),'height:20px')).join('');
+K+=KR(57,[...R('` 1 2 3 4 5 6 7 8 9 0 - ='),['BkSp',2]]);
+K+=KR(79,[['Tab',1.5],...R('q w e r t y u i o p [ ]'),['\\',1.5]]);
+K+=KR(100,[['Caps',1.9],...R("a s d f g h j k l ; '"),['Enter',2.2]]);
+K+=KR(121,[['Shift',2.3],...R('z x c v b n m , . /'),['Shift',2.8]]);
+K+=KR(142,[['Ctrl',1.4],['Win',1.4],['Alt',1.4],['',6.3],['AltGr',1.5],['Apps',1.5],...R('^ v < >')]);
+H+=WIN('kbd',464,198,K+CMB(8,169,150,'English'));
+
+/* ---- Options: Internet ---- */
+H+=FR('net',2,GB(152,35,484,45,'Connection')+LB(157,59,'Timeout, sec:')+CMB(375,50,255,'10')+
+ GB(152,91,484,101,'Proxy')+CMB(157,105,470,'Use system proxy settings')+CMB(162,134,78,'HTTP','dd')+P(248,134,277,20,'dfld')+P(532,134,95,20,'dfld','0')+P(248,160,186,20,'dfld')+P(441,160,186,20,'dfld'));
+
+/* ---- Options: Services ---- */
+const TR=[['Google','#4285f4'],['Microsoft','#f5a623'],['Promt','#2bb673'],['Babylon','#1a73c8'],['Yandex','#e53935'],['youdao','#d32f2f'],['Baidu','#2d6cdf'],['Papago','#1dc078'],['DeepL','#0f2b46']];
+const DI=[['Google Search','#4285f4'],['WordReference','#d9534f'],['Babylon Dictionary','#1a73c8'],['Wikipedia','#fff']];
+let S=T(13,5,'Translation','color:#005eb8')+P(77,12,376,1,'','','background:#b5c9e0');
+TR.forEach((r,i)=>S+=P(5,25+i*18,13,13,'ck on')+SQ(21,24+i*18,r[1])+T(38,24+i*18,r[0]));
+S+=T(13,191,'Dictionary','color:#005eb8')+P(77,198,376,1,'','','background:#b5c9e0');
+DI.forEach((r,i)=>S+=P(5,212+i*18,13,13,'ck on')+SQ(21,211+i*18,r[1])+T(38,211+i*18,r[0]));
+S+=P(471,17,2,157,'','','background:var(--thumb)');
+H+=FR('svc',3,P(155,31,481,272,'fld',S)+BTN(157,309,24,'▲','dim')+BTN(187,309,24,'▼','dim')+BTN(219,309,117,'Add dictionary…')+BTN(342,309,118,'Remove dictionary','dim'));
+
+/* ---- Options: Languages ---- */
+const LG=['Afrikaans Albanian Arabic Armenian Azerbaijani Basque Belarusian Bengali Bulgarian Catalan Chinese_(Simplified) Chinese_(Traditional) Croatian Czech Danish Dutch English Esperanto','Estonian Filipino Finnish French Galician Georgian German Greek Haitian_Creole Hebrew Hindi Hmong Hungarian Icelandic Indonesian Irish Italian Japanese','Kannada Kazakh Khmer Korean Lao Latin Latvian Lithuanian Macedonian Malay Maltese Marathi Mongolian Norwegian Persian Polish Portuguese Romanian','Russian Serbian Sinhala Slovak Slovenian Spanish Swahili Swedish Tajik Tamil Tatar Telugu Thai Turkish Ukrainian Urdu Uzbek Vietnamese'];
+let L='';
+LG.forEach((c,ci)=>c.split(' ').forEach((n,i)=>L+=P(3+ci*126.5,2+i*14,13,13,'ck on')+T(19+ci*126.5,i*14+1,n.replace('_',' '))));
+L+=P(18,262,238,2,'','','background:var(--thumb)');
+H+=FR('lang',4,P(155,31,481,272,'fld',L)+BTN(155,308,481,'Check / Uncheck all'));
+
+/* ---- Options: Appearance ---- */
+H+=FR('app',5,GB(152,35,484,56,'General')+CK(160,55,0,'Enable window style')+LB(157,77,'Theme:')+CMB(397,68,233,'--- Default ---')+
+ GB(152,98,484,226,'Popup window')+CK(160,122,1,'Enable auto size')+CK(160,144,1,'Enable auto position')+CK(160,167,0,'Activate when opened')+CK(160,190,1,'Pin when dragging')+
+ LB(157,213,'Auto-hide delay:')+CMB(397,204,115,'5')+T(523,206,'seconds')+LB(157,237,'Transparency (0 - 90):')+P(397,227,233,20,'fld','15','padding:2px 0 0 5px')+
+ LB(157,261,'Frame thickness:')+CMB(397,252,233,'2')+LB(157,286,'Icons:')+
+ ['book','hp','copy'].map((n,i)=>P(398+i*23,275,22,22,'btn on2',IC(n,3,3,'width:15px;height:15px'),'height:22px')).join('')+P(467,275,22,22,'btn on2','tā','height:22px;font-size:11px')+
+ LB(157,313,'Background color:')+LB(320,313,'Text color:')+P(378,305,87,17,'','','background:#000;border:1px solid var(--border)')+LB(482,313,'Frame color:')+P(549,305,78,17,'','','background:#5d6c7a;border:1px solid var(--border)'));
+
+/* ---- Options: Exceptions ---- */
+const EX=[['* All Programs *','SysListView32'],['* All Programs *','SysTreeView32'],['* All Programs *','ListBox'],['* All Programs *','ScrollBar'],['* All Programs *','ComboBox'],['* All Programs *','msctls_hotkey32'],['* All Programs *','ConsoleWindowClass'],['mstsc.exe','* All Windows *']];
+let E=T(7,5,'Program Name')+T(246,5,'Window Class Name')+P(240,2,1,18,'','','background:var(--colsep)');
+EX.forEach((r,i)=>E+=T(7,25+i*17.6,r[0])+T(246,25+i*17.6,r[1]));
+H+=FR('exc',6,CMB(155,33,481,'Disabled for these programs:')+P(153,60,483,221,'fld',E)+BTN(155,288,71,'Add')+BTN(234,288,72,'Modify')+BTN(314,288,72,'Delete')+CK(154,321,1,'Enable smart detection'));
+
+/* ---- Options: Advanced ---- */
+H+=FR('adv',7,GB(152,35,484,178,'Advanced')+LB(157,56,'Default browser:')+CMB(455,46,175,'Internet Explorer')+LB(157,80,'Copy action:')+CMB(455,70,175,'Ctrl + C')+LB(157,104,'Keyboard layout indicator:')+CMB(455,94,175,'None')+LB(157,128,'Preferred domain:')+CMB(455,118,175,'com')+
+ CK(160,154,0,'Enable GUI translation')+CK(160,177,1,'Enable listening to the same text at a slower speed')+CK(160,200,0,'Remove line breaks')+
+ GB(152,224,484,66,'Mouse mode')+CK(160,244,0,'Enable mouse mode only when Ctrl is pressed')+CK(160,268,1,'Click on system tray icon switches mouse mode')+
+ GB(152,296,484,54,'API keys')+LB(157,315,'OCR API key:')+P(387,304,243,22,'fld')+T(157,331,'Register here for free OCR API key','','')+'');
+
+/* ---- Options: Updates ---- */
+H+=FR('upd',8,CK(161,44,0,'Automatically check for updates')+P(153,63,481,230,'fld')+BTN(524,300,110,'Check now'));
+
+const w=document.querySelector('.wrap');w.insertAdjacentHTML('beforeend',H);
+w.querySelectorAll('#adv-s div').forEach(d=>{if(d.textContent.startsWith('Register here'))d.className='link'});
+})();
+</script>
+</body>
+</html>
