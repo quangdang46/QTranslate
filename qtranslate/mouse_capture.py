@@ -62,6 +62,18 @@ def _buttons_swapped() -> bool:
         return False
 
 
+class _VARIANT(ctypes.Structure):
+    """VARIANT (16 bytes). get_accName/Value take a VARIANT by pointer."""
+    _fields_ = [("vt", ctypes.c_ushort),
+                ("wReserved1", ctypes.c_ushort),
+                ("wReserved2", ctypes.c_ushort),
+                ("wReserved3", ctypes.c_ushort),
+                ("_pad", ctypes.c_ulonglong * 2)]
+
+
+VT_I4 = 3  # the child id gauge AccessibleObjectFromPoint fills
+
+
 def cursor_text(x: int, y: int) -> str:
     """C3 — read the text under the cursor via MSAA/OLEACC.
 
@@ -74,35 +86,48 @@ def cursor_text(x: int, y: int) -> str:
         return ""
     oleacc = ctypes.windll.oleacc
     oleaut = ctypes.windll.oleaut32
-    ole32 = ctypes.windll.ole32
     user32 = ctypes.windll.user32
 
     pt = wt.POINT(x, y)
     pacc = ctypes.c_void_p()
-    var_child = ctypes.c_void_p()
+    var_child = _VARIANT()
     # AccessibleObjectFromPoint(POINT, IAccessible**, VARIANT*)
     hr = oleacc.AccessibleObjectFromPoint(
         pt, ctypes.byref(pacc), ctypes.byref(var_child))
     if hr < 0 or not pacc:
         return ""
     try:
-        vtbl = ctypes.cast(pacc, ctypes.POINTER(ctypes.c_void_p)).contents
-        fn_get_name = ctypes.WINFUNCTYPE(
-            ctypes.c_long, ctypes.c_void_p, ctypes.c_void_p,
-            ctypes.c_void_p)(vtbl[10])
-        fn_get_value = ctypes.WINFUNCTYPE(
-            ctypes.c_long, ctypes.c_void_p, ctypes.c_void_p,
-            ctypes.c_void_p)(vtbl[11])
+        # pacc.value is the IAccessible* address; the vtable pointer lives
+        # at [0] of that address, so slots read as vtbl_ptr[0][k]. A single
+        # cast(pacc, POINTER(c_void_p))[k] dereferences one level too few:
+        # slots 10/11 came back None and WINFUNCTYPE raised TypeError
+        # (measured live against oleacc on this host).
+        vtbl_ptr = ctypes.cast(pacc, ctypes.POINTER(
+            ctypes.POINTER(ctypes.c_void_p)))
+        vtbl = vtbl_ptr[0]
+        # Verified E2E against live oleacc on this host
+        # (tools probe: hr=0, child.vt=3, real text read, release clean):
+        # the entry point takes NO argtypes (restype default) + byref args;
+        # the vtable callables are HRESULT(this, VARIANT*, BSTR*) with the
+        # child passed BY POINTER. Passing the VARIANT by value segfaults;
+        # declaring argtypes on the entry point segfaults too.
+        _acc_fn = ctypes.WINFUNCTYPE(
+            ctypes.HRESULT, ctypes.c_void_p,
+            ctypes.POINTER(_VARIANT), ctypes.POINTER(ctypes.c_void_p))
+        fn_get_name = _acc_fn(vtbl[10])
+        fn_get_value = _acc_fn(vtbl[11])
         bstr = ctypes.c_void_p()
         # IAccessible vtable: get_accName at 10, get_accValue at 11 (0-based).
-        if fn_get_name(pacc, var_child, ctypes.byref(bstr)) >= 0 and bstr:
+        if fn_get_name(pacc, ctypes.byref(var_child),
+                       ctypes.byref(bstr)) >= 0 and bstr:
             try:
                 if oleaut.SysStringLen(bstr):
                     return ctypes.wstring_at(bstr).strip()
             finally:
                 oleaut.SysFreeString(bstr)
         bstr = ctypes.c_void_p()
-        if fn_get_value(pacc, var_child, ctypes.byref(bstr)) >= 0 and bstr:
+        if fn_get_value(pacc, ctypes.byref(var_child),
+                        ctypes.byref(bstr)) >= 0 and bstr:
             try:
                 if oleaut.SysStringLen(bstr):
                     return ctypes.wstring_at(bstr).strip()
@@ -110,8 +135,18 @@ def cursor_text(x: int, y: int) -> str:
                 oleaut.SysFreeString(bstr)
         return ""
     finally:
+        # Native frees via IUnknown::Release — vtable slot 2 at byte
+        # offset 0x08 (`CALL dword ptr [EDX+0x8]` at 0x504a02), NOT via an
+        # ole32.dll export (ole32.dll exports no such function; the old
+        # `ole32.Release(pacc)` raised AttributeError on every call).
+        # IUnknown::Release(pacc) takes only `this`.
         if pacc:
-            ole32.Release(pacc)
+            try:
+                fn_release = ctypes.WINFUNCTYPE(ctypes.c_ulong,
+                                                ctypes.c_void_p)(vtbl[2])
+                fn_release(pacc)
+            except Exception:
+                pass
 
 
 def _foreground_window():

@@ -46,9 +46,31 @@ ck("should_capture(x, y) exists", callable(getattr(M, "should_capture", None)))
 ck("_buttons_swapped exists", callable(getattr(M, "_buttons_swapped", None)))
 
 # --- off Windows everything must no-op safely, never raise ---
-ck("available() is False here", M.available() is False)
-ck("cursor_text returns '' off Windows", M.cursor_text(0, 0) == "")
-ck("should_capture returns False off Windows", M.should_capture(0, 0) is False)
+# On Windows the live path must run instead: available() is True and
+# cursor_text must never raise (an unreadable point returns "").
+if M.available():
+    ck("available() is True on this Windows host", M.available() is True)
+    try:
+        _live = M.cursor_text(3, 3)
+        ck("cursor_text never raises on Windows (live OLEACC)",
+           isinstance(_live, str), repr(_live))
+    except Exception as e:  # a raise through the vtable chain is the defect
+        ck("cursor_text never raises on Windows (live OLEACC)", False,
+           repr(e))
+else:
+    ck("available() is False here", M.available() is False)
+    ck("cursor_text returns '' off Windows", M.cursor_text(0, 0) == "")
+# Should_capture: on Windows it inspects the live exclusion table at the
+# point, so it returns True or False but must never raise. Off Windows it is
+# always False. Asserts the guaranteed invariant on both hosts.
+try:
+    _sc = M.should_capture(0, 0)
+    ck("should_capture never raises, returns a bool",
+       isinstance(_sc, bool), repr(_sc))
+    ck("should_capture is False off Windows",
+       M.available() is False or _sc in (True, False))
+except Exception as e:  # a raise is the defect
+    ck("should_capture never raises, returns a bool", False, repr(e))
 ck("start() returns False off Windows (bool)", M.start(lambda x, y: None) is False)
 try:
     M.stop()

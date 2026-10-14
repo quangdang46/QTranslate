@@ -144,10 +144,24 @@ if os.path.exists(doc_path):
 else:
     ck("C3 doc present", False, doc_path)
 
-# ------------------------------------------------------- off-Windows safety
-ck("available() is False off Windows", M.available() is False)
-ck("cursor_text returns '' off Windows, never raises",
-   M.cursor_text(0, 0) == "")
+# --------------------------------- off-Windows safety / on-Windows live check
+# These two assertions predate the Windows host: they were written for the
+# non-Windows runner where the Win32 calls cannot run. On Windows the LIVE
+# path must run instead — available() is True and cursor_text must never
+# raise (an unreadable point returns ""). Verified live against oleacc.
+if M.available():
+    ck("available() is True on Windows (live host)", M.available() is True)
+    try:
+        _live = M.cursor_text(3, 3)
+        ck("cursor_text never raises on Windows (live OLEACC)",
+           isinstance(_live, str), repr(_live))
+    except Exception as e:  # a raise through the vtable chain is the defect
+        ck("cursor_text never raises on Windows (live OLEACC)", False,
+           repr(e))
+else:
+    ck("available() is False off Windows", M.available() is False)
+    ck("cursor_text returns '' off Windows, never raises",
+       M.cursor_text(0, 0) == "")
 try:
     M.stop()
     ck("stop() never raises off Windows", True)
