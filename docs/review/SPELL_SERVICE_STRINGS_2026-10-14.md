@@ -59,8 +59,21 @@ bool FUN_0042c968(undefined4 *param_1, int *param_2)
    `Content-Type: application/x-www-form-urlencoded`.
 3. The request goes through the shared `FUN_0045bea3(host, path, headers,
    body, out)` wrapper, i.e. the same HTTP path as the other providers.
-4. `FUN_0043356c` consults constant `0x51f2a0` and `FUN_004410bf` joins
-   with string `0x522534`; both are **untraced** — not decoded here.
+4. Two operands resolved 2026-10-14 (follow-up decompile, no guesses):
+   * `FUN_0043356c(this, 0x51f2a0)` is a **string-resource loader**: it
+     requires `(param & 0xffff0000) == 0` (i.e. `0x51f2a0` is an id, not a
+     pointer) and calls `FUN_004028a4(id & 0xffff)`, which loops
+     `ATL::CAtlBaseModule::GetHInstanceAt` and calls
+     `FindResourceExW(hModule, type 0x6 /* RT_STRING */, (id >> 4) + 1)`.
+     So `0x51f2a0` is an RT_STRING id consulted before the request, and
+     the sibling `(len, RVA)` table nearby (locale-pair strings
+     `smn-fi`, `sms-fi`, `sq-al`, `sr-ba-cyrl`, `sr-ba-latn`, ...) is a
+     **separate datum** — earlier session notes misread it as the lookup
+     target; corrected here.
+   * `FUN_004410bf(&local_c, &local_8, 0x522534, '\x01')` joins with a
+     separator against the byte at `0x522534`; that byte is the tail of a
+     longer native string whose head was not located (`wstr` from the
+     guess point reads `Pane`). Recorded as unresolved, not decoded.
 5. **Body shape not proven.** The `Content-Type` header is present, so a
    form body is possible; but the decompile does not show whether the
    text travels as a `?text=` GET query (the port's form) or as a POST
