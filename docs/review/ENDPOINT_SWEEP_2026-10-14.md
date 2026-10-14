@@ -61,3 +61,36 @@ The two remaining true gaps found this session were both closed (Promt
 `pageLoad`, Yandex.Disk href resolver). Remaining `not-started` rows
 (C10/F13/J6/G9) are terminal-by-design as recorded in
 `docs/RE_COVERAGE_CHECKLIST.md`.
+
+## Appendix: byte-level string scan (no Ghidra needed) — 2026-10-14 update
+
+A pure-Python UTF-16LE scan of the artifact (2156 wide strings) resolves
+questions the Ghidra string inventory could not, because `rea search`
+only reports *Ghidra-defined string Data*:
+
+| Native string | In the port? |
+|---|---|
+| `YandexAppId`, `BaiduGtk`, `BaiduToken`, `BaiduCookie` | yes (Options session slots) |
+| `PromtCookie`, `PromtPaft`, `PromtXsrf` | yes |
+| `GoogleDomain`, `GoogleTkk` | yes |
+| `SOFTWARE\Microsoft\Windows\CurrentVersion\Run` | yes (Start-with-Windows) |
+| `SOFTWARE\...\Uninstall\QTranslate`, `UninstallString` | n/a (installer metadata) |
+
+### Two findings worth recording
+
+1. **The five provider display names are absent from the image** —
+   `DeepL`, `Papago`, `youdao`, `Naver`, `Babylon` return **0** wide-string
+   hits (only `Promt`/`Baidu`/`Yandex`/`Google` appear, and those only as
+   Options-session keys, never as display names). This is the direct
+   confirmation of `PLUGIN_LOADER_FOUND_2026-10-10.md`: the service
+   `Service.js` files that carry the provider names are **not** in the
+   recovered artifact. So the port's provider display names come from the
+   UI spec / live sites, not from this binary — and any claim that they
+   were "verified from the binary" would be false.
+
+2. **`text=car&fromLang=en&to=ru&token=%s&key=%s&isAuthv2=true`**
+   (at VA `0x529810`, file offset `0x129810`) is an **orphan**: Ghidra
+   reports **zero references** to it. It therefore is not an active
+   request body. `qtranslate/services/microsoft.py`'s `ttranslatev3`
+   body (which does *not* contain `isAuthv2=true`) is correct as-is —
+   recorded so nobody "fixes" this into the port later.
