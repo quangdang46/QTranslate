@@ -52,7 +52,20 @@ SECTION_RULE = "#b5c9e0"  # section underline
 SWATCH_TEXT = "#000000"
 SWATCH_FRAME = "#5d6c7a"
 
-FONT = ("Segoe UI", 9)   # 9pt = 12px (spec: inferred, not measured)
+# Native font, resolved by measurement against the spec + RE:
+#   * the spec CSS says `font:12px/15px "Segoe UI"` (.win) and
+#     `.pane.top{line-height:14px}`;
+#   * the 11-line help block in the 151px .pane.top does NOT fit at a 15px
+#     advance (11 x 15 = 165 > 151) -- tk's Text reports exactly that 15px
+#     height for Segoe UI **9**, which is why the port clipped the last
+#     line. It fits at a 13px advance (11 x 13 = 143 <= 151), which is
+#     what "Segoe UI 8" / "MS Shell Dlg 8" measure.
+#   * this matches the RE finding for G9 in docs/RE_COVERAGE_CHECKLIST.md:
+#     native DLG129 carries `MS Shell Dlg` **8pt** (an earlier "Tahoma 9"
+#     claim was withdrawn there).
+# The old `("Segoe UI", 9)` was the spec's "9pt = 12px (inferred, NOT
+# measured)" guess -- the guess is now disproven by the clip it caused.
+FONT = ("Segoe UI", 8)
 
 # provider tab colours as measured in the HTML copy
 TAB_COLORS = {
@@ -182,7 +195,12 @@ def _vline(win, x, y, h, color=COLSEP):
 
 
 def _pane(win, x, y, w, h, text="", *, bg=WINDOW):
-    """White text pane with a real 1px border and a 2px thumb on the right."""
+    """White text pane with a real 1px border and a 2px thumb on the right.
+
+    Line-height comes from ``FONT`` (8pt, 13px advance) -- see the note
+    there: the module used to claim Segoe UI 9, whose 15px advance
+    overflowed the spec's 151px pane and clipped the last help line.
+    """
     inner = _bordered(win, x, y, w, h, inner_bg=bg)
     t = tk.Text(inner, bg=bg, fg=TEXT, font=FONT, wrap="word",
                 relief="flat", highlightthickness=0, bd=0, padx=5, pady=3)
@@ -294,7 +312,8 @@ def main_window(root):
              font=("Segoe UI", 12)).place(x=502, y=4)
     _hline(win, 1, 29, MAIN_WIDTH - 3)
 
-    # input pane (y 30..181) holds the shipped help text
+    # input pane (spec .pane.top: top 60px, height 151px) holds the
+    # shipped help text
     help_text = (
         "QTranslate Version  6.10.0\n\n"
         "Global hotkeys (default values):\n"
@@ -311,35 +330,42 @@ def main_window(root):
         tk.Label(win, text=glyph, bg=WINDOW,
                  font=("Segoe UI", 12)).place(x=x, y=160)
 
-    # splitter (y 181..187): native 2131.png shows a single thin line, not
-    # a 3-dot grip -- the earlier drawn dots were an invented affordance.
+    # splitter (spec .spl: y 212..217) -- TWO stacked 1px --border lines
+    # (::before top:1px, ::after top:2px) plus the 3-dot grip at x249.
+    # A native low-res screenshot suggests one plain line, but the spec is
+    # the authority here and it measures the double line + dots, so this
+    # restores them.
     spl = tk.Frame(win, bg=FACE, bd=0)
-    spl.place(x=1, y=182, width=MAIN_WIDTH - 3, height=5)
-    _hline(win, 1, 183, MAIN_WIDTH - 3)
+    spl.place(x=1, y=212, width=MAIN_WIDTH - 3, height=5)
+    _hline(win, 1, 213, MAIN_WIDTH - 3)
+    _hline(win, 1, 214, MAIN_WIDTH - 3)
+    for i in range(3):
+        tk.Frame(win, bg="#555", bd=0,
+                 width=1, height=3).place(x=249 + i * 5, y=213)
 
-    # control row (y 187..208)
-    _btn(win, 4, 187, 31, "🗎", font=("Segoe UI", 12))
+    # control row (spec .ctl: top 217px)
+    _btn(win, 4, 217, 31, "🗎", font=("Segoe UI", 12))
     tk.Label(win, text="⋮", bg=FACE, fg=TEXT,
-             font=("Segoe UI", 11)).place(x=41, y=189)
-    _combo(win, 67, 187, 150, "Auto-Detect")
-    _btn(win, 223, 187, 27, "⇄", font=("Segoe UI", 12))
-    _combo(win, 256, 187, 177, "Vietnamese")
-    _btn(win, 438, 187, 73, "Translate", font=("Segoe UI", 9))
-    _hline(win, 1, 212, MAIN_WIDTH - 3)
+             font=("Segoe UI", 11)).place(x=41, y=219)
+    _combo(win, 67, 217, 150, "Auto-Detect")
+    _btn(win, 223, 217, 27, "⇄", font=("Segoe UI", 12))
+    _combo(win, 256, 217, 177, "Vietnamese")
+    _btn(win, 438, 217, 73, "Translate", font=("Segoe UI", 9))
+    _hline(win, 1, 242, MAIN_WIDTH - 3)
 
-    # output pane (y 213..361)
-    _pane(win, 1, 213, MAIN_WIDTH - 3, 149,
+    # output pane (spec .pane.bot: top 243px, height 149px)
+    _pane(win, 1, 243, MAIN_WIDTH - 3, 149,
           "No data returned (timeout while sending data).")
     tk.Label(win, text="🎧", bg=WINDOW,
-             font=("Segoe UI", 12)).place(x=472, y=337)
-    _hline(win, 1, 362, MAIN_WIDTH - 3)
+             font=("Segoe UI", 12)).place(x=472, y=367)
+    _hline(win, 1, 392, MAIN_WIDTH - 3)
 
-    # provider tab strip (y 362..393)
+    # provider tab strip (spec #main .tabs: top 392px, .tab top:5px)
     for i, name in enumerate(SERVICE_TABS):
         x = 4 + i * 57
         c = tk.Canvas(win, bg=FACE, bd=0, highlightthickness=1,
                       highlightbackground=BORDER, height=22)
-        c.place(x=x, y=367, width=53, height=22)
+        c.place(x=x, y=397, width=53, height=22)
         c.create_rectangle(4, 5, 16, 17,
                            fill=TAB_COLORS.get(name, "#888"), outline="")
         c.create_text(21, 11, text=name, anchor="w", fill=TEXT,
