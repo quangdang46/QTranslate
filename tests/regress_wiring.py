@@ -76,13 +76,18 @@ orphans = sorted(m for m in mods
 # app          the Tk entry point; win32app imports it, so it is NOT an orphan
 # win32app     a runnable script (`uv run python qtranslate/win32app.py`), not
 #              a library; it self-documents that in its docstring
+# screens      the UI-FULL.html 1:1 screen port, run standalone via
+#              `python -m qtranslate.screens <name>`; app.py uses its own
+#              widget code for the live app, screens.py is the reference/
+#              capture tool compared against native screenshots, so it is
+#              deliberately not imported by app.py
 # speech_input dead:native-unavailable (checklist J5) -- the module is the
 #              RE artifact for FUN_004434FE, not a wired feature
 #
 # reliability is NOT here any more: it was wired on 2026-10-10 (app.py's
-# do_translate now routes through ProviderRouter), so these three are the
+# do_translate now routes through ProviderRouter), so these four are the
 # complete orphan set. If reliability reappears here, the wiring regressed.
-ENTRY_POINTS = {"win32app"}
+ENTRY_POINTS = {"win32app", "screens"}
 KNOWN_DEAD = {"speech_input"}
 
 expected = sorted(ENTRY_POINTS | KNOWN_DEAD)

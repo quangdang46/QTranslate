@@ -63,7 +63,7 @@ if "popup-no-buttons" in open("tests/ui_match.py", encoding="utf-8").read():
 else:
     ck("ui_match still pins popup-no-buttons", False, "the guard was removed")
 ck("popup icons render as Labels, not Buttons",
-   "tk.Label(bar, text=g" in SRC,
+   "tk.Label(_bar, text=" in SRC and "tk.Button(_bar" not in SRC,
    "Button glyphs would regress popup-no-buttons")
 
 # 5. _to_main reuses one main window (no second tk.Tk per popup)
