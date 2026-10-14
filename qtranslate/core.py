@@ -14,14 +14,17 @@ want different fields from the same place (J7 needs ``phonetics``, the
 reliability adapter needs ``provider_used``/``failures``), so this is one
 type, not a refactor of each.
 
-Migration order (per the sketch §4, alias-first):
-1. THIS STEP — ``core.Result`` exists as a new type. ``reliability.Result``
-   is unchanged. Nothing imports this yet.
-2. ``reliability.Result = core.Result`` as a name rebinding (not a
-   subclass), only when both sides land together.
-3. Move call sites — ``ProviderRouter.translate`` first, then
-   ``do_translate``.
-4. Delete the ``reliability.Result`` name only after nothing imports it.
+Migration order (per the sketch §4, alias-first) — **all four steps landed**:
+1. ~~``core.Result`` exists as a new type.`` ◆ landed 09e7edc
+2. ~~``reliability.Result = core.Result`` as a name rebinding (not a
+   subclass), only when both sides land together.~~ ◆ landed 45073e1 —
+   rebinding moved to the top-of-file import (this commit).
+3. ~~Move call sites — ``ProviderRouter.translate`` first, then
+   ``do_translate``.~~ ◆ landed bbe9909 (router) + 5f18daa (do_translate).
+4. ~~Delete the ``reliability.Result`` name only after nothing imports it.~~
+   ◆ landed here: the dead ``class Result`` definition is gone; the
+   ``Result = _CoreResult`` mid-file import and the ``R.Result`` import in
+   tests were the last `reliability.Result` shape references.
 """
 from __future__ import annotations
 

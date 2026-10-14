@@ -29,6 +29,8 @@ import errno
 import socket
 import time
 
+from qtranslate.core import Result  # noqa: F401  (re-exported public name)
+
 
 class ErrorKind(enum.Enum):
     """The nine kinds of RELIABILITY.md §2, and nothing else."""
@@ -616,26 +618,6 @@ def _failure_note(failures) -> str:
 #      per-attempt would append once per failed provider. Both belong after the
 #      loop, exactly once, on the returned provider_used.
 # --------------------------------------------------------------------------
-
-
-@dataclasses.dataclass(frozen=True)
-class Result:
-    provider_used: str
-    text: str
-    requested: str = ""
-    failures: tuple = ()
-    attempts: int = 0
-    note: str = ""
-    phonetics: str = ""
-    source_language: int | None = None
-
-    @property
-    def ok(self) -> bool:
-        return bool(self.provider_used)
-
-
-from qtranslate.core import Result as _CoreResult
-Result = _CoreResult
 
 
 def normalize_request(text, src, tgt, *, remove_line_breaks=False,
