@@ -3539,10 +3539,22 @@ class App:
             _init = _app.get("SaveHistoryPath", "") or None
         except Exception:
             _init, _app = None, {}
-        path = filedialog.asksavefilename(title="Export history",
-                                          defaultextension=".html",
-                                          initialdir=_init,
-                                          initialfile=_init)
+        # Native (FUN_0042856e) feeds the Save dialog a per-plugin filter
+        # built as "%s (%s)" = historyFileDescription(historyFileExtension)
+        # -- description, then the extension in parens, one entry per
+        # registered HistoryScript. The port had no filetypes at all, so
+        # build the same shape from EXT_DESCRIPTIONS/EXPORT_ORDER.
+        try:
+            from qtranslate import history as _H0
+            _fmask = [("%s (*.%s)" % (_H0.describe_extension(e), e),
+                       "*.%s" % e) for e in _H0.EXPORT_ORDER]
+        except Exception:
+            _fmask = None
+        _ask = {"title": "Export history", "defaultextension": ".html",
+                "initialdir": _init, "initialfile": _init}
+        if _fmask:
+            _ask["filetypes"] = _fmask + [("All files", "*.*")]
+        path = filedialog.asksavefilename(**_ask)
         if not path:
             return
         try:

@@ -61,6 +61,23 @@ ck("json writer round-trips", out.startswith("[") and "xin" in out)
 out = H.exporter_for("x.txt")(items)
 ck("txt writer round-trips", "xin chào" in out)
 
+# The Save-dialog filter: FUN_0042856e formats each plugin as
+# "%s (%s)" = historyFileDescription(historyFileExtension), one entry per
+# registered script. app.py builds the same shape off EXPORT_ORDER.
+try:
+    _mask = [("%s (*.%s)" % (H.describe_extension(e), e), "*.%s" % e)
+             for e in H.EXPORT_ORDER]
+except Exception as e:
+    _mask = []
+    ck("filter build raised", False, repr(e))
+WANT = [("HTML file (*.html)", "*.html"), ("CSV file (*.csv)", "*.csv"),
+        ("JSON file (*.json)", "*.json"), ("Text file (*.txt)", "*.txt")]
+ck("dialog filter matches native's \"%s (%s)\" shape", _mask == WANT,
+   str(_mask))
+ck("every mask entry pairs desc with its own pattern",
+   all(lbl.split(" (*.")[0] and pat == "*." + lbl.split("(*.")[1][:-1]
+       for lbl, pat in _mask))
+
 if fail:
     print("FAIL %d/%d" % (len(fail), n[0]))
     for f in fail:

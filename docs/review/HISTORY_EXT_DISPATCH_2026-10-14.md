@@ -103,10 +103,40 @@ int __fastcall FUN_00428483(void *param_1, undefined4 *param_2)
 * `defaultextension=".html"` on the file dialog is retained, so the default
   path still yields HTML as before.
 
+## Appendix: the other two references (resolved 2026-10-14)
+
+`FUN_0043b9be(this, (uint *)L"historyFileExtension", 0, 0, param_1)`
+(the caller at `0x427ed5`, function entry `FUN_00427eca`) is just the
+hook invoker -- `this` is typically a `plugins::HistoryScript`, so each
+`historyFile*` reference is the hook being called through its vtable.
+
+`FUN_0042856e` (referenced at `0x428622`) builds the **Save-dialog
+filter string**: it walks the same `plugins::HistoryScript` list and, for
+each, calls `historyFileDescription` then `historyFileExtension`, and
+formats them as
+
+```
+FUN_004023f1((int *)&local_10, (uint *)L"%s (%s)");
+```
+
+i.e. `"HTML file (*.html)"`-shaped entries: description, then the
+extension in parens -- the exact shape a Win32 `OPENFILENAME` filter
+needs. It guards the double-null-terminated filter buffer at `0x400`
+wchars, breaking when the `"<desc> (*.ext)"` candidate no longer fits.
+
+`FUN_00429c6a` (referenced at `0x429d85`) is the export command handler:
+it resolves the History folder, calls `FUN_0042856e` (filter), then
+`FUN_00428483` (selection, above). Port consequence: `app.py`'s export
+dialog previously had no `filetypes` filter at all -- it now passes the
+same `description (*.ext)` shape built from `EXPORTERS`/
+`EXPORT_ORDER`, with an `("All files", "*.*")` entry appended (the stock
+`GetSaveFileName` tail native would get from its dialog template).
+
 ## Scope note
 
-This closes the *selection rule* only. It does not claim the shipped
-plugins' full list (the CHECKLIST's R1 row records the checker host as
-retired, and `PLUGIN_LOADER_FOUND_2026-10-10.md` records that
-`Services/*/Service.js` are absent from the recovered artifact, so the
-plugin set itself cannot be enumerated from this binary).
+This closes the *selection rule* plus the *dialog filter rule*. It does
+not claim the shipped plugins' full list (the CHECKLIST's R1 row records
+the checker host as retired, and `PLUGIN_LOADER_FOUND_2026-10-10.md`
+records that `Services/*/Service.js` are absent from the recovered
+artifact, so the plugin set itself cannot be enumerated from this
+binary).
