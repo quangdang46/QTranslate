@@ -35,13 +35,22 @@ def main():
             print(name, "BUILD FAILED:", type(e).__name__, str(e)[:120])
             continue
         try:
+            import time
             win.lift()
             win.attributes("-topmost", True)
-            root.update_idletasks()
             root.update()
-            import time
-            time.sleep(0.5)
-            root.update()
+            # poll until the window is really mapped at a stable position:
+            # grabbing too early yields rootx/rooty=0 (the window is still
+            # unmapped) and the capture then lands on whatever is behind.
+            prev = None
+            for _ in range(60):
+                root.update()
+                time.sleep(0.05)
+                cur = (win.winfo_rootx(), win.winfo_rooty(),
+                       win.winfo_width(), win.winfo_height())
+                if cur == prev and cur[2] > 0 and cur[3] > 0:
+                    break
+                prev = cur
             x, y = win.winfo_rootx(), win.winfo_rooty()
             w, h = win.winfo_width(), win.winfo_height()
             img = ImageGrab.grab(bbox=(x, y, x + w, y + h))

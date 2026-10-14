@@ -26,13 +26,17 @@ def ck(name, cond, detail=""):
         fail.append(name + (" -- " + detail if detail else ""))
 
 
+# main/dict/hist/kbd build at (spec_height - 30): the spec's figure is the
+# FULL window including the native title bar, which tkinter draws as real
+# OS chrome outside the geometry/client area now that screens.py no longer
+# paints a second, fake title bar inside the window (see _titlebar).
 EXPECTED = {
-    "main": (S.MAIN_WIDTH, S.MAIN_HEIGHT),
+    "main": (S.MAIN_WIDTH, S.MAIN_HEIGHT - 30),
     "popup": (S.POPUP_W, S.POPUP_H),
     "options": (S.OPTS_W, S.OPTS_H),
-    "dict": (S.DICT_W, S.DICT_H),
-    "hist": (S.HIST_W, S.HIST_H),
-    "kbd": (S.KBD_W, S.KBD_H),
+    "dict": (S.DICT_W, S.DICT_H - 30),
+    "hist": (S.HIST_W, S.HIST_H - 30),
+    "kbd": (S.KBD_W, S.KBD_H - 30),
     "tray": (S.TRAY_W, S.TRAY_H),
 }
 

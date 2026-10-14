@@ -252,36 +252,40 @@ def _label(win, x, y, text, *, fg=TEXT, anchor="w"):
 
 
 def _titlebar(win, w, text="QTranslate"):
-    """Simulated Win11 title bar (native in the real app -- reference)."""
-    bar = tk.Frame(win, bg=TITLE_W11, bd=0, height=30)
-    bar.place(x=0, y=0, width=w - 2, height=30)
-    tk.Label(bar, text="◉", bg=TITLE_W11, fg=TEXT_DIM,
-             font=("Segoe UI", 9)).place(x=9, y=7)
-    tk.Label(bar, text=text, bg=TITLE_W11, fg=TEXT,
-             font=("Segoe UI", 9)).place(x=31, y=7)
-    for glyph, off in (("–", w - 142), ("☐", w - 96), ("✕", w - 50)):
-        tk.Label(bar, text=glyph, bg=TITLE_W11, fg=TEXT,
-                 font=("Segoe UI", 10)).place(x=off, y=5)
-    return bar
+    """Sets the window title and lets tkinter draw its OWN native Win11
+    title bar -- do NOT also paint one here. An earlier version drew a
+    fake bar (icon + text + min/max/close glyphs) inside the client area
+    on top of the real OS-drawn one, producing two title bars stacked
+    (the user's "bạn copy cả header ... duplicate giao diện" report).
+    The real app never draws its own title bar either.
+    """
+    win.title(text)
+    return None
 
 
 # ------------------------------------------------------------------ screens
 def main_window(root):
+    # The spec's 516x423 is the FULL window including the native title
+    # bar. tkinter's geometry/place origin is the client area only (the
+    # title bar is OS chrome tkinter doesn't draw), so the client area is
+    # 30px shorter than the spec figure -- there is no fake title bar
+    # here any more (see _titlebar), just win.title().
+    h = MAIN_HEIGHT - 30
     win = tk.Toplevel(root)
-    win.geometry(f"{MAIN_WIDTH}x{MAIN_HEIGHT}")
+    win.geometry(f"{MAIN_WIDTH}x{h}")
     win.configure(bg=FACE)
     _titlebar(win, MAIN_WIDTH)
 
-    # toolbar (y 30..59)
-    _btn(win, 4, 32, 24, "◀", h=22, fg=TEXT_DIM, font=("Segoe UI", 10))
-    _btn(win, 30, 32, 24, "▶", h=22, fg=TEXT_DIM, font=("Segoe UI", 10))
-    _label(win, 62, 37, "Google", fg=LINK)
+    # toolbar (y 0..29)
+    _btn(win, 4, 2, 24, "◀", h=22, fg=TEXT_DIM, font=("Segoe UI", 10))
+    _btn(win, 30, 2, 24, "▶", h=22, fg=TEXT_DIM, font=("Segoe UI", 10))
+    _label(win, 62, 7, "Google", fg=LINK)
     win.winfo_children()[-1].configure(font=("Segoe UI", 9, "underline"))
     tk.Label(win, text="⋮", bg=FACE, fg=TEXT,
-             font=("Segoe UI", 12)).place(x=502, y=34)
-    _hline(win, 1, 59, MAIN_WIDTH - 3)
+             font=("Segoe UI", 12)).place(x=502, y=4)
+    _hline(win, 1, 29, MAIN_WIDTH - 3)
 
-    # input pane (y 60..211) holds the shipped help text
+    # input pane (y 30..181) holds the shipped help text
     help_text = (
         "QTranslate Version  6.10.0\n\n"
         "Global hotkeys (default values):\n"
@@ -293,42 +297,42 @@ def main_window(root):
         "Main window hotkeys:\n"
         "Ctrl+Enter => Translate text\n"
         "Ctrl+N => Clear current translation")
-    _pane(win, 1, 60, MAIN_WIDTH - 3, 151, help_text)
+    _pane(win, 1, 30, MAIN_WIDTH - 3, 151, help_text)
     for glyph, x in (("🎤", 451), ("🎧", 472)):
         tk.Label(win, text=glyph, bg=WINDOW,
-                 font=("Segoe UI", 12)).place(x=x, y=190)
+                 font=("Segoe UI", 12)).place(x=x, y=160)
 
-    # splitter (y 211..217) with the 3-dot grip
+    # splitter (y 181..187) with the 3-dot grip
     spl = tk.Frame(win, bg=FACE, bd=0)
-    spl.place(x=1, y=212, width=MAIN_WIDTH - 3, height=5)
-    _hline(win, 1, 213, MAIN_WIDTH - 3)
+    spl.place(x=1, y=182, width=MAIN_WIDTH - 3, height=5)
+    _hline(win, 1, 183, MAIN_WIDTH - 3)
     for i in range(3):
         tk.Frame(win, bg="#555", bd=0,
-                 width=1, height=3).place(x=249 + i * 5, y=213)
+                 width=1, height=3).place(x=249 + i * 5, y=183)
 
-    # control row (y 217..238)
-    _btn(win, 4, 217, 31, "🗎", font=("Segoe UI", 12))
+    # control row (y 187..208)
+    _btn(win, 4, 187, 31, "🗎", font=("Segoe UI", 12))
     tk.Label(win, text="⋮", bg=FACE, fg=TEXT,
-             font=("Segoe UI", 11)).place(x=41, y=219)
-    _combo(win, 67, 217, 150, "Auto-Detect")
-    _btn(win, 223, 217, 27, "⇄", font=("Segoe UI", 12))
-    _combo(win, 256, 217, 177, "Vietnamese")
-    _btn(win, 438, 217, 73, "Translate", font=("Segoe UI", 9))
-    _hline(win, 1, 242, MAIN_WIDTH - 3)
+             font=("Segoe UI", 11)).place(x=41, y=189)
+    _combo(win, 67, 187, 150, "Auto-Detect")
+    _btn(win, 223, 187, 27, "⇄", font=("Segoe UI", 12))
+    _combo(win, 256, 187, 177, "Vietnamese")
+    _btn(win, 438, 187, 73, "Translate", font=("Segoe UI", 9))
+    _hline(win, 1, 212, MAIN_WIDTH - 3)
 
-    # output pane (y 243..391)
-    _pane(win, 1, 243, MAIN_WIDTH - 3, 149,
+    # output pane (y 213..361)
+    _pane(win, 1, 213, MAIN_WIDTH - 3, 149,
           "No data returned (timeout while sending data).")
     tk.Label(win, text="🎧", bg=WINDOW,
-             font=("Segoe UI", 12)).place(x=472, y=367)
-    _hline(win, 1, 392, MAIN_WIDTH - 3)
+             font=("Segoe UI", 12)).place(x=472, y=337)
+    _hline(win, 1, 362, MAIN_WIDTH - 3)
 
-    # provider tab strip (y 392..423)
+    # provider tab strip (y 362..393)
     for i, name in enumerate(SERVICE_TABS):
         x = 4 + i * 57
         c = tk.Canvas(win, bg=FACE, bd=0, highlightthickness=1,
                       highlightbackground=BORDER, height=22)
-        c.place(x=x, y=397, width=53, height=22)
+        c.place(x=x, y=367, width=53, height=22)
         c.create_rectangle(4, 5, 16, 17,
                            fill=TAB_COLORS.get(name, "#888"), outline="")
         c.create_text(21, 11, text=name, anchor="w", fill=TEXT,
@@ -576,22 +580,25 @@ PAGE_BODIES = {
 
 
 def dictionary_window(root):
+    # see main_window: spec height includes the native title bar, the
+    # client area tkinter actually places into is 30px shorter.
+    h = DICT_H - 30
     win = tk.Toplevel(root)
     win.configure(bg=FACE)
-    win.geometry(f"{DICT_W}x{DICT_H}")
+    win.geometry(f"{DICT_W}x{h}")
     _titlebar(win, DICT_W, "Dictionary")
-    _combo(win, 4, 35, 153, "English")
+    _combo(win, 4, 5, 153, "English")
     fld = tk.Frame(win, bg=WINDOW, bd=0, highlightthickness=1,
                    highlightbackground=BORDER)
-    fld.place(x=163, y=34, width=274, height=21)
-    _label(win, 170, 37, "◀ ▶", fg=TEXT_DIM)
-    _label(win, 407, 34, "⌕")
-    _label(win, 427, 34, "◷")
-    _label(win, 457, 34, "⋮")
+    fld.place(x=163, y=4, width=274, height=21)
+    _label(win, 170, 7, "◀ ▶", fg=TEXT_DIM)
+    _label(win, 407, 4, "⌕")
+    _label(win, 427, 4, "◷")
+    _label(win, 457, 4, "⋮")
     track = tk.Frame(win, bg=MENU_BG, bd=0)
-    track.place(x=455, y=60, width=19, height=240)
-    _label(win, 460, 64, "⌃", fg=TEXT_DIM)
-    _label(win, 460, 268, "⌄", fg=TEXT_DIM)
+    track.place(x=455, y=30, width=19, height=240)
+    _label(win, 460, 34, "⌃", fg=TEXT_DIM)
+    _label(win, 460, 238, "⌄", fg=TEXT_DIM)
     tabs = ["G.", "W", "B.", "W", "M.", "I.", "R.", "U.", "A.", "y.",
             "O."]
     colors = ["#4285f4", "#d9534f", "#1a73c8", "#999", "#2d6cdf",
@@ -601,25 +608,26 @@ def dictionary_window(root):
         b = tk.Button(win, text="  " + n, bg=FACE, fg=TEXT, font=FONT,
                       anchor="w", relief="flat", bd=0,
                       highlightthickness=1, highlightbackground=BORDER)
-        b.place(x=4 + i * 42, y=306, width=42, height=21)
-        tk.Frame(win, bg=c, bd=0).place(x=6 + i * 42, y=310, width=12,
+        b.place(x=4 + i * 42, y=276, width=42, height=21)
+        tk.Frame(win, bg=c, bd=0).place(x=6 + i * 42, y=280, width=12,
                                         height=12)
     return win
 
 
 def history_window(root):
+    h = HIST_H - 30
     win = tk.Toplevel(root)
     win.configure(bg=FACE)
-    win.geometry(f"{HIST_W}x{HIST_H}")
+    win.geometry(f"{HIST_W}x{h}")
     _titlebar(win, HIST_W, "History")
     fld = tk.Frame(win, bg=WINDOW, bd=0, highlightthickness=1,
                    highlightbackground=BORDER)
-    fld.place(x=4, y=34, width=467, height=21)
+    fld.place(x=4, y=4, width=467, height=21)
     tk.Label(fld, text="✕", bg=WINDOW, fg=TEXT,
              font=("Segoe UI", 9, "bold")).place(x=447, y=1)
     lst = tk.Frame(win, bg=WINDOW, bd=0, highlightthickness=1,
                    highlightbackground=BORDER)
-    lst.place(x=4, y=61, width=467, height=225)
+    lst.place(x=4, y=31, width=467, height=225)
     hdr = tk.Frame(lst, bg=FACE, bd=0)
     hdr.place(x=1, y=1, width=465, height=17)
     tk.Label(hdr, text="★", bg=FACE, fg="#555", font=FONT).place(x=2, y=1)
@@ -632,49 +640,50 @@ def history_window(root):
     for x, w, t in ((4, 73, "Clear"), (83, 108, "Save as…")):
         tk.Button(win, text=t, bg=FACE, fg=TEXT, font=FONT, relief="flat",
                   bd=0, highlightthickness=1,
-                  highlightbackground=BORDER).place(x=x, y=294, width=w,
+                  highlightbackground=BORDER).place(x=x, y=264, width=w,
                                                     height=21)
     tk.Button(win, text="★", bg=FACE, fg="#e6c800", font=FONT,
               relief="flat", bd=0, highlightthickness=1,
-              highlightbackground=BORDER).place(x=197, y=294, width=20,
+              highlightbackground=BORDER).place(x=197, y=264, width=20,
                                                 height=21)
     tk.Button(win, text="OK", bg=FACE, fg=TEXT, font=FONT, relief="flat",
               bd=0, highlightthickness=1,
-              highlightbackground=BORDER).place(x=398, y=294, width=73,
+              highlightbackground=BORDER).place(x=398, y=264, width=73,
                                                 height=21)
     return win
 
 
 def keyboard_window(root):
+    h = KBD_H - 30
     win = tk.Toplevel(root)
     win.configure(bg=FACE)
-    win.geometry(f"{KBD_W}x{KBD_H}")
+    win.geometry(f"{KBD_W}x{h}")
     _titlebar(win, KBD_W, "Keyboard")
     tk.Button(win, text="Esc", bg=FACE, fg=TEXT, font=FONT,
               relief="flat", bd=0, highlightthickness=1,
-              highlightbackground=BORDER).place(x=8, y=37, width=27,
+              highlightbackground=BORDER).place(x=8, y=7, width=27,
                                                 height=20)
     for i, x in enumerate([52, 84, 116, 148, 196, 228, 260, 292, 336,
                            368, 400, 430]):
         tk.Button(win, text="F%d" % (i + 1), bg=FACE, fg=TEXT, font=FONT,
                   relief="flat", bd=0, highlightthickness=1,
-                  highlightbackground=BORDER).place(x=x, y=37, width=28,
+                  highlightbackground=BORDER).place(x=x, y=7, width=28,
                                                     height=20)
     # remaining rows normalised to fit 448px, as the spec records
     rows = [
-        (57, [("`", 1), ("1", 1), ("2", 1), ("3", 1), ("4", 1), ("5", 1),
+        (27, [("`", 1), ("1", 1), ("2", 1), ("3", 1), ("4", 1), ("5", 1),
               ("6", 1), ("7", 1), ("8", 1), ("9", 1), ("0", 1), ("-", 1),
               ("=", 1), ("BkSp", 2)]),
-        (79, [("Tab", 1.5), ("q", 1), ("w", 1), ("e", 1), ("r", 1),
+        (49, [("Tab", 1.5), ("q", 1), ("w", 1), ("e", 1), ("r", 1),
               ("t", 1), ("y", 1), ("u", 1), ("i", 1), ("o", 1), ("p", 1),
               ("[", 1), ("]", 1), ("\\", 1.5)]),
-        (100, [("Caps", 1.9), ("a", 1), ("s", 1), ("d", 1), ("f", 1),
+        (70, [("Caps", 1.9), ("a", 1), ("s", 1), ("d", 1), ("f", 1),
                ("g", 1), ("h", 1), ("j", 1), ("k", 1), ("l", 1),
                (";", 1), ("'", 1), ("Enter", 2.2)]),
-        (121, [("Shift", 2.3), ("z", 1), ("x", 1), ("c", 1), ("v", 1),
+        (91, [("Shift", 2.3), ("z", 1), ("x", 1), ("c", 1), ("v", 1),
                ("b", 1), ("n", 1), ("m", 1), (",", 1), (".", 1),
                ("/", 1), ("Shift", 2.8)]),
-        (142, [("Ctrl", 1.4), ("Win", 1.4), ("Alt", 1.4), ("", 6.3),
+        (112, [("Ctrl", 1.4), ("Win", 1.4), ("Alt", 1.4), ("", 6.3),
                ("AltGr", 1.5), ("Apps", 1.5), ("^", 1), ("v", 1),
                ("<", 1), (">", 1)]),
     ]
@@ -690,7 +699,7 @@ def keyboard_window(root):
                           highlightbackground=BORDER).place(
                               x=int(x), y=y, width=w, height=20)
             x += w + 3
-    _combo(win, 8, 169, 150, "English")
+    _combo(win, 8, 139, 150, "English")
     return win
 
 
