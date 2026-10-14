@@ -94,3 +94,46 @@ only reports *Ghidra-defined string Data*:
    request body. `qtranslate/services/microsoft.py`'s `ttranslatev3`
    body (which does *not* contain `isAuthv2=true`) is correct as-is —
    recorded so nobody "fixes" this into the port later.
+
+## Appendix 2: feature-area config sweep + TTS negative (2026-10-14 update)
+
+A second stdlib UTF-16LE scan, this time for feature-area config keys
+(clipboard / listen / history / tray / popup / theme / TTS). Every key
+exists verbatim in the binary:
+
+* clipboard: `Copy translation to clipboard`, `Translate clipboard
+  content`, `Translate clipboard in main window`, `Translate clipboard
+  in popup window`, `Dictionary from clipboard`
+* listen: `Listen`, `Listen to selected text`, `Listen to selected text
+  translation`, `Show listen to selected text icon`, `Listen to text`,
+  `ReadPhonetically`
+* history: `HistoryFilter`, `HistoryFilterFavorites`,
+  `ExpandHistoryItems`, `ClearHistoryOnExit`, `SaveHistoryPath`
+* tray: `MinimizeToTrayOnClose`, `MinimizeToTrayOnMinimize`,
+  `EnableMouseModeOnCtrl`, `SwitchMouseModeOnTrayClick`,
+  `HotKeySwitchMouseMode`, `MouseMode`, `MouseModeOn`
+* popup: `PopupAutoPos`, `PopupAutoFocus`, `PopupAutoSize`,
+  `PopupTimeout`, `PopupIcons`, `PopupPinWhenDragging`, `Transparency`
+  (plus its UI label `Transparency (0 - 90):`)
+* theme: `ThemeName`, `EnableWindowStyle`, `ColorBack`, `ColorText`,
+  `ColorFrame`
+
+Each of these was then grepped against `qtranslate/` + `tests/`:
+**all are already handled by the port** (1-3 files each reference them).
+
+### The TTS negative
+
+`Voice` and `speaker` return **0** hits (only `audio/x-flac; rate=`
+mentions an audio rate, in the speech-upload Content-Type). This is the
+independent byte-level confirmation of the standing J3 verdict: there is
+no native SAPI/TTS voice plumbing in this image (`sapi.py` remains a
+port-side fallback, not a native port).
+
+### Dictionary placement
+
+The dictionary web hostnames (`multitran`, `wordreference`, `lingvo`,
+`oxford`, `urban`, `reverso`, `wikipedia`, `imtranslator`, `merriam`)
+are **absent** (0 hits); only local-XDXF strings exist
+(`XdxfArticle.xslt`, `XDXF Dictionary (*.xdxf)`, `*.xdxf`, `.xdxf`).
+This is expected: dictionary web providers live in the JS plugin files
+that the recovered artifact does not contain (cf. Appendix above).
