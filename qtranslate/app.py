@@ -440,10 +440,18 @@ def _decode_placement(hexs: str):
 
 def _encode_placement(x: int, y: int, w: int, h: int,
                       show: int = 1) -> str:
-    """Tk geometry -> WINDOWPLACEMENT hex blob (length=44, flags=0,
-    min/max (-1,-1))."""
+    """Tk geometry -> WINDOWPLACEMENT hex blob.
+
+    Matches the real `WindowMainPlacement` bytes, not a guessed
+    WINDOWPLACEMENT: `length=44`, `flags=0`, and --- verified against the
+    actual blob in Options.json (2026-10-14) --- `ptMin == (-32000,
+    -32000)` (`0083FFFF` pairs, the Win32 "special position" sentinel)
+    while `ptMax == (-1, -1)`. The old code wrote (-1,-1) for both, which
+    made every decode->encode round-trip differ from native in bytes
+    16..31 and is why the ui_match placement-roundtrip check was failing.
+    """
     import struct
-    return struct.pack("<11i", 44, 0, show, -1, -1, -1, -1,
+    return struct.pack("<11i", 44, 0, show, -32000, -32000, -1, -1,
                        x, y, x + w, y + h).hex().upper()
 
 

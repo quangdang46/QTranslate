@@ -404,6 +404,8 @@ def options_window(root, page="Hotkeys"):
     win.configure(bg=FACE)
     win.title("Options")
     win.geometry(f"{OPTS_W}x{OPTS_H}")
+    # spec #opt .title: 0..24 white strip, "Options" at left 11/top 4,
+    # close at right (the shell's own ✕ at 46px from the right edge).
     bar = tk.Frame(win, bg=WINDOW, bd=0, height=24)
     bar.place(x=0, y=0, width=OPTS_W, height=24)
     tk.Label(bar, text="Options", bg=WINDOW, fg=TEXT,
@@ -411,9 +413,17 @@ def options_window(root, page="Hotkeys"):
     tk.Label(bar, text="✕", bg=WINDOW, fg=TEXT,
              font=("Segoe UI", 10)).place(x=OPTS_W - 46, y=3)
 
+    # spec #opt .side (the static, authoritative one for this screen):
+    # left:10px top:28px width:142px height:323px, entries at
+    # top:3+i*13. NOTE the spec carries a SECOND, different shell: the
+    # JS-generated FR() used by the 7 extra Options pages uses
+    # P(5,30,141,323) + i*13+1 in a 646x389 window. Those are the
+    # spec's own inconsistency; `options_window` is the #opt screen
+    # (default page "Hotkeys"), so it follows #opt and records the
+    # divergence here rather than silently picking one.
     side = tk.Frame(win, bg=WINDOW, bd=0, highlightthickness=1,
-                   highlightbackground=BORDER)
-    side.place(x=10, y=28, width=142, height=140)
+                    highlightbackground=BORDER)
+    side.place(x=10, y=28, width=142, height=323)
     for i, name in enumerate(OPTION_PAGES):
         bg = ACCENT if name == page else WINDOW
         fg = "#ffffff" if name == page else TEXT
@@ -422,6 +432,8 @@ def options_window(root, page="Hotkeys"):
 
     # --- page bodies (all 9, ported from UI-FULL.html) --------------------
     PAGE_BODIES[page](win)
+    # spec FR(): BTN(404,364,73,'OK') / BTN(484,364,73,'Cancel') /
+    #            BTN(565,364,73,'Apply','dis')  (.btn.bt top:361 in #opt)
     _btn(win, 404, 364, 73, "OK")
     _btn(win, 484, 364, 73, "Cancel")
     _btn(win, 565, 364, 73, "Apply", disabled=True)
