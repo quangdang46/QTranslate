@@ -2052,7 +2052,13 @@ class App:
                                          self.opt_detect.get(),
                                          self.opt_backtr.get())
                     except Exception as e:
-                        r = f"[error] {e}"
+                        # do_translate returns core.Result since 5f18daa, so
+                        # the failure branch must build one too — assigning a
+                        # bare str here made the very next line (`r.text`)
+                        # raise AttributeError on the multi-service path.
+                        from qtranslate.core import Result
+                        r = Result(s, f"[error] {e}", s,
+                                   note="exception before translate")
                     parts.append(f"===== {s} =====\n{r.text}")
                     try:
                         self.push_hist(s, text[:120], r.text[:200])

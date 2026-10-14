@@ -105,9 +105,9 @@ platforms it claims. Evidence column cites `file:line` where available.
 | Promt | `ghcs` verified | `promt.py` | see status | Win+mac | signing vectors | `dead:needs-session-token` |
 | Babylon translate (ID13) | `NATIVE_ARCH.md` | `babylon.py` | see status | Win+mac | — | `dead:host-retired` |
 | ImTranslator (ID18) | — | ported | no | — | — | `dead:host-retired` |
-| **Fallback on failure** | backtrans/detect retry | **none shared** | yes (D12) | Win+mac | fail→next provider test | `not-started` |
-| **Bounded retry + timeout** | `FUN_0045BCED/0045BF7D` | timeout only (`session.py`) | yes | Win+mac | retry policy test | `ported` (timeout only) |
-| **Error classification** | — | **none** | yes | Win+mac | taxonomy test | `not-started` |
+| **Fallback on failure** | backtrans/detect retry | `reliability.FallbackRouter` via `do_translate` `app.py:745` | yes (D12) | Win+mac | `regress_reliability.py` §5 (fail→next provider, `fell_back` recorded, `NO_FALLBACK` set) | `ported` — wired 2026-10-10 |
+| **Bounded retry + timeout** | `FUN_0045BCED/0045BF7D` | `reliability.RetryPolicy` (base/max delay, `Retry-After`, shared budget) + `session.py` timeout | yes | Win+mac | `regress_reliability.py` §2–4 | `ported` — bounded retry landed 2026-10-10 |
+| **Error classification** | — | `reliability.ErrorKind` (9 kinds) + `classify()` `reliability.py:136` | yes | Win+mac | `regress_reliability.py` §1 (taxonomy, incl. SSL → `PROVIDER_DEAD`) | `ported` — landed 2026-10-10 |
 
 **Reconciliation vs `RE_COVERAGE_CHECKLIST.md` §E (19 services + Common.js).**
 This matrix does not list every service as its own row; the mapping is:
@@ -194,16 +194,21 @@ recorded — a service may never quietly disappear between the two docs.
 
 ## Summary counts (this matrix, honest)
 
-> **Reconciled 2026-10-09** to the machine tally (`tools/coverage_tally.py`).
-> Port-axis counts (152 items): `ported 121` · `behaviour-verified 11` ·
-> `not-started 11` · `dead:* 9`.
+> **Reconciled 2026-10-14** to the machine tally (`tools/coverage_tally.py`:
+> `ported 125` · `behaviour-verified 14` · `not-started 4` · `dead:* 9`).
+> The 2026-10-09 figures this table used to carry (`ported 121`,
+> `behaviour-verified 11`, `not-started 11`) were stale by three rows in
+> section C alone: **Fallback on failure**, **Bounded retry + timeout**, and
+> **Error classification** all landed with the reliability layer on
+> 2026-10-10 and none of them was ever re-marked here. Updated by reading
+> `reliability.py` + `regress_reliability.py`, not by copying the tally.
 
 | Implementation status | Rows | Note |
 |-----------------------|------|------|
-| `behaviour-verified` | 11 | **all Win-only** (Test-on = Windows); none mac-verified |
-| `ported` | 121 | "Python exists", not "proven equivalent" |
+| `behaviour-verified` | 14 | **all Win-only** (Test-on = Windows); none mac-verified |
+| `ported` | 125 | "Python exists", not "proven equivalent" |
 | `dead:*` | 9 | endpoint/feature cannot run; reason slug + citation recorded |
-| `not-started` | 11 | incl. all macOS adapters, reliability, extension system |
+| `not-started` | 4 | C10, F13, G9, J6 — all four re-verified as correct negatives/none (`docs/review/FOUR_NOT_STARTED_REVERIFIED_2026-10-12.md`) |
 
 Product decision (not a port state): the **Updater** is a conscious `drop` — its
 server retired in 2022 — so its Port state is `dead:host-retired`.
