@@ -276,9 +276,18 @@ def main_window(root):
     win.configure(bg=FACE)
     _titlebar(win, MAIN_WIDTH)
 
-    # toolbar (y 0..29)
-    _btn(win, 4, 2, 24, "◀", h=22, fg=TEXT_DIM, font=("Segoe UI", 10))
-    _btn(win, 30, 2, 24, "▶", h=22, fg=TEXT_DIM, font=("Segoe UI", 10))
+    # toolbar (y 0..29) -- native 2131.png: the back/forward glyphs sit
+    # flush against the toolbar face with NO button border (only the
+    # service tabs at the bottom and the combo/Translate controls get
+    # the bordered-button treatment).
+    tk.Button(win, text="◀", bg=FACE, fg=TEXT_DIM, font=("Segoe UI", 10),
+              relief="flat", bd=0, highlightthickness=0,
+              activebackground=FACE, cursor="arrow").place(
+                  x=4, y=2, width=24, height=22)
+    tk.Button(win, text="▶", bg=FACE, fg=TEXT_DIM, font=("Segoe UI", 10),
+              relief="flat", bd=0, highlightthickness=0,
+              activebackground=FACE, cursor="arrow").place(
+                  x=30, y=2, width=24, height=22)
     _label(win, 62, 7, "Google", fg=LINK)
     win.winfo_children()[-1].configure(font=("Segoe UI", 9, "underline"))
     tk.Label(win, text="⋮", bg=FACE, fg=TEXT,
@@ -302,13 +311,11 @@ def main_window(root):
         tk.Label(win, text=glyph, bg=WINDOW,
                  font=("Segoe UI", 12)).place(x=x, y=160)
 
-    # splitter (y 181..187) with the 3-dot grip
+    # splitter (y 181..187): native 2131.png shows a single thin line, not
+    # a 3-dot grip -- the earlier drawn dots were an invented affordance.
     spl = tk.Frame(win, bg=FACE, bd=0)
     spl.place(x=1, y=182, width=MAIN_WIDTH - 3, height=5)
     _hline(win, 1, 183, MAIN_WIDTH - 3)
-    for i in range(3):
-        tk.Frame(win, bg="#555", bd=0,
-                 width=1, height=3).place(x=249 + i * 5, y=183)
 
     # control row (y 187..208)
     _btn(win, 4, 187, 31, "🗎", font=("Segoe UI", 12))
