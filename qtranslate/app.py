@@ -4730,16 +4730,57 @@ def _make_tray(root, app):
         finally:
             root.after(0, root.destroy)
 
+    _hotkeys_on = [True]
+    _mouse_mode_val = ["Show icon"]
+
+    def _toggle_hotkeys(icon, item):
+        # Menu item -> General.EnableHotKeys, so the hotkey gates honour it
+        try:
+            from qtranslate import config as _C
+            import json as _j
+            full = _C.load()
+            full.setdefault("General", {})["EnableHotKeys"] = \
+                not full.get("General", {}).get("EnableHotKeys", True)
+            _hotkeys_on[0] = bool(full["General"]["EnableHotKeys"])
+            with open(_C.DEFAULT_PATH, "w", encoding="utf-8") as f:
+                _j.dump(full, f, ensure_ascii=False, indent=1)
+        except Exception:
+            _hotkeys_on[0] = not _hotkeys_on[0]
+        _sync_icon(icon)
+
+    def _set_mouse_mode(icon, item):
+        # Radio group: "Show icon" = off, anything else = armed
+        _mouse_mode_val[0] = item.text
+        _want = item.text != "Show icon"
+        if _want != _mouse_mode[0]:
+            _toggle(icon, None)
+        _sync_icon(icon)
+
+    # Native tray menu order (user-verified screenshot 2126, spec §5):
+    #   QTranslate (bold heading) / Dictionary / Text recognition /
+    #   History / Keyboard / Options / About QTranslate -- sep --
+    #   Enable global hotkeys (checkable) / Mouse mode (submenu) -- sep --
+    #   Exit.
+    # pystray renders this as the real taskbar right-click menu, so the
+    # menu is NOT self-drawn (the spec's hard rule 5).
+    _mouse_modes = ("Show icon", "Translate in popup window",
+                    "Translate in main window")
     menu = Menu(
         MenuItem("Show main window", _open(app.root.lift),
                  default=True),
         MenuItem("Dictionary", _open(app.open_dict_window)),
+        MenuItem("Text recognition", _open(app.on_ocr)),
         MenuItem("History", _open(app.open_history_window)),
-        MenuItem("Virtual keyboard", _open(app.open_keyboard)),
+        MenuItem("Keyboard", _open(app.open_keyboard)),
         MenuItem("Options...", _open(app.open_options)),
+        MenuItem("About QTranslate", _open(app.show_about)),
         Menu.SEPARATOR,
-        MenuItem("Mouse mode: show icon", _toggle,
-                 checked=lambda item: _mouse_mode[0]),
+        MenuItem("Enable global hotkeys", _toggle_hotkeys,
+                 checked=lambda item: _hotkeys_on[0]),
+        MenuItem("Mouse mode", Menu(
+            *[MenuItem(m, _set_mouse_mode,
+                       radio=lambda item, _m=m: _mouse_mode_val[0] == _m)
+              for m in _mouse_modes])),
         Menu.SEPARATOR,
         MenuItem("Exit", _quit))
     icon = pystray.Icon("QTranslate", _img, "QTranslate",
