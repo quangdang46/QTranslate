@@ -100,6 +100,49 @@ if root is not None:
             win.destroy()
         except Exception as e:
             ck("%s builds at %dx%d" % (name, w, h), False, repr(e))
+    # main window: the control band matches the spec's measured band
+    # (UI-FULL.html .spl top:212px height:5px, .ctl top:217px, hline 242;
+    # control lefts 4/41/67/223/256/438). Probed headlessly from widget
+    # placement -- no screenshot needed.
+    try:
+        win = S.main_window(root)
+        root.update_idletasks()
+        root.update()
+
+        def _frames():
+            out = []
+
+            def walk(w):
+                for k in w.winfo_children():
+                    try:
+                        out.append((k.winfo_x(), k.winfo_y(),
+                                    k.winfo_width(), k.winfo_height()))
+                    except Exception:
+                        pass
+                    walk(k)
+            walk(win)
+            return out
+        placed = _frames()
+        xs = sorted({x for x, y, w, h in placed if y == 217})
+        ck("control row sits at spec y=217", bool(xs), str(xs))
+        for sx in (4, 67, 223, 256, 438):
+            ck("control at spec left %d" % sx,
+               any(x == sx and y == 217 for x, y, w, h in placed),
+               "y217 xs=%s" % xs)
+        ck("splitter frame at spec y=212..217",
+           any(x == 1 and y == 212 and w == 513 and h == 5
+               for x, y, w, h in placed))
+        ck("splitter double line at 213 and 214",
+           any(y == 213 for x, y, w, h in placed)
+           and any(y == 214 for x, y, w, h in placed))
+        ck("3-dot grip at x 249/254/259",
+           all(any(x == gx and y == 213 for x, y, w, h in placed)
+               for gx in (249, 254, 259)))
+        ck("control-row bottom rule at y=242",
+           any(x == 1 and y == 242 for x, y, w, h in placed))
+        win.destroy()
+    except Exception as e:
+        ck("main window control band matches the spec", False, repr(e))
     # every Options page must build too (each is its own measured screen)
     for page in S.OPTION_PAGES:
         try:
