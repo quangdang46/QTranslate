@@ -1,41 +1,77 @@
-# Native spell-service strings — REA hit at 0x51f380 (2026-10-14)
+# Yandex spell request builder FUN_0042c968 — verbatim strings + headers
 
-> Closes part of the Spell entry tension (matrix F row: "real spell entry not
-> read"; port docstring says the hosts/paths "are not present verbatim in the
-> binary"). That port claim is **wrong for Yandex**, and this note corrects it
-> with a measured hit.
+Date: 2026-10-14
+Target: `docs/review/artifacts/QTranslate.6.10.0.exe`
+(sha256 f35a3bc8e09e217130ff97efe85ba02bd86573b2e0796b003526604454338227)
+Tooling: REA 6.4.0 -> Ghidra 12.1.4 (`rea search` / `rea xrefs` /
+`rea decompile`, snapshot `qt6`)
 
-## Method + result
+## Why revisit this row
 
-`rea search QTranslate.6.10.0.exe spellservice --provider ghidra`
-against `docs/review/artifacts/QTranslate.6.10.0.exe`
-(md5 `a7c1278d831b9dd8261b55b82eaaffc0`),
-evidence `ev_3d52020eb4f441dacc1c54872f255731c079ba17815915d6f527aab8926daffb`:
+`docs/review/SPELL_SERVICE_STRINGS_2026-10-14.md` (an earlier note from
+this same day) and the docstring of `qtranslate/services/spell.py` both
+claimed the spell host/path were "not present verbatim in the binary ...
+assembled at runtime", classifying them INFERRED. That claim is
+**disproven**, and the row is corrected here.
+
+## Evidence
+
+`rea search --pattern spellservice --kind strings`:
 
 ```
-[{"address": "0x51f380", "value": "/services/spellservice.json/checkText"}]
+0x51f380  /services/spellservice.json/checkText
 ```
 
-One hit. `0x51f380` is inside `.rdata` (`0x50d000..0x542200`), i.e. a
-string constant in the image — **the path IS present verbatim in the binary**,
-contrary to `qtranslate/services/spell.py`'s docstring.
+`rea xrefs --address 0x51f380`: a single reference at `0x42c9fd`.
+Decompiling `0x42c9fd` resolves the function entry `FUN_0042c968`:
 
-## What this changes
+```c
+bool FUN_0042c968(undefined4 *param_1, int *param_2)
+{
+  bVar1 = FUN_0045c2f4();
+  if (bVar1) {
+    ... text escaped into local_8 (FUN_0043b0be) ...
+    cVar2 = FUN_0043356c(&param_1, 0x51f2a0);   // a constant consulted
+    if (cVar2 == '\0') { FUN_004335a4((int *)&param_1); }
+    FUN_004410bf(&local_c, &local_8, 0x522534, '\x01');  // separator join
+    FUN_0043366e(&param_1, &local_c);
+    FUN_00401f21(&local_14, (uint *)
+      L"Accept-Encoding: gzip,deflate\r\nAccept-Charset: utf-8\r\n"
+      L"Content-Type: application/x-www-form-urlencoded\r\n");
+    FUN_00401f21(&local_10, (uint *)L"/services/spellservice.json/checkText");
+    FUN_00401f21(&local_c,  (uint *)L"speller.yandex.net");
+    bVar3 = FUN_0045bea3(&local_c, &local_10, &local_14, &param_1, param_2);
+    ...
+  }
+  return bVar3;   // false when FUN_0045c2f4() gates it off
+}
+```
 
-| Item | State |
-|------|-------|
-| `spell.py` docstring: "the literal hosts/paths are not present verbatim in the binary (they are assembled at runtime)" | **partly false** — the Yandex *path* is verbatim at `0x51f380` |
-| `spell.py` URL: `speller.yandex.net/services/spellservice.json/checkText` | **confirmed** as the native path string |
-| yandex_spell() behaviour | `behaviour-verified` (port) unchanged — no code change made here |
-| Matrix F spell row "real spell entry not read" | still open: this is a **string hit, not a decompile of the spell entry point** |
+### Facts
 
-## What this does NOT establish
+1. **Both the path (`0x51f380`) and the host `speller.yandex.net` are
+   verbatim strings in the image.** The "assembled at runtime" premise is
+   retired.
+2. **The header block is verbatim and exactly three headers**, in this
+   order:
+   `Accept-Encoding: gzip,deflate` /
+   `Accept-Charset: utf-8` /
+   `Content-Type: application/x-www-form-urlencoded`.
+3. The request goes through the shared `FUN_0045bea3(host, path, headers,
+   body, out)` wrapper, i.e. the same HTTP path as the other providers.
+4. `FUN_0043356c` consults constant `0x51f2a0` and `FUN_004410bf` joins
+   with string `0x522534`; both are **untraced** — not decoded here.
+5. **Body shape not proven.** The `Content-Type` header is present, so a
+   form body is possible; but the decompile does not show whether the
+   text travels as a `?text=` GET query (the port's form) or as a POST
+   body. Recorded as open, not guessed.
 
-- The **host** prefix (`speller.yandex.net`), the query parameter names, and
-  the response parsing are not proven by this hit. Only the path fragment is.
-- No decompile of the spell function(s) was done. The port's spell entry
-  remains INFERRED in the matrix sense, and the docstring's statement about
-  how the URL is assembled is now known to be inaccurate for the path part
-  and unmeasured for the rest.
-- `GoogleSuggest`'s `/complete/search?client=firefox` was **not** searched
-  here; do not assume it is present or absent without that search.
+## Consequence for the port
+
+* `qtranslate/services/spell.py` docstring: the "not present verbatim"
+  note is **withdrawn**, replaced with this evidence and the open
+  body-shape question.
+* `yandex_spell()` now sends the verbatim three headers (plus its
+  User-Agent), instead of UA only.
+* The row stays `VERIFIED` for the strings/headers; the body shape is the
+  one remaining honest unknown.
