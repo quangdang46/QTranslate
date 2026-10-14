@@ -77,6 +77,47 @@ HOTKEY_BINDINGS = {1: "Ctrl + Q", 7: "Alt + W"}
 OPTION_PAGES = ["Basics", "Hotkeys", "Internet", "Services", "Languages",
                 "Appearance", "Exceptions", "Advanced", "Updates"]
 
+# Options/Services page rows (measured from the reference copy)
+SERVICES_TRANSLATE = [
+    ("Google", "#4285f4"), ("Microsoft", "#f5a623"),
+    ("Promt", "#2bb673"), ("Babylon", "#1a73c8"),
+    ("Yandex", "#e53935"), ("youdao", "#d32f2f"),
+    ("Baidu", "#2d6cdf"), ("Papago", "#1dc078"),
+    ("DeepL", "#0f2b46"),
+]
+SERVICES_DICTIONARY = [
+    ("Google Search", "#4285f4"), ("WordReference", "#d9534f"),
+    ("Babylon Dictionary", "#1a73c8"), ("Wikipedia", "#fff"),
+]
+
+# Options/Languages page: 4 columns x 18 rows, all ticked (measured)
+LANGUAGE_COLUMNS = [
+    "Afrikaans Albanian Arabic Armenian Azerbaijani Basque Belarusian "
+    "Bengali Bulgarian Catalan Chinese_(Simplified) "
+    "Chinese_(Traditional) Croatian Czech Danish Dutch English Esperanto",
+    "Estonian Filipino Finnish French Galician Georgian German Greek "
+    "Haitian_Creole Hebrew Hindi Hmong Hungarian Icelandic Indonesian "
+    "Irish Italian Japanese",
+    "Kannada Kazakh Khmer Korean Lao Latin Latvian Lithuanian Macedonian "
+    "Malay Maltese Marathi Mongolian Norwegian Persian Polish Portuguese "
+    "Romanian",
+    "Russian Serbian Sinhala Slovak Slovenian Spanish Swahili Swedish "
+    "Tajik Tamil Tatar Telugu Thai Turkish Ukrainian Urdu Uzbek "
+    "Vietnamese",
+]
+
+# Options/Exceptions page rows (measured)
+EXCEPTIONS_ROWS = [
+    ("* All Programs *", "SysListView32"),
+    ("* All Programs *", "SysTreeView32"),
+    ("* All Programs *", "ListBox"),
+    ("* All Programs *", "ScrollBar"),
+    ("* All Programs *", "ComboBox"),
+    ("* All Programs *", "msctls_hotkey32"),
+    ("* All Programs *", "ConsoleWindowClass"),
+    ("mstsc.exe", "* All Windows *"),
+]
+
 MAIN_WIDTH, MAIN_HEIGHT = 516, 423
 POPUP_W, POPUP_H = 200, 68
 OPTS_W, OPTS_H = 663, 388
@@ -91,25 +132,41 @@ TRAY_FOOT = ["Enable global hotkeys", "Mouse mode"]
 
 
 # ------------------------------------------------------------------ helpers
-def _button(parent, text="", *, font=None, bg=None, fg=TEXT,
-            activebackground=None, relief="flat", borderwidth=1):
-    """Spec button: 1px --border, vertical gradient, inner highlight/shade.
+def _btn(win, x, y, w, text, *, h=21, bg=FACE, fg=TEXT, font=None,
+         disabled=False):
+    """Spec button as a bordered face: outer 1px --border, inner face with
+    the 1px highlight on top and shade at the bottom, as measured."""
+    face = DIS_BG if disabled else bg
+    outer = tk.Frame(win, bg=BORDER, bd=0, highlightthickness=0)
+    outer.place(x=x, y=y, width=w, height=h)
+    inner = tk.Frame(outer, bg=face, bd=0, highlightthickness=0)
+    inner.place(x=1, y=1, width=max(1, w - 2), height=max(1, h - 2))
+    hl = tk.Frame(inner, bg=BTN_HL, bd=0, highlightthickness=0)
+    hl.place(x=0, y=0, width=w - 2, height=1)
+    sh = tk.Frame(inner, bg=BTN_SHADE, bd=0, highlightthickness=0)
+    sh.place(x=0, y=h - 3, width=w - 2, height=1)
+    b = tk.Button(inner, text=text, font=font or FONT,
+                  bg=face, fg=DIS_TEXT if disabled else fg,
+                  activebackground=BTN_TOP, activeforeground=fg,
+                  relief="flat", bd=0, highlightthickness=0,
+                  cursor="arrow")
+    b.place(x=0, y=1, width=w - 2, height=h - 4)
+    return b
 
-    tk has no multi-stop gradient, so the highlight/shade lines are drawn
-    with the frame borders below ``_flat_pack`` instead of faking them.
+
+def _bordered(win, x, y, w, h, *, inner_bg=WINDOW, outer_bg=BORDER):
+    """The 1px border the spec measures, drawn the way tk can actually
+    render it: an outer frame filled with --border and an inner frame
+    over it, inset 1px. ``highlightthickness`` on a bd=0 widget does not
+    paint reliably here (the user's "where's the border?" report).
+
+    Returns the inner frame to pack children into.
     """
-    return tk.Button(parent, text=text, font=font or FONT, bg=bg or FACE,
-                     fg=fg, activebackground=activebackground or BTN_TOP,
-                     activeforeground=fg, relief=relief,
-                     highlightthickness=1,
-                     highlightbackground=BORDER,
-                     highlightcolor=BORDER,
-                     borderwidth=0, cursor="arrow")
-
-
-def _flat_pack(win, widget, x, y, w=None, h=None):
-    widget.place(x=x, y=y, width=w, height=h)
-    return widget
+    outer = tk.Frame(win, bg=outer_bg, bd=0, highlightthickness=0)
+    outer.place(x=x, y=y, width=w, height=h)
+    inner = tk.Frame(outer, bg=inner_bg, bd=0, highlightthickness=0)
+    inner.place(x=1, y=1, width=max(1, w - 2), height=max(1, h - 2))
+    return inner
 
 
 def _hline(win, x, y, w, color=BORDER):
@@ -125,49 +182,56 @@ def _vline(win, x, y, h, color=COLSEP):
 
 
 def _pane(win, x, y, w, h, text="", *, bg=WINDOW):
-    """White text pane with 1px border and a 2px thumb on the right."""
-    t = tk.Text(win, bg=bg, fg=TEXT, font=FONT, wrap="word",
-                relief="flat", highlightthickness=1,
-                highlightbackground=BORDER, bd=0, padx=5, pady=3)
-    t.place(x=x, y=y, width=w, height=h)
+    """White text pane with a real 1px border and a 2px thumb on the right."""
+    inner = _bordered(win, x, y, w, h, inner_bg=bg)
+    t = tk.Text(inner, bg=bg, fg=TEXT, font=FONT, wrap="word",
+                relief="flat", highlightthickness=0, bd=0, padx=5, pady=3)
+    t.place(x=0, y=0, width=w - 2, height=h - 2)
     if text:
         t.insert("1.0", text)
         t.config(state="disabled")
-    thumb = tk.Frame(win, bg=THUMB, bd=0, width=2)
-    thumb.place(x=x + w - 4, y=y + 3, width=2, height=min(168, h - 6))
+    thumb = tk.Frame(inner, bg=THUMB, bd=0, width=2, highlightthickness=0)
+    thumb.place(x=w - 6, y=3, width=2, height=min(168, h - 6))
     return t
 
 
 def _combo(win, x, y, w, label, *, disabled=False, h=20):
-    """Combobox-styled button: gradient face, 1px border, ▴▾ arrow pair."""
-    bg = FACE if disabled else FACE
+    """Combobox-styled button: real 1px border, face, ▴▾ arrow pair."""
+    face = FACE
     fg = TEXT_DIM if disabled else TEXT
-    c = tk.Canvas(win, bg=bg, bd=0, highlightthickness=1,
-                  highlightbackground=BORDER, height=h)
-    c.place(x=x, y=y, width=w, height=h)
-    c.create_text(6, h // 2, text=label, anchor="w", fill=fg,
-                  font=("Segoe UI", 9))
+    outer = tk.Frame(win, bg=TEXT_DIM if disabled else BORDER, bd=0,
+                     highlightthickness=0)
+    outer.place(x=x, y=y, width=w, height=h)
+    inner = tk.Frame(outer, bg=face, bd=0, highlightthickness=0)
+    inner.place(x=1, y=1, width=max(1, w - 2), height=max(1, h - 2))
+    hl = tk.Frame(inner, bg=BTN_HL, bd=0, highlightthickness=0)
+    hl.place(x=0, y=0, width=w - 2, height=1)
+    sh = tk.Frame(inner, bg=BTN_SHADE, bd=0, highlightthickness=0)
+    sh.place(x=0, y=h - 3, width=w - 2, height=1)
+    tk.Label(inner, text=label, bg=face, fg=fg, font=FONT,
+             anchor="w").place(x=5, y=(h - 4) // 2)
     # the ▴▾ pair sits in the right 15px, exactly as the HTML copy does
-    c.create_text(w - 10, int(h * 0.38), text="▴", fill=fg,
-                  font=("Segoe UI", 7), anchor="e")
-    c.create_text(w - 10, int(h * 0.72), text="▾", fill=fg,
-                  font=("Segoe UI", 7), anchor="e")
-    _hline(win, x + 1, y + h - 1, w - 2, BTN_SHADE)
-    return c
+    tk.Label(inner, text="▴", bg=face, fg=fg,
+             font=("Segoe UI", 7)).place(x=w - 15, y=1)
+    tk.Label(inner, text="▾", bg=face, fg=fg,
+             font=("Segoe UI", 7)).place(x=w - 15, y=(h - 4) // 2 + 1)
+    return inner
 
 
 def _check(win, x, y, label, *, on=False):
     """13x13 checkbox: white when off, #005eb8 with a white tick when on."""
-    _check.nticks = getattr(_check, "nticks", 0) + 1
-    c = tk.Canvas(win, bg=WINDOW if not on else CB_ON, bd=0,
-                  highlightthickness=1, highlightbackground=BORDER)
-    c.place(x=x, y=y, width=13, height=13)
+    outer = tk.Frame(win, bg=CB_ON if on else BORDER, bd=0,
+                     highlightthickness=0)
+    outer.place(x=x, y=y, width=13, height=13)
+    inner = tk.Frame(outer, bg=CB_ON if on else WINDOW, bd=0,
+                     highlightthickness=0)
+    inner.place(x=1, y=1, width=11, height=11)
     if on:
-        c.create_text(6.5, 5, text="✓", fill="white",
-                      font=("Segoe UI", 9, "bold"))
+        tk.Label(inner, text="✓", bg=CB_ON, fg="#ffffff",
+                 font=("Segoe UI", 9, "bold")).place(x=1, y=-3)
     tk.Label(win, text=label, bg=FACE, fg=TEXT, font=FONT,
              anchor="w").place(x=x + 18, y=y - 2)
-    return c
+    return inner
 
 
 def _group_box(win, x, y, w, h, title):
@@ -209,10 +273,8 @@ def main_window(root):
     _titlebar(win, MAIN_WIDTH)
 
     # toolbar (y 30..59)
-    _button(win, "◀", bg=FACE, fg=TEXT_DIM, font=("Segoe UI", 10))
-    _flat_pack(win, win.winfo_children()[-1], 4, 32, 24, 22)
-    _button(win, "▶", bg=FACE, fg=TEXT_DIM, font=("Segoe UI", 10))
-    _flat_pack(win, win.winfo_children()[-1], 30, 32, 24, 22)
+    _btn(win, 4, 32, 24, "◀", h=22, fg=TEXT_DIM, font=("Segoe UI", 10))
+    _btn(win, 30, 32, 24, "▶", h=22, fg=TEXT_DIM, font=("Segoe UI", 10))
     _label(win, 62, 37, "Google", fg=LINK)
     win.winfo_children()[-1].configure(font=("Segoe UI", 9, "underline"))
     tk.Label(win, text="⋮", bg=FACE, fg=TEXT,
@@ -245,16 +307,13 @@ def main_window(root):
                  width=1, height=3).place(x=249 + i * 5, y=213)
 
     # control row (y 217..238)
-    _button(win, "🗎", bg=FACE, font=("Segoe UI", 12))
-    _flat_pack(win, win.winfo_children()[-1], 4, 217, 31, 21)
+    _btn(win, 4, 217, 31, "🗎", font=("Segoe UI", 12))
     tk.Label(win, text="⋮", bg=FACE, fg=TEXT,
              font=("Segoe UI", 11)).place(x=41, y=219)
     _combo(win, 67, 217, 150, "Auto-Detect")
-    _button(win, "⇄", bg=FACE, font=("Segoe UI", 12))
-    _flat_pack(win, win.winfo_children()[-1], 223, 217, 27, 21)
+    _btn(win, 223, 217, 27, "⇄", font=("Segoe UI", 12))
     _combo(win, 256, 217, 177, "Vietnamese")
-    _button(win, "Translate", bg=FACE, font=("Segoe UI", 9))
-    _flat_pack(win, win.winfo_children()[-1], 438, 217, 73, 21)
+    _btn(win, 438, 217, 73, "Translate", font=("Segoe UI", 9))
     _hline(win, 1, 242, MAIN_WIDTH - 3)
 
     # output pane (y 243..391)
@@ -324,24 +383,196 @@ def options_window(root, page="Hotkeys"):
         tk.Label(side, text=name, bg=bg, fg=fg, font=FONT,
                  anchor="w").place(x=2, y=3 + i * 13)
 
-    if page == "Hotkeys":
-        _check(win, 159, 34, "Enable hotkeys", on=True)
-        tbl = tk.Frame(win, bg=WINDOW, bd=0, highlightthickness=1,
-                       highlightbackground=BORDER)
-        tbl.place(x=159, y=60, width=465, height=251)
-        tk.Label(tbl, text="Action", bg=WINDOW, fg=TEXT,
-                 font=FONT).place(x=6, y=4)
-        tk.Label(tbl, text="Hotkey", bg=WINDOW, fg=TEXT,
-                 font=FONT).place(x=317 + 6, y=4)
-        _vline(tbl, 317, 0, 251)
-        for i, act in enumerate(HOTKEY_ACTIONS):
-            y = 24 + i * 17
-            tk.Label(tbl, text=act, bg=WINDOW, fg=TEXT, font=FONT,
-                     anchor="w").place(x=6, y=y)
-            if i in HOTKEY_BINDINGS:
-                tk.Label(tbl, text=HOTKEY_BINDINGS[i], bg=WINDOW, fg=TEXT,
-                         font=FONT, anchor="w").place(x=323, y=y)
+    # --- page bodies (all 9, ported from UI-FULL.html) --------------------
+    PAGE_BODIES[page](win)
+    _btn(win, 404, 364, 73, "OK")
+    _btn(win, 484, 364, 73, "Cancel")
+    _btn(win, 565, 364, 73, "Apply", disabled=True)
     return win
+
+
+def _page_basics(win):
+    _group_box(win, 152, 35, 484, 84, "General")
+    for i, label in enumerate(("Start with Windows",
+                               "Load at system startup (startup parameter)",
+                               "Show on load")):
+        _check(win, 160, 55 + i * 20, label, on=not i)
+    _group_box(win, 152, 128, 484, 55, "Language")
+    _label(win, 157, 152, "Interface language:")
+    _combo(win, 397, 143, 233, "English")
+    _label(win, 157, 176, "Font:")
+    _combo(win, 397, 167, 233, "Tahoma, 9 pt")
+
+
+def _page_hotkeys(win):
+    _check(win, 159, 34, "Enable hotkeys", on=True)
+    tbl = _bordered(win, 159, 60, 465, 251)
+    tk.Label(tbl, text="Action", bg=WINDOW, fg=TEXT,
+             font=FONT).place(x=6, y=4)
+    tk.Label(tbl, text="Hotkey", bg=WINDOW, fg=TEXT,
+             font=FONT).place(x=323, y=4)
+    _vline(tbl, 317, 0, 251)
+    for i, act in enumerate(HOTKEY_ACTIONS):
+        y = 24 + i * 17
+        tk.Label(tbl, text=act, bg=WINDOW, fg=TEXT, font=FONT,
+                 anchor="w").place(x=6, y=y)
+        if i in HOTKEY_BINDINGS:
+            tk.Label(tbl, text=HOTKEY_BINDINGS[i], bg=WINDOW, fg=TEXT,
+                     font=FONT, anchor="w").place(x=323, y=y)
+
+
+def _page_internet(win):
+    _group_box(win, 152, 35, 484, 45, "Connection")
+    _label(win, 157, 59, "Timeout, sec:")
+    _combo(win, 375, 50, 255, "10")
+    _group_box(win, 152, 91, 484, 101, "Proxy")
+    _combo(win, 157, 105, 470, "Use system proxy settings")
+    _combo(win, 162, 134, 78, "HTTP", disabled=True)
+    for x, y, w, txt in ((248, 134, 277, ""), (532, 134, 95, "0"),
+                         (248, 160, 186, ""), (441, 160, 186, "")):
+        f = _bordered(win, x, y, w, 20, outer_bg=TEXT_DIM, inner_bg=FACE)
+        if txt:
+            tk.Label(f, text=txt, bg=FACE, fg=TEXT_DIM,
+                     font=FONT).place(x=5, y=1)
+
+
+def _page_services(win):
+    _label(win, 13, 5, "Translation", fg=SECTION_INK)
+    _hline(win, 77, 12, 376, SECTION_RULE)
+    for i, (name, color) in enumerate(SERVICES_TRANSLATE):
+        _check(win, 5, 25 + i * 18, "", on=True)
+        tk.Frame(win, bg=color, bd=0,
+                 highlightthickness=0).place(x=21, y=24 + i * 18, width=14,
+                                             height=14)
+        tk.Label(win, text=name, bg=FACE, fg=TEXT, font=FONT,
+                 anchor="w").place(x=38, y=23 + i * 18)
+    _label(win, 13, 191, "Dictionary", fg=SECTION_INK)
+    _hline(win, 77, 198, 376, SECTION_RULE)
+    for i, (name, color) in enumerate(SERVICES_DICTIONARY):
+        _check(win, 5, 212 + i * 18, "", on=True)
+        tk.Frame(win, bg=color, bd=0,
+                 highlightthickness=0).place(x=21, y=211 + i * 18,
+                                             width=14, height=14)
+        tk.Label(win, text=name, bg=FACE, fg=TEXT, font=FONT,
+                 anchor="w").place(x=38, y=210 + i * 18)
+    tk.Frame(win, bg=THUMB, bd=0, highlightthickness=0).place(
+        x=471, y=17, width=2, height=157)
+    fld = _bordered(win, 155, 31, 481, 272)
+    for x, w, t in ((157, 24, "▲"), (187, 24, "▼"),
+                    (219, 117, "Add dictionary…"),
+                    (342, 118, "Remove dictionary")):
+        _btn(win, x, 309, w, t, fg=TEXT_DIM if t in ("▲", "▼",
+                                                     "Remove dictionary")
+             else TEXT)
+
+
+def _page_languages(win):
+    _bordered(win, 155, 31, 481, 272)
+    col_w, per_col = 126.5, 18
+    for ci, col in enumerate(LANGUAGE_COLUMNS):
+        for i, name in enumerate(col.split(" ")):
+            x = 3 + ci * col_w
+            _check(win, int(x), int(2 + i * 14), "", on=True)
+            tk.Label(win, text=name, bg=WINDOW, fg=TEXT, font=FONT,
+                     anchor="w").place(x=int(x) + 16, y=int(2 + i * 14))
+    tk.Frame(win, bg=THUMB, bd=0, highlightthickness=0).place(
+        x=18, y=262, width=238, height=2)
+    _btn(win, 155, 308, 481, "Check / Uncheck all")
+
+
+def _page_appearance(win):
+    _group_box(win, 152, 35, 484, 56, "General")
+    _check(win, 160, 55, "Enable window style")
+    _label(win, 157, 77, "Theme:")
+    _combo(win, 397, 68, 233, "--- Default ---")
+    _group_box(win, 152, 98, 484, 226, "Popup window")
+    for i, (label, on) in enumerate((("Enable auto size", True),
+                                     ("Enable auto position", True),
+                                     ("Activate when opened", False),
+                                     ("Pin when dragging", True))):
+        _check(win, 160, 122 + i * 23, label, on=on)
+    _label(win, 157, 213, "Auto-hide delay:")
+    _combo(win, 397, 204, 115, "5")
+    _label(win, 523, 206, "seconds")
+    _label(win, 157, 237, "Transparency (0 - 90):")
+    f = _bordered(win, 397, 227, 233, 20)
+    tk.Label(f, text="15", bg=WINDOW, fg=TEXT, font=FONT).place(x=5, y=1)
+    _label(win, 157, 261, "Frame thickness:")
+    _combo(win, 397, 252, 233, "2")
+    _label(win, 157, 286, "Icons:")
+    for i, g in enumerate(("📖", "🎧", "⧉")):
+        _btn(win, 398 + i * 23, 275, 22, g, h=22)
+    _btn(win, 467, 275, 22, "tā", h=22)
+    _label(win, 157, 313, "Background color:")
+    _label(win, 320, 313, "Text color:")
+    tk.Frame(win, bg=SWATCH_TEXT, bd=0, highlightthickness=0).place(
+        x=378, y=305, width=87, height=17)
+    _label(win, 482, 313, "Frame color:")
+    tk.Frame(win, bg=SWATCH_FRAME, bd=0, highlightthickness=0).place(
+        x=549, y=305, width=78, height=17)
+
+
+def _page_exceptions(win):
+    _combo(win, 155, 33, 481, "Disabled for these programs:")
+    tbl = _bordered(win, 153, 60, 483, 221)
+    tk.Label(tbl, text="Program Name", bg=WINDOW, fg=TEXT,
+             font=FONT).place(x=7, y=5)
+    tk.Label(tbl, text="Window Class Name", bg=WINDOW, fg=TEXT,
+             font=FONT).place(x=246, y=5)
+    _vline(tbl, 240, 2, 18)
+    for i, (prog, cls) in enumerate(EXCEPTIONS_ROWS):
+        y = 25 + i * 17
+        tk.Label(tbl, text=prog, bg=WINDOW, fg=TEXT, font=FONT,
+                 anchor="w").place(x=7, y=y)
+        tk.Label(tbl, text=cls, bg=WINDOW, fg=TEXT, font=FONT,
+                 anchor="w").place(x=246, y=y)
+    _btn(win, 155, 288, 71, "Add")
+    _btn(win, 234, 288, 72, "Modify")
+    _btn(win, 314, 288, 72, "Delete")
+    _check(win, 154, 321, "Enable smart detection", on=True)
+
+
+def _page_advanced(win):
+    _group_box(win, 152, 35, 484, 178, "Advanced")
+    for y, label, value in ((56, "Default browser:", "Internet Explorer"),
+                            (80, "Copy action:", "Ctrl + C"),
+                            (104, "Keyboard layout indicator:", "None"),
+                            (128, "Preferred domain:", "com")):
+        _label(win, 157, y, label)
+        _combo(win, 455, y - 10, 175, value)
+    for i, (label, on) in enumerate((("Enable GUI translation", False),
+                                     ("Enable listening to the same text at "
+                                      "a slower speed", True),
+                                     ("Remove line breaks", False))):
+        _check(win, 160, 154 + i * 23, label, on=on)
+    _group_box(win, 152, 224, 484, 66, "Mouse mode")
+    _check(win, 160, 244,
+           "Enable mouse mode only when Ctrl is pressed")
+    _check(win, 160, 268,
+           "Click on system tray icon switches mouse mode", on=True)
+    _group_box(win, 152, 296, 484, 54, "API keys")
+    _label(win, 157, 315, "OCR API key:")
+    _bordered(win, 387, 304, 243, 22)
+    _label(win, 157, 331, "Register here for free OCR API key", fg=LINK)
+
+
+def _page_updates(win):
+    _check(win, 161, 44, "Automatically check for updates")
+    _bordered(win, 153, 63, 481, 230)
+    _btn(win, 524, 300, 110, "Check now")
+
+
+PAGE_BODIES = {
+    "Basics": _page_basics,
+    "Hotkeys": _page_hotkeys,
+    "Internet": _page_internet,
+    "Services": _page_services,
+    "Languages": _page_languages,
+    "Appearance": _page_appearance,
+    "Exceptions": _page_exceptions,
+    "Advanced": _page_advanced,
+    "Updates": _page_updates,
+}
 
 
 def dictionary_window(root):
@@ -412,17 +643,6 @@ def history_window(root):
               highlightbackground=BORDER).place(x=398, y=294, width=73,
                                                 height=21)
     return win
-
-
-KBD_LAYOUT = [
-    ("F-row", None),
-    ("` 1 2 3 4 5 6 7 8 9 0 - =", [("BkSp", 2)]),
-    ("q w e r t y u i o p [ ]", [("Tab", 1.5), ("\\", 1.5)]),
-    ("a s d f g h j k l ; '", [("Caps", 1.9), ("Enter", 2.2)]),
-    ("z x c v b n m , . /", [("Shift", 2.3), ("Shift", 2.8)]),
-    ("Ctrl Win Alt", [("", 6.3), ("AltGr", 1.5), ("Apps", 1.5),
-                    ("^ v < >", 1)]),
-]
 
 
 def keyboard_window(root):

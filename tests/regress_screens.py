@@ -40,6 +40,10 @@ ck("screens exposes all 7 builders",
    set(EXPECTED) == set(S.SCREENS),
    str(sorted(S.SCREENS)))
 
+ck("all 9 Options pages have a body builder",
+   set(S.OPTION_PAGES) == set(S.PAGE_BODIES),
+   "missing: %s" % sorted(set(S.OPTION_PAGES) - set(S.PAGE_BODIES)))
+
 ck("option pages are the 9 native pages",
    S.OPTION_PAGES == ["Basics", "Hotkeys", "Internet", "Services",
                       "Languages", "Appearance", "Exceptions", "Advanced",
@@ -92,6 +96,18 @@ if root is not None:
             win.destroy()
         except Exception as e:
             ck("%s builds at %dx%d" % (name, w, h), False, repr(e))
+    # every Options page must build too (each is its own measured screen)
+    for page in S.OPTION_PAGES:
+        try:
+            win = S.options_window(root, page=page)
+            root.update_idletasks()
+            ck("Options/%s builds at %dx%d"
+               % (page, S.OPTS_W, S.OPTS_H),
+               win.geometry().startswith("%dx%d" % (S.OPTS_W, S.OPTS_H)),
+               win.geometry())
+            win.destroy()
+        except Exception as e:
+            ck("Options/%s builds" % page, False, repr(e))
     root.destroy()
 
 if fail:

@@ -20,15 +20,17 @@ def main():
     from qtranslate import screens as S
 
     os.makedirs(OUTDIR, exist_ok=True)
-    names = list(S.SCREENS)
-    print("screens:", " ".join(names))
+    jobs = [(n, None) for n in S.SCREENS]
+    jobs += [("options_" + p.lower(), p) for p in S.OPTION_PAGES]
+    print("screens:", " ".join(n for n, _ in jobs))
 
     root = tk.Tk()
     root.withdraw()
     grabbed = 0
-    for name in names:
+    for name, arg in jobs:
         try:
-            win = S.SCREENS[name](root)
+            win = (S.SCREENS[name](root) if arg is None
+                   else S.options_window(root, page=arg))
         except Exception as e:
             print(name, "BUILD FAILED:", type(e).__name__, str(e)[:120])
             continue
@@ -55,8 +57,8 @@ def main():
             except Exception:
                 pass
     root.destroy()
-    print("grabbed %d/%d" % (grabbed, len(names)))
-    return 0 if grabbed == len(names) else 1
+    print("grabbed %d/%d" % (grabbed, len(jobs)))
+    return 0 if grabbed == len(jobs) else 1
 
 
 if __name__ == "__main__":
