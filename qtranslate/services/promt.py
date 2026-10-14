@@ -112,11 +112,12 @@ def session(sl: str = "en", tl: str = "ru", opener=None):
     engine sets by loading the page. Both live in static HTML (no
     headless needed). Returns (paft, xsrf, opener-with-cookies).
     """
+    _jar = None
     if opener is None:
         import http.cookiejar
-        jar = http.cookiejar.CookieJar()
+        _jar = http.cookiejar.CookieJar()
         opener = urllib.request.build_opener(
-            urllib.request.HTTPCookieProcessor(jar))
+            urllib.request.HTTPCookieProcessor(_jar))
     # Page slugs use full language names (e.g. /translation/english-russian).
     _NAMES = {"en": "english", "ru": "russian", "de": "german",
               "fr": "french", "es": "spanish", "it": "italian",
@@ -131,6 +132,19 @@ def session(sl: str = "en", tl: str = "ru", opener=None):
         html = read_response_text(r)
     paft = re.search(r'id="_paft"[^>]*value="([^"]+)"', html).group(1)
     xsrf = re.search(r'id="_xsrf"[^>]*value="([^"]+)"', html).group(1)
+    # Native (FUN_0045f372 via the Promt EXTENSION) runs /api/pageLoad
+    # with pageIx=0&v=1 immediately after this scrape, on the same cookie
+    # jar. Best effort: a failed pageLoad is not fatal (native returns 0
+    # but still proceeds to translation), so ignore its result.
+    # When the caller supplied their own opener the jar is not visible to
+    # us -- the opener already carries the cookies, so pass an empty
+    # explicit Cookie and let opener's own processor attach them.
+    try:
+        _cookie = ("; ".join("%s=%s" % (c.name, c.value) for c in _jar)
+                   if _jar is not None else "")
+        page_load(paft, xsrf, _cookie, opener)
+    except Exception:
+        pass
     return paft, xsrf, opener
 
 
@@ -180,6 +194,57 @@ def translate(text: str, sl, tl, paft: str = "",
 def _split(header_block: str) -> dict:
     from qtranslate.common import split_headers
     return split_headers(header_block)
+
+
+def page_load(paft: str = "", xsrf: str = "", cookie: str = "",
+              opener=None) -> dict:
+    """Port of FUN_0045f372: POST /api/pageLoad with `pageIx=0&v=1`.
+
+    Native sends this right after the session bootstrap, using the same
+    header trio from the page scrape (`Content-Type:
+    application/x-www-form-urlencoded; charset=UTF-8`, `XSRF-TOKEN`,
+    `Cookie`). The decompile shows the post body is the literal
+    `pageIx=0&v=1` and the response is accepted only with HTTP status
+    0xC8 (200); on 200 it extracts the `_ppup` field the way
+    FUN_0045451a does. Returns the parsed response dict,{} on HTTP
+    mismatch or transport failure (native returns false/0 either way --
+    a failed pageLoad is NOT fatal to the later translation call).
+    """
+    if opener is None:
+        import http.cookiejar
+        jar = http.cookiejar.CookieJar()
+        opener = urllib.request.build_opener(
+            urllib.request.HTTPCookieProcessor(jar))
+    xsrf = xsrf or Options.get("PromtXsrf", "")
+    cookie = cookie or Options.get("PromtCookie", "")
+    paft = paft or Options.get("PromtPaft", "")
+    body = "pageIx=0&v=1"
+    headers = dict(_UA,
+                   **{"Content-Type":
+                      "application/x-www-form-urlencoded; charset=UTF-8",
+                      "Accept": "*/*",
+                      "XSRF-TOKEN": xsrf,
+                      "Cookie": cookie})
+    # native's session bootstrap hits /translation/<a>-<b>; pageLoad rides
+    # the same cookie jar (opener), so pass opener through and never
+    # fall back to urlopen here.
+    req = urllib.request.Request(HOST + "/api/pageLoad",
+                                 data=body.encode("utf-8"), headers=headers)
+    try:
+        with common.http_open(req, opener) as r:
+            if getattr(r, "status", 200) != 200:
+                return {}
+            return parse_json_lenient(read_response_text(r))
+    except Exception:
+        return {}
+
+
+def ppup(resp: dict):
+    """Port of FUN_0045451a's `_ppup` extraction: the pageLoad response's
+    `_ppup` field, or None when the response carries none."""
+    if isinstance(resp, dict) and "_ppup" in resp:
+        return resp["_ppup"]
+    return None
 
 
 def _translate_response(resp: dict) -> tuple:
