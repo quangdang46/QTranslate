@@ -70,6 +70,20 @@ ck("popup icons render as Labels, not Buttons",
 ck("_MAIN_APP is the single main window",
    "global _MAIN_APP" in SRC and "_MAIN_APP = app" in SRC)
 
+# 6. popup option defaults must match native (DAT_005494A4 = 217)
+ck("Transparency fallback is the native 217, not 255",
+   '_ap.get("Transparency", 217)' in SRC,
+   "native default Transparency is 217 (NATIVE_ARCH.md:1200)")
+ck("DEFAULT_APPEARANCE also carries 217",
+   '"Transparency": 217' in open("qtranslate/config.py",
+                                 encoding="utf-8").read())
+ck("PopupTimeout default stays 0 (opaque, no auto-hide)",
+   '_ap.get("PopupTimeout", 0)' in SRC)
+ck("PopupAutoPos defaults True (cursor-adjacent)",
+   '_ap.get("PopupAutoPos", True)' in SRC)
+ck("PopupAutoFocus gates focus steal (default off)",
+   "PopupAutoFocus" in SRC)
+
 if fail:
     print("FAIL %d/%d" % (len(fail), n[0]))
     for f in fail:

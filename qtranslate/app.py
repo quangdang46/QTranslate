@@ -4812,9 +4812,11 @@ def show_popup(source, result, service="google", target="vi",
             win.focus_force()
         except Exception:
             pass
-    # Transparency 0..255 -> window alpha (only when < 255)
+    # Transparency 0..255 -> window alpha (only when < 255).
+    # Native default 217 (DAT_005494A4, NATIVE_ARCH.md:1200; also
+    # DEFAULT_APPEARANCE in config.py) — not 255.
     try:
-        _tr = int(_ap.get("Transparency", 255))
+        _tr = int(_ap.get("Transparency", 217))
         if 0 < _tr < 255:
             win.attributes("-alpha", _tr / 255.0)
     except Exception:
