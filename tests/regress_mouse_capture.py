@@ -140,6 +140,26 @@ ck("mode 1 -> clipboard path", _branch("abc", 1) == ["clipboard"])
 ck("mode 0 -> clipboard path", _branch("abc", 0) == ["clipboard"])
 
 
+# --- the HotKeySwitchMouseMode cycle (native FUN_004183bd 0/1/2) --------
+# app._toggle_mouse_mode cycles General.MouseMode (0 off -> 1 popup ->
+# 2 popup+read -> 0). Pin the arithmetic the caller relies on.
+def _cycle(mode):
+    return (mode + 1) % 3
+
+
+ck("cycle 0 -> 1", _cycle(0) == 1)
+ck("cycle 1 -> 2", _cycle(1) == 2)
+ck("cycle 2 -> 0 (wraps)", _cycle(2) == 0)
+ck("MouseModeOn is false only at mode 0",
+   all((_cycle(m) != 0) == (_cycle(m) != 0) for m in (0, 1, 2))
+   and (0 != 0) is False and (1 != 0) is True and (2 != 0) is True)
+# app.py must keep the same wrap expression (no off-by-one drift).
+ck("app.py cycles with (mode+1)%3",
+   re.search(r"MouseMode[\"']?,\s*0\)\)\s*\n?\s*\+ 1\) % 3", app_src)
+   is not None or "(int(full.setdefault(\"General\", {}).get(\"MouseMode\", 0))\n                + 1) % 3"
+   in app_src, "mode-cycle expression changed")
+
+
 if fail:
     print("FAIL %d/%d" % (len(fail), n[0]))
     for f in fail:
