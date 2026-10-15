@@ -76,8 +76,8 @@
 ## 6. Verification (2026-10-15, offline, no GUI)
 
 - 37/37 `tests/regress_*.py` PASS + `tests/ui_match.py` 103/103 PASS
-  (37/37 was the count when these fixes landed; the suite has since grown
-  to 61/61 headless — see `HEADLESS_SWEEP_RULE_2026-10-15.md`).
+  (GUI session then; `ui_match` creates a Tk root and is not re-run in a
+  no-GUI session — see `HEADLESS_SWEEP_RULE_2026-10-15.md`).
 - `tools/coverage_tally.py --check`: 151 VERIFIED / 1 UNKNOWN (G9),
   Gate BLOCKED (1) — unchanged, as expected (port-side fixes do not
   move RE states).

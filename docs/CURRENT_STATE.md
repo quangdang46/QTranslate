@@ -59,14 +59,14 @@ deps only (`keyboard`, `pyperclip` required; `pystray`, `Pillow`, `comtypes`,
   even the source text of `app.py` (`ui_match.py:57-59`). It is a
   *string/structural* match, **not** pixel or screenshot comparison.
 - `tests/smoke_dict.py` — import + offline helper assertions.
-- README claims (as of 2026-10-15) `103/103 UI` offline, 61/61 headless
-  regress suites PASS, live suites historical (2026-10-08). Earlier doc
-  said `101/101 UI` / 32/32 suites — counts differ across CHANGELOG
-  entries (`82/82`, `40/40`, `46/46`…), a sign the suite grew over time.
-  Re-verified offline 2026-10-15 after the Core/Extensions slice pins and
-  one regress suite per module; see README "Test suites" and
-  `docs/review/HEADLESS_SWEEP_RULE_2026-10-15.md` (61 headless = 63 total
-  minus the 2 window-opening suites).
+- README claims (as of 2026-10-15) `103/103 UI` (GUI session only — it
+  builds a Tk root and was last green in a GUI run, not re-verified in
+  this no-GUI session), 61/61 headless regress suites PASS (re-run here),
+  live suites historical (2026-10-08). Earlier doc said `101/101 UI` /
+  32/32 suites — counts differ across CHANGELOG entries (`82/82`,
+  `40/40`, `46/46`…), a sign the suite grew over time. See README "Test
+  suites" and `docs/review/HEADLESS_SWEEP_RULE_2026-10-15.md` (61 headless
+  = 63 total minus the 2 window-opening suites).
 
 > **Honesty note:** "UI match" does **not** mean the UI looks like the
 > native window. The user's own assessment is that the UI "chả giống tý nào"

@@ -58,7 +58,8 @@ python -I start_app.py
 > only in a GUI session — see `docs/review/HEADLESS_SWEEP_RULE_2026-10-15.md`.)
 
 ```bash
-python -I tests/ui_match.py        # 103/103 (2026-10-15, offline)
+python -I tests/ui_match.py        # 103/103 (2026-10-15, GUI session only;
+                                   #   it builds tk.Tk() — rerun before release)
 python -I tests/smoke_dict.py      # PASS exit 0 (2026-10-15, offline)
 python -I tests/regress_*.py       # 61/61 headless suites PASS (2026-10-15, offline)
                                    #   check the EXIT CODE, not a "FAIL" grep
