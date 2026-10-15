@@ -2,7 +2,8 @@
 
 Theme files define per-state colors (Normal/Disabled/Hover/Pressed) as hex
 strings for Window/WindowButton/Button sections. State indices match the
-native selector: 0 empty, 1 has-text, 3 disabled, 4 focused.
+native selector: 0 empty/normal, 1 has-text/hover, 3 disabled, 4 focused
+(FUN_0044FE1B); 2 = pressed for buttons (FUN_0044D502).
 """
 import glob
 import json
@@ -353,6 +354,23 @@ def button_colors(theme, state: str = "Normal") -> dict:
 # and painting black would invent a value native never had.
 TK_UNSET = {"back": "SystemButtonFace", "text": "SystemWindowText",
             "border": "SystemButtonFace"}
+
+
+# Native state indices → theme state names. From FUN_0044FE1B
+# (window: disabled → 3, focused → 4, has-text → 1, empty → 0) and
+# FUN_0044D502 (buttons: pressed → 2). Index 0 is Normal in both.
+STATE_NAMES = {0: "Normal", 1: "Hover", 2: "Pressed", 3: "Disabled",
+               4: "Normal"}
+
+
+def state_name(index: int) -> str:
+    """Theme state name for a native state index.
+
+    Index 4 (focused) maps to Normal: native keeps a separate focus
+    flag (focus-rect via BM_GETSTATE bit0 in FUN_0044D3C3), not a
+    separate palette — the palette lookup uses the Normal record.
+    """
+    return STATE_NAMES.get(int(index), "Normal")
 
 
 def tk_colors(colors: dict) -> dict:

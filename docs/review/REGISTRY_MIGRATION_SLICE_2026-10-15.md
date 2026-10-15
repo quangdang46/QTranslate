@@ -1,8 +1,8 @@
 # Registry migration slice — single source of truth (2026-10-15, working tree)
 
 > Phase 2 slice (alias-first) of the Core/Extension migration
-> (`IMPLEMENTATION_PLAN.md` Phase 2). Code is in the working tree,
-> uncommitted per user rule 7. No row state changed.
+> (`IMPLEMENTATION_PLAN.md` Phase 2). Code landed and pushed at
+> `7b8ea7a`. No row state changed.
 
 ## 1. What was wrong
 

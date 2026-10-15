@@ -1,9 +1,8 @@
-# Port fixes in working tree (uncommitted per user rule 7) — 2026-10-15
+# Port fixes — landed 2026-10-15 (commit `7b8ea7a`)
 
-> Two native-to-port gaps closed in the working tree, with offline tests
-> green. **Not committed, not pushed**: user rule 7 forbids staging,
-> committing, or pushing in this mission. This document records what the
-> tree holds so the work is not lost and is reviewable.
+> Native-to-port gaps closed, with offline tests green. **Landed and
+> pushed** at `7b8ea7a` (rule 7 was lifted by the user on 2026-10-15).
+> This document records what landed and the evidence behind it.
 
 ## 1. Dict-task source follows `General.LanguageDictionary`
 
@@ -84,20 +83,18 @@
 ## 7. What remains (blockers, honest)
 
 1. **G9 `UNKNOWN`** — needs a native-vs-port screenshot pair; screenshots
-   are banned in this mission, and `tools/g9_screenshot_diff.py` was
-   deleted per user order (working-tree deletion, uncommitted) with its
-   README line removed. Historical references in `G9_HARNESS.md` /
-   `G9_RESULT_2026-10-09.md` / `g9_samples/` reports are kept as record.
-   Gate stays BLOCKED (1), no waiver taken.
-2. **Core + Extensions migration (Phase 2+)** — Registry single source,
-   Engine cutover, SDK, MVP demos. Architectural work needing an
-   approved design before code.
-3. **These fixes are uncommitted** — needs a user decision to lift rule 7
-   for this tree (13 modified + 14 untracked as of 2026-10-15: `M
-   README.md`, `M docs/CURRENT_STATE.md`, `M
-   docs/RE_COVERAGE_CHECKLIST.md` (D1 AlwaysDetectLanguage note), `M
-   docs/review/DICT_LANG_BUILDER_2026-10-15.md`, `M
-   docs/review/PAYLOAD_CHUNK_CENSUS_2026-10-15.md`, `M qtranslate/app.py`
+   are banned (user order 2026-10-15: "đừng screenshot nữa"), and
+   `tools/g9_screenshot_diff.py` was deleted per user order (deletion
+   landed at `7b8ea7a`) with its README line removed. Historical
+   references in `G9_HARNESS.md` / `G9_RESULT_2026-10-09.md` /
+   `g9_samples/` reports are kept as record. Gate stays BLOCKED (1), no
+   waiver taken.
+2. **Core + Extensions migration** — slices 1–5 landed at `7b8ea7a`
+   (see `CORE_EXTENSIONS_SLICES_1_5_2026-10-15.md`). Remaining:
+   extensions-dir discovery, override UI, macOS adapters, packaging.
+3. ~~These fixes are uncommitted~~ **landed** at `7b8ea7a` (user lifted
+   rule 7). The file list below is kept as the record of what that commit
+   contained (`M
    (dict `_dsl`, router order, auto_detect wiring, aliases),
    `M qtranslate/layout.py`, `M qtranslate/tts.py`, `M
    qtranslate/win32app.py`, `M tests/regress_dict_args.py`, `M

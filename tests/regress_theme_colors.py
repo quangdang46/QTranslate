@@ -185,6 +185,21 @@ else:
     ck("tk_colors is a total function on the None-theme path too",
        T.tk_colors(T.window_colors(None))["back"] is not None,
        "load_theme_native returns None when no theme applies")
+    # --- native state indices → theme state names (FUN_0044FE1B/0044D502)
+    # window: disabled → 3, focused → 4, has-text → 1, empty → 0;
+    # buttons: pressed → 2. Index 4 maps to Normal (focus is a separate
+    # flag, not a separate palette).
+    ck("state 0 is Normal", T.state_name(0) == "Normal")
+    ck("state 1 is Hover", T.state_name(1) == "Hover")
+    ck("state 2 is Pressed (buttons)", T.state_name(2) == "Pressed")
+    ck("state 3 is Disabled", T.state_name(3) == "Disabled")
+    ck("state 4 (focused) uses the Normal palette",
+       T.state_name(4) == "Normal")
+    ck("unknown state index falls back to Normal",
+       T.state_name(99) == "Normal")
+    ck("window_colors accepts a state index via state_name",
+       T.window_colors(blue, T.state_name(3)) ==
+       T.window_colors(blue, "Disabled"))
     # Structural invariant, placed BEFORE the first button_colors() call.
     # button_colors indexes its record by hardcoded name -- c["Main"],
     # c["Back"], c["Shadow"] -- so if SECTION_SLOTS ever stops containing
