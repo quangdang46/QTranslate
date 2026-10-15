@@ -48,11 +48,13 @@ deps only (`keyboard`, `pyperclip` required; `pystray`, `Pillow`, `comtypes`,
   even the source text of `app.py` (`ui_match.py:57-59`). It is a
   *string/structural* match, **not** pixel or screenshot comparison.
 - `tests/smoke_dict.py` — import + offline helper assertions.
-- README claims `97/97 UI`, `21/21 live`, `9/9 smoke` (`README.md:28-34`) —
-  counts differ across CHANGELOG entries (`82/82`, `40/40`, `46/46`…), a sign
-  the suite grew over time; **not re-run here**.
+- README claims (as of 2026-10-15) `101/101 UI` offline, 32/32 regress
+  suites PASS, live suites historical (2026-10-08). Earlier doc said
+  `97/97 UI` (`README.md:28-34`) — counts differ across CHANGELOG entries
+  (`82/82`, `40/40`, `46/46`…), a sign the suite grew over time. Re-verified
+  offline 2026-10-15; see README "Test suites".
 
-> **Honesty note:** "97/97 UI match" does **not** mean the UI looks like the
+> **Honesty note:** "UI match" does **not** mean the UI looks like the
 > native window. The user's own assessment is that the UI "chả giống tý nào"
 > (doesn't look alike at all). The test verifies *structure/strings/order*, not
 > visual fidelity. Any future UI claim must distinguish these.
