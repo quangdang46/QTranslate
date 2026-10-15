@@ -35,6 +35,11 @@ working-tree change documented and preserved; CI runs the existing suites.
 a baseline snapshot of current test results is recorded (re-run, not copied
 from README).
 
+> **Baseline recorded 2026-10-15:** `docs/review/BASELINE_SNAPSHOT_2026-10-15.md`
+> — 62 headless suites, each run and its own summary line captured (exit-code
+> judged). GUI-session-only suites and live suites are listed as out of scope,
+> not claimed.
+
 ## Phase 1 — Reliability baseline
 
 **Why first:** it answers the user's #1 complaint ("mất kết nối") and is
