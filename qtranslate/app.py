@@ -4174,11 +4174,8 @@ def _register_native_hotkeys(app) -> list:
         # Alt+W native: translate selection, retype into the app
         if not _HAS_KEYS:
             return
-        try:
-            import pyperclip as _pc
-            text = _pc.paste().strip()
-        except Exception:
-            return
+        from qtranslate import clipboard as _CB
+        text = _CB.read_text().strip()
         if not text:
             return
         svc, _, tgt, _ = app.current()
@@ -4192,13 +4189,12 @@ def _register_native_hotkeys(app) -> list:
                 "Advanced", {}).get("CopyAction", 0))
         except Exception:
             _copy_action = 0
-        try:
-            import pyperclip as _pc2
-            _pc2.copy(res.text)
-            if _copy_action == 1:
+        _CB.write_text(res.text)
+        if _copy_action == 1:
+            try:
                 keyboard.write(res.text[:2000])
-        except Exception:
-            pass
+            except Exception:
+                pass
         app.src.delete("1.0", "end")
         app.src.insert("1.0", text[:2000])
         app.render(res.text)

@@ -135,7 +135,7 @@ recorded — a service may never quietly disappear between the two docs.
 | RichEdit link tagging (`qtdp:`) | `FUN_004266C6`, `FUN_00465574` | `tag_links` | yes | Win+mac | link test | `ported` |
 | 8+ themes (JSONC) | `FUN_0044C4CA`, `NATIVE_ARCH.md:926` | `theme.py` | load + roundtrip | Win+mac | theme hex test | `ported` |
 | Theme brightness shift | `FUN_0044A163` | `theme.adjust_brightness` | yes | Win+mac | vector test | `ported` |
-| Popup state colors | `FUN_0044FE1B` | `theme.window_colors` | states 0/1/3/4 | Win+mac | — | `ported` |
+| Popup state colors | `FUN_0044FE1B` | `theme.window_colors` + `state_name` (0 Normal, 1 Hover, 2 Pressed, 3 Disabled, 4→Normal palette; Blue verified all 5) | states 0/1/2/3/4 (4→Normal: focus is a flag, not a palette) | Win+mac | `tests/regress_theme_colors.py` (state table + window_colors roundtrip) | `ported` |
 | **Visual fidelity to native** | screenshots | low (user) | target | Win+mac | screenshot diff | `not-started` |
 
 ## E. Dictionary · history · XDXF
