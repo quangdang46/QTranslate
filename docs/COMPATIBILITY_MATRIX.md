@@ -172,7 +172,7 @@ recorded — a service may never quietly disappear between the two docs.
 | Feature | Native evidence | Python today | Must keep | Platforms | Test | Status |
 |---|---|---|---|---|---|---|
 | 9 Options pages | `FUN_004561F0`, `NATIVE_ARCH.md:781` | `app.py:1742` (1 method) | 9/9 on real Options.json | Win+mac | `ui_match` | `ported` |
-| Options.json 20 sections R/W | `NATIVE_ARCH.md:398` | `config.py` | full roundtrip | Win+mac | roundtrip test | `ported` (123/124 keys) |
+| Options.json 20 sections R/W | `NATIVE_ARCH.md:398` | `config.py` | full roundtrip | Win+mac | `tests/regress_options_roundtrip.py` (live 20-section + Ocr + stable dump) | `ported` (123/124 was the audit-machine count incl. the `Ocr` header; this machine's live file loads 20 sections incl. `Ocr`/`OcrLanguage`) |
 | Hotkey rebind UI | `FUN_00408456` | `app.py` | yes | Win+mac | — | `ported` |
 | Proxy / Internet.Timeout | `NATIVE_ARCH.md:1303` | `session.net_options` | yes | Win+mac | — | `ported` |
 | i18n lang.json (36 strings, 14 win) | `FUN_0045B716`, `NATIVE_ARCH.md:1071` | `locale.py` | vi verified + en fallback | Win+mac | vi test | `ported` |
