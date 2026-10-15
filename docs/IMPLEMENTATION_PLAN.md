@@ -65,6 +65,14 @@ Dead endpoints are marked, not retried.
   `services.REGISTRY`.
 - Compatibility shim mapping numeric ids ↔ stable ids; old Options honored.
 
+> **Landed 2026-10-15 (Phase 2 slice, commit below):** `core.TranslationRequest`
+> (frozen; `with_src`/`shaped` derived copies — the fallback guarantee
+> "preserve the request across providers" is structural) is threaded
+> through `engine.translate`, whose public signature is unchanged.
+> `core.Result` landed earlier; `Provider` contract, registry single
+> source, and the numeric-id shim landed in Slices 1–5 (`7b8ea7a`).
+> Test: `tests/regress_request.py` (11 assertions).
+
 **Done when:** Google goes through the new contract and produces
 **byte-identical** results to the current path on a fixed input set; all other
 providers still work via their old path.

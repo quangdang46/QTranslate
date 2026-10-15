@@ -84,3 +84,35 @@ class Result:
             return "" if code == -1 else str(code)
         except Exception:
             return ""
+
+
+@dataclasses.dataclass(frozen=True)
+class TranslationRequest:
+    """Phase 2 domain model (`IMPLEMENTATION_PLAN.md` Phase 2 deliverable).
+
+    The request-side value object `ARCHITECTURE.md` §3.1 requires: the
+    fallback guarantee "preserve the request across providers" is
+    STRUCTURAL here (the same frozen object travels the whole chain), not
+    a convention about passing seven positional arguments in order.
+    `detect()`/`shaped()` return derived copies, so a provider that
+    mutates `src` (auto-detect) cannot corrupt the original for the next
+    fallback.
+    """
+    service: str = "google"
+    text: str = ""
+    target: str = "vi"
+    src: str = "auto"
+    auto_detect: bool = False
+    back_translate: bool = False
+
+    def with_src(self, src: str) -> "TranslationRequest":
+        """A copy with the source replaced (post-detect)."""
+        return dataclasses.replace(self, src=src)
+
+    def shaped(self, text: str) -> "TranslationRequest":
+        """A copy with request-shaping applied (RemoveLineBreaks + cut).
+
+        Shaping changes text only; src/tgt pass through unchanged — the
+        same invariant the router's `normalize_request` enforces.
+        """
+        return dataclasses.replace(self, text=text)

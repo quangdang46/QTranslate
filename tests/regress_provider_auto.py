@@ -108,8 +108,8 @@ _m2 = _re.search(r"def translate\(.*?\n(.*?)(?=\ndef |\Z)", _eng_src, _re.S)
 _body = _m2.group(1) if _m2 else ""
 check("engine.translate reads auto_detect (not dead wiring)",
       _body.count("auto_detect") >= 2, "refs=%d" % _body.count("auto_detect"))
-check("auto_detect forces detect for concrete src",
-      "elif auto_detect" in _body)
+check("auto_detect forces detect for concrete src (via the request)",
+      "elif req.auto_detect" in _body)
 check("app.do_translate forwards to the engine (no inline branch)",
       "_ENG.translate" in _app_src.split("def do_translate", 1)[1])
 

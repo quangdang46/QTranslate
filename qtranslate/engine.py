@@ -43,13 +43,21 @@ def translate(service, text, target, src="auto", auto_detect=False,
 
     Returns a ``core.Result`` (``.text``, ``.provider_used``,
     ``.phonetics``). Signature mirrors the historical ``do_translate``
-    exactly so the forwarder in ``app.py`` needs no adapter.
+    exactly so the forwarder in ``app.py`` needs no adapter. Inside, the
+    request travels as a frozen ``core.TranslationRequest`` (Phase 2
+    deliverable): derived copies via ``with_src``/``shaped`` mean a
+    fallback never sees a mutated request.
     """
     from qtranslate import registry as _RG
     from qtranslate.registry import (TRANSLATORS, _t_google, call_with_sink,
                                      apply_phonetics)
+    from qtranslate.core import TranslationRequest as _TReq
 
-    text = (text or "").strip()
+    req = _TReq(service=service or "", text=(text or "").strip(),
+                target=target, src=src, auto_detect=bool(auto_detect),
+                back_translate=bool(back_translate))
+    text = req.text
+    service = req.service
     if not text:
         return Result("", "", service or "", note="empty request")
     # Request shaping (RemoveLineBreaks collapse + 5000-char cut) happens
@@ -59,7 +67,7 @@ def translate(service, text, target, src="auto", auto_detect=False,
         # FUN_00404a12's dispatcher echoes the source when it equals the
         # destination and never calls the service
         # (docs/review/SOURCE_LANGUAGE_RULE_2026-10-10.md).
-        if src == target:
+        if req.src == req.target:
             return Result(service or "", text, service or "",
                           note="src == target: echo")
         # Native calls the service's own `usesAutoDetectCode` JS hook
@@ -74,13 +82,17 @@ def translate(service, text, target, src="auto", auto_detect=False,
         # byte `DAT_005494e6` is RemoveLineBreaks). The orchestrator packs
         # it into FUN_004606ba, whose first branch detects even for a
         # concrete source.
+        req = req.shaped(text)  # shaping is text-only; src/tgt unchanged
+        src = req.src
         if src == "auto":
-            if auto_detect or not _RG.uses_auto_detect(service):
-                src = _RG.detect_language(text)
-        elif auto_detect:
+            if req.auto_detect or not _RG.uses_auto_detect(service):
+                req = req.with_src(_RG.detect_language(text))
+                src = req.src
+        elif req.auto_detect:
             _det = _RG.detect_language(text)
             if _det and _det != "auto":
-                src = _det
+                req = req.with_src(_det)
+                src = req.src
         # One fresh sink per call, so J7's phonetics travels with this
         # call's own result (worker threads must not share module state).
         _sink = [""]
@@ -103,7 +115,7 @@ def translate(service, text, target, src="auto", auto_detect=False,
                               "No data returned (timeout while sending data.)",
                               service or "",
                               note="no data returned (timeout)")
-            if back_translate:
+            if req.back_translate:
                 try:
                     back = TRANSLATORS.get(service, _t_google)(
                         out[:5000], target, src)
@@ -126,7 +138,7 @@ def translate(service, text, target, src="auto", auto_detect=False,
                           "No data returned (timeout while sending data.)",
                           service or "",
                           note="no data returned (timeout)")
-        if back_translate and not out.startswith("No data"):
+        if req.back_translate and not out.startswith("No data"):
             try:
                 # Back-translate through the provider that ACTUALLY answered.
                 _bfn = TRANSLATORS.get(res.provider_used, _t_google)

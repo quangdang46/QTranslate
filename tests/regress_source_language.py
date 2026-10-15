@@ -83,7 +83,7 @@ if m:
        "echo=%s call=%s" % (_echo, _call))
     # and it must return the (already line-collapsed) text, not call out
     ck("echo returns the text",
-       re.search(r"if src == target:.*?return Result\(.*text", body, re.S) is not None)
+       re.search(r"if .*src == .*target:.*?return Result\(.*text", body, re.S) is not None)
     # Structural, and stronger than any single spelling: between the echo and
     # the first provider call there must be no `return` that produces output.
     # A provider call hidden before the echo would make the echo's guarantee
