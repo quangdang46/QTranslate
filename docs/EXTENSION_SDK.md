@@ -123,6 +123,18 @@ Design constraints:
 | **Override (declared)** | Replace a *specific* built-in id; declared in `replaces`, enabled by the user. | yes |
 | **Replace (deep)** | Replace the whole main UI. | designed-for, not required |
 
+> **Landed 2026-10-15 (Slice 9a):** the **theme** capability is live.
+> `ExtensionAPI.register_theme(name, record, replaces=None)` registers a
+> theme-colour record in the same shape `theme.load_theme_at` returns (any
+> subset of sections/slots -- `theme.slot()` reports `UNSET` for the rest,
+> so a partial record inherits slot-by-slot exactly like a partial native
+> theme file). A non-dict record raises `TypeError` (fail-open); a second
+> claimant on the same built-in theme id raises `OverrideConflict` (D18).
+> Resolution is `ExtensionManager.active_theme(name)`: extension name,
+> then declared override, then built-in `theme.active_theme` (which never
+> returns `None`). Pinned by `tests/regress_extension_theme.py`
+> (14 assertions).
+
 Rules:
 
 1. Built-in is the default when no override exists.

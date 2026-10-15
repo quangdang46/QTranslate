@@ -258,6 +258,18 @@ class ExtensionAPI:
     def register_provider(self, name, fn, replaces=None):
         return self._manager.register(name, fn, replaces=replaces)
 
+    def register_theme(self, name, record, replaces=None):
+        """Register a theme colour record (Slice 9a).
+
+        ``record`` is the same shape ``theme.load_theme_at`` returns: a
+        ``{"Common": ..., "Window": ..., ...}`` dict (any subset of the
+        sections/slots -- ``theme.slot()`` reports unset for the rest, so
+        a theme may override two colours and inherit the rest).
+        ``replaces`` names a built-in theme id; enabling it is the
+        caller's decision (D18), never implicit.
+        """
+        return self._manager.register_theme(name, record, replaces=replaces)
+
 
 class ExtensionManager:
     """Manager over ``registry``: built-ins plus loaded extensions."""
@@ -268,6 +280,8 @@ class ExtensionManager:
         self._providers = {}
         self._replaces = {}
         self._claims = {}
+        self._themes = {}
+        self._theme_replaces = {}
         for name in self._rg.TRANSLATORS:
             self._providers[name] = self._rg.TRANSLATORS[name]
 
@@ -291,9 +305,36 @@ class ExtensionManager:
             self._replaces[replaces] = name
         return name
 
+    def register_theme(self, name, record, replaces=None):
+        """Register a theme record under ``name`` (Slice 9a).
+
+        Mirrors ``register``: a non-dict record raises and the caller keeps
+        whatever themes were loaded before it (fail-open at the call site).
+        Two extensions claiming the same built-in theme id raises
+        ``OverrideConflict`` -- the user must pick the winner (D18).
+        """
+        if not isinstance(record, dict):
+            raise TypeError("theme %r must be a dict of sections" % (name,))
+        if replaces and replaces in self._theme_replaces:
+            raise OverrideConflict(
+                "%r and %r both replace theme %r: the user must pick the "
+                "winner" % (self._theme_replaces[replaces], name, replaces))
+        self._themes[name] = record
+        if replaces:
+            self._theme_replaces[replaces] = name
+        return name
+
     def providers(self):
         """All registered providers, including retired-host ones."""
         return dict(self._providers)
+
+    def themes(self):
+        """All registered extension themes, by extension-given name."""
+        return dict(self._themes)
+
+    def theme_conflicts(self):
+        """Declared theme overrides, for the user to review (D18)."""
+        return dict(self._theme_replaces)
 
     # -- enablement -----------------------------------------------------
     def enabled(self):
@@ -340,6 +381,33 @@ class ExtensionManager:
     def conflicts(self):
         """Declared overrides, for the user to review (D18)."""
         return dict(self._replaces)
+
+    def active_theme(self, name=None):
+        """Resolve a theme name to a record with native semantics (Slice 9a).
+
+        Resolution order:
+          1. an extension theme named ``name`` wins outright;
+          2. a declared override of built-in ``name`` wins;
+          3. otherwise the built-in ``theme.active_theme(name)`` (which
+             itself falls back to ``default_theme()``, never ``None`` --
+             ``FUN_0044b44f``).
+
+        Unset slots are never materialised here: callers read colours
+        through ``theme.slot()`` / ``state_colors()``, which already
+        report ``UNSET`` for missing slots, so a partial extension
+        record inherits the rest slot-by-slot exactly like a partial
+        native theme file does.
+        """
+        if name in self._themes:
+            return self._themes[name]
+        winner = self._theme_replaces.get(name)
+        if winner is not None and winner in self._themes:
+            return self._themes[winner]
+        from qtranslate import theme as _TH
+        try:
+            return _TH.active_theme(name or "")
+        except Exception:
+            return _TH.default_theme()
 
     def override_conflicts(self):
         """Providers claimed by more than one loaded extension (D18).
