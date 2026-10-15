@@ -98,8 +98,18 @@ def sign(text: str, gtk: str = "0.0") -> str:
     while i < len(text):
         ch = ord(text[i])
         if ch < 128:
+            # ASCII emits ONE byte. The trailing
+            # ``codepoints.append((ch & 63) | 128)`` used to run for this
+            # branch too, so every ASCII character contributed a stray
+            # continuation byte (e.g. "a" -> [97, 161]) and every Baidu
+            # request carried a wrong signature. Found by
+            # tests/regress_baidu_sign.py against an independent
+            # reference: the port and the reference agreed on ``_mix`` but
+            # diverged from length 1 onward.
             codepoints.append(ch)
-        elif ch < 2048:
+            i += 1
+            continue
+        if ch < 2048:
             codepoints.append((ch >> 6) | 192)
         else:
             if (ch & 64512) == 55296 and i + 1 < len(text) \
