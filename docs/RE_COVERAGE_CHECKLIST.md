@@ -171,8 +171,8 @@ exclusions check (`FUN_004631DE`/`FUN_004630C5`).
 
 | Item | Native evidence (artifact) | RE state | Port state | Note |
 |------|----------------------------|----------|------------|------|
-| C1 Capture dispatcher (mode 1/2/3) | `FUN_004052E4`: mode 1 = reuse `FUN_0041B872(this+0xC)`; mode 2 = `FUN_004543C6` else `FUN_00404901` (OLEACC); mode 3 = `FUN_0043BEB2` (clipboard) | VERIFIED | ported | dispatch on MouseMode |
-| C2 Mode 1 reuse-text | `FUN_004052E4` mode 1 → `FUN_0041B872` copies the buffer | VERIFIED | ported | reuse last capture |
+| C1 Capture dispatcher (mode 1/2/3) | `FUN_004052E4` switches on `this+8` (capture **source**, not `General.MouseMode`): mode 1 = copy `this+0xC` out (`FUN_0041B872` trims it first); mode 2 = `FUN_004543C6` else `FUN_00404901` (OLEACC); mode 3 = `FUN_0043BEB2` (clipboard). Fill half = `FUN_0040558F` (same `this+8`/`this+0xC`, mode 0 copies task-supplied text in). `General.MouseMode` is `DAT_005493F8` (`FUN_004183BD`). | VERIFIED | ported | re-read 2026-10-15 (`docs/review/MODE1_CAPTURE_SOURCE_2026-10-15.md`); `FUN_0041B872` is a trim helper, not the copy |
+| C2 Mode 1 reuse-text | `FUN_004052E4` mode 1 copies the buffer filled by `FUN_0040558F` mode 0 (task-supplied text); `FUN_0041B872` only trims it | VERIFIED | ported | "supplied" = text the task struct carried in, not a previous capture |
 | C3 Mode 2 mouse (OLEACC) | `FUN_00404901`: `GetCursorPos`→`AccessibleObjectFromPoint`→`get_accName` (else `get_accValue`) | VERIFIED | ported | **implemented 2026-10-10:** `mouse_capture.cursor_text()` (OLEACC name→value) + `app.py` mode 2 routes it through `_translate_text()`, clipboard fallback on an empty read. `tests/regress_mouse_capture.py` (34) |
 | C4 Mode 3 clipboard viewer | `FUN_0043EBE0`: registers `QTranslateClipboardWindowClass` (`RegisterClassExW`+`CreateWindowExW`) as a clipboard viewer; read `FUN_0043BEB2`/open `FUN_0043BE07` | VERIFIED | ported | app.py:3407 |
 | C5 Clipboard copy + synth | `FUN_004543C6`→`FUN_0043BF30` reads clipboard; `FUN_0043BD5C` synthesizes the copy | VERIFIED | ported | keyboard.send |
