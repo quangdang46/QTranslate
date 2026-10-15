@@ -60,8 +60,10 @@ for short in ("Go..", "Mi..", "Pr..", "Ba..", "Ya..", "yo..",
     check(f"strip-has-{short}", f'"{short}"' in src)
 
 # 4. native error string in failure path
+# Slice 2 moved the orchestration to engine.py; app.do_translate forwards.
+_eng_src = open("qtranslate/engine.py", encoding="utf-8").read()
 check("native-error-string",
-      "No data returned (timeout while sending data.)" in src)
+      "No data returned (timeout while sending data.)" in _eng_src)
 # do_translate returns core.Result since 5f18daa (the settled type change);
 # empty input is an empty, failed Result, not "".
 res = A.do_translate("google", "", "vi")
