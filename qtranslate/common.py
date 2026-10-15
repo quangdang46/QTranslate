@@ -345,14 +345,28 @@ def remove_if_starts_with(s: str, prefix: str) -> str:
 
 
 def unquote_html(s: str | None) -> str:
-    """Port of unquoteHtml(a)."""
+    """Port of ``unquoteHtml(a)`` -- exactly five entities, one mandatory.
+
+    Recovered `Common.js` (NSIS chunk at `0x13af4`)::
+
+        function unquoteHtml(a){if(!a)return"";
+          a=a.replace(/&amp[;]?/g,"&");a=a.replace(/&lt[;]?/g,"<");
+          a=a.replace(/&gt[;]?/g,">");a=a.replace(/&quot[;]?/g,'"');
+          return a=a.replace(/&#[0]?39[;]/g,"'")}
+
+    Four patterns have an OPTIONAL semicolon (``[;]?``) but the last one
+    -- ``&#39`` -- has a **mandatory** one (``[;]``). The port had made
+    that optional too, so a bare ``&#39`` became an apostrophe here while
+    native leaves it. Exactly these five entities and nothing else: a
+    ``&nbsp;`` or any other named entity is NOT unquoted.
+    """
     if not s:
         return ""
     s = re.sub(r"&amp[;]?", "&", s)
     s = re.sub(r"&lt[;]?", "<", s)
     s = re.sub(r"&gt[;]?", ">", s)
     s = re.sub(r"&quot[;]?", '"', s)
-    return re.sub(r"&#[0]?39[;]?", "'", s)
+    return re.sub(r"&#[0]?39[;]", "'", s)
 
 
 def remove_empty_lines(s: str | None) -> str:
