@@ -43,18 +43,22 @@ python -I start_app.py
 > `os.path.dirname(os.path.dirname(os.path.abspath(__file__)))` form on
 > 2026-10-10; the `PYTHONPATH=. python3 …` workaround is no longer needed.
 
-## Test suites (last run 2026-10-08 — historical snapshot)
+## Test suites (last verified 2026-10-15 — offline only)
 
-> These counts are the **last-recorded results, not a live claim**. They have
-> not been rerun since 2026-10-08. See `tests/LIVE_RESULTS.md` for per-endpoint
-> results and `docs/TEST_STRATEGY.md` for why live suites are not merge gates.
-> (Changelog hotkey/UI-loop `ui_match` counts varied during 2026-10-08 runs as
-> the suite grew: `82/82` → `79/79` → `97/97` → `40/40` → `46/46` → `71/71`.)
+> These counts are **verified offline results, not a live claim**. Live suites
+> (`live_providers`, `live_bass`) were last run 2026-10-08; see
+> `tests/LIVE_RESULTS.md` for per-endpoint results and `docs/TEST_STRATEGY.md`
+> for why live suites are not merge gates. (`ui_match` counts varied as the
+> suite grew: `82/82` → `79/79` → `97/97` → `40/40` → `46/46` → `71/71` →
+> `100/101` → `101/101` after the `_encode_placement` ptMin fix.)
 
 ```bash
-python -I tests/live_providers.py  # 21/21 vs real endpoints (2026-10-08)
-python -I tests/ui_match.py        # 97/97 vs native window/Options.json (2026-10-08)
-python -I tests/smoke_dict.py      # 9/9 (dict + config + hotkeys) (2026-10-08)
+python -I tests/ui_match.py        # 101/101 (2026-10-15, offline)
+python -I tests/smoke_dict.py      # PASS exit 0 (2026-10-15, offline)
+python -I tests/regress_*.py       # 32/32 suites PASS (2026-10-15, offline)
+python -I tools/coverage_tally.py --selftest   # PASS 6/6 (2026-10-15)
+python -I tools/g9_screenshot_diff.py selftest  # PASS 15/15 (2026-10-15)
+python -I tests/live_providers.py  # 21/21 vs real endpoints (2026-10-08, historical)
 ```
 
 ## Provider status
