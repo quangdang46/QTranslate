@@ -214,10 +214,32 @@ def _is_short_text(text: str) -> bool:
         and len(text.split(" ")) <= 3
 
 
+def _seed(ig, token, key, cookie):
+    """Resolve the session fields, honouring native's Options keys.
+
+    The recovered image's Options table carries, next to Google's and
+    Baidu's and Promt's, ``BingCookie`` / ``BingToken`` / ``BingKey`` /
+    ``IG`` (`tests/regress_session_markers.py` reads them out of `.rdata`).
+    Every other provider here already falls back to its Options seed --
+    Baidu reads ``BaiduCookie``/``BaiduToken``/``BaiduGtk``, Promt reads
+    ``PromtCookie``/``PromtXsrf``/``PromtPaft``, Google reads
+    ``GoogleTkk`` -- so a user can persist a session across runs. Microsoft
+    accepted the values only as arguments, which meant a saved session was
+    silently ignored and the caller had to re-scrape every time.
+    """
+    return (
+        ig or Options.get("IG", ""),
+        token or Options.get("BingToken", ""),
+        key or Options.get("BingKey", ""),
+        cookie or Options.get("BingCookie", ""),
+    )
+
+
 def translate(text, sl=AUTO_DETECT_LANGUAGE, tl=ENGLISH_LANGUAGE, ig="",
               token="", key="", cookie="", opener=None,
               iid="translator.5023.3") -> str:
     """Port of translate pair (no chaining; see translate_full)."""
+    ig, token, key, cookie = _seed(ig, token, key, cookie)
     obj = _service_request(text, sl, tl, ig, token, key, cookie, opener, iid)
     entry = get_response_obj(obj)
     out = ""
@@ -246,9 +268,10 @@ def translate_full(text, sl=AUTO_DETECT_LANGUAGE, tl=ENGLISH_LANGUAGE,
     skipped and a short one it did not mark was chased. It is no longer
     used as the primary rule.
     """
-    obj = _service_request(text, sl, tl, kw.get("ig", ""),
-                           kw.get("token", ""), kw.get("key", ""),
-                           kw.get("cookie", ""), kw.get("opener"),
+    _ig, _tok, _key, _ck = _seed(kw.get("ig", ""), kw.get("token", ""),
+                                 kw.get("key", ""), kw.get("cookie", ""))
+    obj = _service_request(text, sl, tl, _ig, _tok, _key, _ck,
+                           kw.get("opener"),
                            kw.get("iid", "translator.5023.3"))
     entry = get_response_obj(obj)
     out = ""

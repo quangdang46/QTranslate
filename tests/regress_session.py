@@ -49,10 +49,18 @@ class _H:
         return list(self._c)
 
 
-BING_HTML = ('IG:"ABC123XYZ", other params_AbusePreventionHelper '
-             '=[42,"tok.en789",0], '
+# Both fixtures spell the markers the recovered image spells
+# (tests/regress_session_markers.py reads them out of .rdata):
+#   var params_RichTranslateHelper = [IG:"<ig>","<token>",<key>
+#   id="_paft" type="hidden" value="<paft>"
+# An earlier fixture here used `params_AbusePreventionHelper = [42,...]`
+# and `name="aft"` -- neither exists in the image, so it was testing the
+# port against a page native never loads.
+BING_HTML = ('var params_RichTranslateHelper = ['
+             'IG:"ABC123XYZ","tok.en789",42], '
              'data-iid="translator.5023" data-iid="translator.5026"')
-PROMT_HTML = '<input name="aft" value="PAFT-VALUE-1">'
+PROMT_HTML = ('<input id="_paft" type="hidden" value="PAFT-VALUE-1">'
+              '<input id="_xsrf" type="hidden" value="PAGE-XSRF-1">')
 
 
 def _bing():
@@ -124,6 +132,45 @@ try:
        repr(p2.get("paft")))
 finally:
     S._net_open = _orig_net
+
+# --- the helper-array slot order, and the Options seeds ----------------
+# The array native's page carries is [IG:"<ig>","<token>",<key>] -- the
+# token is the QUOTED member and the key the trailing NUMBER. This port
+# used to assign key=group(1) (the IG itself) and token=group(2), which
+# the old fixture hid by putting its numbers in the token slot.
+_orig = S._net_open
+S._net_open = lambda req, opener=None, data=None: _bing()
+try:
+    s3 = S.bing_session()
+    ck("bing token comes from the quoted member",
+       s3.get("token") == "tok.en789", repr(s3.get("token")))
+    ck("bing key comes from the trailing number",
+       s3.get("key") == "42", repr(s3.get("key")))
+    ck("bing key is not the IG", s3.get("key") != s3.get("IG"),
+       repr(s3.get("key")))
+finally:
+    S._net_open = _orig
+
+# Microsoft honours BingToken/BingKey/BingCookie from Options like every
+# other provider honours its own (Baidu: Baidu*; Promt: Promt*; Google:
+# GoogleTkk). Without it a saved session was ignored and re-scraped.
+try:
+    from qtranslate import common as _Cm
+    from qtranslate.services import microsoft as _Ms
+    _Cm.add_option("BingToken", "SEED-TOKEN")
+    _Cm.add_option("BingKey", "777")
+    _Cm.add_option("BingCookie", "SEED=1")
+    _i, _t, _k, _c = _Ms._seed("", "", "", "")
+    ck("microsoft reads BingToken from Options", _t == "SEED-TOKEN",
+       repr(_t))
+    ck("microsoft reads BingKey from Options", _k == "777", repr(_k))
+    ck("microsoft reads BingCookie from Options", _c == "SEED=1", repr(_c))
+    _i2, _t2, _k2, _c2 = _Ms._seed("XIG", "XTOK", "XKEY", "XC")
+    ck("an explicit argument still wins over the seed",
+       (_t2, _k2, _c2) == ("XTOK", "XKEY", "XC"),
+       repr((_t2, _k2, _c2)))
+except Exception as _e:  # pragma: no cover - import guard
+    ck("microsoft Options seed import", False, repr(_e))
 
 if fails:
     print("FAIL %d" % len(fails))

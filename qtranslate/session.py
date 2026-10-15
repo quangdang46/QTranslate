@@ -97,6 +97,20 @@ def bing_session() -> dict:
     ttranslatev3 returns HTTP 401 without the MUID/_EDGE_* cookies Bing sets
     on the translator page response (verified live 2026-10-07) — anonymous
     (no-cookie) calls are rejected, unlike the gtx-era behaviour.
+
+    The markers are byte-verified from the recovered image
+    (`tests/regress_session_markers.py`). Native's `.rdata` holds, adjacent
+    to each other::
+
+        var params_RichTranslateHelper = [IG:"
+        text=car&fromLang=en&to=ru&token=%s&key=%s&isAuthv2=true
+        https://www.bing.com/ttranslatev3
+
+    so the helper array's **first member is the IG marker itself**, not a
+    number. This port used to look for
+    ``params_AbusePreventionHelper = [(\\d+),"…",(\\d+)`` — a name the image
+    does not contain and a first member it never has, which could only ever
+    end in "page layout changed?".
     """
     opener = _jar_opener()
     req = urllib.request.Request("https://www.bing.com/translator", headers=_UA)
@@ -105,8 +119,7 @@ def bing_session() -> dict:
         set_cookie = r.headers.get_all("Set-Cookie") or []
     cookie = "; ".join(c.split(";")[0] for c in set_cookie)
     ig = re.search(r'IG:"(\w+)"', html)
-    abuse = re.search(
-        r'params_AbusePreventionHelper\s*=\s*\[(\d+),"([^"]+)",(\d+)', html)
+    abuse = re.search(r'IG:"(\w+)","([^"]+)",(\d+)', html)
     # IID format changed: page now has translator.5024/5023/5026
     # (was translator.5023.3). data-iid values feed ttranslatev3 (.3)
     # and tlookupv3 (.2) — keep both, defaulting live.
@@ -116,8 +129,12 @@ def bing_session() -> dict:
         raise RuntimeError("Could not scrape Bing session (page layout changed?)")
     return {
         "IG": ig.group(1),
-        "key": abuse.group(1),
+        # the array is [IG:"<ig>","<token>",<key>>, so group 2 is the token a
+        # nd group 3 is the numeric key. This port swapped them
+        # (key=g1=the IG itself, token=g2) -- invisible for eleven months
+        # because the old test fixture put its numbers in the token slot.
         "token": abuse.group(2),
+        "key": abuse.group(3),
         "cookie": cookie,
         "iid": iid,
         "iids": _iids,
@@ -155,7 +172,20 @@ def bing_translate(text: str, sl: str = "en", tl: str = "vi") -> str:
 
 
 def promt_session() -> dict:
-    """Scrape XSRF-TOKEN cookie + PromtPaft for online-translator.com."""
+    """Scrape XSRF-TOKEN cookie + PromtPaft for online-translator.com.
+
+    The hidden inputs are byte-verified from the image
+    (`tests/regress_session_markers.py`), which spells both by **id**::
+
+        id="_paft" type="hidden" value="
+        id="_xsrf" type="hidden" value="
+        pageIx=0&v=1
+        https://www.online-translator.com/api/pageLoad
+
+    This port used to look for ``name="aft" value="`` — the wrong attribute
+    AND the wrong value — so the paft it returned was always empty on a page
+    that carries one.
+    """
     req = urllib.request.Request(
         "https://www.online-translator.com", headers=_UA)
     with _net_open(req) as r:
@@ -164,8 +194,16 @@ def promt_session() -> dict:
     xsrf = next((c.split(";")[0].split("=", 1)[1]
                  for c in set_cookie if c.startswith("XSRF-TOKEN=")), "")
     cookie = "; ".join(c.split(";")[0] for c in set_cookie)
-    paft = re.search(r'name="aft"\s+value="([^"]+)"', html)
-    return {"xsrf": xsrf, "cookie": cookie, "paft": paft.group(1) if paft else ""}
+    paft = re.search(r'id="_paft" type="hidden" value="([^"]+)"', html)
+    xsrf_page = re.search(r'id="_xsrf" type="hidden" value="([^"]+)"', html)
+    return {
+        "xsrf": xsrf,
+        "cookie": cookie,
+        # the cookie is what the request actually sends; the hidden input is
+        # the page's own copy, kept for parity with native's scrape.
+        "xsrf_page": xsrf_page.group(1) if xsrf_page else "",
+        "paft": paft.group(1) if paft else "",
+    }
 
 
 if __name__ == "__main__":
