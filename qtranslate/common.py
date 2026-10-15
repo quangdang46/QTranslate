@@ -67,10 +67,28 @@ class ResponseData:
     next_request_handler: str = ""
 
 
+# encodeURIComponent's unreserved set is NOT urllib's default safe set:
+# JS leaves  ! ' ( ) *  unencoded while quote(safe="") percent-encodes
+# all four (plus the star). Measured over every printable ASCII char.
+_URI_UNRESERVED = "-_.!~*'()"
+
+
 def encode_uri_param(value: str | None) -> str:
+    """Port of ``encodeUriParam(a)`` -- i.e. ``encodeURIComponent``.
+
+    Recovered `Common.js` (NSIS chunk at `0x13af4`)::
+
+        function encodeUriParam(a){return a?encodeURIComponent(a):""}
+
+    The port used ``quote(value, safe="")``, which percent-encodes
+    ``! ' ( ) *`` -- five characters ``encodeURIComponent`` leaves alone.
+    Every request parameter in the port goes through here, and a provider
+    that validates a signature computed over the encoded form sees a
+    different string than the one the web client sends.
+    """
     if not value:
         return ""
-    return urllib.parse.quote(str(value), safe="")
+    return urllib.parse.quote(str(value), safe=_URI_UNRESERVED)
 
 
 def encode_get_param(value: str | None) -> str:
