@@ -4402,6 +4402,19 @@ def main():
     _seed_service_options()
     _consume_crash_reports()
     _install_crash_hook()
+    # Single-instance guard (FUN_00435175): an existing
+    # QTranslate_ApplicationWindow is activated and this launch exits,
+    # unless the command line carries allow-multiple-instances.
+    try:
+        from qtranslate import single_instance as _SI
+        if _SI.ensure_single(sys.argv[1:]):
+            print("another QTranslate instance is already running "
+                  "(activated it)")
+            return
+    except SystemExit:
+        raise
+    except Exception:
+        pass
     root = tk.Tk()
     app = App(root)
     global _MAIN_APP
