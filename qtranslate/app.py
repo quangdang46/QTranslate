@@ -1858,34 +1858,14 @@ class App:
                      fg=_COLORS["text"],
                      font=("Segoe UI", 10, "bold")).pack(anchor="w")
             self._opt_vars = getattr(self, "_opt_vars", {})
-            import winreg as _wr
-            try:
-                _rk = _wr.OpenKey(
-                    _wr.HKEY_CURRENT_USER,
-                    r"Software\Microsoft\Windows\CurrentVersion\Run")
-                _wr.QueryValueEx(_rk, "QTranslate")
-                _startup = True
-            except Exception:
-                _startup = False
+            # Start-with-Windows via startup_entry (Win HKCU Run; honest
+            # no-op off-Windows). Same key/value as before the refactor.
+            _startup, _set_startup = startup_entry()
             _sv = tk.BooleanVar(value=_startup)
             self._opt_vars["startup"] = _sv  # keep ref: no GC-uncheck
 
             def _toggle_startup():
-                try:
-                    _rk2 = _wr.OpenKey(
-                        _wr.HKEY_CURRENT_USER,
-                        r"Software\Microsoft\Windows\CurrentVersion\Run",
-                        0, _wr.KEY_SET_VALUE)
-                    if _sv.get():
-                        _wr.SetValueEx(_rk2, "QTranslate", 0,
-                                      _wr.REG_SZ, sys.executable)
-                    else:
-                        try:
-                            _wr.DeleteValue(_rk2, "QTranslate")
-                        except Exception:
-                            pass
-                except Exception:
-                    pass
+                _set_startup(bool(_sv.get()))
 
             tk.Checkbutton(body, text=_Cw(10, 1045, "Start with Windows"),
                            variable=_sv, command=_toggle_startup,
@@ -4306,6 +4286,55 @@ def _seed_service_options():
             _cm.add_option("LanguageCode", loc[:2].lower())
     except Exception:
         pass
+
+
+def startup_entry(winreg_mod=None, executable=None):
+    """Read/write the HKCU Run entry for start-with-Windows (row G).
+
+    Returns ``(present, set_present)``: ``present`` is whether the
+    ``QTranslate`` value exists under ``...\\CurrentVersion\\Run``;
+    ``set_present(True/False)`` writes or deletes it. ``winreg_mod`` is
+    injectable so the logic is testable headless; on non-Windows (or a
+    missing winreg) it reports ``(False, no-op)`` honestly instead of
+    pretending.
+    """
+    try:
+        import winreg as _wr
+    except Exception:
+        _wr = None
+    if winreg_mod is not None:
+        _wr = winreg_mod
+    if _wr is None:
+        return False, (lambda on: None)
+
+    def _read():
+        try:
+            _rk = _wr.OpenKey(
+                _wr.HKEY_CURRENT_USER,
+                r"Software\Microsoft\Windows\CurrentVersion\Run")
+            _wr.QueryValueEx(_rk, "QTranslate")
+            return True
+        except Exception:
+            return False
+
+    def _write(on):
+        try:
+            _rk2 = _wr.OpenKey(
+                _wr.HKEY_CURRENT_USER,
+                r"Software\Microsoft\Windows\CurrentVersion\Run",
+                0, _wr.KEY_SET_VALUE)
+            if on:
+                _wr.SetValueEx(_rk2, "QTranslate", 0,
+                               _wr.REG_SZ, executable or sys.executable)
+            else:
+                try:
+                    _wr.DeleteValue(_rk2, "QTranslate")
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    return _read(), _write
 
 
 def _consume_crash_reports():
