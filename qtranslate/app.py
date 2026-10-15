@@ -52,6 +52,12 @@ THEME = sys.argv[3] if len(sys.argv) > 3 else "Blue"
 # an explicit launch overrides the remembered service/pair).
 _CLI_SERVICE = len(sys.argv) > 1
 _CLI_TARGET = len(sys.argv) > 2
+# Same parse, factored for testing (qtranslate/cli.py, row A9). Values
+# above are kept as module attributes because live code and ui_match read
+# A.SERVICE / A.TARGET / A.THEME directly.
+from qtranslate.cli import parse_args as _parse_args  # noqa: E402
+assert _parse_args(sys.argv[1:])[:5] == (
+    SERVICE, TARGET, THEME, _CLI_SERVICE, _CLI_TARGET)
 
 def _default_colors():
     """Main-window colors from the real Options.json Appearance section.
