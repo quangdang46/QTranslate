@@ -16,6 +16,20 @@
 
 ## Session log
 
+### 2026-10-15 — NSIS payload chunk census (enumeration closure)
+
+Walked `docs/review/artifacts/nsis_payload_unpacked.bin` (2,263,053 B)
+as `<uint32-LE len><body>`: **131 chunks, stream consumed exactly, 0
+residue.** Classified: 35 `lang.json` + ~34 `help.txt` + 8 `Themes/*.json`
++ 19 `Service.js` + `Common.js` + 4 History plugins + XSLT + 5 PE + icons/
+bitmaps + License text + NSIS header. **35/35 `lang.json` SHA-256
+byte-identical** to `C:\Program Files (x86)\QTranslate\Locales\*/lang.json`
+(0 different). This grounds the O2/N2 group-row granularity in a measured
+census, not a directory listing. Residuals honestly logged (35th help file
+unmatched by marker test; themes classified-not-hashed). Evidence:
+`docs/review/PAYLOAD_CHUNK_CENSUS_2026-10-15.md`. No row state changed;
+tally still **151 VERIFIED / 1 UNKNOWN (G9)**, Gate **BLOCKED (1)**.
+
 ### 2026-10-09 — Groups D–R sweep
 
 | Group | Result | Notes |
