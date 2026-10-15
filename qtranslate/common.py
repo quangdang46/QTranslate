@@ -471,10 +471,25 @@ def reg_exp_remove(s: str, tags: list, fmt: str) -> str:
 
 
 def remove_attributes(s: str, attrs: list) -> str:
-    """Port of removeAttributes(a,b)."""
+    r"""Port of removeAttributes(a,b).
+
+    Recovered `Common.js`::
+
+        function removeAttributes(a,b){return regExpRemove(a,b,
+          " ({0})(?:\\s*=\\s*(?:(?:\"((?:\\.|[^\"])*)\")|(?:'((?:\\.|[^'])*)')|([^>\\s]+)))?")}
+
+    In the **regex** the JS builds, ``\\.`` means an escaped dot -- i.e. the
+    alternation is ``(?:\.|[^"])*``: a literal DOT or any non-quote. The
+    port once wrote this as a Python raw string containing ``\\.``, which
+    the regex engine reads as *backslash + any char* -- so it would match
+    a ``\"`` sequence inside a quoted value that native's ``[^"]`` cannot.
+    Verified divergence (fixed 2026-10-16) on ``<a href="a\"b">t</a>``:
+    native yields ``<ab">t</a>``, the double-backslash port yielded
+    ``<a>t</a>``, eating the attribute and the rest of the tag.
+    """
     return reg_exp_remove(
         s, attrs,
-        r" ({0})(?:\s*=\s*(?:(?:\"((?:\\.|[^\"])*)\")|(?:'((?:\\.|[^'])*)')|([^>\s]+)))?")
+        r" ({0})(?:\s*=\s*(?:(?:\"((?:\.|[^\"])*)\")|(?:'((?:\.|[^'])*)')|([^>\s]+)))?")
 
 
 def remove_tags(s: str, tags: list) -> str:
