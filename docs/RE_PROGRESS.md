@@ -333,7 +333,7 @@ Phase C may begin. **Until the user approves, Phase C does not start.**
 
 | State | Task |
 |-------|------|
-| ready | Fix dead links + ADR table; remove stale model/count claims |
-| ready | Verify observed UI structure vs native at implementation time |
+| done | Fix dead links + stale model/count claims (verified 2026-10-15: 0 broken relative links; no model claims in README/matrix/CURRENT_STATE; counts refreshed in README §Test suites, CURRENT_STATE §2.2, COMPATIBILITY_MATRIX summary). **ADR table: no standalone ADR doc exists** — decisions live in `PROJECT_VISION.md` D1–D20 and the `docs/review/*` notes; a table was deliberately not invented. |
+| ready | Verify observed UI structure vs native at implementation time (still pending; requires the removed screenshot path — out of scope without Gate approval for a UI task) |
 | blocked | **Gate approval (user)** — required before Phase C (**only `G9` remains**, not the 5 exceptions above) |
 | blocked | Phase C implementation — do not start without approval |
