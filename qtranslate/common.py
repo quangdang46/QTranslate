@@ -428,7 +428,29 @@ def post_header(as_json: bool = False) -> str:
 
 
 def reg_exp_remove(s: str, tags: list, fmt: str) -> str:
-    """Port of regExpRemove(a,b,c): format(c, tags.join('|')) as regex."""
+    """Port of ``regExpRemove(a,b,c)``.
+
+    Recovered `Common.js` (NSIS chunk at `0x13af4`)::
+
+        function regExpRemove(a,b,c){if(!b)return a;b=format(c,b.join("|"));
+                                     return a.replace(new RegExp(b,"g"),"")}
+
+    Native semantics, reproduced here:
+
+    * the guard is ``if(!b)`` -- the **tag list**. An empty input string
+      still runs the regex (and comes back ``""``); an empty tag list
+      returns the input untouched;
+    * the pattern is compiled with ``"g"`` only -- **no ``i`` flag**, so
+      matching is case-SENSITIVE. ``re.S`` stands in for the native
+      patterns' own ``(.|\\n)`` (which ``removeElements`` spells out) and
+      nothing more;
+    * every occurrence is replaced, not just the first.
+
+    The extra ``not s`` in the guard below is a no-op in practice: native
+    would run the regex over an empty string and get ``""`` back, which
+    is what returning early yields too. It is kept so the function is
+    total for ``None``.
+    """
     if not s or not tags:
         return s
     return re.sub(fmt.format("|".join(tags)), "", s, flags=re.S)
