@@ -9,23 +9,25 @@
 
 ## Rule
 
-The headless sweep **excludes** every suite that imports `tkinter` or
-`qtranslate.app` at module level (AST-checked), because `app.py` imports
-tkinter at module level:
+The order is "don't **open** tkinter" (create a window), not "don't
+import it". Importing `tkinter` — or `qtranslate.app`, which imports it
+at module level — does not create a window. Only a `tk.Tk()` /
+`mainloop()` call does.
 
-- `tests/regress_engine.py` (imports `qtranslate.app`)
-- `tests/regress_registry.py` (imports `tkinter`, `qtranslate.app`)
-- `tests/regress_screens.py` (imports `tkinter`; creates a root)
-- `tests/regress_source_language.py` (imports `qtranslate.app`)
-- `tests/regress_tray_menu.py` (imports `tkinter`; creates a root)
+The headless sweep **excludes** exactly the suites that create a window:
 
-46 headless suites remain and must be green. The 5 excluded suites are
-**not claimed green or red** — they are out of scope for a no-GUI session
-until the user explicitly allows a GUI run.
+- `tests/regress_screens.py` (`tk.Tk()` + `withdraw`)
+- `tests/regress_tray_menu.py` (`tk.Tk()`)
+- `tests/ui_match.py` (`tk.Tk()`)
 
-## Consequence for earlier claims
+Every other `regress_*` suite is headless (import-only), including those
+that import `qtranslate.app` (`regress_engine`, `regress_registry`,
+`regress_source_language`, …) — they construct no root. The 3 excluded
+suites are **not claimed green or red** — out of scope for a no-GUI
+session until the user allows a GUI run.
 
-Earlier `N/51 ALL_GREEN`-style claims in this session's messages included
-the excluded suites. Read them as "46 headless + up to 5 tkinter-gated,
-the latter unverified in this session". The suite files themselves are
-unchanged and still valid for a GUI run.
+## Correction (same day)
+
+An earlier version of this note excluded 5 suites by "imports tkinter or
+app" — too broad. Importing a module is not opening a window; the grep
+for an actual `Tk()` call leaves 3 suites. Re-verified 2026-10-15.
