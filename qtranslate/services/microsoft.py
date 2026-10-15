@@ -256,9 +256,11 @@ def dictionary(text, sl, tl, ig="", token="", key="", cookie="",
     SERVER WALL (verified 2026-10-08): tlookupv3 returns 401 for every
     IID/header combo (old .2 suffix, live data-iid, get/post headers)
     while ttranslatev3 on the same session is 200 — Bing retired the
-    standalone dictionary endpoint. translate_full() chaining still
-    routes short texts here; returns "" so callers fall through.
-    Kept faithful for when/if the endpoint reopens."""
+    standalone dictionary endpoint. `translate_full()` reports the chain
+    via the response's `nextRequestHandler` (E22); routing into this
+    function is the caller's decision from that signal. Returns "" so
+    callers fall through. Kept faithful for when/if the endpoint reopens.
+    """
     if not (ig and token and key):
         try:
             from qtranslate.session import bing_session as _bs
