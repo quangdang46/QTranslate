@@ -7,12 +7,14 @@
 > (Phase 5), extension manager built-in (Phase 3), platform interfaces
 > (Phase 4), SDK surface + a runnable SDK-only demo (Phase 6). Then the
 > scoped-out gap that unblocks packaging: **extension-directory discovery +
-> manifest validation + fail-open loading** (Phase 3/6). What did
-> **not** land and stays designed-for: the override UI, vendored-dep
-> *isolation*, macOS adapters, packaging, and startup wiring (Phases 7–8).
+> manifest validation + fail-open loading, wired into startup and into the
+> live dispatch path** (Phase 3/6) — a loaded provider now actually serves
+> a translation. What did **not** land and stays designed-for: the override
+> UI, vendored-dep *isolation*, macOS adapters, and packaging (Phases 7–8).
 > Per-slice detail + evidence:
-> `docs/review/CORE_EXTENSIONS_SLICES_1_5_2026-10-15.md` and
-> `docs/review/EXTENSION_LOADING_2026-10-15.md`.
+> `docs/review/CORE_EXTENSIONS_SLICES_1_5_2026-10-15.md`,
+> `docs/review/EXTENSION_LOADING_2026-10-15.md`, and
+> `docs/review/EXTENSION_WIRING_2026-10-15.md`.
 
 > **Gate (see `PROJECT_VISION.md` §0):** the *RE Gate* is a separate axis and
 > is still **BLOCKED (1)** — `151 VERIFIED / 1 UNKNOWN (G9)`. Approving
@@ -139,6 +141,17 @@ startup.
 > **Still scoped out:** the override **UI** (picking the D18 winner) and
 > true D17 isolation (the loader only puts the folder on `sys.path` for
 > the import; collisions remain possible).
+>
+> **Landed 2026-10-15 (Slice 8, `qtranslate/extensions.py` + `registry.py`
+> + `app.main`):** provider **integration**. `commit()` writes the loaded
+> set into `registry.TRANSLATORS` in place and applies declared overrides
+> under the replaced id; `reset_router()` drops the cached router so the
+> next build sees it; `app.main` calls `load_user_extensions()` at startup
+> (fail-open), so a loaded extension provider actually serves a translation
+> and an override replaces a built-in in the real call path. The e2e pin
+> found and fixed a real bug: the router's per-call google clone silently
+> reverted any override of `google`. Test: `tests/regress_extension_e2e.py`
+> (17 assertions); `regress_wiring.py` updated to pin the wiring.
 
 ## Phase 4 — Platform interfaces (Windows + macOS adapters)
 
@@ -216,6 +229,14 @@ QTranslate.
 > live" demo: **wiring `load_dir` into `app.py` startup** (a UI-host
 > slice, not done here), vendored-dep isolation, and packaging.
 > `examples/demo_translate.py` still covers the SDK-only consumer shape.
+>
+> **Updated by Slice 8:** the startup **wiring** landed — `app.main` calls
+> `load_user_extensions()`, which loads and commits winners into
+> `registry.TRANSLATORS`; an extension provider (or a declared override)
+> now serves translations end-to-end. The "copy folder → restart → live"
+> demo therefore has a working code path; what is still missing for a
+> *shipped* demo is vendored-dep isolation and packaging, plus the
+> override UI from Phase 3.
 
 ## Phase 7 — UI redesign & fidelity pass
 
@@ -247,11 +268,10 @@ restarts, and it works with Python **not** separately installed — the app
 bundles the runtime and the extension vendors its own deps (D17).
 
 > **Not started.** Needs Phases 3–7 settled first, plus a packaging
-> decision (bundler choice) the user has not been asked for yet. One
-> prerequisite landed ahead of it: the extension **loader** from the
-> per-user dir (Slice 7 above), so a bundle only has to call
-> `ExtensionManager.load_dir(paths.extensions_dir())` at startup and ship
-> the Core runtime — the wiring and bundler remain open.
+> decision (bundler choice) the user has not been asked for yet. The
+> extension **loader + startup wiring** landed ahead of it (Slices 7–8),
+> so a bundle only has to ship the Core runtime; the bundler itself and
+> macOS packaging remain open.
 
 ## Cross-cutting
 

@@ -155,7 +155,10 @@ since there is no isolation, at least startup must be resilient.
 > reported as `{"status": "disabled", "reason": …}`; the rest still load.
 > Note: `extensions_dir` is now resolved by the `Paths` adapter
 > (`WindowsAdapter.extensions_dir` → `%APPDATA%/QTranslate/extensions`).
-> Wiring this call into `app.py` startup is a separate UI-host slice.
+> `app.main` now calls `load_user_extensions()`, which loads and commits the
+> winners into `registry.TRANSLATORS` (resetting the cached router) so an
+> extension provider actually serves translations — see
+> `docs/review/EXTENSION_WIRING_2026-10-15.md`.
 
 ## 8. UI extension points (MVP = level B, decision D9)
 

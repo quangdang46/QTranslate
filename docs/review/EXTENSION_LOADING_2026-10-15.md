@@ -70,10 +70,11 @@ Outcome shape per discovered folder:
   `sys.path` for the duration of the import, so a vendored dep inside the
   folder is importable. Two extensions (or an extension and Core) can still
   collide; subprocess isolation remains designed-for.
-- **Startup wiring** — `app.py` does not call `load_dir` yet. Wiring it into
-  `App`/`main()` is a UI-host slice, kept out so this one stays headless and
-  import-only. The "copy folder → restart → live" Phase-6 demo needs that
-  wiring, not new loader code.
+- **Startup wiring** — landed in the next slice (Slice 8,
+  `EXTENSION_WIRING_2026-10-15.md`): `app.main` now calls
+  `load_user_extensions()`, which loads and **commits** the winners into
+  `registry.TRANSLATORS`. Kept out of Slice 7 so it stayed headless and
+  import-only.
 - **Register API freeze** — `ExtensionAPI.register_provider` is the MVP
   shape; `EXTENSION_SDK.md` §5/§9 says signatures freeze before release.
 
@@ -87,3 +88,9 @@ Outcome shape per discovered folder:
   window-opening suites excluded; the count grew by one — this suite).
 - `tools/coverage_tally.py --check`: `151 VERIFIED / 1 UNKNOWN (G9)`,
   `gate=BLOCKED (1 unresolved)` — unchanged.
+
+> **Follow-up (Slice 8, same day):** startup wiring + provider integration
+> landed — see `EXTENSION_WIRING_2026-10-15.md`. That slice took the
+> headless sweep to **65/65** and fixed a real bug the end-to-end pin found
+> (an override of `google` was silently reverted by the router's
+> phonetics clone).

@@ -4400,6 +4400,19 @@ def _install_crash_hook():
 
 def main():
     _seed_service_options()
+    # User extensions (D16): load from the per-user folder, fail-open, and
+    # commit the winners into the live dispatch table so a provider/override
+    # is actually used. A missing folder or a bad extension never blocks
+    # startup (EXTENSION_SDK.md §7).
+    try:
+        from qtranslate.extensions import load_user_extensions
+        _ext = load_user_extensions()
+        if _ext:
+            _loaded = sum(1 for r in _ext if r["status"] == "loaded")
+            _disabled = sum(1 for r in _ext if r["status"] == "disabled")
+            print(f"extensions: {_loaded} loaded, {_disabled} disabled")
+    except Exception:
+        pass
     _consume_crash_reports()
     _install_crash_hook()
     # Single-instance guard (FUN_00435175): an existing

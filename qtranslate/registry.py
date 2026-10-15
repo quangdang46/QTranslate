@@ -350,7 +350,10 @@ def build_router(sink=None):
     from qtranslate import reliability as _rel
     try:
         callables = dict(_ROUTER_SINGLETON.router.callables)
-        if "google" in callables:
+        # Only fill the per-call sink for the canonical Google callable. An
+        # extension that overrides "google" must not be silently reverted to
+        # the built-in just because the call carries a phonetics sink.
+        if callables.get("google") is _t_google:
             def _g(t, sl, tl, _s=sink):
                 return _google_for_call(t, sl, tl, _s)
             callables["google"] = _g
@@ -362,3 +365,14 @@ def build_router(sink=None):
             remove_line_breaks=_ROUTER_SINGLETON.remove_line_breaks)
     except Exception:
         return _ROUTER_SINGLETON
+
+
+def reset_router():
+    """Drop the cached ``ProviderRouter`` so the next build re-reads the table.
+
+    Called after a live change to ``TRANSLATORS`` (extension loading, Slice 8):
+    the singleton captured ``dict(TRANSLATORS)`` and ``router_order()`` at build
+    time, so a table mutation is invisible until it is rebuilt.
+    """
+    global _ROUTER_SINGLETON
+    _ROUTER_SINGLETON = None

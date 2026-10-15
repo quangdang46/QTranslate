@@ -3,6 +3,35 @@
 All entries are clean-room RE of QTranslate 6.10.0 for education.
 `LIVE-OK` = verified against the real provider endpoint.
 
+## Extension startup wiring + provider integration; override bug fixed (2026-10-15)
+
+- **The loader became a live feature.** Slice 7 gave a tested-but-unused
+  `ExtensionManager`; `grep ExtensionManager` matched only `tests/`, and
+  the engine dispatched through `registry.TRANSLATORS`. Slice 8 adds
+  `ExtensionManager.commit()` (writes the loaded set into
+  `registry.TRANSLATORS` **in place**, applies declared overrides under the
+  replaced id), `registry.reset_router()` (drops the cached router so a
+  table change is visible), and `extensions.load_user_extensions()`, which
+  `app.main` now calls at startup (fail-open). A loaded extension provider
+  now actually serves a translation.
+- **The end-to-end pin found a real bug and it is fixed.** The router's
+  per-call clone unconditionally replaced `google` with the built-in
+  `_google_for_call` (for the J7 phonetics sink), so an extension
+  overriding `google` was silently reverted — the first e2e run returned a
+  real Google translation instead of the extension's. The clone now wraps
+  google **only while the table entry is still the canonical `_t_google`**.
+  Unit-level "load_dir returned ok" could not see this; only the e2e pin
+  did. (`docs/review/EXTENSION_WIRING_2026-10-15.md`.)
+- **Evidence:** `tests/regress_extension_e2e.py` (17 checks, offline) —
+  engine/SDK route to the extension, an override replaces a built-in in the
+  real path, and a broken override leaves the built-in intact.
+  `regress_wiring.py` updated (extensions/platforms are no longer orphans;
+  a positive pin keeps the wiring). Headless sweep **65/65** by exit code;
+  `coverage_tally --check` unchanged at `151 VERIFIED / 1 UNKNOWN (G9)`,
+  `BLOCKED (1)` — this does not open the RE Gate.
+- **Still open, as the review said:** override UI (D18 winner selection),
+  true D17 isolation, packaging.
+
 ## Extension directory discovery + fail-open loading (2026-10-15)
 
 - **The scoped-out Phase 3/6 gap is closed as a headless slice.**

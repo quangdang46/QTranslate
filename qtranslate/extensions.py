@@ -312,6 +312,33 @@ class ExtensionManager:
         """Declared overrides, for the user to review (D18)."""
         return dict(self._replaces)
 
+    def commit(self, registry=None):
+        """Apply the loaded set to the registry's live dispatch table.
+
+        Writes every registered provider into ``registry.TRANSLATORS`` **in
+        place** — ``app.TRANSLATORS``/``engine``'s ``TRANSLATORS`` are aliases
+        of that same dict, so the running app sees it without a re-import — and
+        applies each declared override under the built-in id it replaces (so
+        selecting that built-in actually calls the extension). The cached
+        router is dropped so the next ``build_router()`` re-reads the table and
+        appends extension-only names to the fallback chain, exactly as
+        ``router_order`` already does for any table-only name.
+
+        Returns the registry module used.
+        """
+        reg = registry if registry is not None else self._rg
+        table = reg.TRANSLATORS
+        for name, fn in self._providers.items():
+            table[name] = fn
+        for base, winner in self._replaces.items():
+            fn = self._providers.get(winner)
+            if fn is not None:
+                table[base] = fn
+        reset = getattr(reg, "reset_router", None)
+        if reset is not None:
+            reset()
+        return reg
+
     # -- directory loading (Slice 7) ------------------------------------
     def load_dir(self, extensions_dir, api=None, importer=None):
         """Discover, validate and load every extension under a directory.
@@ -349,3 +376,29 @@ class ExtensionManager:
                     "reason": "%s: %s" % (type(exc).__name__, exc)}
         return {"path": folder, "id": manifest["id"], "status": "loaded",
                 "reason": None}
+
+
+def load_user_extensions(manager=None, extensions_dir=None, registry=None):
+    """Load the per-user extensions into Core's live dispatch table (D16).
+
+    Resolves the folder through the ``Paths`` adapter when not given, loads
+    it fail-open (``ExtensionManager.load_dir``), and **commits** the winners
+    so an extension provider actually serves translations instead of only
+    living in the manager's private dict. Returns the ``load_dir`` report
+    (empty when the folder cannot be resolved); never raises for a bad
+    folder or a bad extension.
+
+    Wiring point for ``app.main``; kept here, not in ``app``, so it stays
+    tkinter-free and testable headless.
+    """
+    manager = manager if manager is not None else ExtensionManager(registry)
+    if extensions_dir is None:
+        try:
+            from qtranslate import platforms as _P
+            extensions_dir = _P.current().extensions_dir()
+        except Exception:
+            return []
+    report = manager.load_dir(extensions_dir)
+    if any(item.get("status") == "loaded" for item in report):
+        manager.commit(registry)
+    return report

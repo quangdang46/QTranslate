@@ -47,6 +47,11 @@ tests, no screenshot tests. These are added per phase below.
   consistency test for all capture paths (matrix row B).
 - **Phase 6:** MVP demo tests — load a sample provider/theme/UI extension,
   assert effect; break it, assert fail-open.
+  *Landed 2026-10-15:* load-assert-effect is pinned by
+  `tests/regress_extension_e2e.py` (a loaded provider serves through
+  `engine.translate`; an override replaces a built-in) and fail-open by
+  `tests/regress_extension_loading.py`. The theme/UI demos remain
+  designed-for.
 - **Phase 7:** screenshot diff harness for main window + popup (Win first, mac
   after); UI extension slot tests.
 - **Phase 8:** packaging smoke on each OS.

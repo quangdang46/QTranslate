@@ -92,15 +92,24 @@ KNOWN_DEAD = {"speech_input"}
 # Slice 1–5 (2026-10-15) added Core/Extension modules that are published
 # libraries not yet imported by app.py (the UI is frozen): the provider
 # contract, the extension manager, the SDK surface, platform interfaces,
-# and the tray-state helper. Each is exercised by its own suite; wiring
-# them into app.py is a later slice.
-KNOWN_UNWIRED = {"extensions", "platforms", "sdk", "tray_state"}
+# and the tray-state helper. Each is exercised by its own suite.
+# Slice 8 (2026-10-15) wired extension loading into app.main
+# (`load_user_extensions`), so `extensions` left this set and `platforms`
+# is now reached through it. `sdk` and `tray_state` remain published-only.
+KNOWN_UNWIRED = {"sdk", "tray_state"}
 
 expected = sorted(ENTRY_POINTS | KNOWN_DEAD | KNOWN_UNWIRED)
 ck("orphan set is exactly the known one",
    orphans == expected,
    "orphans=%r expected=%r -- a NEW orphan means something became dead code, "
    "and that is what this suite is here to catch" % (orphans, expected))
+
+# --- regression pin: extension loading must STAY wired -------------------------
+ck("extension loading is wired (app.main loads user extensions)",
+   "extensions" not in orphans,
+   "extensions is an orphan again -- app.main stopped calling "
+   "load_user_extensions; the Phase-6 'copy folder -> restart -> live' path "
+   "is dead")
 
 # --- regression pin: reliability must STAY wired ---------------------------------
 # Flipped 2026-10-10 the same day it was written: the wiring landed, the suite

@@ -11,8 +11,11 @@
 > `docs/review/CORE_EXTENSIONS_SLICES_1_5_2026-10-15.md`. A follow-up slice
 > added extension **discovery + manifest validation + fail-open loading**
 > (`ExtensionManager.load_dir`) and the `Paths` adapter's extensions-folder
-> resolution — see `docs/review/EXTENSION_LOADING_2026-10-15.md`; startup
-> wiring in `app.py` is still not done. The RE Gate is
+> resolution — see `docs/review/EXTENSION_LOADING_2026-10-15.md`. Startup
+> **wiring + provider integration** then landed (Slice 8): `app.main` calls
+> `load_user_extensions()`, which commits loaded providers into
+> `registry.TRANSLATORS`, so an extension actually serves translations —
+> see `docs/review/EXTENSION_WIRING_2026-10-15.md`. The RE Gate is
 > unchanged: `151 VERIFIED / 1 UNKNOWN (G9)`, `BLOCKED (1)`.
 
 > Status: **PLANNING / READ-ONLY AUDIT.** Grounded in direct reads of the
