@@ -200,10 +200,13 @@ QTranslate.
 **Done when:** UI screenshots approach the native window and UI extensions can
 add panel/menu/popup without touching Core.
 
-> **Not started (blocked on two user decisions):** UI is frozen
-> ("về vấn đề UI tôi chốt đã có phần ổn rồi") and screenshots are banned
-> ("đừng screenshot nữa"), so neither the split nor the fidelity pass can
-> proceed — both need visible windows and pixel comparison.
+> **Not started (partially unblocked):** UI stays as decided
+> ("về vấn đề UI tôi chốt đã có phần ổn rồi") — no full split into 6
+> window classes without a new go-ahead. But the screenshot ban was lifted
+> 2026-10-15 ("có thể screenshot"), so the *fidelity* half (screenshot-based
+> comparison, matrix row D) is now runnable on demand. GUI suites already
+> re-verified this session: `regress_tray_menu` 5/5, `regress_screens`
+> 33/33, `ui_match` 103/103.
 
 ## Phase 8 — Packaging
 

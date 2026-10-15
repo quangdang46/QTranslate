@@ -22,9 +22,16 @@ The headless sweep **excludes** exactly the suites that create a window:
 
 Every other `regress_*` suite is headless (import-only), including those
 that import `qtranslate.app` (`regress_engine`, `regress_registry`,
-`regress_source_language`, …) — they construct no root. The 3 excluded
-suites are **not claimed green or red** — out of scope for a no-GUI
-session until the user allows a GUI run.
+`regress_source_language`, …) — they construct no root.
+
+## Update 2026-10-15: GUI runs permitted
+
+The user lifted the ban ("có thể screenshot"). All 3 GUI suites were run
+and verified green in-session: `regress_tray_menu` 5/5, `regress_screens`
+33/33, `ui_match` 103/103 (one stale `native-error-string` check caught
+and fixed — Slice 2 drift, error string had moved to `engine.py`; commit
+`cba6859`). Full sweep including GUI suites is now allowed; the exclusion
+list above applies only to no-GUI sessions.
 
 ## Sweep detection must use the exit code, not a text grep
 
