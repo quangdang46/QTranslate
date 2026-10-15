@@ -99,8 +99,14 @@ def tk(text: str, tkk: str = "0.0") -> str:
     while e < len(text):
         f = ord(text[e])
         if f < 128:
+            # ASCII emits ONE byte and must NOT fall through to the
+            # shared `g.append((f & 63) | 128)` below -- that appended a
+            # stray continuation byte for every ASCII character (same
+            # class of bug as Baidu's sign(), tests/regress_baidu_sign.py).
             g.append(f)
-        elif f < 2048:
+            e += 1
+            continue
+        if f < 2048:
             g.append((f >> 6) | 192)
         else:
             if 55296 == (f & 64512) and e + 1 < len(text) and 56320 == (ord(text[e + 1]) & 64512):
