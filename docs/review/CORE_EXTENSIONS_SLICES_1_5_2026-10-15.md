@@ -112,7 +112,9 @@ Design decisions locked in the design-only phase, *before* Slice 1:
 
 ## 6. Verification (offline, no GUI)
 
-- **42/42** `tests/regress_*.py` suites PASS after the slices
+- **61/61** headless `tests/regress_*.py` suites PASS after the slices
+  (63 total minus the 2 window-opening suites — see
+  `HEADLESS_SWEEP_RULE_2026-10-15.md`; 42/42 was the count at slice time)
   (37 pre-existing + 5 new).
 - `tools/coverage_tally.py --check`: `151 VERIFIED / 1 UNKNOWN (G9)`,
   `gate=BLOCKED (1 unresolved)` — unchanged, as expected: Core/Extension

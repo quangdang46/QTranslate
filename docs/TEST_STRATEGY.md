@@ -60,6 +60,19 @@ tests, no screenshot tests. These are added per phase below.
 5. **Reproduce the baseline by running** — do not copy numbers from README.
 6. **Every fixed reliability bug gets a regression test** that fails before and
    passes after.
+7. **Detect a suite's failure by its process exit code, never by grepping the
+   output for "FAIL".** Suites print `FAIL n/m` (no colon) as well as
+   `FAIL: ...`, so a text grep both misses real failures and false-positives on
+   log text (e.g. a fallback path that prints "online TTS failed"). Found
+   2026-10-15: three suites were red for a day behind an `ALL_GREEN` grep.
+   (`docs/review/HEADLESS_SWEEP_RULE_2026-10-15.md`.)
+8. **A headless session runs only suites that do not create a window.**
+   Importing `tkinter` is fine; calling `tk.Tk()` is not. Exactly two regress
+   suites open a window (`regress_screens`, `regress_tray_menu`) and are
+   GUI-session-only.
+9. **A green suite that asserts a tautology pins nothing.** `x == x` and
+   `a and True` must be replaced with a real check (one such assertion was
+   found and fixed 2026-10-15 in `regress_mouse_capture`).
 
 ## 5. Acceptance mapping
 

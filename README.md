@@ -52,12 +52,17 @@ python -I start_app.py
 > suite grew: `82/82` → `79/79` → `97/97` → `40/40` → `46/46` → `71/71` →
 > `100/101` → `101/101` after the `_encode_placement` ptMin fix →
 > `103/103` after the template-geometry + `logic-detect-6` alias-shape pins;
-> regress grew `37/37` → `42/42` with the Core/Extensions slice pins.)
+> regress grew `37/37` → `61/61` headless with the Core/Extensions slice
+> pins, the port-fix pins, and one suite per module. Two suites
+> (`regress_screens`, `regress_tray_menu`) open a Tk window and are run
+> only in a GUI session — see `docs/review/HEADLESS_SWEEP_RULE_2026-10-15.md`.)
 
 ```bash
 python -I tests/ui_match.py        # 103/103 (2026-10-15, offline)
 python -I tests/smoke_dict.py      # PASS exit 0 (2026-10-15, offline)
-python -I tests/regress_*.py       # 42/42 suites PASS (2026-10-15, offline)
+python -I tests/regress_*.py       # 61/61 headless suites PASS (2026-10-15, offline)
+                                   #   check the EXIT CODE, not a "FAIL" grep
+                                   #   (suites print FAIL n/m without a colon)
 python -I tools/coverage_tally.py --selftest   # PASS 6/6 (2026-10-15)
 python -I tests/live_providers.py  # 21/21 vs real endpoints (2026-10-08, historical)
 ```

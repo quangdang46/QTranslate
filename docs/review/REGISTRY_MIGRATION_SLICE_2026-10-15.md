@@ -114,7 +114,10 @@ dispatch without a display.
 - Full headless sweep: **37/37** `regress_*.py` suites PASS +
   `ui_match` 103/103 PASS, re-run 2026-10-15 on the current tree
   (after the TTS revert and the follow-up `logic-detect-6` alias-shape
-  fix, win32app combo wiring, and `regress_ui_parity_fixes` §4).
+  fix, win32app combo wiring, and `regress_ui_parity_fixes` §4). The
+  suite has since grown to **61/61 headless** (one suite per module plus
+  the port-fix pins; 63 total minus the 2 window-opening suites —
+  `HEADLESS_SWEEP_RULE_2026-10-15.md`).
   Peer-audit fixes landed since: TTS `listen_url` delegation
   **reverted** (it silently changed `/`-encoding, dropped the caller
   `tkk` seed, and floated the host — documented in `tts.py`
