@@ -268,12 +268,12 @@ def _pane_font(size_delta: int = 0):
     font; empty FontName = MS Shell Dlg ~ Tahoma)."""
     try:
         from qtranslate import config as _C
-        _g = _C.load().get("General", {})
-        name = (_g.get("FontName", "") or "").strip() or "Tahoma"
-        size = int(_g.get("TextSize", 9)) + size_delta
+        from qtranslate.fonts import resolve_font as _rf
+        name, size = _rf(_C.load().get("General", {}),
+                         size_delta=size_delta)
+        return (name, size)
     except Exception:
-        name, size = "Tahoma", 9 + size_delta
-    return (name, max(6, size))
+        return ("Tahoma", 9 + size_delta)
 
 
 _PACK = {}
