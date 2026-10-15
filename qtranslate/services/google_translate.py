@@ -22,6 +22,7 @@ from qtranslate.common import (
     encode_uri_param,
     get_header,
     is_language,
+    js_number,
     language_from_code,
     limit_source,
     parse_json_lenient,
@@ -91,9 +92,22 @@ def _b(a: int, b: str) -> int:
 
 
 def tk(text: str, tkk: str = "0.0") -> str:
-    """Port of tk(a) in Service.js. tkk = Options.GoogleTkk (seed from page)."""
+    r"""Port of tk(a) in Service.js. tkk = Options.GoogleTkk (seed from page).
+
+    The seed segments go through native's ``Number(c[i]) || 0``, so a
+    non-numeric segment is ``NaN`` -> ``0`` rather than an error. Recovered
+    text::
+
+        for(var c=(Options.GoogleTkk||"0.0").split("."),h=Number(c[0])||0,...
+            ...;a^=Number(c[1])||0;...
+
+    A scraped TKK of ``"abc.def"`` (or ``"1e3.9"``) therefore signs with a
+    0 seed, exactly like ``"0.0"``; the port used to raise ``ValueError``
+    there. ``_js_number`` carries that rule (shared with Baidu's
+    ``sign()``, which has the identical ``Number(g[i])||0``).
+    """
     parts = tkk.split(".")
-    h = int(parts[0]) if parts[0] else 0
+    h = js_number(parts[0])
     g = []
     e = 0
     while e < len(text):
@@ -124,7 +138,7 @@ def tk(text: str, tkk: str = "0.0") -> str:
         a += d
         a = _b(a, "+-a^+6")
     a = _b(a, "+-3^+b+-f")
-    a ^= int(parts[1]) if len(parts) > 1 and parts[1] else 0
+    a ^= js_number(parts[1]) if len(parts) > 1 else 0
     if a < 0:
         a = (a & 2147483647) + 2147483648
     a %= 1_000_000

@@ -23,6 +23,7 @@ from qtranslate.common import (
     encode_get_param,
     format_q,
     is_language,
+    js_number,
     language_from_code,
     limit_source,
     parse_json_lenient,
@@ -91,8 +92,8 @@ def sign(text: str, gtk: str = "0.0") -> str:
         text = text[:10] + text[len(text) // 2 - 5:len(text) // 2 + 5] \
             + text[-10:]
     parts = gtk.split(".")
-    e = int(parts[0]) if parts[0] else 0
-    g = int(parts[1]) if len(parts) > 1 and parts[1] else 0
+    e = js_number(parts[0])
+    g = js_number(parts[1]) if len(parts) > 1 else 0
     codepoints: list[int] = []
     i = 0
     while i < len(text):

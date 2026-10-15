@@ -416,6 +416,58 @@ def uses_auto_detect_code(langs: list) -> bool:
         return False
 
 
+def js_number(seg) -> int:
+    """Port of ``Number(x)||0`` -- the seed coercion two providers share.
+
+    Native's request-signing code seeds from a page-scraped numeric string
+    and coerces each ``.``-segment with ``Number(...)||0``:
+    ``Service.js``'s Google ``tk`` (``Number(c[0])||0``,
+    ``a^=Number(c[1])||0``) and Baidu ``sign`` (``Number(g[i])||0``).
+
+    The semantics that matter:
+
+    * an **empty** segment is ``0`` (``Number("")===0``);
+    * a **non-numeric** segment is ``NaN``, which is falsy, so it also
+      becomes ``0`` -- native does not reject it;
+    * ``Number`` accepts floats and leading/trailing whitespace, truncating
+      a float toward zero;
+    * ``"Infinity"``/``"-Infinity"`` are **truthy**, so they are NOT
+      rewritten to 0 -- they stay infinity. The bitwise mixing downstream
+      then turns them into ``0`` (JS ``ToInt32(Infinity) === 0``), which
+      is what the callers need.
+
+    Python's ``int()`` raises on all of those, so a scraped TKK/GTK of
+    ``"abc.def"`` used to blow up the whole request where native quietly
+    signed with a ``0`` seed. Both bugs fixed 2026-10-16.
+    """
+    if isinstance(seg, bool):
+        return int(seg)
+    if isinstance(seg, int):
+        return seg
+    if isinstance(seg, float):
+        return int(seg)
+    if seg is None:
+        return 0
+    seg = str(seg).strip()
+    if not seg:
+        return 0
+    try:
+        return int(seg, 10)
+    except ValueError:
+        pass
+    try:
+        val = float(seg)          # "1e3", "3.9"
+    except ValueError:
+        return 0
+    if val != val or val in (float("inf"), float("-inf")):
+        # NaN is falsy -> 0. Infinity is technically TRUTHY, but JS's
+        # ToInt32 (what the `^`/`>>>` mixers do) maps every infinite
+        # value to 0 anyway, so the *effective* seed is 0 and saying 0
+        # here is both true of the arithmetic and non-raising.
+        return 0
+    return int(val)
+
+
 # Global Options store: `var Options={}; function addOption(a,b){Options[a]=b}`
 Options: dict = {}
 
