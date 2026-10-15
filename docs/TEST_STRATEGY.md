@@ -36,6 +36,10 @@ tests, no screenshot tests. These are added per phase below.
   equivalence (Google old path vs new contract → identical output).
 - **Phase 3:** manifest validation matrix (missing/short/bad `sdk_version`,
   broken entrypoint, unimportable module); override conflict resolution.
+  *Landed 2026-10-15:* the matrix is pinned by
+  `tests/regress_extension_loading.py` (39 assertions) against
+  `extensions.validate()`/`read_manifest()`/`discover()`/`load_dir()`; the
+  D18 conflict case asserts the loser is disabled with an explanation.
 - **Phase 4:** import-guard test — assert Core imports succeed with `win32gui`,
   `winreg`, `comtypes`, `ctypes.windll` patched to raise; per-adapter capability
   honesty (unsupported → reported, not faked).

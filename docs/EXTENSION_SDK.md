@@ -1,11 +1,16 @@
 # Extension SDK
 
-> Status: **PARTIALLY LANDED (2026-10-15, commit `7b8ea7a`).** The built-in
+> Status: **PARTIALLY LANDED (2026-10-15).** The built-in
 > manager (`qtranslate/extensions.py`) and the public SDK surface
 > (`qtranslate/sdk.py`: `translate`/`detect`/`speak`/`dict_lookup`/`Result`)
-> are implemented and verified. Discovery, external extension loading,
-> override UI, and vendored-dependency isolation remain designed-for only.
-> See `docs/review/CORE_EXTENSIONS_SLICES_1_5_2026-10-15.md`. Signatures here
+> landed at `7b8ea7a`. **Extension-directory discovery, manifest validation
+> and fail-open loading landed next** (`ExtensionManager.load_dir`,
+> `validate`/`read_manifest`/`discover`, plus `Paths.extensions_dir` on the
+> Windows adapter). Still designed-for only: the override **UI** (who picks
+> the D18 winner), vendored-dependency **isolation** (D17 is implemented as
+> an import-path mechanism, not true isolation), and packaging/startup
+> wiring. See `docs/review/CORE_EXTENSIONS_SLICES_1_5_2026-10-15.md` and
+> `docs/review/EXTENSION_LOADING_2026-10-15.md`. Signatures here
 > are design-level and **will be frozen before release**.
 
 ## 1. Concepts (do not conflate)
@@ -72,6 +77,13 @@ Validation on load: manifest parses → `sdk_version` compatible → `entrypoint
 importable → registrations well-formed → override conflicts resolved. Any
 failure = **extension disabled, app continues** (§7).
 
+> **Landed (2026-10-15):** `extensions.validate()` enforces this gate —
+> `sdk_version` must be a string whose **major** matches `SDK_VERSION`
+> (`1.x`); `entrypoint` must be `module:callable`; `capabilities` must be a
+> non-empty list of known kinds; `replaces` (if present) a list of ids. A
+> manifest that fails raises `ManifestError`, which the loader turns into a
+> disabled extension. Pinned by `tests/regress_extension_loading.py`.
+
 ## 5. Provider contract (illustrative, not final)
 
 ```python
@@ -136,6 +148,15 @@ An extension that crashes on import or raises during `register` must not take
 down the app. This is the counterpart to "one process" (`ARCHITECTURE.md` §7):
 since there is no isolation, at least startup must be resilient.
 
+> **Landed (2026-10-15):** `ExtensionManager.load_dir(dir)` runs exactly this
+> sequence. It snapshots the registry before each extension and **rolls the
+> extension's registrations back** on any failure, so a half-applied override
+> never wins and the built-in stays active (rule 4). One bad extension is
+> reported as `{"status": "disabled", "reason": …}`; the rest still load.
+> Note: `extensions_dir` is now resolved by the `Paths` adapter
+> (`WindowsAdapter.extensions_dir` → `%APPDATA%/QTranslate/extensions`).
+> Wiring this call into `app.py` startup is a separate UI-host slice.
+
 ## 8. UI extension points (MVP = level B, decision D9)
 
 Published slots a UI extension may target:
@@ -164,8 +185,17 @@ All five were resolved and folded into `PROJECT_VISION.md`:
 
 **Still genuinely open (implementation detail, not architecture):** the exact
 *dependency isolation mechanism* implied by D17 — how an extension's vendored
-deps are placed on the import path without colliding with Core's own. This is
-solved with the Extension Manager in Phase 3/6, not now.
+deps are placed on the import path without colliding with Core's own. The
+loader now places the extension folder on `sys.path` **for the duration of its
+import only** (`extensions.import_entrypoint`), which makes a vendored dep
+importable; it is not true isolation, so cross-extension / Core collisions
+remain possible and D17's full mechanism is still open. This is handled with
+the Extension Manager in Phase 3/6, not now.
+
+> **Register API is provisional.** `entrypoint` is `module:callable`, and the
+> callable receives a host API (`extensions.ExtensionAPI`) with
+> `register_provider(name, fn, replaces=None)`. The SDK signature is not frozen
+> (`EXTENSION_SDK.md` §5/§9), so treat this as the MVP shape, not the contract.
 
 ## 10. What the SDK explicitly is NOT
 

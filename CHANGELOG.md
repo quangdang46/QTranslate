@@ -3,6 +3,32 @@
 All entries are clean-room RE of QTranslate 6.10.0 for education.
 `LIVE-OK` = verified against the real provider endpoint.
 
+## Extension directory discovery + fail-open loading (2026-10-15)
+
+- **The scoped-out Phase 3/6 gap is closed as a headless slice.**
+  `qtranslate/extensions.py` gains `validate`/`read_manifest`/`discover`,
+  `import_entrypoint`, a provisional `ExtensionAPI`, and
+  `ExtensionManager.load_dir`. It scans the per-user folder, validates each
+  `manifest.json` (`sdk_version` major, `entrypoint` shape, capability
+  kinds), imports the entrypoint, and applies registrations — disabling
+  (not crashing on) any extension that fails, per `EXTENSION_SDK.md` §7.
+  `qtranslate/platforms.py` resolves the folder via the `Paths` adapter
+  (`%APPDATA%/QTranslate/extensions`, D16).
+- **Fail-open is rollback, not just "skip".** The loader snapshots the
+  registry per extension and restores it on any failure, so a half-applied
+  override never wins and the built-in stays active (rule 4). Override
+  conflicts are reported, not auto-resolved (D18): the loser is disabled
+  with a reason and its provider is not registered.
+- **Not in this slice, and it says so:** the override UI, true D17
+  dependency isolation (only the import-path mechanism landed), and
+  `app.py` startup wiring. The "copy folder → restart → live" demo needs
+  the wiring, not new loader code.
+- **Evidence:** `tests/regress_extension_loading.py` (39 checks). Headless
+  regress sweep `64/64` PASS by exit code; `coverage_tally --check`
+  unchanged at `151 VERIFIED / 1 UNKNOWN (G9)`, `BLOCKED (1)` — this work
+  does not open the RE Gate. Detail:
+  `docs/review/EXTENSION_LOADING_2026-10-15.md`.
+
 ## Common.js framework layer gets its first tests; J6 dependency recorded (2026-10-10)
 
 - **`tests/regress_common_framework.py` (73 checks) — the framework layer had

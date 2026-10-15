@@ -98,6 +98,20 @@ class WindowsAdapter:
         except Exception:
             return -1
 
+    def app_data(self):
+        """Per-user app-data dir (D16): ``%APPDATA%/QTranslate``."""
+        import os
+        return os.path.join(os.environ.get("APPDATA", ""), "QTranslate")
+
+    def extensions_dir(self):
+        """Where QTranslate looks for user extensions (D16).
+
+        Never the install directory: extensions survive app updates and
+        need no admin rights. Discovery is fail-open (see ``extensions``).
+        """
+        import os
+        return os.path.join(self.app_data(), "extensions")
+
     def capability(self, name):
         return getattr(self, name, Capability.UNAVAILABLE)
 

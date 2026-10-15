@@ -1,15 +1,18 @@
 # Implementation Plan
 
-> Status: **PHASES 2–6 PARTIALLY LANDED (2026-10-15, commit `7b8ea7a`).**
+> Status: **PHASES 2–6 PARTIALLY LANDED (2026-10-15).**
 > The user explicitly approved the switch to implementation for the Core/
 > Extensions slices ("cứ làm hết đi tôi review 1 lần"). What landed:
 > provider contract + registry single source (Phase 2), engine cutover
 > (Phase 5), extension manager built-in (Phase 3), platform interfaces
-> (Phase 4), SDK surface + a runnable SDK-only demo (Phase 6). What did
-> **not** land and stays designed-for: extensions-dir discovery, override
-> UI, vendored-dep isolation, macOS adapters, packaging (Phases 7–8).
+> (Phase 4), SDK surface + a runnable SDK-only demo (Phase 6). Then the
+> scoped-out gap that unblocks packaging: **extension-directory discovery +
+> manifest validation + fail-open loading** (Phase 3/6). What did
+> **not** land and stays designed-for: the override UI, vendored-dep
+> *isolation*, macOS adapters, packaging, and startup wiring (Phases 7–8).
 > Per-slice detail + evidence:
-> `docs/review/CORE_EXTENSIONS_SLICES_1_5_2026-10-15.md`.
+> `docs/review/CORE_EXTENSIONS_SLICES_1_5_2026-10-15.md` and
+> `docs/review/EXTENSION_LOADING_2026-10-15.md`.
 
 > **Gate (see `PROJECT_VISION.md` §0):** the *RE Gate* is a separate axis and
 > is still **BLOCKED (1)** — `151 VERIFIED / 1 UNKNOWN (G9)`. Approving
@@ -121,6 +124,22 @@ startup.
 > extensions-dir discovery, lifecycle beyond built-ins — designed for,
 > not implemented.
 
+> **Landed 2026-10-15 (Slice 7, `qtranslate/extensions.py`):** the
+> scoped-out half above. `validate()` + `read_manifest()` +
+> `discover()` implement the Phase-3 validation matrix
+> (`TEST_STRATEGY.md` §3: missing/short/bad `sdk_version`, broken
+> `entrypoint`, malformed capability/override lists); `load_dir()`
+> discovers the per-user folder, imports each entrypoint, applies
+> registrations, and **fails open with rollback** on any error. The
+> override *conflict* is still reported (D18), with the loser disabled
+> and explained. `Paths` resolves the folder
+> (`WindowsAdapter.extensions_dir` → `%APPDATA%/QTranslate/extensions`,
+> D16). Test: `tests/regress_extension_loading.py` (39 assertions).
+>
+> **Still scoped out:** the override **UI** (picking the D18 winner) and
+> true D17 isolation (the loader only puts the folder on `sys.path` for
+> the import; collisions remain possible).
+
 ## Phase 4 — Platform interfaces (Windows + macOS adapters)
 
 **Deliverables:**
@@ -189,6 +208,15 @@ QTranslate.
 > isolation, SDK packaging under the provisional `qtranslate-sdk` name,
 > and the remaining demos (custom theme/UI, restart-to-apply).
 
+> **Partly landed 2026-10-15 (Slice 7):** the **loading** half of
+> "Extension loading from the per-user app-data folder at startup" now
+> exists as a headless, testable call (`ExtensionManager.load_dir`) with
+> discovery + validation + fail-open rollback; `Paths.extensions_dir`
+> resolves the D16 folder. What remains for the "copy folder → restart →
+> live" demo: **wiring `load_dir` into `app.py` startup** (a UI-host
+> slice, not done here), vendored-dep isolation, and packaging.
+> `examples/demo_translate.py` still covers the SDK-only consumer shape.
+
 ## Phase 7 — UI redesign & fidelity pass
 
 **Deliverables:**
@@ -219,7 +247,11 @@ restarts, and it works with Python **not** separately installed — the app
 bundles the runtime and the extension vendors its own deps (D17).
 
 > **Not started.** Needs Phases 3–7 settled first, plus a packaging
-> decision (bundler choice) the user has not been asked for yet.
+> decision (bundler choice) the user has not been asked for yet. One
+> prerequisite landed ahead of it: the extension **loader** from the
+> per-user dir (Slice 7 above), so a bundle only has to call
+> `ExtensionManager.load_dir(paths.extensions_dir())` at startup and ship
+> the Core runtime — the wiring and bundler remain open.
 
 ## Cross-cutting
 

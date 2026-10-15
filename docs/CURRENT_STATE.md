@@ -8,7 +8,11 @@
 > `qtranslate/platforms.py`, `qtranslate/sdk.py`, `qtranslate/placement.py`.
 > So §3's "one class owns everything / hardcoded dict" description no longer
 > holds for dispatch or orchestration — see
-> `docs/review/CORE_EXTENSIONS_SLICES_1_5_2026-10-15.md`. The RE Gate is
+> `docs/review/CORE_EXTENSIONS_SLICES_1_5_2026-10-15.md`. A follow-up slice
+> added extension **discovery + manifest validation + fail-open loading**
+> (`ExtensionManager.load_dir`) and the `Paths` adapter's extensions-folder
+> resolution — see `docs/review/EXTENSION_LOADING_2026-10-15.md`; startup
+> wiring in `app.py` is still not done. The RE Gate is
 > unchanged: `151 VERIFIED / 1 UNKNOWN (G9)`, `BLOCKED (1)`.
 
 > Status: **PLANNING / READ-ONLY AUDIT.** Grounded in direct reads of the
