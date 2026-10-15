@@ -26,6 +26,22 @@ that import `qtranslate.app` (`regress_engine`, `regress_registry`,
 suites are **not claimed green or red** — out of scope for a no-GUI
 session until the user allows a GUI run.
 
+## Sweep detection must use the exit code, not a text grep
+
+A grep for "FAIL"/"failed" both **misses** suites that print `FAIL 4/25`
+(no colon — `regress_google_romanization`, `regress_source_language`,
+`regress_wiring` all used that form) and **false-positives** on suites
+whose log contains the word (e.g. `regress_player` prints "online TTS
+failed" on its deliberate fallback path). The reliable check is the
+process exit code: every suite `raise SystemExit(1)` / `sys.exit(1)` on
+failure and 0 on success.
+
+Found 2026-10-15: three suites were failing (`regress_google_romanization`
+4/25, `regress_source_language` 5/17, `regress_wiring` 4/7) and a
+text-grep sweep had reported ALL_GREEN. All three were stale assertions
+pointing at `app.py` after Slice 2 moved the orchestration to
+`engine.py`; fixed to read the engine body.
+
 ## Correction (same day)
 
 An earlier version of this note excluded 5 suites by "imports tkinter or

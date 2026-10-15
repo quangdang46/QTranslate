@@ -151,19 +151,22 @@ ck("empty romanization -> unchanged (gate 2)",
 # The bug the global had: a second call with no romanization inherited the
 # first call's. Pinned at the app seam rather than in the service, because the
 # sink is what carries it.
-_app = open(os.path.join(os.path.dirname(os.path.dirname(
-    os.path.abspath(__file__))), "qtranslate", "app.py"),
+# Slice 2 (2026-10-15) moved the orchestration into qtranslate/engine.py,
+# so the seam assertions read the engine body; app.do_translate is a
+# thin forwarder now.
+_eng = open(os.path.join(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))), "qtranslate", "engine.py"),
     encoding="utf-8", errors="replace").read()
-ck("app.py hands a fresh sink per do_translate call",
-   re.search(r"_sink = \[\"\"\]", _app) is not None,
+ck("engine hands a fresh sink per translate call",
+   re.search(r'_sink = \[\"\"\]', _eng) is not None,
    "without a fresh sink the value is shared, which is the old bug")
-ck("app.py passes that sink to the router",
-   "_router(_sink)" in _app, "the router must receive the per-call sink")
-ck("app.py passes the sink to ProviderRouter.translate",
-   "phonetics_sink=_sink" in _app,
+ck("engine passes that sink to the router",
+   "_router(_sink)" in _eng, "the router must receive the per-call sink")
+ck("engine passes the sink to ProviderRouter.translate",
+   "phonetics_sink=_sink" in _eng,
    "the router must receive the per-call sink to populate Result.phonetics")
-ck("app.py reads phonetics from the Result, not a global",
-   "get_romanization" not in _app and "res.phonetics" in _app,
+ck("engine reads phonetics from the Result, not a global",
+   "get_romanization" not in _eng and "res.phonetics" in _eng,
    "the production path must not read the module state")
 
 # --- the request must still ask for dt=rm ---

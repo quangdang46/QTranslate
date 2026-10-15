@@ -48,13 +48,18 @@ def ck(name, cond, detail=""):
 
 app_src = open(os.path.join(ROOT, "qtranslate", "app.py"),
                encoding="utf-8", errors="replace").read()
+# Slice 2 (2026-10-15) moved the orchestration into engine.py; app.do_translate
+# is a thin forwarder. The src==dst echo lives in the engine body now.
+eng_src = open(os.path.join(ROOT, "qtranslate", "engine.py"),
+               encoding="utf-8", errors="replace").read()
 
-# --- 1. the src == dst echo exists, in do_translate, before the provider call
-m = re.search(r"def do_translate\(.*?\n(?=\ndef |\nclass )", app_src, re.S)
-ck("do_translate located", m is not None)
+# --- 1. the src == dst echo exists, in engine.translate, before the call
+m = re.search(r"def translate\(.*?(?=\n\S|\Z)", eng_src, re.S)
+ck("engine.translate located", m is not None)
 if m:
     body = m.group(0)
-    ck("do_translate references the src==dst echo", "src == target" in body)
+    ck("engine.translate references the src==dst echo",
+       "src == target" in body)
     # the echo must come before the provider is invoked. The provider call is
     # NOT a fixed literal: bbe9909 (the reliability wiring) replaced the bare
     # `TRANSLATORS.get(service, _t_google)(text[:5000], src, target)` with
@@ -112,7 +117,7 @@ if m2:
        and re.search(r"^_USES_AUTO_DETECT\s*=\s*\{", app_src,
                      re.M) is None,
        "two tables = two sources of truth again")
-    ck("do_translate consults the capability",
+    ck("engine.translate consults the capability",
        "uses_auto_detect(" in (m.group(0) if m else ""))
 
 # --- 3. the code must not claim native derivation for the table

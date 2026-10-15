@@ -89,8 +89,14 @@ orphans = sorted(m for m in mods
 # complete orphan set. If reliability reappears here, the wiring regressed.
 ENTRY_POINTS = {"win32app", "screens"}
 KNOWN_DEAD = {"speech_input"}
+# Slice 1–5 (2026-10-15) added Core/Extension modules that are published
+# libraries not yet imported by app.py (the UI is frozen): the provider
+# contract, the extension manager, the SDK surface, platform interfaces,
+# and the tray-state helper. Each is exercised by its own suite; wiring
+# them into app.py is a later slice.
+KNOWN_UNWIRED = {"extensions", "platforms", "sdk", "tray_state"}
 
-expected = sorted(ENTRY_POINTS | KNOWN_DEAD)
+expected = sorted(ENTRY_POINTS | KNOWN_DEAD | KNOWN_UNWIRED)
 ck("orphan set is exactly the known one",
    orphans == expected,
    "orphans=%r expected=%r -- a NEW orphan means something became dead code, "
@@ -105,19 +111,21 @@ ck("reliability is wired (this suite's own reason for existing)",
    "reliability is an orphan again -- do_translate stopped routing through "
    "the layer; see docs/review/RELIABILITY_UNWIRED_2026-10-10.md")
 
-# --- the app must actually reach a provider bare, not through the layer ---
-_app = open(os.path.join(ROOT, "qtranslate", "app.py"),
+# --- the engine must actually reach a provider bare, not through the layer ---
+# Slice 2 (2026-10-15): the orchestration lives in engine.translate now;
+# app.do_translate is a thin forwarder. Read the engine body.
+_app = open(os.path.join(ROOT, "qtranslate", "engine.py"),
             encoding="utf-8", errors="replace").read()
 _dt = None
 try:
     _tree = ast.parse(_app)
     for node in ast.walk(_tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) \
-                and node.name == "do_translate":
+                and node.name == "translate":
             _dt = ast.get_source_segment(_app, node)
 except SyntaxError:
     pass
-ck("do_translate found", _dt is not None)
+ck("engine.translate found", _dt is not None)
 if _dt:
     # The intent is "do_translate actually reaches the reliability layer", not
     # "it spells the call exactly one way": the router takes an optional
