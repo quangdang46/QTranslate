@@ -93,24 +93,24 @@ def _remove_tags(page, tags):
 
 
 def _update_links(page, base):
-    """Port of updateHtmlLinks: absolutize href/src against base host."""
-    base = base.rstrip("/")
+    """Absolutize href/src against ``base`` — via the verified native port.
 
-    def _abs(m, attr=""):
-        url = m.group(1)
-        if re.match(r"(?i)(https?:|javascript:|mailto:|#|qtdp:)", url):
-            return m.group(0)
-        if url.startswith("//"):
-            return m.group(0).replace(url, "https:" + url, 1)
-        if url.startswith("/"):
-            return m.group(0).replace(url, base + url, 1)
-        return m.group(0).replace(url, base + "/" + url, 1)
+    This used to be a **second, divergent implementation** of the same
+    native `Common.js` `updateHtmlLinks(a,b)` that
+    ``common.update_html_links`` already ports (measured, and the one
+    `services/youdao.py` calls). The two agreed on every case EXCEPT a
+    plain relative URL, where this copy invented ``base + "/" + url``
+    while the verified port leaves the value alone (its patterns only
+    match `//` and `/` prefixes). Native is the authority, so the extra
+    behaviour was an invention and is now gone: the call delegates.
 
-    page = re.sub(r'''(?i)\bhref\s*=\s*["']([^"'#]+)["']''',
-                  lambda m: _abs(m), page)
-    page = re.sub(r'''(?i)\bsrc\s*=\s*["']([^"']+)["']''',
-                  lambda m: _abs(m), page)
-    return page
+    Measured agreement table (base ``https://dict.example.com/dir``):
+    ``/wiki/x``, ``//cdn/a``, `javascript:`, `mailto:`, `qtdp:`, ``#top``
+    and absolute URLs were already identical; ``rel/p.png`` was not
+    (old: absolutised; native: untouched).
+    """
+    from qtranslate.common import update_html_links
+    return update_html_links(page, base)
 
 
 # ---------------------------------------------------------------- Babylon
