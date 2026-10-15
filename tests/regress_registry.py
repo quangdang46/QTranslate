@@ -17,7 +17,6 @@ were silently skipped on a headless interpreter):
    modules and compares the live tables. Reported as ``SKIPPED`` with a
    reason, never as PASS.
 """
-import ast
 import io
 import os
 import re

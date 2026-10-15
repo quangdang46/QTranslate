@@ -9,8 +9,6 @@ static strings (likely concatenated at runtime).
 Offline: reads the live Options.json when present; otherwise exercises
 a synthetic 20-section document covering every section the port knows.
 """
-import copy
-import io
 import json
 import os
 import sys

@@ -44,7 +44,6 @@ ck("empty list -> nothing excluded",
    X.is_excluded("Anything", "x.exe", []) is False)
 
 # --- DisabledMode: blocklist vs allowlist ------------------------------
-import qtranslate.exclusions as _X
 _orig_live = X._live_lists
 _orig_fg = X._fg_class_and_exe
 X._fg_class_and_exe = lambda: ("Edit", "notepad.exe")

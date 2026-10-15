@@ -8,10 +8,8 @@ Ghidra decompile (REA 6.4.0/Ghidra 12.1.4, snapshot qt6):
   extracts the `_ppup` field (FUN_0045451a). Verified headless: URL, body
   and headers are pinned through a stub opener, no network call.
 """
-import io
 import os
 import sys
-import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

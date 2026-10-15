@@ -152,6 +152,18 @@ startup.
 > found and fixed a real bug: the router's per-call google clone silently
 > reverted any override of `google`. Test: `tests/regress_extension_e2e.py`
 > (17 assertions); `regress_wiring.py` updated to pin the wiring.
+>
+> **Landed 2026-10-15 (override consistency, `qtranslate/extensions.py`):**
+> `commit()` applies a declared override to **every** name that shared the
+> replaced callable, because `microsoft` and `bing` are one provider — so
+> `TRANSLATORS`, `router_order()` and `active()` agree whichever alias was
+> named. An **alias conflict** (two extensions claiming aliases of one
+> provider) applies no override and keeps the built-in; it is resolved after
+> the scan and before commit, so discovery order never decides the winner.
+> **Runtime-fallback policy (unchanged, now pinned):** a loaded override that
+> fails at translate time falls through to the next provider; the replaced
+> built-in is not revived; the failure stays in `Result.failures`. Test:
+> `tests/regress_extension_override.py` (37 assertions).
 
 ## Phase 4 — Platform interfaces (Windows + macOS adapters)
 

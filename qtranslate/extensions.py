@@ -24,6 +24,14 @@ Two slices land here:
   entrypoint, and applies registrations — disabling (not crashing on)
   any extension that fails, per ``EXTENSION_SDK.md`` §7.
 
+Override consistency (rule (b) / D18): ``commit`` applies a declared
+override to **every** name sharing the replaced callable, because
+``microsoft`` and ``bing`` are one provider — so ``TRANSLATORS``,
+``router_order()`` and :meth:`ExtensionManager.active` never disagree. An
+alias conflict (two extensions claiming such aliases) applies **no**
+override and keeps the built-in: with no winner-selection UI yet, discovery
+order must not choose one.
+
 Scope still out: the override *UI* (who picks the D18 winner is a UI
 slice), vendored-dependency *isolation* (D17 is solved here only for the
 import path, not for cross-extension collisions), packaging, and startup
@@ -312,6 +320,45 @@ class ExtensionManager:
         """Declared overrides, for the user to review (D18)."""
         return dict(self._replaces)
 
+    def _alias_conflict_bases(self):
+        """Override targets that collide because they are aliases (rule b).
+
+        Two names resolving to the SAME callable (``microsoft``/``bing``) are
+        one provider, so two ``replaces`` declarations on them are two claims
+        on one implementation. Returns every base name involved, empty when
+        there is no collision.
+        """
+        groups = {}
+        for base in self._replaces:
+            fn = self._providers.get(base)
+            if fn is not None:
+                groups.setdefault(fn, []).append(base)
+        conflicted = set()
+        for bases in groups.values():
+            if len(bases) > 1:
+                conflicted.update(bases)
+        return conflicted
+
+    def _alias_conflict_reason(self, conflicted):
+        parts = ", ".join("%s (%s)" % (self._replaces[base], base)
+                          for base in sorted(conflicted))
+        return ("OverrideConflict: %s replace one provider: the user must "
+                "pick the winner" % (parts,))
+
+    def _drop_unresolved_alias_conflicts(self):
+        """Apply no override to an alias-conflicted provider (rule 3 / D18).
+
+        With no winner-selection UI yet, discovery order must not pick one, so
+        every claim on the conflicted alias group is dropped and the built-in
+        stays the callable behind each name. Returns the dropped base names.
+        """
+        conflicted = self._alias_conflict_bases()
+        for base in conflicted:
+            winner = self._replaces.pop(base, None)
+            if winner is not None:
+                self._providers.pop(winner, None)
+        return conflicted
+
     def commit(self, registry=None):
         """Apply the loaded set to the registry's live dispatch table.
 
@@ -324,16 +371,32 @@ class ExtensionManager:
         appends extension-only names to the fallback chain, exactly as
         ``router_order`` already does for any table-only name.
 
+        Rule (b) makes an override symmetric across aliases: an override of
+        ``microsoft`` updates ``bing`` too (and the other way round), because
+        every name that shared the replaced callable is the same provider —
+        so the table, ``router_order()`` and ``active()`` all agree. An
+        unresolved alias conflict (see ``_alias_conflict_bases``) applies no
+        override at all, leaving the built-in.
+
         Returns the registry module used.
         """
         reg = registry if registry is not None else self._rg
         table = reg.TRANSLATORS
+        before = dict(table)
+        self._drop_unresolved_alias_conflicts()
         for name, fn in self._providers.items():
             table[name] = fn
         for base, winner in self._replaces.items():
             fn = self._providers.get(winner)
-            if fn is not None:
-                table[base] = fn
+            if fn is None:
+                continue
+            table[base] = fn
+            replaced = before.get(base)
+            if replaced is not None:
+                for key, val in before.items():
+                    if val is replaced:
+                        table[key] = fn
+                        self._providers[key] = fn
         reset = getattr(reg, "reset_router", None)
         if reset is not None:
             reset()
@@ -348,13 +411,46 @@ class ExtensionManager:
         per discovered folder, sorted by folder name:
         ``{"path", "id", "status": "loaded"|"disabled", "reason"}``.
 
+        Alias-equivalent override conflicts (two extensions claiming
+        ``microsoft`` and ``bing``) are resolved **after** every folder is
+        read and **before** any commit: no winner is guessed from load order,
+        so neither claim is applied and the built-in stays (see
+        ``_resolve_alias_conflicts``).
+
         ``api``/``importer`` are injectable so the loader is testable
         without touching the import machinery or a real folder.
         """
         api = api if api is not None else ExtensionAPI(self)
         importer = importer or import_entrypoint
-        return [self._load_one(folder, api, importer)
-                for folder in discover(extensions_dir)]
+        outcomes, claimed = [], []
+        for folder in discover(extensions_dir):
+            known = set(self._replaces)
+            outcome = self._load_one(folder, api, importer)
+            outcomes.append(outcome)
+            claimed.append((outcome, set(self._replaces) - known))
+        self._resolve_alias_conflicts(claimed)
+        return outcomes
+
+    def _resolve_alias_conflicts(self, claimed):
+        """Fail safe on alias-equivalent override conflicts (rule 3 / D18).
+
+        ``claimed`` pairs each loaded extension's outcome with the ``replaces``
+        bases it declared. An alias conflict applies **no** override — the
+        built-in stays and both extensions are reported disabled — so load
+        order never decides a winner.
+        """
+        conflicted = self._alias_conflict_bases()
+        if not conflicted:
+            return
+        reason = self._alias_conflict_reason(conflicted)
+        for base in conflicted:
+            winner = self._replaces.pop(base, None)
+            if winner is not None:
+                self._providers.pop(winner, None)
+        for outcome, bases in claimed:
+            if bases & conflicted:
+                outcome["status"] = "disabled"
+                outcome["reason"] = reason
 
     def _load_one(self, folder, api, importer):
         try:

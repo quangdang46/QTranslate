@@ -8,7 +8,6 @@ the parsers never touch the network.
 Offline: fake translator pages with the real marker formats; the
 layout-change errors are asserted too.
 """
-import io
 import os
 import sys
 

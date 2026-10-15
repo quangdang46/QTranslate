@@ -30,7 +30,7 @@ def ck(name, cond, detail=""):
 
 from qtranslate import engine
 from qtranslate import registry as RG
-from qtranslate.extensions import ExtensionManager, load_user_extensions
+from qtranslate.extensions import load_user_extensions
 
 # Snapshot the live table + router so this suite leaves no trace.
 _TABLE = RG.TRANSLATORS

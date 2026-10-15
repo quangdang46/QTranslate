@@ -40,6 +40,14 @@ tests, no screenshot tests. These are added per phase below.
   `tests/regress_extension_loading.py` (39 assertions) against
   `extensions.validate()`/`read_manifest()`/`discover()`/`load_dir()`; the
   D18 conflict case asserts the loser is disabled with an explanation.
+  *Override consistency* is pinned by `tests/regress_extension_override.py`
+  (37 assertions): an override propagates across aliases in both directions,
+  an alias conflict applies no override and keeps the built-in, repeated
+  load/commit is idempotent, and a runtime failure falls through to the next
+  provider (PA-B) with the failure visible in `Result.failures`.
+  *Undefined names in `app.py`* are pinned by
+  `tests/regress_app_undefined_names.py` (5 assertions): an AST pin that
+  fails on the committed `app.py` and passes on the fixed one.
 - **Phase 4:** import-guard test — assert Core imports succeed with `win32gui`,
   `winreg`, `comtypes`, `ctypes.windll` patched to raise; per-adapter capability
   honesty (unsupported → reported, not faked).

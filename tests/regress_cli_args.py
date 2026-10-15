@@ -47,7 +47,6 @@ ck("None argv is treated as empty", parse_args(None)[:3]
 
 # --- app.py's module-level parse agrees with the helper ----------------
 import io
-import re
 _app = io.open("qtranslate/app.py", encoding="utf-8").read()
 ck("app.py asserts its parse matches cli.parse_args",
    "_parse_args(sys.argv[1:])[:5] ==" in _app)

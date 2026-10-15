@@ -6,11 +6,15 @@
 > landed at `7b8ea7a`. **Extension-directory discovery, manifest validation
 > and fail-open loading landed next** (`ExtensionManager.load_dir`,
 > `validate`/`read_manifest`/`discover`, plus `Paths.extensions_dir` on the
-> Windows adapter). Still designed-for only: the override **UI** (who picks
-> the D18 winner), vendored-dependency **isolation** (D17 is implemented as
-> an import-path mechanism, not true isolation), and packaging/startup
-> wiring. See `docs/review/CORE_EXTENSIONS_SLICES_1_5_2026-10-15.md` and
-> `docs/review/EXTENSION_LOADING_2026-10-15.md`. Signatures here
+> Windows adapter). Startup wiring landed too (`app.main` calls
+> `load_user_extensions()`), and `commit()` now makes an override **alias-
+> consistent** (overriding `microsoft` updates `bing` and vice versa) and
+> fails safe on an alias conflict. Still designed-for only: the override
+> **UI** (who picks the D18 winner), vendored-dependency **isolation** (D17 is
+> implemented as an import-path mechanism, not true isolation), and
+> packaging. See `docs/review/CORE_EXTENSIONS_SLICES_1_5_2026-10-15.md`,
+> `docs/review/EXTENSION_LOADING_2026-10-15.md`, and
+> `docs/review/EXTENSION_OVERRIDE_2026-10-15.md`. Signatures here
 > are design-level and **will be frozen before release**.
 
 ## 1. Concepts (do not conflate)
@@ -132,6 +136,20 @@ Rules:
 4. If an overriding extension **fails to load**, fall back to the built-in and
    log. Never leave the user with nothing.
 5. Core logs which provider/component is active and whether it overrides.
+6. **Aliases are one provider.** `bing` and `microsoft` are the *same* callable
+   (`registry.TRANSLATORS`), so an override of either updates both, in both
+   directions — the table, `router_order()` and `ExtensionManager.active()`
+   never disagree.
+7. An **alias conflict** — two extensions claiming aliases of one provider
+   (`replaces="microsoft"` and `replaces="bing"`) — is rule 3 with no winner
+   chosen yet: **no** override is applied, the built-in stays, and both
+   extensions are disabled with an explanation. Discovery order never decides
+   the winner.
+8. A **runtime** failure is not a load failure (rule 4): a *loaded* override
+   that raises or returns an unusable result at translate time falls through
+   the normal provider chain (`RELIABILITY.md`) to the next provider. The
+   replaced built-in is **not** revived, and the failure is reported through
+   `Result.failures`/`provider_used`, never hidden.
 
 ## 7. Fail-open loading (mandatory)
 
@@ -159,6 +177,14 @@ since there is no isolation, at least startup must be resilient.
 > winners into `registry.TRANSLATORS` (resetting the cached router) so an
 > extension provider actually serves translations — see
 > `docs/review/EXTENSION_WIRING_2026-10-15.md`.
+>
+> **Override consistency (rules 6–8, 2026-10-15):** alias conflicts are
+> resolved *after* the scan and *before* any commit, so no winner is picked
+> from load order; `commit()` propagates an override across every name that
+> shared the replaced callable; and a runtime failure of a loaded override
+> falls through the provider chain without reviving the replaced built-in.
+> Pinned by `tests/regress_extension_override.py` — see
+> `docs/review/EXTENSION_OVERRIDE_2026-10-15.md`.
 
 ## 8. UI extension points (MVP = level B, decision D9)
 

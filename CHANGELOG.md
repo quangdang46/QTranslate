@@ -3,6 +3,59 @@
 All entries are clean-room RE of QTranslate 6.10.0 for education.
 `LIVE-OK` = verified against the real provider endpoint.
 
+## Undefined-name fixes in `app.py` + `tests/` import cleanup (2026-10-15)
+
+- **Three latent `NameError`s in `qtranslate/app.py`, each swallowed by a
+  bare `except Exception: pass`** so they never crashed the app — they
+  silently disabled a feature: (1) `_gp` was read (ShowTopPane/ShowMiddlePane)
+  before it was assigned, so the top/middle panes never hid; (2) `except
+  Exception as e` then a deferred `lambda` referenced `e`, which Python 3
+  unbinds at the end of the `except` block; (3) the clipboard `_poll`
+  discarded the source (`svc, _, tgt, _ = app.current()`) yet passed an
+  undefined `src` to `show_popup`. All three fixed; the popup now falls back
+  to the request's `"auto"`.
+- **`tests/` import cleanup.** Removed ~20 unused imports across 13 suites.
+  Three intentional imports kept: the `tkinter`/`pystray` availability probes
+  and the `promt` syntax-regression guard.
+- **Evidence:** new `tests/regress_app_undefined_names.py` (5 checks) — an
+  AST pin that **fails on the committed `app.py` (4 failures) and passes on
+  the fixed one** (verified by restoring `HEAD`). Headless sweep **67/67**
+  by exit code; `coverage_tally --check` unchanged at `151 VERIFIED /
+  1 UNKNOWN (G9)`, `BLOCKED (1)`.
+- **Scope:** src agent owned `qtranslate/`; test agent owned `tests/`. The
+  regression tests for the src fixes live in `tests/` (cross-scope handoff).
+
+## Override consistency across aliases; runtime-fallback policy pinned (2026-10-15)
+
+- **An override is now alias-consistent.** `microsoft` and `bing` are the
+  same callable in `registry.TRANSLATORS`, so overriding one left the other
+  pointing at the built-in: `ExtensionManager.active("bing")` disagreed with
+  what the router actually dispatched, and the built-in leaked back in as a
+  second fallback entry. `ExtensionManager.commit()` now applies a declared
+  override to **every** name that shared the replaced callable (by identity,
+  not by name), in both directions, so the table, `router_order()` and
+  `active()` agree. Found by the review's alias probe.
+  (`docs/review/EXTENSION_OVERRIDE_2026-10-15.md`.)
+- **An alias conflict fails safe.** Two extensions claiming aliases of one
+  provider (`replaces="microsoft"` vs `replaces="bing"`) were an
+  order-dependent collision that `register()` did not catch. The loader now
+  resolves it after the scan and before commit: **no** override is applied,
+  the built-in stays, and both extensions are reported disabled ("pick the
+  winner"). Discovery order no longer decides a winner.
+- **Runtime-fallback policy recorded, not changed (PA-B).** A *loaded*
+  override that raises or returns an unusable result at translate time falls
+  through the normal provider chain; the replaced built-in is **not** revived
+  and the failure stays in `Result.failures`/`provider_used`. Only a
+  *load-time* failure falls back to the built-in (rule 4).
+- **Evidence:** `tests/regress_extension_override.py` (37 checks, offline) —
+  alias propagation both ways, alias-conflict determinism across folder
+  order, idempotent repeated load, and PA-B runtime fallback (raising and
+  empty-result cases). Headless sweep **66/66** by exit code;
+  `coverage_tally --check` unchanged at `151 VERIFIED / 1 UNKNOWN (G9)`,
+  `BLOCKED (1)` — this does not open the RE Gate.
+- **Still open, as before:** override UI + persistent winner selection (D18),
+  true D17 isolation, packaging.
+
 ## Extension startup wiring + provider integration; override bug fixed (2026-10-15)
 
 - **The loader became a live feature.** Slice 7 gave a tested-but-unused

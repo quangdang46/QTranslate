@@ -25,7 +25,6 @@ def ck(name, cond, detail=""):
 
 
 from qtranslate import config as C
-from qtranslate.app import _hotkey_to_combo
 
 src = io.open("qtranslate/app.py", encoding="utf-8").read()
 _m = re.search(r"_actions = \{(.*?)\n    \}", src, re.S)

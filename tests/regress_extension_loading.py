@@ -29,7 +29,7 @@ def ck(name, cond, detail=""):
 
 from qtranslate import platforms as P
 from qtranslate.extensions import (
-    SDK_VERSION, ExtensionManager, ManifestError, discover, import_entrypoint,
+    SDK_VERSION, ExtensionManager, ManifestError, discover,
     read_manifest, validate)
 
 

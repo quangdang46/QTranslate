@@ -15,8 +15,16 @@
 > **wiring + provider integration** then landed (Slice 8): `app.main` calls
 > `load_user_extensions()`, which commits loaded providers into
 > `registry.TRANSLATORS`, so an extension actually serves translations —
-> see `docs/review/EXTENSION_WIRING_2026-10-15.md`. The RE Gate is
-> unchanged: `151 VERIFIED / 1 UNKNOWN (G9)`, `BLOCKED (1)`.
+> see `docs/review/EXTENSION_WIRING_2026-10-15.md`. **Override consistency**
+> then landed: an override now propagates across aliases (`microsoft`/`bing`)
+> in both directions, an alias conflict applies no override and keeps the
+> built-in (never decided by discovery order), and the runtime-fallback policy
+> (PA-B) is pinned — see `docs/review/EXTENSION_OVERRIDE_2026-10-15.md`.
+> Three latent `NameError`s in `app.py` were also fixed (a `_gp` read before
+> assignment, an `except as e` read inside a deferred lambda, and an undefined
+> `src` in the clipboard popup) and `tests/` unused imports cleaned — pinned by
+> `tests/regress_app_undefined_names.py`. The RE Gate is unchanged:
+> `151 VERIFIED / 1 UNKNOWN (G9)`, `BLOCKED (1)`.
 
 > Status: **PLANNING / READ-ONLY AUDIT.** Grounded in direct reads of the
 > repository at commit `0cb0e78` (branch `main`) on 2026-10-09. No files were

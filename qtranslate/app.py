@@ -626,6 +626,14 @@ class App:
         outfrm = tk.Frame(self.root, bg="white")
         outfrm.pack(fill="both", expand=True, padx=4)
         self._panes["mid"] = outfrm
+        # ShowTopPane/Middle/Services (native 0x8071/0x8064/0x8065,
+        # Ctrl+F1/F2/F3): srcfrm=top, bar+outfrm=middle, strip=services.
+        # _gp must be bound here, before the first Show* test below reads it.
+        try:
+            from qtranslate import config as _CP
+            _gp = _CP.load().get("General", {})
+        except Exception:
+            _gp = {}
         try:
             if not _gp.get("ShowTopPane", True) and self._panes.get(
                     "src") is not None:
@@ -670,13 +678,6 @@ class App:
         strip.pack(fill="x", padx=4, pady=(2, 4))
         self._panes = {"src": None, "mid": None, "svc": strip,
                        "bar": None}
-        # ShowTopPane/Middle/Services (native 0x8071/0x8064/0x8065,
-        # Ctrl+F1/F2/F3): srcfrm=top, bar+outfrm=middle, strip=services
-        try:
-            from qtranslate import config as _CP
-            _gp = _CP.load().get("General", {})
-        except Exception:
-            _gp = {}
         if not _gp.get("ShowServicesPane", True):
             strip.pack_forget()
         self.svc_btns = {}
@@ -1295,8 +1296,9 @@ class App:
                     if txt else self.render(
                         "[speech input — nothing recognized]")))
             except Exception as e:
+                _speech_err = f"[speech error] {e}"
                 self.root.after(
-                    0, lambda: self.render(f"[speech error] {e}"))
+                    0, lambda: self.render(_speech_err))
 
         import threading as _th
         _th.Thread(target=_work, daemon=True).start()
@@ -4044,7 +4046,7 @@ def start_clipboard_monitor(app, interval_ms: int = 800,
                     app.push_hist(svc, text[:120], res.text[:200])
                     if popup:
                         show_popup(text[:300], res.text, svc, tgt,
-                                   res.source_language_code or src)
+                                   res.source_language_code or "auto")
                 except Exception:
                     pass
         try:

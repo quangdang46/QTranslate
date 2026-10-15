@@ -20,11 +20,10 @@ still recovered the seed. This test pins the two-marker behaviour.
 """
 import sys
 import os
-import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from qtranslate.services.google_translate import (  # noqa: E402
-    _tkk_slice, refresh_tkk, _TKK_START, _TKK_START_ALT, _TKK_END, _TKK_URL)
+    _tkk_slice, _TKK_START, _TKK_START_ALT, _TKK_END, _TKK_URL)
 
 fail = []
 _N = [0]
