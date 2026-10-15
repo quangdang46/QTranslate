@@ -870,3 +870,32 @@ So the ambiguous-key set is `q w ' , . /` — the checklist's earlier
 - [ ] Cross-document consistency pass done; no contradictions with D1–D20.
 - [ ] The working-tree `app.py` change is preserved and its behavior decision recorded.
 - [ ] User has **explicitly** approved the Gate. (Document agreement ≠ Gate approval.)
+
+---
+
+## 2026-10-16 — the Service.js reading pass is closed
+
+The open item in `PLUGIN_JS_VERIFIED_AGAINST_PORT_2026-10-11.md` ("the files are
+recovered and 2 providers are read; 14 dictionary providers and the translate
+providers are unread") is **done**: all 19 recovered `Service.js` files have now
+been read against the port. See `DICT_RESPONSE_CHAINS_2026-10-16.md`.
+
+Two suites, both headless:
+
+* `tests/regress_dict_response_chain.py` (50) — slice markers, inclusive flags,
+  `remove*` argument lists, `updateHtmlLinks` placement and the style wraps for
+  the dictionary providers, plus youdao's chain.
+* `tests/regress_service_capabilities.py` (19) — the capability mask of all 19
+  services from each header's own last argument.
+
+No new port bug was found. Two **false findings** produced while writing the
+suites are pinned so they are not repeated: `h[3-6]` in Google Search's
+`removeTags` is a character class (expanding it is extensionally equivalent, so
+it is fidelity rather than a fix), and the 11-vs-4 dictionary count is the
+measured screen contract plus a user-mutable service list, not a missing
+feature.
+
+The four `not-started` rows (C10, F13, G9, J6) are unchanged and deliberate —
+two proven negatives about native, one uncapturable runtime comparison, one new
+dependency. **G9 remains `UNKNOWN`, so the Gate remains `BLOCKED (1)`.**
+

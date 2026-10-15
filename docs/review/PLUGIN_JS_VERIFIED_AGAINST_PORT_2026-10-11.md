@@ -255,3 +255,11 @@ not a checkpoint. Recording the checklist's status at this point: the files are
 recovered and 2 providers are read; 14 dictionary providers and the translate
 providers are unread; that is the remaining work, and it is *reading*, not
 recovery.
+
+> **CLOSED 2026-10-16** — all 19 files are now read against the port:
+> `DICT_RESPONSE_CHAINS_2026-10-16.md`. No new port bug was found; 10 real bugs
+> were found across the whole reading effort, the last two being the
+> Promt/DeepL `SupportedLanguages` shifts. Two false findings produced while
+> finishing the pass are pinned in `regress_dict_response_chain.py` /
+> `regress_service_capabilities.py` (the `h[3-6]` character class, and the
+> 11-vs-4 dictionary-capability count).
