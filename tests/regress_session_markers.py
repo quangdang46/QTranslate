@@ -71,6 +71,12 @@ LITERALS = [
     'IG:"',
     "text=car&fromLang=en&to=ru&token=%s&key=%s&isAuthv2=true",
     "https://www.bing.com/ttranslatev3",
+    # Baidu's page-side markers (the JS quotes are already open, so the
+    # value runs to the next quote)
+    "http://fanyi.baidu.com",
+    "BAIDUID",
+    "token: ",
+    "gtk = ",
     'id="_paft" type="hidden" value="',
     'id="_xsrf" type="hidden" value="',
     "pageIx=0&v=1",

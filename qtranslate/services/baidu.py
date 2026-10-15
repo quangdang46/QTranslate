@@ -199,6 +199,20 @@ def translate(text: str, sl="auto", tl: str = "en", gtk: str = "0.0",
     query = urllib.parse.quote(text, safe="").replace("%20", "+")
     gtk = gtk if gtk != "0.0" else Options.get("BaiduGtk", "0.0")
     token = token or Options.get("BaiduToken", "")
+    if gtk == "0.0" or not token:
+        # Native scrapes the page for the `token:` / `gtk =` pair before
+        # signing (tests/regress_session_markers.py reads both markers out
+        # of .rdata). Without this the request signs with the 0.0 seed and
+        # Baidu answers with an auth error -- the `dead:needs-session-token`
+        # state the checklist records.
+        try:
+            from qtranslate.session import baidu_session as _bs
+            _s = _bs()
+            gtk = _s.get("gtk") or gtk
+            token = _s.get("token") or token
+            cookie = cookie or _s.get("cookie", "")
+        except Exception:
+            pass
     body = ("query={}&from={}&to={}&simple_means_flag=3&sign={}&token={}"
             .format(query, sl_code, tl_code, sign(text, gtk), token))
     headers = split_headers(post_header())

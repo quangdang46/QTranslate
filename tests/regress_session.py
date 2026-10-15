@@ -133,6 +133,47 @@ try:
 finally:
     S._net_open = _orig_net
 
+# --- Baidu: the page markers the image names, token:/gtk = -------------
+# .rdata holds "http://fanyi.baidu.com", "BAIDUID" and the two page-side
+# markers 'token: ' and 'gtk = ' (tests/regress_session_markers.py). The
+# port read Options.BaiduGtk/BaiduToken but had nothing that FILLED them,
+# so every Baidu request signed with the default 0.0 seed.
+BAIDU_HTML = ("<script>var token: 'TOK-123', gtk = '320305.131321201';"
+              "</script>")
+
+
+def _baidu():
+    return _Resp(BAIDU_HTML, ["BAIDUID=BFEED-1; path=/",
+                              "_EDGE_S=x; path=/"])
+
+
+S._net_open = lambda req, opener=None, data=None: _baidu()
+try:
+    b = S.baidu_session()
+    ck("baidu token scraped from the page marker", b.get("token") == "TOK-123",
+       repr(b.get("token")))
+    ck("baidu gtk scraped from the page marker",
+       b.get("gtk") == "320305.131321201", repr(b.get("gtk")))
+    ck("baidu cookie kept (BAIDUID)",
+       "BAIDUID=BFEED-1" in b.get("cookie", ""), repr(b.get("cookie")))
+    ck("baidu keeps the opener for the translate call",
+       b.get("opener") is not None)
+finally:
+    S._net_open = _orig_net
+
+
+def _baidu_empty():
+    return _Resp("<html>no markers</html>", [])
+
+
+S._net_open = lambda req, opener=None, data=None: _baidu_empty()
+try:
+    b2 = S.baidu_session()
+    ck("baidu without markers yields empty fields, not a crash",
+       b2.get("token") == "" and b2.get("gtk") == "", repr(b2))
+finally:
+    S._net_open = _orig_net
+
 # --- the helper-array slot order, and the Options seeds ----------------
 # The array native's page carries is [IG:"<ig>","<token>",<key>] -- the
 # token is the QUOTED member and the key the trailing NUMBER. This port

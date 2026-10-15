@@ -8,6 +8,7 @@ native selector: 0 empty/normal, 1 has-text/hover, 3 disabled, 4 focused
 import glob
 import json
 import os
+import re
 
 THEMES_DIR = "C:/Program Files (x86)/QTranslate/Themes"
 
@@ -67,13 +68,58 @@ def slot(record: dict, key: str):
     return _hex(text)
 
 
+def _strip_jsonc(text: str) -> str:
+    """Remove ``//`` line comments and ``/* */`` block comments.
+
+    **Quote-aware.** A bare ``re.sub(r"//[^\\n]*", "", text)`` (what this
+    used to do) also cut a ``//`` that appears *inside a string value*:
+    ``{"a": "http://x.tld/p"}`` became ``{"a": "http:``, an unterminated
+    string, so the whole theme failed to load. None of the 8 shipped
+    themes have a ``//`` in a value, which is why it stayed latent — but a
+    user-authored theme carrying a URL would be rejected outright.
+
+    Trailing commas are left alone here; :func:`load_theme_at` strips them
+    on the result (a comment's removal can itself leave a trailing comma).
+    """
+    out = []
+    i, n = 0, len(text)
+    in_string = False
+    while i < n:
+        ch = text[i]
+        if in_string:
+            if ch == "\\" and i + 1 < n:
+                out.append(ch)
+                out.append(text[i + 1])
+                i += 2
+                continue
+            if ch == '"':
+                in_string = False
+            out.append(ch)
+            i += 1
+            continue
+        if ch == '"':
+            in_string = True
+            out.append(ch)
+            i += 1
+            continue
+        if ch == "/" and i + 1 < n and text[i + 1] == "/":
+            j = text.find("\n", i)
+            i = n if j < 0 else j
+            continue
+        if ch == "/" and i + 1 < n and text[i + 1] == "*":
+            j = text.find("*/", i + 2)
+            i = n if j < 0 else j + 2
+            continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
 def load_theme_at(path: str) -> dict:
     """Load an already-located theme file (JSONC + trailing commas)."""
-    import re
     with open(path, encoding="utf-8-sig") as f:
         text = f.read()
-    text = re.sub(r"//[^\n]*", "", text)
-    text = re.sub(r",(\s*[}\]])", r"\1", text)
+    text = re.sub(r",(\s*[}\]])", r"\1", _strip_jsonc(text))
     theme = json.loads(text)
     theme["Common"] = _normalize_common(theme.get("Common", {}))
     return theme

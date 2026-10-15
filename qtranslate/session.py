@@ -171,6 +171,40 @@ def bing_translate(text: str, sl: str = "en", tl: str = "vi") -> str:
         return ""
 
 
+def baidu_session() -> dict:
+    """Scrape the Baidu translate page's ``token``/``gtk`` pair + BAIDUID.
+
+    The image's `.rdata` carries, next to each other
+    (`tests/regress_session_markers.py` reads them out)::
+
+        http://fanyi.baidu.com
+        BAIDUID
+        Accept-Encoding:gzip,deflate\nCookie:
+        'token: ''gtk = '
+
+    i.e. the page is fetched, the ``BAIDUID`` cookie is kept, and the page
+    source is scanned for the two JS assignments whose quotes are already
+    open -- so the value runs to the next quote. This port read
+    ``Options.BaiduGtk``/``BaiduToken`` but had **nothing that filled them**,
+    so every Baidu request signed with the default ``0.0`` seed, which is
+    the ``dead:needs-session-token`` state the checklist records.
+    """
+    opener = _jar_opener()
+    req = urllib.request.Request("http://fanyi.baidu.com", headers=_UA)
+    with _net_open(req, opener) as r:
+        html = r.read().decode("utf-8", errors="replace")
+        set_cookie = r.headers.get_all("Set-Cookie") or []
+    cookie = "; ".join(c.split(";")[0] for c in set_cookie)
+    token = re.search(r"token:\s*'([^']+)'", html)
+    gtk = re.search(r"gtk\s*=\s*'([^']+)'", html)
+    return {
+        "token": token.group(1) if token else "",
+        "gtk": gtk.group(1) if gtk else "",
+        "cookie": cookie,
+        "opener": opener,
+    }
+
+
 def promt_session() -> dict:
     """Scrape XSRF-TOKEN cookie + PromtPaft for online-translator.com.
 
