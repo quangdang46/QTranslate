@@ -179,9 +179,28 @@ def detect_code(text: str, app_id: str = "") -> str:
 
 
 def _use_dictionary(text: str) -> bool:
-    return bool(text) and len(text) <= 100 \
-        and not re.search(r"[\n\r]", text) \
-        and len(text.split()) <= 3
+    r"""Port of ``_useDictionary(a)``.
+
+    Recovered `Services/Yandex/Service.js`::
+
+        return a && 100 >= a.length && !/[\n\r]/.test(a)
+            && 3 >= a.split(/\s+/).length
+
+    The split is on ``\\s+`` -- **not** on a whitespace *collapse*. JS
+    ``split(/\s+/)`` keeps an empty leading member when the string starts
+    with whitespace (``" ab"`` -> ``["", "ab"]``) and an empty trailing one
+    when it ends with whitespace, so ``"   a b c"`` has **4** members and
+    fails the ``3 >=`` test. Python's ``str.split()`` with no argument
+    collapses runs and drops the empties, giving 3 -- so a naïve port
+    accepts leading/trailing-whitespace text native rejects.
+
+    Verified 2026-10-16 against the native expression: ``"   a b c"`` and
+    ``" a  b  c "`` are the two shapes where they disagree. ``re.split``
+    reproduces the JS member count exactly.
+    """
+    return (bool(text) and 100 >= len(text)
+            and not re.search(r"[\n\r]", text)
+            and 3 >= len(re.split(r"\s+", text)))
 
 
 def translate(text: str, sl="", tl: str = "en", app_id: str = "") -> str:

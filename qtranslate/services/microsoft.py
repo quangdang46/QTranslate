@@ -191,16 +191,24 @@ def detect_code(text, **kw) -> str:
 
 
 def _is_short_text(text: str) -> bool:
-    return bool(text) and "\n" not in text and "\r" not in text \
-        and len(text.split(" ")) <= 3
-
-
-def _is_short_text(text: str) -> bool:
-    """PORT-SIDE HEURISTIC -- not the native chain signal.
+    r"""PORT-SIDE HEURISTIC -- not the native chain signal.
 
     Kept only because callers may want a local hint. The native rule is
     the response's ``nextRequestHandler`` (E22); ``translate_full`` uses
     that, and only falls back to this when the server did not answer.
+
+    Native's own inline test, recovered 2026-10-16 from
+    ``serviceTranslateResponse``::
+
+        a = a && !/[\n\r]/.test(a) && 3 >= a.split(" ").length
+            ? "dictionaryRequest"
+            : null
+
+    The split is on ``" "`` -- a single literal space -- which Python's
+    ``split(" ")`` also reproduces exactly (leading spaces DO yield an
+    empty leading member, unlike Yandex's ``\\s+`` and a bare
+    ``str.split()``). So this helper keeps native's expression even
+    though it is no longer the chain rule.
     """
     return bool(text) and "\n" not in text and "\r" not in text \
         and len(text.split(" ")) <= 3
