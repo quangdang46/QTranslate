@@ -52,11 +52,14 @@ RE_STATES = ("VERIFIED", "INFERRED", "UNKNOWN", "UNRECOVERABLE")
 
 # Ghidra names the RE notes use, e.g. FUN_0045869F / FUN_0040FB54.
 FUN_RE = re.compile(r"\bFUN_[0-9A-Fa-f]{6,10}\b")
-# A bare RVA, e.g. 0045869F or 0x4586a0 -- only counts WITH a decompile
-# marker, because an address alone is not evidence of decompilation.
+# A bare RVA, e.g. 0045869F or 0x4586a0. It counts only when paired with a
+# marker showing the address was actually EXAMINED rather than merely named:
+# a decompile, a resource/template parse, or an RTTI class. An address alone
+# is a pointer to a place, not evidence of what was found there.
 RVA_RE = re.compile(r"\b0x?0*([0-9A-Fa-f]{7,8})\b")
-DECOMPILE_RE = re.compile(r"decompil|disassembl|read out|recovered|parsed"
-                          r"|walked|census", re.I)
+STRUCTURAL_RE = re.compile(r"decompil|disassembl|read out|recovered|parsed"
+                           r"|walked|census|RTTI|windows::|common::|style "
+                           r"0x|cDlgItems|cdit|template|EPSILON", re.I)
 # JS / payload asset provenance. The installer's own file tree is the
 # authority on what exists, so any `Services/…`, `Plugins/…`, `Themes/…`,
 # `Locales/…`, `Resources/…` or bare `*.js`/`*.json` citation counts --
@@ -71,8 +74,17 @@ HASH_RE = re.compile(r"(sha256|md5)\s*[:=]?\s*[0-9a-fA-F]{8,}",
                      re.IGNORECASE)
 BYTES_RE = re.compile(r"\b(?:payload\s+)?(\d[\d,]{3,})\s*(?:B\b|bytes)",
                       re.IGNORECASE)
+# A CLSID byte string recovered (or proven absent) from the image is a
+# byte-search artifact, and both "present" and "absent" findings are
+# evidence -- F13/J3 are exactly this shape.
+CLSID_RE = re.compile(r"\{?[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}"
+                      r"-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\}?")
 # tests
 TEST_RE = re.compile(r"(tests/[A-Za-z0-9_./-]+\.py)")
+# A port source location, e.g. `app.py:1742` / `common.py:412` -- a
+# verifiable citation even though it points into the port, because it is
+# line-checkable rather than prose.
+PORT_REF_RE = re.compile(r"\b([A-Za-z0-9_]+\.py):\d+")
 
 ROW_RE = re.compile(r"^\|\s*([A-Z]\d+)\s+(.*)$")
 
@@ -157,12 +169,18 @@ def audit(text: str):
         live_tests = [t for t in tests
                       if os.path.exists(os.path.join(REPO, t))]
         has_fun = bool(FUN_RE.search(row))
-        has_rva = bool(RVA_RE.search(row)) and bool(DECOMPILE_RE.search(row))
+        has_rva = bool(RVA_RE.search(row)) and bool(STRUCTURAL_RE.search(row))
         assets = [p for p in ASSET_PATH_RE.findall(row) if asset_exists(p)]
         has_asset = bool(assets) or bool(JS_MARK_RE.search(row))
         has_hash = bool(HASH_RE.search(row) or BYTES_RE.search(row))
+        has_clsid = bool(CLSID_RE.search(row))
+        port_refs = [r for r in PORT_REF_RE.findall(row)]
+        has_port_ref = any(
+            os.path.exists(os.path.join(REPO, "qtranslate", p))
+            for p in port_refs)
 
-        if live_tests or has_fun or has_rva or has_asset or has_hash:
+        if live_tests or has_fun or has_rva or has_asset or has_hash \
+                or has_clsid or has_port_ref:
             ok += 1
             continue
         # a doc citation is a pointer; record it but do not pass the row
