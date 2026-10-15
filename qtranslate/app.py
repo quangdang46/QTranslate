@@ -3901,9 +3901,9 @@ def _mouse_mode_select(app, x, y):
                     _translate_text(app, text)
                     return
             if _HAS_KEYS:
+                from qtranslate import sendkeys as _SK
+                _SK.send("ctrl+c")
                 try:
-                    import keyboard as _kb
-                    _kb.send("ctrl+c")
                     import time as _t
                     _t.sleep(0.15)
                 except Exception:
@@ -4191,10 +4191,8 @@ def _register_native_hotkeys(app) -> list:
             _copy_action = 0
         _CB.write_text(res.text)
         if _copy_action == 1:
-            try:
-                keyboard.write(res.text[:2000])
-            except Exception:
-                pass
+            from qtranslate import sendkeys as _SK2
+            _SK2.write_text(res.text[:2000])
         app.src.delete("1.0", "end")
         app.src.insert("1.0", text[:2000])
         app.render(res.text)
@@ -4471,10 +4469,8 @@ def main():
             now = _time.time()
             if keyboard.is_pressed("ctrl") and now - _last_c[0] < _dbl_s:
                 _last_c[0] = 0.0
-                try:
-                    keyboard.send("ctrl+c")
-                except Exception:
-                    pass
+                from qtranslate import sendkeys as _SK3
+                _SK3.send("ctrl+c")
                 root.after(300, lambda: on_hotkey(app))
             else:
                 _last_c[0] = now
