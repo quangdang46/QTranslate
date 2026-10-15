@@ -55,6 +55,16 @@ independent of the extension work.
 provider answered, (b) the user sees which provider, (c) total time ≤ budget.
 Dead endpoints are marked, not retried.
 
+> **Landed (reliability layer, 2026-10-10; engine cutover Slice 2):** error
+> taxonomy + `classify()` (`ErrorKind`, `reliability.py:35/136`), bounded
+> retry with backoff + one shared wall-clock `Budget` + `Retry-After`
+> honored (`RetryPolicy`/`Budget`, `parse_retry_after`), automatic
+> fallback across `ServicesOrder` transparent about the provider used
+> (`FallbackRouter` preserving the request), per-provider
+> `HealthTracker` (skip after 3 consecutive `PROVIDER_DEAD`).
+> Test: `tests/regress_reliability.py` (§§1–8). No Phase 1 code was
+> missing — only this "landed" record was.
+
 ## Phase 2 — Core contracts + compatibility shim
 
 **Deliverables:**
@@ -72,6 +82,14 @@ Dead endpoints are marked, not retried.
 > `core.Result` landed earlier; `Provider` contract, registry single
 > source, and the numeric-id shim landed in Slices 1–5 (`7b8ea7a`).
 > Test: `tests/regress_request.py` (11 assertions).
+>
+> **Scoped out with reason:** `DictionaryRequest/Result` and
+> `ExecutionContext` were named in the deliverable line but never defined
+> in any design doc (no requirement in `ARCHITECTURE.md`,
+> `EXTENSION_SDK.md`, or the `CORE_RESULT_SHAPE` sketch, which covers
+> Result only). The dict path returns bare strings, not a Result — giving
+> it a Result-shaped model nobody asked for would invent a contract. Not
+> creating them is a decision, not an omission.
 
 **Done when:** Google goes through the new contract and produces
 **byte-identical** results to the current path on a fixed input set; all other
@@ -89,6 +107,20 @@ providers still work via their old path.
 one interface; a deliberately broken extension is skipped without crashing
 startup.
 
+> **Landed 2026-10-15 (`qtranslate/extensions.py`, `7b8ea7a`):**
+> `ExtensionManager` with `register()` (non-callable rejected with
+> `TypeError`), `providers()` / `enabled()` (registered ≠ enabled),
+> `strip()` vs `enabled()` (two order contracts, never merged),
+> `active()` (rule (b): `bing` resolves to the same `microsoft` object),
+> `conflicts()` (D18: reported for the user, never auto-resolved).
+> Built-in providers are reachable through the manager; a broken
+> registration fails open. Test: `tests/regress_extensions.py`
+> (12 assertions).
+>
+> **Scoped out:** manifest validation for *external* extensions,
+> extensions-dir discovery, lifecycle beyond built-ins — designed for,
+> not implemented.
+
 ## Phase 4 — Platform interfaces (Windows + macOS adapters)
 
 **Deliverables:**
@@ -101,6 +133,17 @@ startup.
 `winreg`, `comtypes`, `ctypes.windll` are unavailable (import-guarded), and
 each adapter reports unsupported capabilities honestly.
 
+> **Landed 2026-10-15 (`qtranslate/platforms.py`, `7b8ea7a`):** the
+> `Clipboard`/`Hotkey`/`Capture`/`Audio`/`Window`/`Paths`/`SpeechInput`
+> interfaces plus `WindowsAdapter` (current behavior; speech =
+> `needs-permission`, unknown = `unavailable` — honest, not faked) and
+> `UnavailableAdapter`. Test: `tests/regress_platforms.py` (15).
+>
+> **Scoped out:** the macOS adapter (no macOS machine, no implementation
+> to wrap yet) and import-guarding the whole Core on a Windows-less host
+> (needs that host). Platform-absence suites gate those slices when they
+> come.
+
 ## Phase 5 — Engine cutover
 
 **Deliverables:**
@@ -112,6 +155,15 @@ each adapter reports unsupported capabilities honestly.
 **Done when:** the default translation path runs entirely through Core/Engine,
 passing the matrix's `behaviour-verified` rows; UI reads results via events, not by
 calling provider functions.
+
+> **Landed 2026-10-15 (`qtranslate/engine.py`):** `app.do_translate` is a
+> thin forwarder with the same signature; the orchestration (pick →
+> detect → execute → fallback → back-translation → phonetics) plus the
+> `TranslationRequest` value object live in the engine. Test:
+> `tests/regress_engine.py` (16 assertions) + `tests/regress_request.py`
+> (11). The auto-vs-selected rule is the locked capability rule
+> (`SOURCE_LANGUAGE_RULE_2026-10-10.md` + the 2026-10-15
+> `AlwaysDetectLanguage` close); UI-by-events is a later UI slice.
 
 ## Phase 6 — Extension SDK + MVP demos
 
@@ -127,6 +179,16 @@ calling provider functions.
 change is live; breaking the extension falls open to built-in. No rebuild of
 QTranslate.
 
+> **Landed 2026-10-15 (`qtranslate/sdk.py`, `7b8ea7a`):** the public
+> surface `translate`/`detect`/`speak`/`dict_lookup`/`Result`
+> (`back_translate` internal) plus `examples/demo_translate.py`, an
+> SDK-only consumer (no `app.py` import). Test: `tests/regress_sdk.py`
+> (17 assertions).
+>
+> **Scoped out:** extensions-dir loading at startup, vendored-dep
+> isolation, SDK packaging under the provisional `qtranslate-sdk` name,
+> and the remaining demos (custom theme/UI, restart-to-apply).
+
 ## Phase 7 — UI redesign & fidelity pass
 
 **Deliverables:**
@@ -138,6 +200,11 @@ QTranslate.
 **Done when:** UI screenshots approach the native window and UI extensions can
 add panel/menu/popup without touching Core.
 
+> **Not started (blocked on two user decisions):** UI is frozen
+> ("về vấn đề UI tôi chốt đã có phần ổn rồi") and screenshots are banned
+> ("đừng screenshot nữa"), so neither the split nor the fidelity pass can
+> proceed — both need visible windows and pixel comparison.
+
 ## Phase 8 — Packaging
 
 **Deliverables:** Windows and macOS bundles; built-ins inside the build;
@@ -147,6 +214,9 @@ compatibility + platform docs.
 **Done when:** a user on each OS installs the app, drops an extension in,
 restarts, and it works with Python **not** separately installed — the app
 bundles the runtime and the extension vendors its own deps (D17).
+
+> **Not started.** Needs Phases 3–7 settled first, plus a packaging
+> decision (bundler choice) the user has not been asked for yet.
 
 ## Cross-cutting
 
