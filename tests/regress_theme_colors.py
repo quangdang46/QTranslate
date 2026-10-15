@@ -200,6 +200,22 @@ else:
     ck("window_colors accepts a state index via state_name",
        T.window_colors(blue, T.state_name(3)) ==
        T.window_colors(blue, "Disabled"))
+    # --- FUN_0044A163 brightness shift: zero delta is a true identity ----
+    # Native: L2 = L + delta; L2<1 -> black, L2>=0xF0 -> white, elif
+    # L2 != L -> ColorHLSToRGB, ELSE the original colour is returned.
+    # A round-trip through HLS would drift real colours on a zero delta.
+    ck("zero delta returns the colour unchanged (native identity branch)",
+       all(T.adjust_brightness(c, 0) == c for c in
+           ("#4285f4", "#7e7e7e", "#f5a623", "#010203")),
+       "native skips ColorHLSToRGB when L2 == L")
+    ck("negative-to-zero clamp yields black",
+       T.adjust_brightness("#000000", -10) == "#000000"
+       and T.adjust_brightness("#010203", -10) == "#000000")
+    ck("at-or-above 0xF0 clamp yields white",
+       T.adjust_brightness("#ffffff", 10) == "#ffffff")
+    ck("a real shift changes the value",
+       T.adjust_brightness("#4285f4", 10) != "#4285f4"
+       and T.adjust_brightness("#4285f4", -10) != "#4285f4")
     # Structural invariant, placed BEFORE the first button_colors() call.
     # button_colors indexes its record by hardcoded name -- c["Main"],
     # c["Back"], c["Shadow"] -- so if SECTION_SLOTS ever stops containing

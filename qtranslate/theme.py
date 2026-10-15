@@ -388,19 +388,30 @@ def tk_colors(colors: dict) -> dict:
 def adjust_brightness(rgb_hex: str, delta: int) -> str:
     """Port of FUN_0044A163: RGB->HLS, shift L by delta, clamp, back.
 
-    Native: ColorRGBToHLS -> L+=delta (clamp 1..0xF0, else black/white) ->
-    ColorHLSToRGB. Used by themed fill (+/-10) for hover/pressed shading.
+    Native (decompiled 2026-10-15): ColorRGBToHLS -> ``L2 = L + delta``;
+    if ``L2 < 1`` -> black; elif ``L2 >= 0xF0`` -> white; **elif
+    ``L2 != L`` -> ColorHLSToRGB, else the ORIGINAL colour is returned
+    unchanged**. That last branch matters: a zero delta must be a true
+    identity. The earlier port always round-tripped through HLS, so
+    ``adjust_brightness(c, 0)`` drifted real colours (e.g. ``#4285f4`` ->
+    ``#4083f3``) — a hue-preserving but value-shifting error the native
+    code explicitly avoids.
     """
     import colorsys
     h = rgb_hex.lstrip("#")
     r, g, b = (int(h[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
     hh, ll, ss = colorsys.rgb_to_hls(r, g, b)
-    l256 = int(ll * 240) + delta
-    if l256 < 1:
+    l256 = int(ll * 240)
+    l2 = l256 + delta
+    if l2 < 1:
         return "#000000"
-    if l256 >= 0xF0:
+    if l2 >= 0xF0:
         return "#ffffff"
-    r2, g2, b2 = colorsys.hls_to_rgb(hh, l256 / 240.0, ss)
+    if l2 == l256:
+        # Native: `if (uVar1 != L) ColorHLSToRGB(...)` — no shift, no
+        # conversion. Return the input so a zero delta is exact.
+        return "#" + h.lower()
+    r2, g2, b2 = colorsys.hls_to_rgb(hh, l2 / 240.0, ss)
     return "#{:02x}{:02x}{:02x}".format(int(r2 * 255), int(g2 * 255),
                                         int(b2 * 255))
 
