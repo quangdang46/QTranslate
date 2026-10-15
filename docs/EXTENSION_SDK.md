@@ -1,8 +1,12 @@
 # Extension SDK
 
-> Status: **PLANNING / DESIGN.** The public contract for Python extensions
-> (decisions D5, D6, D7, D8, D9). Signatures here are design-level and **will be
-> frozen before release**; nothing is implemented.
+> Status: **PARTIALLY LANDED (2026-10-15, commit `7b8ea7a`).** The built-in
+> manager (`qtranslate/extensions.py`) and the public SDK surface
+> (`qtranslate/sdk.py`: `translate`/`detect`/`speak`/`dict_lookup`/`Result`)
+> are implemented and verified. Discovery, external extension loading,
+> override UI, and vendored-dependency isolation remain designed-for only.
+> See `docs/review/CORE_EXTENSIONS_SLICES_1_5_2026-10-15.md`. Signatures here
+> are design-level and **will be frozen before release**.
 
 ## 1. Concepts (do not conflate)
 

@@ -1,5 +1,16 @@
 # Current State — Audit of `qtranslate-re`
 
+> **SUPERSEDING NOTE (2026-10-15, commit `7b8ea7a`).** The audit below is a
+> point-in-time snapshot at `0cb0e78` (2026-10-09). Since then the Core/
+> Extensions slices landed: `qtranslate/registry.py` (single dispatch source),
+> `qtranslate/providers/` (Provider contract), `qtranslate/engine.py`
+> (orchestration out of `app.do_translate`), `qtranslate/extensions.py`,
+> `qtranslate/platforms.py`, `qtranslate/sdk.py`, `qtranslate/placement.py`.
+> So §3's "one class owns everything / hardcoded dict" description no longer
+> holds for dispatch or orchestration — see
+> `docs/review/CORE_EXTENSIONS_SLICES_1_5_2026-10-15.md`. The RE Gate is
+> unchanged: `151 VERIFIED / 1 UNKNOWN (G9)`, `BLOCKED (1)`.
+
 > Status: **PLANNING / READ-ONLY AUDIT.** Grounded in direct reads of the
 > repository at commit `0cb0e78` (branch `main`) on 2026-10-09. No files were
 > modified to produce this audit. Claims are tagged **[verified]** (read from

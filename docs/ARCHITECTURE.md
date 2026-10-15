@@ -1,8 +1,11 @@
 # Architecture
 
-> Status: **PLANNING.** Target architecture for the Core/Extension redesign
-> (decision D13: design Core first, then migrate). No code yet. Line anchors
-> into the current code are provided as evidence, not as the shape we keep.
+> Status: **PARTIALLY LANDED (2026-10-15, commit `7b8ea7a`).** Slices 1–5 of
+> this design are implemented and verified — provider contract, engine
+> cutover, extension manager (built-in only), platform interfaces, SDK
+> surface. See `docs/review/CORE_EXTENSIONS_SLICES_1_5_2026-10-15.md` for
+> what landed vs what is still designed-for. Line anchors into the
+> pre-slice code are kept as evidence, not as the current shape.
 
 ## 1. Why the current structure can't host extensions
 

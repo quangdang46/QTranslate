@@ -1,15 +1,21 @@
 # Implementation Plan
 
-> Status: **PLANNING — NOT STARTED, AND MUST NOT AUTO-START.** Phase order and
-> done-criteria only. No code is written during this plan phase. Phases are
-> ordered so each is independently testable and rollback-able; no big-bang
-> refactor.
+> Status: **PHASES 2–6 PARTIALLY LANDED (2026-10-15, commit `7b8ea7a`).**
+> The user explicitly approved the switch to implementation for the Core/
+> Extensions slices ("cứ làm hết đi tôi review 1 lần"). What landed:
+> provider contract + registry single source (Phase 2), engine cutover
+> (Phase 5), extension manager built-in (Phase 3), platform interfaces
+> (Phase 4), SDK surface + a runnable SDK-only demo (Phase 6). What did
+> **not** land and stays designed-for: extensions-dir discovery, override
+> UI, vendored-dep isolation, macOS adapters, packaging (Phases 7–8).
+> Per-slice detail + evidence:
+> `docs/review/CORE_EXTENSIONS_SLICES_1_5_2026-10-15.md`.
 
-> **Gate (see `PROJECT_VISION.md` §0):** Phase 0 **must not begin** merely
-> because the documents are agreed or D1–D20 are locked. The entire plan below
-> stays closed until RE is complete per `RE_COVERAGE_CHECKLIST.md` **and the
-> user explicitly approves the switch to implementation.** Agreeing documents is
-> Phase B; starting Phase 0 is Phase C.
+> **Gate (see `PROJECT_VISION.md` §0):** the *RE Gate* is a separate axis and
+> is still **BLOCKED (1)** — `151 VERIFIED / 1 UNKNOWN (G9)`. Approving
+> Core/Extension implementation did **not** open the RE Gate, and no G9
+> waiver was taken. The two decisions are independent; do not conflate
+> "slices landed" with "RE complete".
 
 ## Guiding constraints
 
