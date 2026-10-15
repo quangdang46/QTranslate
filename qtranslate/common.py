@@ -105,7 +105,128 @@ def format_q(template: str, *args) -> str:
 
 
 def parse_json_lenient(text: str):
-    return json.loads(text)
+    """Port of ``parseJSON(a)`` -- which is NOT ``JSON.parse``.
+
+    The recovered `Common.js` (NSIS chunk at `0x13af4`) is::
+
+        function parseJSON(a){return(new Function("return "+a))()}
+
+    i.e. native **evaluates** the text as a JavaScript expression. So
+    native happily accepts shapes strict JSON rejects: single-quoted
+    keys and strings, unquoted keys, trailing commas, hex/octal
+    literals, and surrounding whitespace or a trailing semicolon.
+
+    This function used to be a bare ``json.loads`` while calling itself
+    "lenient", so all six of those shapes raised ``JSONDecodeError``
+    here and were parsed correctly by the real app. Every provider's
+    response goes through one of the 28 ``parse_json_lenient`` call
+    sites, so a provider emitting single quotes looked "broken" to the
+    port and fine to native.
+
+    The leniency is implemented by normalising the text, then parsing
+    with ``json.loads`` -- **never** ``eval``/``exec``. A JS-literal
+    shape is accepted; executable code is not. Anything still unparseable
+    raises ``ValueError`` exactly as before, so callers' existing error
+    handling is unchanged.
+    """
+    if text is None:
+        raise ValueError("parse_json_lenient: no text")
+    if isinstance(text, (bytes, bytearray)):
+        text = text.decode("utf-8", "replace")
+    if not isinstance(text, str):
+        raise TypeError("parse_json_lenient: expected text")
+
+    body = text.strip()
+    if not body:
+        raise ValueError("parse_json_lenient: empty text")
+
+    try:
+        # strict first: the common case costs nothing extra
+        return json.loads(body)
+    except ValueError:
+        pass
+
+    return json.loads(_json_expression(body))
+
+
+def _json_expression(expr: str) -> str:
+    """Normalise a JS object/array literal into strict JSON text.
+
+    Handles, in order, the shapes ``new Function("return "+expr)()``
+    accepts and ``json.loads`` does not: surrounding parentheses, a
+    trailing semicolon, single-quoted strings (with escaped quotes),
+    unquoted keys, trailing commas, and JS hex literals. Deliberately
+    conservative -- anything it does not recognise is returned
+    unchanged, and the caller's ``json.loads`` then raises.
+    """
+    s = expr.strip()
+    # ( {...} );  ->  {...}  -- semicolon first, then wrapping parens
+    if s.endswith(";"):
+        s = s[:-1].strip()
+    while s.startswith("(") and s.endswith(")"):
+        s = s[1:-1].strip()
+    if not s:
+        return s
+
+    out = []
+    i, n = 0, len(s)
+    while i < n:
+        c = s[i]
+        if c in ("'", '"'):
+            # consume one string literal, re-emitting it double-quoted
+            quote = c
+            i += 1
+            buf = []
+            while i < n:
+                ch = s[i]
+                if ch == "\\" and i + 1 < n:
+                    nxt = s[i + 1]
+                    if quote == "'" and nxt == quote and i + 2 < n \
+                            and s[i + 2] == quote:
+                        # \'' (or the JS '' doubling) inside a
+                        # single-quoted string is one apostrophe
+                        buf.append(quote)
+                        i += 3
+                        continue
+                    if nxt == quote:
+                        # an escaped copy of our own delimiter is a
+                        # literal character -- keep it, unescaped inside
+                        # the double-quoted output
+                        buf.append(nxt)
+                        i += 2
+                        continue
+                    buf.append(ch + nxt)
+                    i += 2
+                    continue
+                if ch == quote:
+                    i += 1
+                    break
+                if ch == '"' and quote == "'":
+                    # apostrophes-from-double-quotes stay escaped
+                    buf.append('\\"')
+                    i += 1
+                    continue
+                buf.append(ch)
+                i += 1
+            out.append('"' + "".join(buf) + '"')
+            continue
+        if c == "/" and i + 1 < n and s[i + 1] == "/":
+            j = s.find("\n", i)
+            i = n if j < 0 else j
+            continue
+        out.append(c)
+        i += 1
+    s = "".join(out)
+
+    # unquoted object keys:  {a:1}  ->  {"a":1}
+    s = re.sub(r'([{,]\s*)([A-Za-z_$][\w$]*)(\s*:)',
+               r'\1"\2"\3', s)
+    # trailing commas before } or ]
+    s = re.sub(r",(\s*[}\]])", r"\1", s)
+    # JS hex literals inside values
+    s = re.sub(r':\s*(0[xX][0-9a-fA-F]+)(\s*[,}\]])',
+               lambda m: ':%d%s' % (int(m.group(1), 16), m.group(2)), s)
+    return s
 
 
 def read_response_text(resp) -> str:
