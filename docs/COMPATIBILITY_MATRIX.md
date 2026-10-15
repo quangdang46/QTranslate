@@ -215,8 +215,8 @@ server retired in 2022 — so its Port state is `dead:host-retired`.
 
 > These counts are the **implementation axis** only and are per-row/coarse;
 > they are **not** a "% of QTranslate reverse-engineered". Native **RE coverage**
-> is tracked separately in `RE_COVERAGE_CHECKLIST.md`: as of 2026-10-09 it is
-> **140 VERIFIED / 9 INFERRED / 3 UNKNOWN of 152**, Gate **BLOCKED (12)**.
+> is tracked separately in `RE_COVERAGE_CHECKLIST.md`: as of 2026-10-15 it is
+> **151 VERIFIED / 1 UNKNOWN (G9) of 152**, Gate **BLOCKED (1)**.
 > Neither number opens the Gate; only the checklist does.
 > Many rows here are `ported` — meaning "Python exists", **not** "proven
 > equivalent". `behaviour-verified` always means "tested on the platforms in
