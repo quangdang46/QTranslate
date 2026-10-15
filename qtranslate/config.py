@@ -146,6 +146,17 @@ def load(path: str = DEFAULT_PATH) -> dict:
         return json.load(f)
 
 
+def save(cfg: dict, path: str = DEFAULT_PATH) -> None:
+    """Write the settings dict back to Options.json (D18 persistence).
+
+    UTF-8 without BOM; a trailing newline keeps the file friendly to
+    editors. The caller owns the dict — this never mutates it.
+    """
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, ensure_ascii=False, indent=2)
+        f.write("\n")
+
+
 def services_order(cfg: dict | None = None) -> list:
     if cfg is None:
         try:

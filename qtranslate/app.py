@@ -1819,6 +1819,30 @@ class App:
         tk.Button(w, text="OK",
                   command=w.destroy).pack(pady=10)
 
+    def show_override_conflicts(self):
+        """D18: pick the winner when extensions collide (override UI).
+
+        Loads the per-user extensions into a throwaway manager (isolated from
+        the live registry), presents the conflicts, and saves the user's
+        choice to Options.json. The saved winners pre-empt discovery-order
+        resolution at the next startup.
+        """
+        try:
+            from qtranslate.extensions import (
+                ExtensionManager, override_ui, write_saved_overrides)
+            from qtranslate import platforms as _P
+            ext_dir = _P.current().extensions_dir()
+        except Exception:
+            return
+        manager = ExtensionManager()
+        manager.load_dir(ext_dir)
+        conflicts = manager.override_conflicts()
+        if not conflicts:
+            return
+        winners = override_ui.pick_override_winners(self.root, conflicts)
+        if winners:
+            write_saved_overrides(winners)
+
     # -- Options dialog (DLG 154 + pages; Basics page mirrors screenshot) --
     def open_options(self):
         try:

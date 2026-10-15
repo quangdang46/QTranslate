@@ -53,6 +53,26 @@ import sys
 SDK_VERSION = "1.0"
 SDK_MAJOR = SDK_VERSION.split(".", 1)[0]
 
+# Options.json section holding the user's saved override winners (D18):
+# ``{base_id: extension_id}``. Written by the override UI, applied at
+# startup. Empty until the user picks a winner.
+OVERRIDES_SECTION = "ExtensionOverrides"
+
+# Options.json section holding the user's saved override winners (D18):
+# ``{base_id: extension_id}``. Written by the override UI, applied at
+# startup. Empty until the user picks a winner.
+OVERRIDES_SECTION = "ExtensionOverrides"
+
+# Options.json section holding the user's saved override winners (D18):
+# ``{base_id: extension_id}``. Written by the override UI, applied at
+# startup. Empty until the user picks a winner.
+OVERRIDES_SECTION = "ExtensionOverrides"
+
+# Options.json section holding the user's saved override winners (D18):
+# ``{base_id: extension_id}``. Written by the override UI, applied at
+# startup. Empty until the user picks a winner.
+OVERRIDES_SECTION = "ExtensionOverrides"
+
 # Capability kinds an extension may declare (§2). Unknown kinds are
 # rejected: the manifest is a compatibility gate, and silently accepting
 # a kind the runtime cannot host would make ``capabilities`` a lie.
@@ -247,6 +267,7 @@ class ExtensionManager:
         self._rg = registry if registry is not None else _RG
         self._providers = {}
         self._replaces = {}
+        self._claims = {}
         for name in self._rg.TRANSLATORS:
             self._providers[name] = self._rg.TRANSLATORS[name]
 
@@ -319,6 +340,26 @@ class ExtensionManager:
     def conflicts(self):
         """Declared overrides, for the user to review (D18)."""
         return dict(self._replaces)
+
+    def override_conflicts(self):
+        """Providers claimed by more than one loaded extension (D18).
+
+        Returns ``{base_id: [ext_id, ...]}`` for every provider with multiple
+        claimants — the set the override UI presents for the user to pick a
+        winner. Alias-equivalent claims (``microsoft``/``bing``) are merged by
+        callable identity (rule (b)), so the user sees one row per provider.
+        """
+        table = self._rg.TRANSLATORS
+        groups = {}
+        for base, exts in self._claims.items():
+            fn = table.get(base)
+            key = id(fn) if fn is not None else base
+            group = groups.setdefault(key, {"base": base, "exts": []})
+            for ext in exts:
+                if ext not in group["exts"]:
+                    group["exts"].append(ext)
+        return {g["base"]: g["exts"] for g in groups.values()
+                if len(g["exts"]) > 1}
 
     def _alias_conflict_bases(self):
         """Override targets that collide because they are aliases (rule b).
@@ -403,13 +444,18 @@ class ExtensionManager:
         return reg
 
     # -- directory loading (Slice 7) ------------------------------------
-    def load_dir(self, extensions_dir, api=None, importer=None):
+    def load_dir(self, extensions_dir, api=None, importer=None, saved=None):
         """Discover, validate and load every extension under a directory.
 
         Fail-open (``EXTENSION_SDK.md`` §7): one bad extension is disabled
         with a reason and the rest still load. Returns one outcome dict
         per discovered folder, sorted by folder name:
         ``{"path", "id", "status": "loaded"|"disabled", "reason"}``.
+
+        ``saved`` is the user's persisted winner selection
+        (``{base_id: extension_id}``, D18): an extension claiming a provider
+        the user already assigned to a *different* extension is disabled with
+        a "saved winner" reason before it can reach auto-resolution.
 
         Alias-equivalent override conflicts (two extensions claiming
         ``microsoft`` and ``bing``) are resolved **after** every folder is
@@ -425,7 +471,7 @@ class ExtensionManager:
         outcomes, claimed = [], []
         for folder in discover(extensions_dir):
             known = set(self._replaces)
-            outcome = self._load_one(folder, api, importer)
+            outcome = self._load_one(folder, api, importer, saved)
             outcomes.append(outcome)
             claimed.append((outcome, set(self._replaces) - known))
         self._resolve_alias_conflicts(claimed)
@@ -452,12 +498,45 @@ class ExtensionManager:
                 outcome["status"] = "disabled"
                 outcome["reason"] = reason
 
-    def _load_one(self, folder, api, importer):
+    def _saved_veto(self, ext_id, declared_bases, saved):
+        """Veto reason if a saved winner pre-empts this extension (D18).
+
+        ``saved`` is ``{base_id: extension_id}`` from Options.json. A saved
+        winner is a user preference that pre-empts discovery-order conflict
+        resolution: any *other* extension claiming the same provider — by the
+        same id or an alias (rule (b) callable identity) — is disabled with
+        this reason instead of reaching the auto-resolution path.
+        """
+        if not saved or not declared_bases:
+            return None
+        table = self._rg.TRANSLATORS
+        for base in declared_bases:
+            fn = table.get(base)
+            if fn is None:
+                continue
+            for saved_base, winner in saved.items():
+                if winner == ext_id:
+                    continue
+                if table.get(saved_base) is fn:
+                    return ("saved winner for %r is %r: the user must pick "
+                            "the winner" % (saved_base, winner))
+        return None
+
+
+    def _load_one(self, folder, api, importer, saved=None):
         try:
             manifest = read_manifest(folder)
         except ManifestError as exc:
             return {"path": folder, "id": None, "status": "disabled",
                     "reason": str(exc)}
+
+        ext_id = manifest["id"]
+        veto = self._saved_veto(ext_id, manifest.get("replaces", []), saved)
+        if veto is not None:
+            # A saved winner pre-empts this extension (D18); it never reaches
+            # auto-resolution, so discovery order stays irrelevant.
+            return {"path": folder, "id": ext_id, "status": "disabled",
+                    "reason": veto}
 
         providers, replaces = dict(self._providers), dict(self._replaces)
         try:
@@ -467,14 +546,66 @@ class ExtensionManager:
             # Fail-open + rollback: a half-applied extension never wins,
             # so the built-in stays active (rules 3 and 4).
             self._providers, self._replaces = providers, replaces
-            return {"path": folder, "id": manifest["id"],
+            return {"path": folder, "id": ext_id,
                     "status": "disabled",
                     "reason": "%s: %s" % (type(exc).__name__, exc)}
-        return {"path": folder, "id": manifest["id"], "status": "loaded",
+        for base in manifest.get("replaces", []):
+            self._claims.setdefault(base, []).append(ext_id)
+        return {"path": folder, "id": ext_id, "status": "loaded",
                 "reason": None}
 
 
-def load_user_extensions(manager=None, extensions_dir=None, registry=None):
+def read_saved_overrides(cfg=None):
+    """Read the user's saved override winners from Options.json (D18).
+
+    Returns ``{base_id: extension_id}``. Fails open to ``{}`` when the
+    config cannot be read (no Options.json yet, or unreadable) — a missing
+    selection simply means "no winner picked".
+    """
+    if cfg is None:
+        try:
+            from qtranslate import config as _C
+            cfg = _C.load()
+        except Exception:
+            return {}
+    if not isinstance(cfg, dict):
+        return {}
+    ov = cfg.get(OVERRIDES_SECTION, {})
+    if not isinstance(ov, dict):
+        return {}
+    return {k: v for k, v in ov.items()
+            if isinstance(k, str) and isinstance(v, str) and k and v}
+
+
+def write_saved_overrides(overrides, cfg=None):
+    """Persist the user's saved override winners to Options.json (D18).
+
+    ``overrides`` is ``{base_id: extension_id}``. When ``cfg`` is a dict the
+    section is merged into it and the updated dict is returned (test path);
+    when ``cfg`` is ``None`` the live Options.json is loaded, updated, and
+    saved. Never raises — a failed write leaves the previous selection.
+    """
+    overrides = {k: v for k, v in (overrides or {}).items()
+                 if isinstance(k, str) and isinstance(v, str) and k and v}
+    if cfg is None:
+        try:
+            from qtranslate import config as _C
+            cfg = _C.load()
+            if not isinstance(cfg, dict):
+                cfg = {}
+            cfg[OVERRIDES_SECTION] = dict(overrides)
+            _C.save(cfg)
+            return cfg
+        except Exception:
+            return {}
+    if not isinstance(cfg, dict):
+        return {}
+    cfg[OVERRIDES_SECTION] = dict(overrides)
+    return cfg
+
+
+def load_user_extensions(manager=None, extensions_dir=None, registry=None,
+                        saved=None):
     """Load the per-user extensions into Core's live dispatch table (D16).
 
     Resolves the folder through the ``Paths`` adapter when not given, loads
@@ -483,6 +614,12 @@ def load_user_extensions(manager=None, extensions_dir=None, registry=None):
     living in the manager's private dict. Returns the ``load_dir`` report
     (empty when the folder cannot be resolved); never raises for a bad
     folder or a bad extension.
+
+    ``saved`` is the user's persisted winner selection
+    (``{base_id: extension_id}``, D18). When ``None`` it is read from
+    Options.json. A saved winner pre-empts discovery-order conflict
+    resolution; a saved winner whose extension is no longer installed is
+    cleared (the built-in stays).
 
     Wiring point for ``app.main``; kept here, not in ``app``, so it stays
     tkinter-free and testable headless.
@@ -494,7 +631,16 @@ def load_user_extensions(manager=None, extensions_dir=None, registry=None):
             extensions_dir = _P.current().extensions_dir()
         except Exception:
             return []
-    report = manager.load_dir(extensions_dir)
+    if saved is None:
+        saved = read_saved_overrides()
+    report = manager.load_dir(extensions_dir, saved=saved)
     if any(item.get("status") == "loaded" for item in report):
         manager.commit(registry)
+    # Clear stale saved winners: a winner that is no longer installed must
+    # not pin a provider to a missing extension (fall back to the built-in).
+    loaded_ids = {item["id"] for item in report
+                  if item.get("status") == "loaded"}
+    valid = {b: w for b, w in saved.items() if w in loaded_ids}
+    if valid != saved:
+        write_saved_overrides(valid)
     return report

@@ -3,6 +3,25 @@
 All entries are clean-room RE of QTranslate 6.10.0 for education.
 `LIVE-OK` = verified against the real provider endpoint.
 
+## Override winner persistence + saved-winner veto (D18) (2026-10-15)
+
+- **The override UI's persistence core landed (headless).** The manager
+  reads/writes the user's saved winner selection (`Options.json` →
+  `ExtensionOverrides`, `{base_id: ext_id}`), and a saved winner pre-empts
+  discovery-order conflict resolution: any *other* extension claiming the same
+  provider — by the same id or an alias — is disabled with a "saved winner"
+  reason before it reaches auto-resolution.
+- **Startup applies saved winners and clears stale ones.**
+  `load_user_extensions` reads the selection, applies it, and clears a saved
+  winner whose extension is no longer installed (the built-in stays).
+- **The UI is a thin tkinter dialog** (`qtranslate/override_ui.py` +
+  `App.show_override_conflicts`); the policy stays in ``extensions.py`` so it
+  is headless-testable. The dialog opens no window on import.
+- **Evidence:** `tests/regress_override_persistence.py` (21 checks, offline) —
+  persistence round-trip, alias-aware veto, stale-clear, conflict merging.
+  Headless sweep **68/68** by exit code; `coverage_tally --check` unchanged at
+  `151 VERIFIED / 1 UNKNOWN (G9)`, `BLOCKED (1)`.
+
 ## Undefined-name fixes in `app.py` + `tests/` import cleanup (2026-10-15)
 
 - **Three latent `NameError`s in `qtranslate/app.py`, each swallowed by a

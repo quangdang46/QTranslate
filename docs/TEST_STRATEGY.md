@@ -48,6 +48,9 @@ tests, no screenshot tests. These are added per phase below.
   *Undefined names in `app.py`* are pinned by
   `tests/regress_app_undefined_names.py` (5 assertions): an AST pin that
   fails on the committed `app.py` and passes on the fixed one.
+  *Override persistence* is pinned by `tests/regress_override_persistence.py`
+  (21 assertions): the winner-selection round-trip, the alias-aware saved-winner
+  veto, and stale-winner clearing.
 - **Phase 4:** import-guard test — assert Core imports succeed with `win32gui`,
   `winreg`, `comtypes`, `ctypes.windll` patched to raise; per-adapter capability
   honesty (unsupported → reported, not faked).

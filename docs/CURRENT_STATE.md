@@ -23,7 +23,10 @@
 > Three latent `NameError`s in `app.py` were also fixed (a `_gp` read before
 > assignment, an `except as e` read inside a deferred lambda, and an undefined
 > `src` in the clipboard popup) and `tests/` unused imports cleaned — pinned by
-> `tests/regress_app_undefined_names.py`. The RE Gate is unchanged:
+> `tests/regress_app_undefined_names.py`. **Override persistence** then
+> landed: a saved winner pre-empts conflict resolution, startup applies saved
+> winners and clears stale ones, and a thin tkinter dialog picks the winner —
+> pinned by `tests/regress_override_persistence.py`. The RE Gate is unchanged:
 > `151 VERIFIED / 1 UNKNOWN (G9)`, `BLOCKED (1)`.
 
 > Status: **PLANNING / READ-ONLY AUDIT.** Grounded in direct reads of the

@@ -164,6 +164,15 @@ startup.
 > fails at translate time falls through to the next provider; the replaced
 > built-in is not revived; the failure stays in `Result.failures`. Test:
 > `tests/regress_extension_override.py` (37 assertions).
+>
+> **Landed 2026-10-15 (override persistence, D18):** the winner selection is
+> persisted to `Options.json` (`ExtensionOverrides`, `{base_id: ext_id}`) and a
+> saved winner pre-empts discovery-order conflict resolution (alias-aware
+> veto). `load_user_extensions` applies saved winners at startup and clears a
+> saved winner whose extension is gone. The UI is a thin tkinter dialog
+> (`override_ui.py` + `App.show_override_conflicts`); the policy stays in
+> `extensions.py` (headless). Test: `tests/regress_override_persistence.py`
+> (21 assertions).
 
 ## Phase 4 — Platform interfaces (Windows + macOS adapters)
 
