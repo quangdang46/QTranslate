@@ -152,6 +152,30 @@ def get_source_language(entry) -> int:
     return UNKNOWN_LANGUAGE
 
 
+def next_handler(entry) -> str | None:
+    """Port of the E22 chain signal: ``nextRequestHandler``.
+
+    Native's Service.js does NOT decide "send this to the dictionary"
+    from the input text -- the ttranslatev3 response's
+    ``nextRequestHandler`` field does, and ``tlookupv3`` is the block it
+    names (`docs/RE_COVERAGE_CHECKLIST.md` row E22). This port used to
+    GUESS that decision from the text (a word-count heuristic in
+    ``_is_short_text``), which is an invention standing in for a signal
+    the server actually sends.
+
+    Returns the handler name when the response asks for one, else None.
+    An unknown/absent field yields None: never guess a handler name.
+    """
+    try:
+        raw = entry.get("nextRequestHandler") if entry else None
+    except AttributeError:
+        return None
+    if not raw:
+        return None
+    name = str(raw).strip()
+    return name or None
+
+
 def detect(text, ig="", token="", key="", cookie="", opener=None,
            iid="translator.5023.3"):
     """Port of detect pair. Returns a lang *index*."""
@@ -171,10 +195,21 @@ def _is_short_text(text: str) -> bool:
         and len(text.split(" ")) <= 3
 
 
+def _is_short_text(text: str) -> bool:
+    """PORT-SIDE HEURISTIC -- not the native chain signal.
+
+    Kept only because callers may want a local hint. The native rule is
+    the response's ``nextRequestHandler`` (E22); ``translate_full`` uses
+    that, and only falls back to this when the server did not answer.
+    """
+    return bool(text) and "\n" not in text and "\r" not in text \
+        and len(text.split(" ")) <= 3
+
+
 def translate(text, sl=AUTO_DETECT_LANGUAGE, tl=ENGLISH_LANGUAGE, ig="",
               token="", key="", cookie="", opener=None,
               iid="translator.5023.3") -> str:
-    """Port of translate pair (with short-text dictionary chaining)."""
+    """Port of translate pair (no chaining; see translate_full)."""
     obj = _service_request(text, sl, tl, ig, token, key, cookie, opener, iid)
     entry = get_response_obj(obj)
     out = ""
@@ -189,15 +224,29 @@ def translate(text, sl=AUTO_DETECT_LANGUAGE, tl=ENGLISH_LANGUAGE, ig="",
 
 def translate_full(text, sl=AUTO_DETECT_LANGUAGE, tl=ENGLISH_LANGUAGE,
                    **kw):
-    """translate() plus the native chaining decision.
+    """translate() plus the NATIVE chain decision.
 
-    Returns (text, next_handler): "dictionaryRequest" for short texts
-    (single dictionary-worthy phrase), else None — mirroring
-    serviceTranslateResponse's 5th ResponseData field.
+    Returns ``(text, next)`` where ``next`` is the handler the server
+    asked for (``"dictionaryRequest"`` in practice). Precedence, per E22:
+
+      1. the response's ``nextRequestHandler`` -- the native signal;
+      2. ``None`` when the server named no handler.
+
+    The old body derived the decision from the input text via
+    ``_is_short_text``; that guessed at a signal the server actually
+    sends, so a long phrase the server marked for the dictionary was
+    skipped and a short one it did not mark was chased. It is no longer
+    used as the primary rule.
     """
-    out = translate(text, sl, tl, **kw)
-    nxt = "dictionaryRequest" if _is_short_text(text) else None
-    return out, nxt
+    obj = _service_request(text, sl, tl, kw.get("ig", ""),
+                           kw.get("token", ""), kw.get("key", ""),
+                           kw.get("cookie", ""), kw.get("opener"),
+                           kw.get("iid", "translator.5023.3"))
+    entry = get_response_obj(obj)
+    out = ""
+    if entry and entry.get("translations"):
+        out = entry["translations"][0].get("text", "")
+    return out, next_handler(entry)
 
 
 def dictionary(text, sl, tl, ig="", token="", key="", cookie="",
