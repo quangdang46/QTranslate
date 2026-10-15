@@ -147,7 +147,7 @@ recorded — a service may never quietly disappear between the two docs.
 | Reverso translate | — | ported | yes | Win+mac | live OK (Win) | `behaviour-verified` — **Win only** |
 | ImTranslator/Babylon dict/Google Search | — | ported | no | — | — | `dead:host-retired` / `dead:bot-walled` |
 | XDXF offline dict | `FUN_00445BB9`, `NATIVE_ARCH.md:1382` | `xdxf.py` | yes | Win+mac | template test | `ported` |
-| dict template RT_HTML-192 | `NATIVE_ARCH.md:1392` | `dict_template.html` | byte-identical | Win+mac | MD5 (Win) | `behaviour-verified` (artifact, OS-independent) |
+| dict template RT_HTML-192 | `qtranslate/dict_template.html` + `tests/regress_dict_template.py` (the `NATIVE_ARCH.md:1392` line previously cited here is the Youdao `Utils.md5` note — wrong reference, corrected 2026-10-16) | `dict_template.html` | byte-identical | Win+mac | MD5 (Win) | `behaviour-verified` (artifact, OS-independent) |
 | History (DLG164) JSON+CSV order | `FUN_004638D8` **loader** / `FUN_00463B04` **saver** (see `RE_PROGRESS.md` §Tensions #4) | `history.py` | col order `[a,c,b,e,d]` | Win+mac | order test | `ported` |
 | History favorites | — | `app.py` | yes | Win+mac | — | `ported` |
 | Export Csv/Html/Json/Txt | `Plugins/History/*.js` | `history.py` | 1:1 | Win+mac | exporter test | `ported` |
