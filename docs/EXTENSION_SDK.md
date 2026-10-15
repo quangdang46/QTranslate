@@ -224,14 +224,18 @@ All five were resolved and folded into `PROJECT_VISION.md`:
 | 4 | SDK package name | **D19** — `qtranslate-sdk` is provisional; verify PyPI name + rights before any release. |
 | 5 | Workflow code vs declarative | **D20** — Python code-only in MVP; no second format. |
 
-**Still genuinely open (implementation detail, not architecture):** the exact
-*dependency isolation mechanism* implied by D17 — how an extension's vendored
-deps are placed on the import path without colliding with Core's own. The
-loader now places the extension folder on `sys.path` **for the duration of its
-import only** (`extensions.import_entrypoint`), which makes a vendored dep
-importable; it is not true isolation, so cross-extension / Core collisions
-remain possible and D17's full mechanism is still open. This is handled with
-the Extension Manager in Phase 3/6, not now.
+> **Landed 2026-10-15 (Slice 9b): vendored-dep import hygiene.**
+> `import_entrypoint` still puts the folder on `sys.path` only for the
+> import itself, AND now rolls `sys.modules` back afterwards: plain-named
+> vendored modules that were not imported before are dropped (they cannot
+> shadow Core or a later extension), while a vendored dep that overwrote a
+> name Core already owns is restored to Core's original object — the
+> extension keeps the copy it bound at import time. The overwrite is
+> **reported** in `extensions._LAST_VENDOR_SHADOWS` as
+> `(extension_id, [module, ...])`, never auto-resolved. This is not a
+> sandbox (in-process extensions still share the interpreter), but the two
+> poisoning shapes — cross-extension and Core-shadow — are now closed and
+> reported. Pinned by `tests/regress_extension_vendor.py` (10 assertions).
 
 > **Register API is provisional.** `entrypoint` is `module:callable`, and the
 > callable receives a host API (`extensions.ExtensionAPI`) with

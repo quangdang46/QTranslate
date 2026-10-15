@@ -190,6 +190,77 @@ def _module_path(folder, module):
     return None, None
 
 
+# D17 bookkeeping: which plain module names each extension's vendored
+# deps shadowed, so the loader can report them (never auto-resolve).
+# Entry format: (extension_id, [module_name, ...]).
+_LAST_VENDOR_SHADOWS = []
+_VENDOR_SHADOW_LIMIT = 64
+
+# Original objects for names a vendored dep overwrote, so the extension
+# keeps its bound copy while everyone else sees Core's again.
+_MODULE_ORIGIN = {}
+
+
+def _is_under(folder, mod):
+    """True when ``mod``'s file lives inside ``folder``."""
+    f = getattr(mod, "__file__", None)
+    if not f:
+        return False
+    try:
+        return os.path.abspath(f).startswith(os.path.abspath(folder)
+                                             + os.sep)
+    except Exception:
+        return False
+
+
+def _restore_modules(before, folder=None, keep=()):
+    """Undo the ``sys.modules`` side effects of an extension import.
+
+    Two kinds, both undone:
+      * names that were NOT imported before (the extension's vendored
+        deps and their submodules) -- dropped, so they cannot shadow Core
+        or a later extension -- except those in ``keep`` (the entrypoint
+        module, which the loader owns);
+      * names that WERE imported before but now resolve to a file inside
+        ``folder`` -- a vendored dep that overwrote them: Core's original
+        object is restored, so Core keeps the module it actually imported.
+
+    Returns the set of names in the second category (the shadows).
+    """
+    shadowed = set()
+    if folder is None:
+        for name in list(sys.modules):
+            if name not in before and name not in keep:
+                sys.modules.pop(name, None)
+        return shadowed
+    for name in list(sys.modules):
+        mod = sys.modules.get(name)
+        if name in before:
+            if name in keep:
+                continue
+            if mod is not None and _is_under(folder, mod):
+                # the vendored copy is installed under a name Core owns
+                shadowed.add(name)
+            continue
+        if name not in keep:
+            sys.modules.pop(name, None)
+    for name in shadowed:
+        orig = _MODULE_ORIGIN.get(name)
+        if orig is not None:
+            sys.modules[name] = orig
+    return shadowed
+
+
+def _snapshot_owners(names):
+    """Remember which object each currently-shadowable name holds."""
+    saved = {}
+    for name in names:
+        mod = sys.modules.get(name)
+        if mod is not None:
+            saved[name] = mod
+    return saved
+
+
 def import_entrypoint(folder, manifest):
     """Import the manifest's entrypoint callable from ``folder``.
 
@@ -215,6 +286,16 @@ def import_entrypoint(folder, manifest):
         raise ImportError("cannot load %s" % (path,))
     module = importlib.util.module_from_spec(spec)
     sys.modules[full_name] = module
+
+    # D17 hygiene: the extension's own ``sys.path`` entry makes its
+    # *vendored* packages importable, but any plain-named module it
+    # imports lands in ``sys.modules`` under that plain name and stays
+    # there after the import -- shadowing the same name for Core and for
+    # every later extension (a second extension silently gets the first
+    # one's version). Snapshot ``sys.modules`` so the call can report and
+    # then undo those shadows.
+    before = set(sys.modules)
+    _MODULE_ORIGIN.update(_snapshot_owners(before))
     try:
         sys.path.insert(0, folder)
         try:
@@ -225,8 +306,22 @@ def import_entrypoint(folder, manifest):
             except ValueError:
                 pass
     except BaseException:
+        _restore_modules(before)
         sys.modules.pop(full_name, None)
         raise
+    finally:
+        # The entrypoint module itself is owned by the loader and survives.
+        # Everything else that was not imported before (the vendored deps
+        # and their submodules) is dropped; a vendored dep that overwrote
+        # a name Core already owns is rolled back to Core's object, while
+        # the extension keeps working via the module object it bound at
+        # import time.
+        owned = {full_name}
+        shadowed = _restore_modules(before, folder, keep=owned)
+        if shadowed:
+            if len(_LAST_VENDOR_SHADOWS) < _VENDOR_SHADOW_LIMIT:
+                _LAST_VENDOR_SHADOWS.append(
+                    (manifest["id"], sorted(shadowed)))
 
     register = getattr(module, callable_name, None)
     if register is None:
