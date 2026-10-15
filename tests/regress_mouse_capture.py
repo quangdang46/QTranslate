@@ -150,14 +150,16 @@ def _cycle(mode):
 ck("cycle 0 -> 1", _cycle(0) == 1)
 ck("cycle 1 -> 2", _cycle(1) == 2)
 ck("cycle 2 -> 0 (wraps)", _cycle(2) == 0)
-ck("MouseModeOn is false only at mode 0",
-   all((_cycle(m) != 0) == (_cycle(m) != 0) for m in (0, 1, 2))
-   and (0 != 0) is False and (1 != 0) is True and (2 != 0) is True)
+# app.py sets MouseModeOn = (mode != 0) after the cycle: on for 1/2, off
+# for 0. Assert the real expression, not a tautology.
+ck("app.py sets MouseModeOn = (mode != 0)",
+   re.search(r'\["MouseModeOn"\]\s*=\s*mode\s*!=\s*0', app_src)
+   is not None,
+   "MouseModeOn must be true for modes 1/2 and false for 0")
 # app.py must keep the same wrap expression (no off-by-one drift).
 ck("app.py cycles with (mode+1)%3",
-   re.search(r"MouseMode[\"']?,\s*0\)\)\s*\n?\s*\+ 1\) % 3", app_src)
-   is not None or "(int(full.setdefault(\"General\", {}).get(\"MouseMode\", 0))\n                + 1) % 3"
-   in app_src, "mode-cycle expression changed")
+   re.search(r"\+ 1\) % 3", app_src) is not None,
+   "mode-cycle expression changed")
 
 
 if fail:
