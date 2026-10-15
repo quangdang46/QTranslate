@@ -71,25 +71,64 @@ def _sub(page, start, include_start, end, include_end):
 
 
 def _remove_elements(page, tags):
-    for t in tags:
-        page = re.sub(r"<%s\b[^>]*>.*?</%s\s*>" % (t, t), "", page,
-                      flags=re.S | re.I)
-        page = re.sub(r"<%s\b[^>]*/>" % t, "", page, flags=re.I)
-    return page
+    """removeElements(a,b) via the verified port (was a divergent copy).
+
+    The recovered `Common.js` (NSIS chunk at `0x149b3`) is explicit::
+
+        function removeElements(a,b){return regExpRemove(a,b,
+          "<\\\\s*({0})[^>]*>((.|\\n)*?)<\\\\s*/\\\\s*({0})>")}
+
+    and ``regExpRemove`` compiles it as ``new RegExp(b,"g")`` -- **no
+    ``i`` flag**, and a closing tag is REQUIRED. The copy that lived here
+    added two inventions on top:
+
+      * a second pattern removing self-closing/void elements
+        (``<br/>``, ``<img src=...>``) -- native leaves those, so a
+        provider asking for ``img`` removal (dictionary.py:530,
+        ``["script","img"]``) silently stripped what native keeps;
+      * case-insensitive matching.
+
+    Both are now gone: the call delegates to ``common.remove_elements``,
+    which is the byte-faithful transcription.
+    """
+    from qtranslate.common import remove_elements
+    return remove_elements(page, tags)
 
 
 def _remove_attributes(page, attrs):
-    for a in attrs:
-        page = re.sub(r"""\s+%s\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)""" % a, "",
-                      page, flags=re.I)
-    return page
+    """removeAttributes(a,b) via the verified port (was a divergent copy).
+
+    Recovered `Common.js` (NSIS chunk at `0x149b3`) is::
+
+        function removeAttributes(a,b){return regExpRemove(a,b,
+          " ({0})(?:\\s*=\\s*(?:..."
+          "|(?:'((?:\\\\.|[^'])*)')|([^>\\s]+)))?")
+
+    -- the pattern starts with a literal **space** and its whole value
+    group is OPTIONAL, so both ``name="…"`` and a bare valueless
+    ``name`` are removed. The local copy used ``\\s+`` instead of that
+    single space and added ``re.I``. Delegates to
+    ``common.remove_attributes``.
+    """
+    from qtranslate.common import remove_attributes
+    return remove_attributes(page, attrs)
 
 
 def _remove_tags(page, tags):
-    """Port of removeTags: unwrap tags, keep inner content."""
-    for t in tags:
-        page = re.sub(r"</?%s\b[^>]*>" % t, "", page, flags=re.I)
-    return page
+    """removeTags(a,b) via the verified port (was a divergent copy).
+
+    Recovered `Common.js` (NSIS chunk at `0x149b3`)::
+
+        function removeTags(a,b){return regExpRemove(a,b,"</?({0})[^>]*>")}
+
+    compiled with ``new RegExp(b,"g")`` and **no ``i`` flag**, and the
+    pattern is ``</?({0})[^>]*>`` -- one alternation, not the ``\\b``-
+    anchored form the local copy used. The copy here also matched
+    case-insensitively and anchored on ``\\b``, so ``<B>bold</B>`` was
+    unwrapped where native keeps it. Delegates to ``common.remove_tags``.
+    """
+    from qtranslate.common import remove_tags
+    return remove_tags(page, tags)
 
 
 def _update_links(page, base):

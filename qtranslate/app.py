@@ -165,12 +165,24 @@ TO_LANG_NAMES = [LANG_DISPLAY[c] for c in TO_LANGS]
 
 
 def _strip_html(h):
-    import html as _html
-    import re
-    h = re.sub(r"<script.*?</script>", " ", h, flags=re.S | re.I)
-    h = re.sub(r"<style.*?</style>", " ", h, flags=re.S | re.I)
-    h = re.sub(r"<[^>]+>", " ", h)
-    return _html.unescape(re.sub(r"\s+", " ", h)).strip()
+    """Dictionary-card summary text, via the verified native port.
+
+    This used to be a second, simpler implementation. It diverged from
+    ``common.strip_html`` (the measured port of Common.js ``stripHtml``)
+    in ways that change displayed text:
+
+      * ``<br>`` became a space instead of a line break, so a
+        multi-paragraph dictionary card collapsed into one line;
+      * every HTML entity was unescaped, including ``&amp;`` -- which
+        native deliberately leaves alone (only ``&nbsp;`` and
+        ``&#x27;`` have rules), so ``AT&amp;T`` displayed as ``AT&T``
+        where native shows the escape.
+
+    One call site (the dictionary result summary), so the delegation is
+    a straight substitution.
+    """
+    from qtranslate.common import strip_html
+    return strip_html(h)
 
 
 # ------------------------------------------------------- service registry

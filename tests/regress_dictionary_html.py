@@ -70,14 +70,30 @@ ck("non-matching regex -> ''", DU._sub(P, re.compile(r"<zzz>"), False,
                                        rx_e, False) == "")
 
 # --- tag helpers ---------------------------------------------------------
+# NOTE: _remove_elements / _remove_tags / _remove_attributes now DELEGATE
+# to the verified common.py ports. The dictionary copies had added
+# inventions over native's regexes (see the Common.js evidence quoted in
+# each function's docstring):
+#   * _remove_elements: extra void/self-closing stripping and re.I.
+#     Native's pattern REQUIRES a closing tag and is case-sensitive.
+from qtranslate import common as _C  # noqa: E402
+
 ck("_remove_elements drops a paired element",
    DU._remove_elements("<b>x</b>keep", ["b"]) == "keep")
-ck("_remove_elements drops a self-closing element",
-   DU._remove_elements("a<br/>b", ["br"]) == "ab")
-ck("_remove_elements handles nesting",
+ck("_remove_elements leaves a void element alone (native does)",
+   DU._remove_elements("a<br/>b", ["br"]) == "a<br/>b",
+   DU._remove_elements("a<br/>b", ["br"]))
+ck("_remove_elements leaves a self-closing <img> alone (native does)",
+   DU._remove_elements('<img src="a.png">text', ["img"])
+   == '<img src="a.png">text',
+   DU._remove_elements('<img src="a.png">text', ["img"]))
+ck("_remove_elements does not remove an UNCLOSED uppercase tag",
+   DU._remove_elements("<B>x</B>y", ["b"]) == "<B>x</B>y",
+   DU._remove_elements("<B>x</B>y", ["b"]))
+ck("_remove_elements still handles nesting",
    DU._remove_elements("<div><span>x</span></div>y", ["div"]) == "y")
-ck("_remove_elements is case-insensitive",
-   DU._remove_elements("<B>x</B>y", ["b"]) == "y")
+ck("_remove_elements matches across newlines (native's ((.|\\n)*?))",
+   DU._remove_elements("<b>\nx\n</b>keep", ["b"]) == "keep")
 
 ck("_remove_attributes strips one attribute",
    DU._remove_attributes('<a href="u" id="1">x</a>', ["href"])
@@ -85,10 +101,33 @@ ck("_remove_attributes strips one attribute",
 ck("_remove_attributes strips several",
    DU._remove_attributes('<a href="u" id="1">x</a>', ["href", "id"])
    == "<a>x</a>")
-ck("_remove_attributes handles single quotes",
-   DU._remove_attributes("<a href='u'>x</a>", ["href"]) == "<a>x</a>")
+ck("_remove_attributes strips a valueless attribute too (native's value "
+   "group is optional)",
+   DU._remove_attributes("<a disabled>x</a>", ["disabled"]) == "<a>x</a>",
+   DU._remove_attributes("<a disabled>x</a>", ["disabled"]))
 ck("_remove_attributes handles unquoted values",
    DU._remove_attributes("<a href=u>x</a>", ["href"]) == "<a>x</a>")
+
+ck("_remove_tags unwraps and KEEPS the content",
+   DU._remove_tags("<b>bold</b>", ["b"]) == "bold")
+ck("_remove_tags keeps nested content",
+   DU._remove_tags("<b><i>x</i></b>", ["b"]) == "<i>x</i>")
+ck("_remove_tags is case-sensitive like native",
+   DU._remove_tags("<B>bold</B>", ["b"]) == "<B>bold</B>",
+   DU._remove_tags("<B>bold</B>", ["b"]))
+
+# the three helpers are now the same function's behaviour
+for _c in ("<b>x</b>keep", "a<br/>b", "<div><span>x</span></div>y"):
+    ck("_remove_elements agrees with common for %r" % _c,
+       DU._remove_elements(_c, ["b", "div", "br"])
+       == _C.remove_elements(_c, ["b", "div", "br"]))
+for _c in ("<b>bold</b>", "<b><i>x</i></b>"):
+    ck("_remove_tags agrees with common for %r" % _c,
+       DU._remove_tags(_c, ["b"]) == _C.remove_tags(_c, ["b"]))
+for _c in ('<a href="u" id="1">x</a>',):
+    ck("_remove_attributes agrees with common for %r" % _c,
+       DU._remove_attributes(_c, ["href"])
+       == _C.remove_attributes(_c, ["href"]))
 
 ck("_remove_tags unwraps and KEEPS the content",
    DU._remove_tags("<b>bold</b>", ["b"]) == "bold")
