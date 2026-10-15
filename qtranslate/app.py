@@ -24,7 +24,6 @@ Requires: pip install keyboard pyperclip
   python -I qtranslate/app.py [service] [target_lang] [theme]
   (or: python -I start_app.py ...)
 """
-import inspect
 import sys
 import threading
 import tkinter as tk
@@ -39,18 +38,12 @@ try:
 except ImportError:
     _HAS_KEYS = False
 
-from qtranslate.services import google_translate as _google
-from qtranslate.services import deepl as _deepl
-from qtranslate.services import yandex as _yandex
-from qtranslate.services import baidu as _baidu
-from qtranslate.services import naver as _naver
-from qtranslate.services import youdao as _youdao
-from qtranslate.services import microsoft as _ms
-from qtranslate.services import promt as _promt
-from qtranslate.services import babylon as _babylon
-from qtranslate.services import dictionary as _dict
-from qtranslate.services import spell as _spell
-from qtranslate.session import bing_translate as _bing_tr
+# NOTE (Phase 2 slice 2026-10-15): provider modules moved to
+# qtranslate/registry.py, which is tkinter-free. app.py must NOT import
+# them directly any more — use ``from qtranslate import registry`` at the
+# call site (lazy, to keep module import order stable). The one remaining
+# direct use was ``_spell.google_suggest`` (now ``registry.google_suggest``)
+# plus local ``SUPPORTED_LANGS`` imports (unchanged: they read a constant).
 
 SERVICE = sys.argv[1] if len(sys.argv) > 1 else "google"
 TARGET = sys.argv[2] if len(sys.argv) > 2 else "vi"
@@ -175,77 +168,23 @@ def _strip_html(h):
 
 
 # ------------------------------------------------------- service registry
-def _t_google(t, sl, tl, _sink=None):
-    # `_sink` carries dt=rm's romanization back to do_translate for J7
-    # (FUN_0042ED3F's entry[5]). The `_t_*` contract is a bare str, so the
-    # field rides out through an optional mutable one-element list rather than
-    # a second HTTP call or module state; see google_translate.translate.
-    return _google.translate(t, sl, tl, out=_sink)
+# --- provider adapters: owned by qtranslate/registry.py -----------------------
+# The nine ``_t_*`` adapters lived here until 2026-10-15; they now live in
+# ``registry`` (moved verbatim, same bodies, same comments) so Core and
+# headless callers get dispatch without importing tkinter. The names below
+# are re-exported for the call sites in this file that still reference them
+# directly (``_router``'s google closure, ``do_translate``'s fallbacks);
+# everything else goes through TRANSLATORS/DICTS.
+from qtranslate.registry import (
+    _t_google, _t_deepl, _t_yandex, _t_baidu, _t_naver, _t_youdao,
+    _t_bing, _t_babylon, _t_promt,
+)
 
 
-def _t_deepl(t, sl, tl):
-    # Native sends codeFromLanguage(index); "auto" must stay lowercase.
-    sl_c = "auto" if sl == "auto" else sl.upper()
-    return _deepl.translate(t, sl_c, tl.upper())
-
-
-def _t_yandex(t, sl, tl):
-    # native serviceTranslateRequest: lang=codeFromLanguage(source);
-    # "auto" is sent verbatim (no en guess).
-    return _yandex.translate(t, sl, tl)
-
-
-def _t_baidu(t, sl, tl):
-    return _baidu.translate(t, sl, tl) if hasattr(_baidu, "translate") else ""
-
-
-def _t_naver(t, sl, tl):
-    out, _ = _naver.translate(t, sl, tl)
-    return out
-
-
-def _t_youdao(t, sl, tl):
-    # native serviceTranslateRequest: from=codeFromLanguage(source).
-    return _youdao.translate_web(t, sl, tl)
-
-
-def _t_bing(t, sl, tl):
-    # Microsoft/Bing accept auto source natively: serviceRequest sends
-    # fromLang=codeFromLanguage(source||AUTO_DETECT_LANGUAGE) = "auto"
-    # (Service.js). Do NOT force "en" -- pass the source through verbatim.
-    return _bing_tr(t, sl, tl)
-
-
-def _t_babylon(t, sl, tl):
-    # native serviceTranslateRequest: codeFromLanguage(source).
-    return _babylon.translate(t, sl, tl)
-
-
-def _t_promt(t, sl, tl):
-    # Native: a failed provider request surfaces as the app-level error
-    # string, not as translation text. Let exceptions propagate so
-    # do_translate() handles them uniformly (string id 190), like every
-    # other adapter — do not fabricate an "[error] ..." pseudo-translation.
-    paft, xsrf, op = _promt.session(sl, tl)
-    out, _, _ = _promt.translate(t, sl, tl, paft, "", xsrf, op)
-    return out
-
-
-# Port-side declared capability, mirroring the native `usesAutoDetectCode`
-# hook. Native asks each service (FUN_0045f6c1 calls the JS hook and stores
-# the boolean at request+0x50); the translate stage then runs detect itself
-# only when the answer is false, or when the destination is also unset.
-#
-# This table is NOT native-derived: the hook's answers live in the
-# runtime-loaded Services/*/Service.js, which PLUGIN_LOADER_FOUND_2026-10-10.md
-# proves are absent from the recovered artifact. True here means "this
-# provider's own API resolves an auto source", which is a port-side fact about
-# the HTTP contract we do implement. Members were carried over from the old
-# hardcoded _NATIVE_AUTO set so no behavior changed; the point of the table is
-# that the claim is now attributed to the right axis.
-#   docs/review/SOURCE_LANGUAGE_RULE_2026-10-10.md
-_USES_AUTO_DETECT = {"google": True, "microsoft": True, "bing": True,
-                     "deepl": True}
+# Single source of truth: qtranslate/registry.py USES_AUTO_DETECT
+# (Phase 2 slice). Kept as a module attribute because live UI code and
+# regress_source_language read ``A._USES_AUTO_DETECT``.
+from qtranslate.registry import USES_AUTO_DETECT as _USES_AUTO_DETECT
 
 # --- the reliability layer, wired 2026-10-10 ---------------------------------
 # Built once over the TRANSLATORS table above: ProviderRouter's `callables`
@@ -256,57 +195,21 @@ _ROUTER = None
 
 
 def _router(sink=None):
-    """The ProviderRouter over TRANSLATORS, built lazily and reused.
+    """Forwarder to ``registry.build_router`` (Phase 2 slice).
 
-    Lazy because TRANSLATORS is defined above but the import of `reliability`
-    pulls in stdlib-only deps; building eagerly at import time would cost every
-    `--help`-style path. Reused because the router owns a HealthTracker, and a
-    fresh one per call would forget every provider it had marked dead.
-
-    ``sink``, when given, returns a per-CALL clone whose Google entry fills the
-    sink with the `dt=rm` romanization (J7). The shared singleton cannot do
-    that: its callables are shared by every concurrent do_translate, and
-    do_translate runs on worker threads (translate, OCR, speech), so a sink on
-    the singleton would hand one call another call's phonetics — exactly the
-    module-global bug this removes. The clone shares the health tracker and the
-    policy so a provider already marked dead stays dead, and costs one small
-    object per translate.
+    The singleton construction, ServicesOrder order build, and per-call
+    clone used to live here (~60 lines); they now live in
+    ``qtranslate/registry.py`` so Core/headless callers get the same router
+    without importing tkinter. This forwarder is kept because live UI code
+    and tests call ``app._router(...)``; it will go away when the callers
+    move. Returns None only if the reliability layer cannot be imported,
+    preserving the old degrade-to-bare-provider contract.
     """
-    global _ROUTER
-    if _ROUTER is None:
-        try:
-            from qtranslate.reliability import ProviderRouter
-            _ROUTER = ProviderRouter(dict(TRANSLATORS),
-                                     order=["google", "microsoft", "bing",
-                                            "deepl", "yandex"])
-        except Exception:
-            return None
-    if sink is None:
-        return _ROUTER
     try:
-        from qtranslate import reliability as _rel
-
-        def _google_for_this_call(t, sl, tl, _s=sink):
-            # Same body as _t_google, with this call's sink closed over. Kept
-            # as a three-arg callable so reliability.py:533
-            # (`_fn(text, src, tgt)`) can invoke it unchanged — the sink rides
-            # in the closure, not in the argument list.
-            _s[0] = ""          # a fresh call must not inherit a prior value
-            return _t_google(t, sl, tl, _sink=_s)
-
-        callables = dict(_ROUTER.router.callables)
-        if "google" in callables:
-            callables["google"] = _google_for_this_call
-        return _rel.ProviderRouter(
-            callables, order=list(_ROUTER.router.order),
-            health=_ROUTER.health, policy=_ROUTER.router.policy,
-            max_chars=_ROUTER.max_chars,
-            remove_line_breaks=_ROUTER.remove_line_breaks)
+        from qtranslate import registry as _RG
+        return _RG.build_router(sink)
     except Exception:
-        # A phonetics-only enhancement must never cost a translation: fall
-        # back to the shared router, which is correct except that it carries
-        # no romanization.
-        return _ROUTER
+        return None
 
 
 def _cfg_safe():
@@ -323,208 +226,35 @@ def _cfg_safe():
         return {}
 
 
-def _t_call(fn, text, src, tgt, sink):
-    """Invoke a `_t_*` adapter, handing it the romanization sink if it takes one.
+# Single source of truth: registry.call_with_sink / registry.apply_phonetics
+# (Phase 2 slice). Aliases kept because do_translate calls them 4 times.
+from qtranslate.registry import call_with_sink as _t_call
+from qtranslate.registry import apply_phonetics as _apply_phonetics
 
-    Only `_t_google` has a `dt=rm` value to report, and it accepts the sink;
-    every other adapter keeps the bare `(t, sl, tl)` contract. The probe is
-    structural — does the callable declare a `_sink` parameter? — rather than an
-    identity check against `_t_google`, so re-binding the table (the router does
-    exactly that, and so does a test) keeps the phonetics flowing. A signature
-    probe costs one `inspect.signature`; the network call it guards costs far
-    more, and this runs once per translate, not per retry.
-    """
-    try:
-        wants = "_sink" in inspect.signature(fn).parameters
-    except (TypeError, ValueError):
-        wants = False
-    return fn(text, src, tgt, _sink=sink) if wants else fn(text, src, tgt)
+# Single source of truth: owned by qtranslate/registry.py (Phase 2 slice).
+# These are aliases, not copies — ``A.TRANSLATORS is R.TRANSLATORS`` holds.
+# Kept as module attributes because ui_match and live UI code read
+# ``A.TRANSLATORS`` / ``A.DICTS``.
+from qtranslate.registry import TRANSLATORS, DICTS
 
 
-def _apply_phonetics(out, service, romanization=""):
-    """J7 — read-phonetically, shared by both translate paths.
-
-    FUN_0042ED3F appends "\r\r" + string-resource 186 + entry[5] to the result
-    pane when General.ReadPhonetically is on. Our phonetics source is Google's
-    `dt=rm` romanization (see `google_translate.translate`); other providers
-    supply none, exactly as the native per-provider JS service handling does.
-    Gate 1 (`"<Error>"` absent) is the success test, so the append never lands
-    on an error result.
-
-    Takes the service explicitly because the router path must pass the
-    provider that ACTUALLY answered, not the one the user picked — that is the
-    same rule the back-translation follows. The ``service == "google"`` guard
-    is load-bearing: the sink is filled by Google's callable, so a stale value
-    from a failed Google attempt must not survive into a non-Google answer.
-
-    ``romanization`` is that call's own value, carried explicitly. It now
-    arrives on ``core.Result.phonetics`` (populated by ``ProviderRouter.translate``
-    from the per-call sink) rather than from ``google_translate``'s module
-    global, which was a stopgap: shared mutable state could hand this result
-    another call's romanization, and nothing tied the value to the call that
-    produced it.
-    """
-    try:
-        from qtranslate import phonetics as _PH
-        from qtranslate import config as _C
-        if service == "google":
-            return _PH.append_phonetics(
-                out, romanization,
-                enabled=_PH.phonetics_enabled(_C.load()))
-    except Exception:
-        pass
-    return out
-
-TRANSLATORS = {
-    "google": _t_google,
-    "deepl": _t_deepl,
-    "yandex": _t_yandex,
-    "baidu": _t_baidu,
-    "naver": _t_naver,
-    "youdao": _t_youdao,
-    "bing": _t_bing,
-    "microsoft": _t_bing,
-    "promt": _t_promt,
-    "babylon": _t_babylon,
-}
-
-DICTS = {
-    "oxford": lambda w, sl, tl: _dict.oxford_lookup(w),
-    "lingvo": lambda w, sl, tl: _dict.lingvo_lookup(w, sl, tl),
-    "urban": lambda w, sl, tl: _dict.urban_lookup(w),
-    "wikipedia": lambda w, sl, tl: _dict.wikipedia_lookup(w, sl, tl),
-    "multitran": lambda w, sl, tl: _dict.multitran_lookup(w, sl, tl),
-    "wordreference": lambda w, sl, tl: _dict.wordreference_lookup(w, sl, tl),
-    "reverso": lambda w, sl, tl: _dict.reverso_lookup(w, sl, tl),
-    "babylon": lambda w, sl, tl: _dict.babylon_dict_lookup(w, sl, tl),
-    "imtranslator": lambda w, sl, tl: _dict.imtranslator_lookup(w, sl, tl),
-    "google-search": lambda w, sl, tl: _dict.google_search_lookup(w, sl, tl),
-}
+# Single source of truth: registry.SERVICE_LINKS (Phase 2 slice).
+# Alias kept because UI code reads ``_SERVICE_LINKS`` in help text paths.
+from qtranslate.registry import SERVICE_LINKS as _SERVICE_LINKS
 
 
-# ------------------------------------------------------------ backend ops
-_SERVICE_LINKS = {
-    "google": "https://translate.google.com/",
-    "deepl": "https://www.deepl.com/translator",
-    "yandex": "https://translate.yandex.com/",
-    "baidu": "https://fanyi.baidu.com/",
-    "naver": "https://papago.naver.com/",
-    "youdao": "https://fanyi.youdao.com/",
-    "bing": "https://www.bing.com/translator",
-    "microsoft": "https://www.bing.com/translator",
-    "promt": "https://www.online-translator.com/",
-    "babylon": "https://translation.babylon-software.com/",
-    "reverso": "https://www.reverso.net/",
-}
-
-
-def _decode_placement(hexs: str):
-    """Decode a WINDOWPLACEMENT hex blob -> (x, y, w, h, showCmd).
-
-    Layout: length, flags, showCmd, ptMin(2), ptMax(2), rcNormal(4)
-    little-endian LONGs. Verified vs real WindowMainPlacement
-    (526x366 at 876,292, show=1).
-    """
-    try:
-        import struct
-        b = bytes.fromhex((hexs or "").strip())
-        if len(b) < 44:
-            return None
-        _, _, show, _, _, _, _, l, t, r, bo = struct.unpack("<11i", b[:44])
-        if r > l and bo > t:
-            return (l, t, r - l, bo - t, show)
-    except Exception:
-        pass
-    return None
-
-
-def _encode_placement(x: int, y: int, w: int, h: int,
-                      show: int = 1) -> str:
-    """Tk geometry -> WINDOWPLACEMENT hex blob.
-
-    Matches the real `WindowMainPlacement` bytes, not a guessed
-    WINDOWPLACEMENT: `length=44`, `flags=0`, and --- verified against the
-    actual blob in Options.json (2026-10-15) --- `ptMin == (-1, -1)` and
-    `ptMax == (-1, -1)` (`FFFFFFFF` pairs). The blob in Options.json reads
-    `...01000000 FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF 12030000...`, i.e.
-    four -1 LONGs before rcNormal.
-    """
-    import struct
-    return struct.pack("<11i", 44, 0, show, -1, -1, -1, -1,
-                       x, y, x + w, y + h).hex().upper()
-
-
-def _place_main(root):
-    """Restore main-window geometry from General.WindowMainPlacement;
-    fall back to the native default size."""
-    try:
-        from qtranslate import config as _C
-        hexs = _C.load().get("General", {}).get("WindowMainPlacement",
-                                                "")
-        rc = _decode_placement(hexs)
-    except Exception:
-        rc = None
-    if rc:
-        x, y, w, h, _ = rc
-        try:
-            root.geometry(f"{w}x{h}+{x}+{y}")
-            return
-        except Exception:
-            pass
-    root.geometry("526x366")
-
-
-def _place_aux(widget, key: str, default: str):
-    """Restore aux-window geometry from General.<key> blob (native
-    WindowOptions/History/Dictionary/KeyboardPlacement); save on
-    close via WM_DELETE_WINDOW hook."""
-    try:
-        from qtranslate import config as _C
-        rc = _decode_placement(
-            _C.load().get("General", {}).get(key, ""))
-    except Exception:
-        rc = None
-    if rc:
-        x, y, w, h, _ = rc
-        try:
-            widget.geometry(f"{w}x{h}+{x}+{y}")
-        except Exception:
-            widget.geometry(default)
-    else:
-        widget.geometry(default)
-    try:
-        _prev = widget.protocol("WM_DELETE_WINDOW")
-
-        def _close():
-            _save_placement(key, widget)
-            try:
-                widget.destroy()
-            except Exception:
-                pass
-
-        widget.protocol("WM_DELETE_WINDOW", _close)
-    except Exception:
-        pass
-
-
-def _save_placement(key: str, widget):
-    """Persist a window's geometry into General.<key> blob."""
-    try:
-        from qtranslate import config as _C
-        import json as _j
-        g = widget.geometry()  # WxH+X+Y
-        import re as _re
-        m = _re.match(r"(\d+)x(\d+)\+(-?\d+)\+(-?\d+)", g)
-        if not m:
-            return
-        w, h, x, y = map(int, m.groups())
-        full = _C.load()
-        full.setdefault("General", {})[key] = _encode_placement(x, y, w,
-                                                                h)
-        with open(_C.DEFAULT_PATH, "w", encoding="utf-8") as f:
-            _j.dump(full, f, ensure_ascii=False, indent=1)
-    except Exception:
-        pass
+# Single source of truth: qtranslate/placement.py (Phase 2 slice, moved
+# verbatim 2026-10-15 — stdlib + config only, no tkinter). Aliases kept
+# because ui_match reads A.TEMPLATE_GEOMETRY / A._decode_placement and the
+# UI calls the place/save helpers unqualified.
+from qtranslate.placement import (
+    decode_placement as _decode_placement,
+    encode_placement as _encode_placement,
+    TEMPLATE_GEOMETRY,
+    place_main as _place_main,
+    place_aux as _place_aux,
+    save_placement as _save_placement,
+)
 
 
 def _pane_font(size_delta: int = 0):
@@ -646,38 +376,22 @@ def _open_url(url: str):
     webbrowser.open(url)
 
 
-def _dict_service_link(service: str) -> str:
-    return _SERVICE_LINKS.get(service, "https://translate.google.com/")
+# Single source of truth: registry.service_link (Phase 2 slice).
+from qtranslate.registry import service_link as _dict_service_link
 
 
-def detect_language(text):
-    """Port of FUN_00460354 detect-retry loop: providers in order.
-
-    detect() across providers returns mixed types (DeepL/Yandex return
-    lang indices like the native languageFromCode; Naver/Baidu return
-    code strings), so normalize everything to a code string here.
-    """
-    candidates = (
-        lambda t: _google.detect(t),
-        lambda t: _deepl.detect_code(t),
-        lambda t: _ms.detect_code(t),
-        lambda t: _naver.detect_code(t),
-        lambda t: _baidu.detect_code(t),
-        lambda t: _yandex.detect_code(t),
-    )
-    for fn in candidates:
-        try:
-            lang = fn(text[:500])
-            if lang and lang != -1:
-                return lang
-        except Exception:
-            pass
-    return "auto"
+# Single source of truth: registry.detect_language (Phase 2 slice).
+# Alias kept because live UI code calls ``detect_language(...)`` unqualified.
+from qtranslate.registry import detect_language
 
 
 def speak(text, lang):
     """Online mp3 -> BASS; on failure fall back to offline SAPI.
 
+    Thin forwarder to ``player.play_text`` (Phase 2 slice): the TTS
+    orchestration (slow flag, online-first, SAPI fallback) lives there,
+    not here. The old body duplicated ``play_text``'s fallback chain with
+    its own nested try/except — two places to fix the same policy.
     Honors Advanced.EnableSlowerListening (clearer/slower TTS).
     """
     try:
@@ -686,132 +400,22 @@ def speak(text, lang):
             "EnableSlowerListening", False))
     except Exception:
         slow = False
-    try:
-        from qtranslate.player import play_text
-        play_text(text, lang, slow=slow)
-    except Exception as e:
-        print(f"TTS failed ({e}); trying SAPI")
-        try:
-            from qtranslate.sapi import speak as sapi_speak
-            sapi_speak(text, rate=-4 if slow else 0)
-        except Exception as e2:
-            print(f"SAPI failed: {e2}")
+    from qtranslate.player import play_text
+    play_text(text, lang, slow=slow)
 
 
 def do_translate(service, text, target, src="auto", auto_detect=False,
                  back_translate=False):
-    """Mirrors FUN_00404A12 orchestrator: pick -> execute -> fallbacks.
+    """Forwarder to ``engine.translate`` (Slice 2, approved 2026-10-15).
 
-    Returns a ``core.Result`` — the text is ``.text``, the provider that
-    answered is ``.provider_used``, and J7's phonetics is ``.phonetics``.
+    The orchestration (pick → detect → execute → fallbacks →
+    back-translation → phonetics) lives in ``qtranslate/engine.py``;
+    the signature is unchanged so every existing caller is untouched.
     """
-    text = (text or "").strip()
-    if not text:
-        from qtranslate.core import Result
-        return Result("", "", service or "", note="empty request")
-    # Advanced.RemoveLineBreaks: collapse newlines before sending
-    try:
-        from qtranslate import config as _C
-        if _C.load().get("Advanced", {}).get("RemoveLineBreaks", False):
-            import re as _re
-            text = _re.sub(r"\s*\n\s*", " ", text)
-    except Exception:
-        pass
-    try:
-        # FUN_00404a12's dispatcher echoes the source when it equals the
-        # destination and never calls the service. Re-verified against the
-        # recovered image 2026-10-10
-        # (docs/review/SOURCE_LANGUAGE_RULE_2026-10-10.md).
-        if src == target:
-            from qtranslate.core import Result
-            return Result(service or "", text, service or "",
-                          note="src == target: echo")
-        # Native does NOT keep a hardcoded list of auto-capable services. It
-        # calls the service's own `usesAutoDetectCode` JS hook (FUN_0045f6c1)
-        # and stores the answer at request+0x50; the translate stage
-        # (FUN_004606ba) then runs detect itself only when that flag is false,
-        # or when the *destination* is also not a concrete code. Since the JS
-        # hooks are runtime-loaded files absent from the artifact, the
-        # per-service truth table is unverifiable here — so this is a declared
-        # port-side capability, deliberately NOT presented as native-derived.
-        if src == "auto" and not _USES_AUTO_DETECT.get(service, False):
-            src = detect_language(text)
-        # The reliability layer is the caller from here down: it classifies
-        # the failure, retries inside ONE shared wall-clock budget, and falls
-        # back along ServicesOrder. Implemented and unwired until 2026-10-10
-        # (docs/review/RELIABILITY_UNWIRED_2026-10-10.md); ProviderRouter's
-        # translate() takes do_translate's own arguments, so it needed no
-        # adapter and never needed core.Result settled first.
-        # One fresh sink per do_translate() call, so J7's phonetics travels
-        # with this call's own result. It was a module global in google_translate
-        # until 2026-10-10, which made the value shared across threads —
-        # do_translate runs on worker threads (see the translate/OCR/speech
-        # callers) — and left the fallback path responsible for clearing the
-        # previous call's value by hand.
-        _sink = [""]
-        _r = _router(_sink)
-        if _r is None:
-            # The reliability layer failed to import. Fall back to the bare
-            # provider call rather than failing the translation: the layer is
-            # an improvement, not a dependency.
-            out = _t_call(TRANSLATORS.get(service, _t_google), text[:5000],
-                          src, target, _sink)
-            if not out:
-                from qtranslate.core import Result
-                return Result(service or "",
-                              "No data returned (timeout while sending data.)",
-                              service or "",
-                              note="no data returned (timeout)")
-            if back_translate:
-                try:
-                    back = TRANSLATORS.get(service, _t_google)(
-                        out[:5000], target, src)
-                    if back:
-                        out += f"\n\n--- back-translation ---\n{back}"
-                except Exception:
-                    pass
-            out = _apply_phonetics(out, service, _sink[0])
-            from qtranslate.core import Result
-            return Result(service or "", out, service or "",
-                          phonetics=_sink[0])
-        res = _r.translate(service, text, src, target,
-                           config=_cfg_safe(), phonetics_sink=_sink)
-        out = res.text
-        # From here the "service" that matters is the one that ANSWERED —
-        # res.provider_used — for both the back-translation and J7's
-        # phonetics, mirroring the reliability layer's own rule.
-        service = res.provider_used or service
-        if not res.ok:
-            # native error string id 190 (vi: "Không có dữ liệu trả về
-            # (quá thời gian chờ..."; canonical English verified)
-            from qtranslate.core import Result
-            return Result(service or "",
-                          "No data returned (timeout while sending data.)",
-                          service or "",
-                          note="no data returned (timeout)")
-        if back_translate and not out.startswith("No data"):
-            try:
-                # Back-translate through the provider that ACTUALLY answered —
-                # res.provider_used, not the user's pick — because its output is
-                # what is being back-translated. Same rule as the reliability
-                # layer's own translate_with_backtranslation.
-                _bfn = TRANSLATORS.get(res.provider_used, _t_google)
-                back = _bfn(out[:5000], target, src)
-                if back:
-                    out += f"\n\n--- back-translation ---\n{back}"
-            except Exception:
-                pass
-        out = _apply_phonetics(out, service, res.phonetics)
-        from qtranslate.core import Result
-        return Result(res.provider_used, out, res.requested,
-                      res.failures, res.attempts, res.note,
-                      phonetics=res.phonetics)
-    except Exception:
-        from qtranslate.core import Result
-        return Result(service or "",
-                      "No data returned (timeout while sending data.)",
-                      service or "",
-                      note="exception: no data returned (timeout)")
+    from qtranslate import engine as _ENG
+    return _ENG.translate(service, text, target, src=src,
+                          auto_detect=auto_detect,
+                          back_translate=back_translate)
 
 
 # ------------------------------------------------------------------ UI
@@ -857,8 +461,8 @@ class App:
         root.bind("<Unmap>", self._on_minimize)
         root.title("QTranslate")
         root.configure(bg=_COLORS["back"])
-        # native rect decoded from General.WindowMainPlacement
-        # WINDOWPLACEMENT blob (526x366 at 876,292 on this machine)
+        # Restores General.WindowMainPlacement when saved, else the
+        # DLG129 template size (TEMPLATE_GEOMETRY).
         _place_main(root)
         self._init_opt_flags()
         self._build_main()
@@ -2148,7 +1752,8 @@ class App:
         if len(cur) < 3 or len(cur) > 60:
             return
         try:
-            sug = _spell.google_suggest(cur)
+            from qtranslate import registry as _RG
+            sug = _RG.google_suggest(cur)
             self._suggestions = list(sug[:5])
             self.suggest.config(text=" | ".join(self._suggestions))
         except Exception:
@@ -2695,10 +2300,15 @@ class App:
             except Exception:
                 _order, _dis, _dorder, _ddis, _names = [], set(), [], \
                     set(), {}
-            from qtranslate.services import dictionary as _D
-            _names = dict(C2.SERVICE_DISPLAY)
-            _dnames = dict(C2.DICT_DISPLAY)
-            self._opt_vars = getattr(self, "_opt_vars", {})
+            # Display names for the service/dict lists (config-owned
+            # constants; the dead ``dictionary as _D`` import that sat here
+            # is gone — nothing in this page called it).
+            _dnames = {}
+            try:
+                _dnames = dict(C2.DICT_DISPLAY)
+                _names = dict(C2.SERVICE_DISPLAY)
+            except Exception:
+                pass
 
             def _save():
                 try:
@@ -2798,10 +2408,12 @@ class App:
             for c in body.winfo_children():
                 c.destroy()
             try:
-                from qtranslate.services import google_translate as _G
+                # Canonical language-index table (constant, not dispatch).
+                from qtranslate.services.google_translate import (
+                    SUPPORTED_LANGS as _SL)
                 # SUPPORTED_LANGS[0] is -1 placeholder; native table
                 # is indexed with it (1=auto, 17=en, 57=vi)
-                _table = list(_G.SUPPORTED_LANGS)
+                _table = list(_SL)
             except Exception:
                 _table = [-1, "auto", "en", "vi"]
             _names_l = [("auto (auto-detect)" if c == "auto" else c)
@@ -2848,12 +2460,18 @@ class App:
                      bg=_COLORS["back"], fg=_COLORS["text"],
                      font=("Segoe UI", 10, "bold")).pack(anchor="w")
             _cb = {}
+            # Per-key native defaults (real Options.json: From=1/auto,
+            # To=57/vi, Dictionary=17/en, Keyboard=17/en). A single
+            # default for all four showed `en` for an unset From on
+            # first run instead of `auto`.
+            _defs = {"LanguageFrom": 1, "LanguageTo": 57,
+                     "LanguageDictionary": 17, "LanguageKeyboard": 17}
             for lab, key in (("Translate from:", "LanguageFrom"),
                              ("Translate to:", "LanguageTo"),
                              ("Dictionary:", "LanguageDictionary"),
                              ("Virtual keyboard:", "LanguageKeyboard")):
                 _cb[key] = _idx_combo(body, lab,
-                                      _gen.get(key, 17) or 0)
+                                      _gen.get(key, _defs[key]) or 0)
                 _cb[key].bind("<<ComboboxSelected>>",
                               lambda e, k=key: (
                                   _gen.__setitem__(
@@ -3508,6 +3126,72 @@ class App:
 
         tv.bind("<Double-1>", load_sel)
 
+        def _sel_entry():
+            try:
+                idx = int(tv.selection()[0])
+                return idx, self.history[idx]
+            except Exception:
+                return None, None
+
+        def _hist_menu(_e=None):
+            # Native history-item menu I6 (FUN_004287B6, builder FUN_00404055
+            # LoadMenuW): Open 0x8028, Copy text 0x806E, Copy translation
+            # 0x8026, Delete 0x8027, Listen 0x8099. Each handler below is
+            # the same operation the window already performs elsewhere
+            # (load_sel / clipboard / history-list splice / speak thread),
+            # so no new semantics are invented — only the menu entry point.
+            idx, _ent = _sel_entry()
+            m = tk.Menu(w, tearoff=False)
+            m.add_command(
+                label=_T("Menus", 10, "Open", menu=3),
+                command=load_sel, state="normal" if _ent else "disabled")
+            m.add_command(
+                label=_T("Menus", 30, "Copy text", menu=3),
+                command=lambda: (_pcopy(_ent[1]) if _ent else None),
+                state="normal" if _ent else "disabled")
+            m.add_command(
+                label=_T("Menus", 20, "Copy translation", menu=3),
+                command=lambda: (_pcopy(_ent[2]) if _ent else None),
+                state="normal" if _ent else "disabled")
+            m.add_command(
+                label=_T("Menus", 50, "Delete", menu=3),
+                command=lambda: (_hdel(idx) if _ent else None),
+                state="normal" if _ent else "disabled")
+            m.add_command(
+                label=_T("Menus", 40, "Listen to text", menu=3),
+                command=lambda: (_hear(_ent[1]) if _ent else None),
+                state="normal" if _ent else "disabled")
+            try:
+                m.tk_popup(w.winfo_pointerx(), w.winfo_pointery())
+            finally:
+                m.grab_release()
+
+        def _pcopy(_t):
+            try:
+                import pyperclip as _pc
+                _pc.copy((_t or "").strip())
+            except Exception:
+                pass
+
+        def _hdel(_i):
+            try:
+                del self.history[_i]
+                self._save_history()
+                _paint()
+            except Exception:
+                pass
+
+        def _hear(_t):
+            try:
+                _, _, _tgt, _ = self.current()
+                import threading as _th
+                _th.Thread(target=speak, args=((_t or "")[:500], _tgt),
+                           daemon=True).start()
+            except Exception:
+                pass
+
+        tv.bind("<Button-3>", _hist_menu)
+
         def toggle_fav():
             # Strings 201/202: Add/Remove favorites
             try:
@@ -3756,6 +3440,22 @@ class App:
                             pass
                 except Exception:
                     pass
+                # Native dict-task builder (FUN_00414f54): param_1[4]
+                # (target) is overwritten with DAT_005493f4
+                # (General.LanguageDictionary, default 17 = "en") when == 1
+                # (auto). The dict calls use that resolved code, not the
+                # hardcoded "en" that used to sit here. Evidence:
+                # docs/review/DICT_LANG_BUILDER_2026-10-15.md.
+                try:
+                    import qtranslate.services.google_translate as _G
+                    _ld = _C.load().get("General", {}).get(
+                        "LanguageDictionary", 17)
+                    _dsl = _G.SUPPORTED_LANGS[_ld] \
+                        if 0 <= _ld < len(_G.SUPPORTED_LANGS) else "en"
+                    if _dsl in (-1, "auto"):
+                        _dsl = "en"
+                except Exception:
+                    _dsl = "en"
                 for sid in sids:
                     key = {_v: _k for _k, _v in _disp.items()
                            }.get(_disp.get(sid, ""), "")
@@ -3765,7 +3465,7 @@ class App:
                     if fn is None:
                         continue
                     try:
-                        frag = fn(word_q, "en", self.target)
+                        frag = fn(word_q, _dsl, self.target)
                         if frag:
                             cards.append((str(sid), _disp.get(sid, str(
                                 sid)), frag[:8000]))
@@ -3975,9 +3675,107 @@ class App:
             except Exception as ex:
                 self.render(f"[ocr error] {ex}")
 
+        def _grab_png():
+            # Current rubber-band rect -> PNG bytes (shared by OCR-send,
+            # S-save, and C-copy so all three consume one capture path).
+            try:
+                x0, y0 = _start[0]
+                x1, y1 = cv.coords(_rect[0])[:2], cv.coords(_rect[0])[2:]
+                x, y = min(x0, x1), min(y0, y1)
+                w, h = abs(x1 - x0), abs(y1 - y0)
+                if w < 5 or h < 5:
+                    return None
+                sx, sy = ov.winfo_rootx() + x, ov.winfo_rooty() + y
+                img = ImageGrab.grab(bbox=(sx, sy, sx + w, sy + h))
+                import io as _io2
+                buf = _io2.BytesIO()
+                img.save(buf, format="PNG")
+                return buf.getvalue()
+            except Exception:
+                return None
+
+        def _keys(e):
+            # Native overlay keys (FUN_004377CB): S = save-as
+            # (FUN_0043845C), C = copy (FUN_004383A2), arrows adjust the
+            # selection, Esc/Del close. Enter sends to OCR like release.
+            ks = (e.keysym or "").lower()
+            if ks == "escape":
+                ov.destroy()
+            elif ks == "delete":
+                ov.destroy()
+            elif ks in ("s", "c", "return"):
+                data = _grab_png()
+                ov.destroy()
+                if not data:
+                    return
+                if ks == "s":
+                    try:
+                        import datetime as _dt
+                        import os as _o
+                        _dir = _o.path.expanduser("~")
+                        try:
+                            from qtranslate import config as _Cs
+                            _dir = _Cs.load().get(
+                                "Ocr", {}).get("SaveImagePath", "") or _dir
+                        except Exception:
+                            pass
+                        _fn = "ocr_%s.png" % _dt.datetime.now().strftime(
+                            "%Y%m%d_%H%M%S")
+                        open(_o.path.join(_dir, _fn), "wb").write(data)
+                    except Exception as ex:
+                        self.render(f"[ocr error] {ex}")
+                elif ks == "c":
+                    # Native FUN_004383A2 copies the bitmap to the
+                    # CLIPBOARD (not to a viewer): PNG bytes -> BMP/DIB
+                    # via the clipboard. Pillow-only, no new dependency.
+                    try:
+                        import io as _io3
+                        from PIL import Image as _Im
+                        _im = _Im.open(_io3.BytesIO(data)).convert("RGB")
+                        _out = _io3.BytesIO()
+                        _im.save(_out, "BMP")
+                        _dib = _out.getvalue()[14:]  # strip BMP header
+                        import ctypes as _ct
+                        _u = _ct.windll.user32
+                        _u.OpenClipboard(None)
+                        try:
+                            _u.EmptyClipboard()
+                            _h = _ct.windll.kernel32.GlobalAlloc(
+                                0x0042, len(_dib))
+                            _p = _ct.windll.kernel32.GlobalLock(_h)
+                            _ct.memmove(_p, _dib, len(_dib))
+                            _ct.windll.kernel32.GlobalUnlock(_h)
+                            _u.SetClipboardData(8, _h)  # CF_DIB
+                        finally:
+                            _u.CloseClipboard()
+                    except Exception as ex:
+                        self.render(f"[ocr error] {ex}")
+                else:
+                    import threading as _th2
+                    _th2.Thread(target=self._ocr_bytes, args=(data,),
+                               daemon=True).start()
+            elif ks.startswith("left"):
+                _nudge(-1, 0)
+            elif ks.startswith("right"):
+                _nudge(1, 0)
+            elif ks.startswith("up"):
+                _nudge(0, -1)
+            elif ks.startswith("down"):
+                _nudge(0, 1)
+
+        def _nudge(dx, dy):
+            try:
+                if _start[0] and _rect[0]:
+                    x0, y0, x1, y1 = cv.coords(_rect[0])
+                    cv.coords(_rect[0], x0 + dx, y0 + dy, x1 + dx, y1 + dy)
+                    _start[0] = (x0 + dx, y0 + dy)
+            except Exception:
+                pass
+
         cv.bind("<Button-1>", _down)
         cv.bind("<B1-Motion>", _drag)
         cv.bind("<ButtonRelease-1>", _up)
+        ov.bind("<Key>", _keys)
         ov.bind("<Escape>", lambda e: ov.destroy())
         ov.focus_force()
 

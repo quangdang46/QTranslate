@@ -13,7 +13,10 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(
                        os.path.abspath(__file__))))
 
-import qtranslate.app as app  # noqa: E402
+# Since 2026-10-15 the _t_* adapters live in qtranslate/registry.py
+# (Phase 2 slice; app re-exports them). Import the canonical home, which
+# needs no tkinter.
+import qtranslate.registry as app  # noqa: E402
 
 failures = []
 
@@ -44,9 +47,17 @@ finally:
     app._bing_tr = _orig
 
 # microsoft/bing are in the native-auto set (no detect round-trip expected).
-# The inline _NATIVE_AUTO frozenset was replaced by _USES_AUTO_DETECT
-# (a dict at module level) in c0d7904. Check the dict directly.
-_cap = getattr(app, "_USES_AUTO_DETECT", {})
+# Since 2026-10-15 the table lives in qtranslate/registry.py as
+# USES_AUTO_DETECT (Phase 2 slice); read the canonical source so this suite
+# stays tkinter-free like the rest of the file.
+import io as _io
+import os as _os
+import re as _re
+_reg_src = _io.open(_os.path.join(_os.path.dirname(_os.path.dirname(
+    _os.path.abspath(__file__))), "qtranslate", "registry.py"),
+    encoding="utf-8").read()
+_m = _re.search(r"USES_AUTO_DETECT\s*=\s*(\{.*?\})", _reg_src, _re.S)
+_cap = eval(_m.group(1)) if _m else {}
 check("microsoft/bing are native-auto services",
       _cap.get("bing") is True and _cap.get("microsoft") is True,
       repr(_cap))
@@ -81,6 +92,26 @@ finally:
 for prov in ("yandex", "youdao", "babylon"):
     check("%s forwards 'auto' verbatim" % prov, seen.get(prov) == "auto",
           repr(seen.get(prov)))
+
+# auto_detect flag is live (RE-closed 2026-10-15): do_translate must
+# READ the flag, not just accept it. Slice 2 (2026-10-15) moved the
+# orchestration into engine.py, so read the body there.
+# Native: DAT_0054941f packed into FUN_004606ba forces detect even for a
+# concrete source; the Options-page byte DAT_005494e6 is RemoveLineBreaks.
+_app_src = _io.open(_os.path.join(_os.path.dirname(_os.path.dirname(
+    _os.path.abspath(__file__))), "qtranslate", "app.py"),
+    encoding="utf-8").read()
+_eng_src = _io.open(_os.path.join(_os.path.dirname(_os.path.dirname(
+    _os.path.abspath(__file__))), "qtranslate", "engine.py"),
+    encoding="utf-8").read()
+_m2 = _re.search(r"def translate\(.*?\n(.*?)(?=\ndef |\Z)", _eng_src, _re.S)
+_body = _m2.group(1) if _m2 else ""
+check("engine.translate reads auto_detect (not dead wiring)",
+      _body.count("auto_detect") >= 2, "refs=%d" % _body.count("auto_detect"))
+check("auto_detect forces detect for concrete src",
+      "elif auto_detect" in _body)
+check("app.do_translate forwards to the engine (no inline branch)",
+      "_ENG.translate" in _app_src.split("def do_translate", 1)[1])
 
 if failures:
     raise SystemExit("FAIL:\n  " + "\n  ".join(failures))

@@ -32,7 +32,9 @@ re-sync needed. Classification is by content, never by position:
 | Class | Count | Notes |
 |---|---|---|
 | `lang.json` (one per locale) | **35** | codes: ar bg cs da de el en es fa-ir fi fr hu id it iw ja ko lv mn nl pl pt-BR pt-PT ro ru si sk sr sv tr ug uk vi zh-CN zh-TW |
-| `help.txt` (UTF-8 BOM, one per locale dir; 35 dirs on disk, 34 matched this pass by BOM+marker test — see §4) | 34 observed | Arabic sample: `Double Ctrl => …`, `Ctrl + Q => …` |
+| `help.txt` (one per locale dir; **35/35 SHA-256-identical** to
+installed `Locales/*/help.txt` — see §4 for the filter history) | 35 |
+Arabic sample: `Double Ctrl => …`, `Ctrl + Q => …` |
 | `Themes/*.json` | 8 | `{"Common": {"ButtonRadius"…` |
 | `Services/*/Service.js` | 19 | |
 | `Common.js` | 1 | 6,203 bytes (already pinned in `regress_plugin_js_recovered.py`) |
@@ -63,13 +65,24 @@ not assumed.
 
 ## 4. Honest residuals (not forced)
 
-- The `help.txt` content test matched 34 chunks this pass, not 35. The 35th
-  help file may use a slightly different marker set, or one chunk may have
-  been mis-binned as residual. **Not re-binned by guessing** — a follow-up
-  pass should hash each payload help body against its installed
-  `Locales/<dir>/help.txt` exactly as §3 did for `lang.json`.
-- The `Themes/*.json` bodies were classified, not hashed against
-  `Themes/*.json` on disk. Same follow-up applies (8 files).
+- ~~`help.txt`: 34 matched, 1 missing~~ **CLOSED 2026-10-15:**
+  **35/35 `help.txt` SHA-256-identical** to installed
+  `Locales/*/help.txt`. The three successive "unmatched" counts (34 →
+  33-matched/2-missing → 30-matched/5-missing) were all **filter bugs
+  in my own classifiers, never missing data**: (1) requiring a UTF-8
+  BOM dropped 5 files that start with bare UTF-8 text (Bulgarian,
+  Czech, …); (2) requiring the literal `Ctrl` dropped German, which
+  uses `STRG`/`Doppelklick STRG`; (3) UTF-8-decoding dropped Italian,
+  which is **UTF-16LE** (payload chunk 76, `ff fe` BOM — visible from
+  the very first scan). Direct hash lookup closed it: German =
+  chunk 66 (2,313 B), Italian = chunk 76 (4,942 B). Lesson recorded:
+  classify by hash against the installed tree first, by content
+  markers second.
+- ~~The `Themes/*.json` bodies were classified, not hashed~~ **CLOSED
+  2026-10-15:** payload theme chunks 119–126 (8 files) SHA-256-compared
+  against `C:\Program Files (x86)\QTranslate\Themes\*.json` —
+  **8 identical, 0 different.** The N2 group-row granularity (8 themes,
+  data-only differences) is now hash-pinned like O2.
 - The 4 small PE blobs and the icon/bitmap set are installer furniture
   (uninstaller, icons), out of RE scope — recorded here so nobody
   re-discovers them as "unclassified".
@@ -82,5 +95,6 @@ not assumed.
 None on row states: O2/N2 stay `VERIFIED` as group rows, as before. What
 this document adds is the *enumeration proof* behind them — the inventory
 the checklist's granularity section cites is now a measured census of the
-actual installer stream (131/131 consumed, 35/35 locales hash-pinned),
-not a directory listing taken on faith.
+actual installer stream (131/131 consumed; **35/35 `lang.json` + 35/35
+`help.txt` + 8/8 themes hash-pinned**), not a directory listing taken on
+faith.

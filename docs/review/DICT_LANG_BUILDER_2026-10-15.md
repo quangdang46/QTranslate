@@ -52,31 +52,26 @@ So the builder is:
   `param_2 + 1` (source lang). The XDXF path uses the **source** lang, not
   the target.
 
-## 3. Port gap (recorded, not fixed)
+## 3. Port gap (CLOSED in working tree 2026-10-15)
 
-`qtranslate/app.py:3768` calls every dict provider as:
+`qtranslate/app.py:3768` called every dict provider as:
 
 ```python
 frag = fn(word_q, "en", self.target)
 ```
 
-- The `"en"` is hardcoded — the port does not model `LanguageDictionary`
-  as a separate option. The Options page has the combo
-  (`app.py:2853` `"Dictionary:" -> "LanguageDictionary"`) but the dict
-  task never reads it.
+- The `"en"` was hardcoded — the port did not model
+  `LanguageDictionary` as a separate option. **Now fixed:**
+  `go_all` resolves `_dsl` from `General.LanguageDictionary`
+  (default 17 = `en`), guards auto/`-1`/out-of-range back to `"en"`,
+  and passes `_dsl` through. Pinned by `regress_dict_lang` (9 checks).
 - `self.target` is always a concrete code (the port's target combo is
-  never `auto`), so the `param_1[4] == 1` branch is a no-op in the port
-  today. The gap is **latent**: it activates only if the port's target
-  combo is set to `auto`.
+  never `auto`), so the `param_1[4] == 1` branch stays a no-op in the
+  port — latent, by the same shape as `DictionaryExactSearch`.
 
-This is the same shape as the `DictionaryExactSearch` gap: the native
-builder is understood, the port does not model the option, and the
-divergence is currently unreachable because the port's target is always
-concrete.
+## 4. What closed it (and what remains)
 
-## 4. What would close it
-
-To make the port match native, the dict task would need to:
+To make the port match native, the dict task needed to:
 
 1. Read `General.LanguageDictionary` (default 17 = `en`) as the dict
    target, separate from `LanguageTo`.
@@ -85,5 +80,19 @@ To make the port match native, the dict task would need to:
 3. Pass that resolved target to each dict provider instead of the
    hardcoded `"en"`.
 
-This is a **port** change, not an RE change. The RE side (the builder)
-is now closed.
+Steps 1 and 3 are **done** (see §5: source resolved from
+`General.LanguageDictionary`); step 2 stays latent because the port's
+dict target is never `auto`. This is a **port** change, not an RE
+change. The RE side (the builder) is now closed.
+
+## 5. Follow-up audit 2026-10-15 (all three axes checked)
+
+- **Source:** fixed in working tree — `go_all` resolves `_dsl` from
+  `General.LanguageDictionary` (pinned by `regress_dict_lang`, 9/9).
+- **Target:** no bug — dict window reuses the main-window target
+  (`self.target` from `LanguageTo`, default 57/vi with bounds check),
+  matching the native entry-from-UI-state flow. No per-dict target
+  combo exists natively either.
+- **Offline XDXF:** no bug — `lookup(word, path, exact)` takes no
+  target language because XDXF articles are file-scoped; matches
+  `FUN_004151c3` (word + source lang only).

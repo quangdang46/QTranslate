@@ -21,10 +21,12 @@ from qtranslate import config as C
 
 APP_TITLE = "QTranslate"
 
-# DLG 129 geometry (dialog units -> pixels via MS Shell Dlg mapping is
-# handled by MapDialogRect; here we create at pixel sizes measured
-# from the native window rect: 526x366 incl. frame).
-W, H = 526, 366
+# DLG 129 template is 340x201 dialog units; at MS Shell Dlg 8pt
+# (baseunit 7x15) that is 595x753 px (see
+# docs/review/G9_TEMPLATE_VS_PLACEMENT_2026-10-15.md and TEMPLATE_GEOMETRY
+# in app.py). The old 526x366 here was a stale saved-placement constant
+# from another machine, not the template.
+W, H = 595, 753
 
 # control ids from DLG 129
 ID_SRC = 1017
@@ -40,14 +42,6 @@ ID_SPEECH = 1030
 ID_PLAY_SRC = 1027
 ID_PLAY_OUT = 1028
 ID_HELP = 1009
-
-
-def _font_handle(name="Tahoma", size=9):
-    lf = win32gui.LOGFONT()
-    lf.lfHeight = -size * 96 // 72
-    lf.lfFaceName = name
-    import win32ui
-    return win32ui.CreateFont(lf)
 
 
 class MainWindow:
@@ -176,6 +170,15 @@ class MainWindow:
             win32gui.SetWindowText(self.src, "")
             win32gui.SetWindowText(self.out, "")
 
+    def _combo_text(self, hwnd):
+        # CBS_DROPDOWNLIST has no edit text; read the selected item.
+        i = win32gui.SendMessage(hwnd, win32con.CB_GETCURSEL, 0, 0)
+        n = win32gui.SendMessage(hwnd, win32con.CB_GETLBTEXTLEN, i, 0)
+        buf = win32gui.PyMakeBuffer(n + 1)
+        win32gui.SendMessage(hwnd, win32con.CB_GETLBTEXT, i, buf)
+        raw = bytes(buf)[:n * 2].decode("utf-16-le", errors="replace")
+        return raw.rstrip("\x00")
+
     def _translate(self):
         from qtranslate.app import do_translate
         n = win32gui.GetWindowTextLength(self.src)
@@ -183,11 +186,15 @@ class MainWindow:
         win32gui.GetWindowText(self.src, buf, n + 1)
         text = buf[:n].decode("utf-16-le", errors="replace") \
             if isinstance(buf[:n], bytes) else str(buf)[:n]
+        _code = {"Auto-Detect": "auto", "English": "en",
+                 "Vietnamese": "vi"}
+        src = _code.get(self._combo_text(self.src_lang), "auto")
+        tgt = _code.get(self._combo_text(self.tgt), "vi")
         try:
-            res = do_translate("google", text, "vi")
+            out_text = do_translate("google", text, tgt, src=src).text
         except Exception as e:
-            res = f"[error] {e}"
-        win32gui.SetWindowText(self.out, res.text)
+            out_text = f"[error] {e}"
+        win32gui.SetWindowText(self.out, out_text)
 
     def run(self):
         win32gui.ShowWindow(self.hwnd, win32con.SW_SHOW)

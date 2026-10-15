@@ -86,9 +86,14 @@ if m:
     ck("no provider call text precedes the echo",
        all(p < 0 or p > _echo for p in _calls))
 
-# --- 2. the capability is a module-level table, not an inline set
-m2 = re.search(r"_USES_AUTO_DETECT\s*=\s*\{([^}]*)\}", app_src)
-ck("_USES_AUTO_DETECT table exists at module scope", m2 is not None)
+# --- 2. the capability is a module-level table, not an inline set ---
+# Since 2026-10-15 the table lives in qtranslate/registry.py as
+# USES_AUTO_DETECT (Phase 2 slice); app.py holds an alias. Read the
+# canonical table from the registry source — headless-safe.
+reg_src = open(os.path.join(ROOT, "qtranslate", "registry.py"),
+               encoding="utf-8", errors="replace").read()
+m2 = re.search(r"USES_AUTO_DETECT\s*=\s*(\{.*?\})", reg_src, re.S)
+ck("USES_AUTO_DETECT table exists in registry", m2 is not None)
 if m2:
     entries = dict(re.findall(r'["\']([^"\']+)["\']\s*:\s*(True|False)',
                               m2.group(1)))
@@ -99,16 +104,25 @@ if m2:
     # no leftover inline set: an ASSIGNMENT, not a mention. A comment that
     # names the old set to explain the migration is fine and expected.
     ck("no _NATIVE_AUTO assignment remains",
-       re.search(r"_NATIVE_AUTO\s*=\s*\{", app_src) is None,
-       "the hardcoded set is still assigned in the file")
-    ck("_USES_AUTO_DETECT is the only auto-capability table",
-       re.search(r"_USES_AUTO_DETECT\s*=\s*\{", app_src) is not None)
-    ck("do_translate consults the table",
-       "_USES_AUTO_DETECT" in (m.group(0) if m else ""))
+       re.search(r"_NATIVE_AUTO\s*=\s*\{", app_src) is None
+       and re.search(r"_NATIVE_AUTO\s*=\s*\{", reg_src) is None,
+       "the hardcoded set is still assigned somewhere")
+    ck("app.py holds an alias, not a second literal",
+       "from qtranslate.registry import USES_AUTO_DETECT" in app_src
+       and re.search(r"^_USES_AUTO_DETECT\s*=\s*\{", app_src,
+                     re.M) is None,
+       "two tables = two sources of truth again")
+    ck("do_translate consults the capability",
+       "uses_auto_detect(" in (m.group(0) if m else ""))
 
 # --- 3. the code must not claim native derivation for the table
 if m2:
-    before = app_src[:app_src.find("_USES_AUTO_DETECT")]
+    # Anchor on the DEFINITION line, not the first mention: the module
+    # docstring names the table when describing the design, so a plain
+    # .find() lands in the docstring and the "25 lines above" window
+    # misses the attribution comment entirely (false FAIL, 2026-10-15).
+    _def = re.search(r"^USES_AUTO_DETECT\s*=\s*\{", reg_src, re.M)
+    before = reg_src[:_def.start()] if _def else ""
     # find the comment block immediately above the table
     lines = before.splitlines()
     block = "\n".join(lines[-25:])
@@ -127,9 +141,17 @@ except Exception:
     pass  # tkinter / win32 absent on this host: source checks above carry it
 
 if _tried and hasattr(A, "do_translate"):
-    cap = A._USES_AUTO_DETECT
-    ck("capability lookup defaults to native's detect-yourself",
-       cap.get("no-such-service", False) is False)
+    # Alias identity: A._USES_AUTO_DETECT must BE the registry table, or
+    # the two can drift again. When app cannot import, the static alias
+    # check in §2 carries this instead.
+    try:
+        from qtranslate import registry as _RG
+        ck("app alias IS the registry table (no drift possible)",
+           A._USES_AUTO_DETECT is _RG.USES_AUTO_DETECT)
+        ck("capability lookup defaults to native's detect-yourself",
+           _RG.uses_auto_detect("no-such-service") is False)
+    except Exception as e:
+        ck("registry capability importable", False, repr(e))
     # src == dst must not call the provider: monkeypatch every translator to
     # raise, and confirm the echo still returns the text.
     saved = dict(getattr(A, "TRANSLATORS", {}))

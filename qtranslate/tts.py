@@ -23,7 +23,17 @@ def _fetch_bytes(url):
 
 
 def google_tts(text, lang, slow=False, tkk="0.0"):
-    """Port of Google serviceListenRequest: /translate_tts?client=gtx&tk=..."""
+    """Port of Google serviceListenRequest: /translate_tts?client=gtx&tk=...
+
+    REVERTED 2026-10-15 (peer finding): the ``listen_url`` delegation
+    silently changed three behaviors — ``urllib.parse.quote`` (keeps
+    ``/``) vs ``encode_get_param`` (encodes ``%2F`` + truncates at
+    MAX_URI_LEN), the caller-supplied ``tkk`` seed (dropped), and the
+    fixed host vs ``service_host()`` domain override. A dedup that
+    changes the contract is not a dedup. This keeps the original builder
+    verbatim; unifying the two shapes (if ever) needs a URL-equivalence
+    matrix first, not a silent swap.
+    """
     url = (GOOGLE_TTS_HOST + "/translate_tts?ie=UTF-8&q={0}&tl={1}"
            "&client=gtx&tk={2}").format(
                urllib.parse.quote(text), lang, _google_tk(text, tkk))

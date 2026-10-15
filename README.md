@@ -50,14 +50,14 @@ python -I start_app.py
 > `tests/LIVE_RESULTS.md` for per-endpoint results and `docs/TEST_STRATEGY.md`
 > for why live suites are not merge gates. (`ui_match` counts varied as the
 > suite grew: `82/82` → `79/79` → `97/97` → `40/40` → `46/46` → `71/71` →
-> `100/101` → `101/101` after the `_encode_placement` ptMin fix.)
+> `100/101` → `101/101` after the `_encode_placement` ptMin fix →
+> `103/103` after the template-geometry + `logic-detect-6` alias-shape pins.)
 
 ```bash
-python -I tests/ui_match.py        # 101/101 (2026-10-15, offline)
+python -I tests/ui_match.py        # 103/103 (2026-10-15, offline)
 python -I tests/smoke_dict.py      # PASS exit 0 (2026-10-15, offline)
-python -I tests/regress_*.py       # 32/32 suites PASS (2026-10-15, offline)
+python -I tests/regress_*.py       # 37/37 suites PASS (2026-10-15, offline)
 python -I tools/coverage_tally.py --selftest   # PASS 6/6 (2026-10-15)
-python -I tools/g9_screenshot_diff.py selftest  # PASS 15/15 (2026-10-15)
 python -I tests/live_providers.py  # 21/21 vs real endpoints (2026-10-08, historical)
 ```
 

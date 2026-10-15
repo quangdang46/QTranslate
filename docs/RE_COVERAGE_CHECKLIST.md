@@ -197,7 +197,7 @@ exclusions check (`FUN_004631DE`/`FUN_004630C5`).
 
 | Item | Native evidence (artifact) | RE state | Port state | Note |
 |------|----------------------------|----------|------------|------|
-| D1 Orchestrator dispatch | `FUN_00404A12` decompile: pick → seed → `FUN_004606BA` → `FUN_00460354`; caps gate `(*(in_EAX+4)&1)`; second entrance `FUN_0045FD6D` | VERIFIED | ported | entry struct resolved in pass 3 (see below) |
+| D1 Orchestrator dispatch | `FUN_00404A12` decompile: pick → seed → `FUN_004606BA` → `FUN_00460354`; caps gate `(*(in_EAX+4)&1)`; second entrance `FUN_0045FD6D` | VERIFIED | ported | entry struct resolved in pass 3 (see below); **2026-10-15:** the `AlwaysDetectLanguage` flag is `DAT_0054941f` (nav-menu 0x808e, `FUN_0042DC18`/`FUN_00430C52`), packed into `FUN_004606BA`'s `param_2` — `!= 0` forces detect (`FUN_0045FDE8`) even for a concrete source. `DAT_005494e6` is **RemoveLineBreaks** (drives `FUN_004046D6`), NOT the detect flag |
 | D2 Service picker | `FUN_0045CEDE` = head of ordered set (`FUN_0045AFDD` bounds-check); `FUN_0045CC50` = by-id via `FUN_0045DAF5`→`FUN_0045DE73` map | VERIFIED | ported | head means "first in `ServicesOrder`" |
 | D3 Executor / req loop | `FUN_00460354` (build→fetch→parse loop: `FUN_00460467`+`FUN_00460580`, no queue) + `FUN_00460467` (build+fetch) | VERIFIED | ported | **label tension:** `NATIVE_ARCH.md:1592` calls `FUN_0045F6C1` "task executor"; decompile shows it seeds options/tokens only (see D-uncertain #1) |
 | D4 serviceHeader → caps | `FUN_00465669` reads IDispatch `name`/`info`/`capabilities`(+id), `VariantChangeType(…,0x16=VT_I4)` | VERIFIED | ported | caps bitmask common.py:23 |

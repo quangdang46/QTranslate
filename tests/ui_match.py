@@ -168,6 +168,13 @@ if _rc:
     check("placement-roundtrip", _rt.upper() == _real_hex.upper())
 check("placement-bad", A._decode_placement("00") is None
       and A._decode_placement("") is None)
+# Template fallback (G9_TEMPLATE_VS_PLACEMENT_2026-10-15): DLG129 340x201 DU
+# at MS Shell Dlg 8pt (baseunit 7x15) -> 595x753 px. Must be the constant
+# the no-blob path uses, not a stale pixel size from another machine.
+check("placement-template-const", A.TEMPLATE_GEOMETRY == "595x753",
+      repr(getattr(A, "TEMPLATE_GEOMETRY", None)))
+check("placement-template-arith",
+      340 * 7 // 4 == 595 and 201 * 15 // 4 == 753)
 
 # 11. full language table (75 codes from SUPPORTED_LANGS)
 check("langs-75", len(A.LANGS) == 75, str(len(A.LANGS)))
@@ -371,9 +378,16 @@ import inspect as _insp
 _src = _insp.getsource(A.do_translate)
 check("logic-no-hardcode-auto", '"auto", tl)' not in _src)
 _dsrc = _insp.getsource(A.detect_language)
+# Since 2026-10-15 the 6-provider tuple lives in registry.detectors()
+# (third source of truth unified); detect_language just calls it.
+import qtranslate.registry as _RG
+_rsrc = _insp.getsource(_RG.detectors)
 check("logic-detect-6",
-      all(p in _dsrc for p in
-          ("_google", "_deepl", "_ms", "_naver", "_baidu", "_yandex")))
+      # app.detect_language is now an alias of registry.detect_language,
+      # whose loop calls detectors() (no underscore prefix).
+      "detectors()" in _dsrc
+      and all(p in _rsrc for p in
+              ("_google", "_deepl", "_ms", "_naver", "_baidu", "_yandex")))
 check("logic-no-en-guess",
       '"en" if src =="auto"' not in _src
       and '"en" if src == "auto"' not in _src)

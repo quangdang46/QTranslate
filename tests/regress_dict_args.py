@@ -56,18 +56,17 @@ u = d.multitran_build_uri("x", "vi", "en", ui_lang=ui)  # vi has MT code None
 check("mt unsupported lang passed through (no crash, no fake code)",
       "l1=1" in u and "l2=vi" in u, u)
 
-# ---- App call site must forward (sl, tl), not hard-code (1, 2) ----------
-import inspect  # noqa: E402
+# ---- DICTS call site must forward (sl, tl), not hard-code (1, 2) ------
+# Since 2026-10-15 DICTS lives in qtranslate/registry.py (app.DICTS is an
+# alias); pin the canonical table source, which needs no tkinter import.
+import io  # noqa: E402
 
-# qtranslate.app imports tkinter etc.; guard so this passes headless.
-try:
-    import qtranslate.app as app  # noqa: E402
-    src = inspect.getsource(app)
-    check("app DICTS multitran forwards sl,tl (no hard-coded 1,2)",
-          "_dict.multitran_lookup(w, sl, tl)" in src
-          and "_dict.multitran_lookup(w, 1, 2)" not in src)
-except Exception as e:  # pragma: no cover - environment dependent
-    check("app import for call-site check", False, repr(e))
+_rsrc = io.open(os.path.join(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))), "qtranslate", "registry.py"),
+    encoding="utf-8").read()
+check("DICTS multitran forwards sl,tl (no hard-coded 1,2)",
+      "_dict.multitran_lookup(w, sl, tl)" in _rsrc
+      and "_dict.multitran_lookup(w, 1, 2)" not in _rsrc)
 
 if failures:
     raise SystemExit("FAIL:\n  " + "\n  ".join(failures))
