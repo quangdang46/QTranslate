@@ -82,8 +82,12 @@ DEFAULT_PROXY = {"ProxyType": 0, "Scheme": 0, "Host": "", "Port": 0,
 
 
 def decode_hotkey(code: int) -> dict:
-    """Split a HotKey* dword the way FUN_00405A17 does."""
-    if not code:
+    """Split a HotKey* dword the way FUN_00405A17 does.
+
+    Native (decompiled 2026-10-15): skips registration when ``word == 0``
+    **or** ``(word & 0xFFF) == 0``; the enabled flag mirrors that branch.
+    """
+    if not code or not (code & 0xFFF):
         return {"id": 0, "modifiers": 0, "vk": 0, "enabled": False}
     vk = code & 0xFF
     mods = (code >> 8) & 0xF
