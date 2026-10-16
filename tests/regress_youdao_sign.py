@@ -93,13 +93,25 @@ for text, salt in (("hello", "1700000000000"),
     ck("make_sign(%r, %r) matches the reference" % (text[:20], salt),
        got == want, "port=%r ref=%r" % (got, want))
 
-# the salt's native shape: "" + ms + a single decimal digit
-ck("translate() builds a ms+digit salt",
-   re.search(r'salt = str\(int\(time\.time\(\) \* 1000\)'
-             r'\s*\+\s*int\(random\.random\(\) \* 10\)\)',
-             open(os.path.join(ROOT, "qtranslate", "services", "youdao.py"),
-                  encoding="utf-8").read()) is not None,
-   "the salt no longer matches native's ms + one-digit form")
+_src = open(os.path.join(ROOT, "qtranslate", "services", "youdao.py"),
+            encoding="utf-8").read()
+
+# The salt's native shape: `"" + (new Date).getTime() + parseInt(10*Math
+# .random(),10)`. The leading `""` makes the whole expression STRING
+# CONCATENATION, so the salt is the 13-digit millisecond timestamp with
+# one decimal digit APPENDED (14 characters) -- NOT the integer SUM.
+#
+# This test used to assert the sum (`str(int(...) + int(...))`), which is
+# how the bug survived: the port was building a different, shorter salt and
+# therefore a different md5 on every request, and the suite was pinning the
+# wrong shape. Fixed 2026-10-16 alongside the port.
+ck("translate() builds the salt by CONCATENATION, not addition",
+   re.search(r'salt = str\(int\(time\.time\(\) \* 1000\)\)'
+             r'\s*\+\s*str\(int\(random\.random\(\) \* 10\)\)',
+             _src) is not None,
+   "the salt is no longer native's ms ++ digit concatenation")
+ck("...and the two forms really do differ",
+   str(1750000000123) + "7" != str(1750000000123 + 7))
 
 # --- 3. the hexdigest shape --------------------------------------------
 s = youdao.make_sign("hello", "1")
@@ -115,8 +127,6 @@ ck("a different salt gives a different digest",
 # prepareSource/limitSource calls happen in serviceTranslateRequest BEFORE
 # the md5, so the port's translate() must normalise first. Check the layer
 # that actually normalises, not the digest helper.
-_src = open(os.path.join(ROOT, "qtranslate", "services", "youdao.py"),
-            encoding="utf-8").read()
 ck("translate() applies limit_source(prepare_source(text)) once",
    re.search(r"text = limit_source\(prepare_source\(text\)\)", _src) is not None,
    "the text is not normalised before the request is built")

@@ -95,7 +95,14 @@ def translate(text: str, sl="AUTO", tl: str = "en",
         if isinstance(sl, int) else sl
     tl_code = code_from_language(tl, SUPPORTED_LANGS) \
         if isinstance(tl, int) else tl
-    salt = str(int(time.time() * 1000) + int(random.random() * 10))
+    # Native: `"" + (new Date).getTime() + parseInt(10*Math.random(),10)`.
+    # The leading `""` makes it STRING CONCATENATION, not an addition --
+    # so the salt is the 13-digit timestamp with the random digit APPENDED
+    # (14 characters), not their sum. `str(int(...) + int(...))` produced a
+    # different, shorter salt, which changed the md5 sign, so every youdao
+    # request signed differently from native. Read out of the recovered
+    # Service.js and pinned by tests/regress_youdao_sign.py.
+    salt = str(int(time.time() * 1000)) + str(int(random.random() * 10))
     sign = make_sign(text, salt)
     body = format_q(
         "i={0}&from={1}&to={2}&smartresult=dict&client={3}&salt={4}"
