@@ -10,7 +10,7 @@
 
 | Id | Title | DU (cx×cy) | ≈px @7×15 | cdit | Notes |
 |---|---|---|---|---|---|
-| 129 | QTranslate | 340×201 | 595×753 | 17 | main window |
+| 129 | QTranslate | 340×201 | 595×376 | 17 | main window (height arithmetic fixed 2026-10-16: `/8` vertically, not `/4`) |
 | 133 | About | 315×135 | 551×506 | 4 | |
 | 154 | Options | 429×223 | 751×835 | 5 | shell: OK/Cancel/Apply + SysTabControl32 (id 1078) |
 | 162 | Virtual keyboard | 308×102 | 539×382 | 2 | |

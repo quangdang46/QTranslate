@@ -52,7 +52,7 @@ ordered set = first in `ServicesOrder`).
   aliases.
 - `qtranslate/placement.py` (new module, tkinter-free): the
   WINDOWPLACEMENT codec (`decode/encode_placement`), `TEMPLATE_GEOMETRY`
-  (`"595x753"`), and `place_main/place_aux/save_placement` — moved
+  (`"595x376"`), and `place_main/place_aux/save_placement` — moved
   verbatim from `app.py` (~120 lines → 6-line alias block). Roundtrip
   byte-exact verified headless against the real blob.
 - `app.speak` de-duplicated: was a second TTS fallback chain nested in
@@ -128,15 +128,18 @@ dispatch without a display.
 
 `app._place_main`'s no-blob fallback was the stale pixel constant
 `"526x366"` (another machine's saved placement). It is now
-`TEMPLATE_GEOMETRY = "595x753"`, computed from the measured DLG129
+`TEMPLATE_GEOMETRY = "595x376"`, computed from the measured DLG129
 template (340×201 DU at MS Shell Dlg 8pt, baseunit 7×15) with the
 arithmetic pinned by two new `ui_match` checks
 (`placement-template-const`, `placement-template-arith`), verified
-headless. Evidence:
+headless. *(It read `595x753` here when first written: both axes were
+divided by 4. `/4` horizontally, `/8` vertically — corrected 2026-10-16
+along with the constant, and the `ui_match` pin that had been asserting
+the wrong divisor.)* Evidence:
 `docs/review/G9_TEMPLATE_VS_PLACEMENT_2026-10-15.md`. This changes no
 RE state (A7 stays VERIFIED, G9 stays UNKNOWN — part (b) still needs a
 capture pair). Follow-up in the same tree: `win32app.py` `W, H` was the
-same stale 526x366 constant — now 595x753 from the template; stale
+same stale 526x366 constant — now 595x376 from the template; stale
 docstring/comment references to the old size corrected to describe the
 blob-vs-template distinction instead of citing one machine's rect.
 

@@ -22,11 +22,14 @@ from qtranslate import config as C
 APP_TITLE = "QTranslate"
 
 # DLG 129 template is 340x201 dialog units; at MS Shell Dlg 8pt
-# (baseunit 7x15) that is 595x753 px (see
-# docs/review/G9_TEMPLATE_VS_PLACEMENT_2026-10-15.md and TEMPLATE_GEOMETRY
-# in app.py). The old 526x366 here was a stale saved-placement constant
-# from another machine, not the template.
-W, H = 595, 753
+# (baseunit 7x15) that is 595x376 px -- /4 horizontally (340*7/4=595) and
+# /8 vertically (201*15/8=376), because the two DLU axes use different
+# divisors (see docs/review/G9_PART_A_CLOSED_2026-10-16.md §1 and
+# TEMPLATE_GEOMETRY in placement.py). This read `W, H = 595, 753` for a
+# while: the height was divided by 4 as well, giving a window nearly twice
+# as tall as native's. The old 526x366 here was a different error -- a
+# stale saved-placement constant from another machine, not the template.
+W, H = 595, 376
 
 # control ids from DLG 129
 ID_SRC = 1017

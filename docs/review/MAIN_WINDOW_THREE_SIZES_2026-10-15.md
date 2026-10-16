@@ -8,20 +8,20 @@
 
 | Source | Size | What it actually is |
 |---|---|---|
-| DLG129 template (binary `.rsrc`, `G9_SPEC_NATIVE_WINDOW_2026-10-10.md`) | 340×201 DU ≈ **595×753 px** @7×15 | First-run dialog size, before any placement is saved |
+| DLG129 template (binary `.rsrc`, `G9_SPEC_NATIVE_WINDOW_2026-10-10.md`) | 340×201 DU ≈ **595×376 px** @7×15 | First-run dialog size, before any placement is saved. **Arithmetic corrected 2026-10-16:** the two DLU axes use different divisors — `/4` horizontally (`340*7/4=595`) and `/8` vertically (`201*15/8=376`). This row said `595×753`, from dividing the height by 4 as well; see `G9_PART_A_CLOSED_2026-10-16.md` §1 |
 | Saved `WindowMainPlacement` (real `%APPDATA%` Options.json on this machine) | **530×430 px** at (786,228) | Runtime rect: user/session-resized, saved by `FUN_004561F0`, restored by `FUN_00422DDD` |
 | `UI-FULL.html` `#main` → `screens.py` `MAIN_WIDTH/HEIGHT` | **516×423** | HTML spec figure (full window incl. native title bar); screens.py subtracts 30 px for the client area |
 
 None equals either other. The HTML figure (516×423) is closest to the
 saved placement (530×430) — consistent with the spec being drawn from a
 screenshot of a *running, placed* window — and farthest from the template
-(595×753), which no running window on this machine ever shows.
+(595×376), which no running window on this machine ever shows.
 
 ## 2. What each consumer should use
 
 | Consumer | Correct source |
 |---|---|
-| `app._place_main` no-blob fallback | Template 595×753 (`TEMPLATE_GEOMETRY`) — fixed 2026-10-15 |
+| `app._place_main` no-blob fallback | Template 595×376 (`TEMPLATE_GEOMETRY`) — fixed 2026-10-15, arithmetic fixed 2026-10-16 |
 | `app._place_main` with blob | The blob's own rect (530×430 here) — already correct |
 | `screens.py` reference builders | The HTML spec 516×423 — correct *for their purpose* (spec fidelity), not a claim about the binary |
 | Any future G9 capture protocol | Must record size-origin per side (`template` vs `placement WxH at X,Y` vs `spec`), or the diff measures window-manager state, not UI fidelity |

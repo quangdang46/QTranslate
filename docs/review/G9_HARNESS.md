@@ -139,7 +139,7 @@ Protocol rules:
    make them agree. A mismatch is reported as `BLOCKED`, never `FAIL`.
 
 Rule 5 exists because "window size" is **two different numbers** in QTranslate:
-DLG129's template is `340×201` dialog units (≈`595×753` px at `MS Shell Dlg`
+DLG129's template is `340×201` dialog units (≈`595×376` px at `MS Shell Dlg`
 8pt), while a run native session restores a saved `WINDOWPLACEMENT` — the real
 blob on the analyst's machine is `530×430` px. Neither is the other scaled
 (`G9_TEMPLATE_VS_PLACEMENT_2026-10-15.md`). Two identical UIs captured at those

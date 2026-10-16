@@ -52,14 +52,22 @@ def encode_placement(x: int, y: int, w: int, h: int,
 
 # Native DLG129 template size, 340x201 dialog units at MS Shell Dlg 8pt
 # (docs/review/G9_SPEC_NATIVE_WINDOW_2026-10-10.md). Converted with the
-# standard dialog baseunit for that font (7x15 px): 340*7/4 = 595 wide,
-# 201*15/4 = 753 tall. This is the FIRST-RUN fallback only: once native
-# saves a placement blob, place_main restores the saved rect instead.
+# standard dialog baseunit for that font (7x15 px). The two axes use
+# DIFFERENT divisors -- that is the whole trap: MapDialogRect converts
+#   px_x = (du_x * avg_char_w) / 4
+#   px_y = (du_y * char_h)     / 8
+# so 340*7/4 = 595 wide but 201*15/8 = 376 tall. (An earlier revision of
+# this comment divided BOTH by 4 and got 201*15/4 = 753 -- a window nearly
+# twice as tall as native's. The arithmetic is pinned in
+# tests/regress_placement.py; see G9_PART_A_CLOSED_2026-10-16.md §1.)
+#
+# This is the FIRST-RUN fallback only: once native saves a placement blob,
+# place_main restores the saved rect instead.
 # (The old "526x366" fallback was a stale pixel constant from another
 # machine's saved placement — see
 # docs/review/G9_TEMPLATE_VS_PLACEMENT_2026-10-15.md. It matched neither
-# the template (~595x753) nor this machine's real blob (530x430).)
-TEMPLATE_GEOMETRY = "595x753"
+# the template (595x376) nor this machine's real blob (530x430).)
+TEMPLATE_GEOMETRY = "595x376"
 
 
 def place_main(root, template: str = TEMPLATE_GEOMETRY) -> None:

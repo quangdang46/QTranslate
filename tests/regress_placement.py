@@ -4,14 +4,19 @@ The codec (`decode_placement`/`encode_placement`) was only covered through
 the tkinter suite (`ui_match` decode/roundtrip/bad checks). `placement.py`
 is pure stdlib, so this suite pins it without a display — including the
 ptMin/ptMax = (-1,-1) sentinel that the `_encode_placement` fix
-established and the 595x753 template constant.
+established and the 595x376 template constant (height arithmetic
+fixed 2026-10-16: /8 vertically, not /4).
 
 Offline: the live Options.json blob when present; synthetic otherwise.
 """
+import io
 import os
+import re
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
+sys.path.insert(0, ROOT)
 
 fails = []
 n = [0]
@@ -62,8 +67,31 @@ ck("garbage hex decodes to None",
    P.decode_placement("ZZZZ") is None)
 
 # --- template constant --------------------------------------------------
-ck("TEMPLATE_GEOMETRY is the DLG129-derived 595x753",
-   P.TEMPLATE_GEOMETRY == "595x753", P.TEMPLATE_GEOMETRY)
+# The two DLU axes use DIFFERENT divisors: /4 horizontally, /8 vertically
+# (MapDialogRect). An earlier revision divided both by 4, which turned
+# `201*15/4 = 753` into a window nearly twice as tall as native's.
+ck("TEMPLATE_GEOMETRY is the DLG129-derived 595x376",
+   P.TEMPLATE_GEOMETRY == "595x376", P.TEMPLATE_GEOMETRY)
+ck("...width uses avg_char_w/4", 340 * 7 // 4 == 595,
+   "%d" % (340 * 7 // 4))
+ck("...height uses char_h/8, NOT /4 (the trap that made 753)",
+   201 * 15 // 8 == 376 and 201 * 15 // 4 != 376,
+   "201*15/8=%d but 201*15/4=%d" % (201 * 15 // 8, 201 * 15 // 4))
+
+# win32app.py carries its OWN W, H for the native Win32 re-creation. It had
+# the same wrong divisor (595, 753) and was NOT covered by any suite -- it
+# is pywin32-gated and nothing reads it headlessly. Pinned here so the two
+# constants cannot drift apart again.
+_w32 = io.open(os.path.join(ROOT, "qtranslate", "win32app.py"),
+               encoding="utf-8").read()
+_m = re.search(r"^W, H = (\d+), (\d+)\s*$", _w32, re.M)
+ck("win32app.py declares W, H", _m is not None, "not found")
+if _m:
+    ck("win32app's W, H matches the template constant (595x376)",
+       (int(_m.group(1)), int(_m.group(2))) == (595, 376),
+       "got %rx%r -- the two constants drifted" % (int(_m.group(1)),
+                                                  int(_m.group(2))))
+
 
 if fails:
     print("FAIL %d" % len(fails))

@@ -49,10 +49,10 @@
 ## 4. Template geometry + win32app (same tree)
 
 - `app._place_main` no-blob fallback was stale `"526x366"` → now
-  `TEMPLATE_GEOMETRY = "595x753"` (DLG129 340×201 DU at MS Shell Dlg
+  `TEMPLATE_GEOMETRY = "595x376"` (DLG129 340×201 DU at MS Shell Dlg
   8pt; evidence `G9_TEMPLATE_VS_PLACEMENT_2026-10-15.md`). Pinned by
   `ui_match` `placement-template-const` + `-arith`.
-- `win32app.py` same stale `W, H` → 595x753; dead `_font_handle`
+- `win32app.py` same stale `W, H` → 595x376; dead `_font_handle`
   (wrong Tahoma 9, no callers) deleted rather than fixed; `_translate`
   now reads combos 1001/1002 via `_combo_text` (was hardcoded
   `("google", text, "vi")`), pinned by `regress_ui_parity_fixes` §4.

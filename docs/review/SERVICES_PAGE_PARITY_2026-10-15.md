@@ -375,7 +375,7 @@ same-day (headless-safe, no GUI run):
 - `_translate` hardcoded `do_translate("google", text, "vi")` — now
   reads combos 1001/1002 via `_combo_text` (`CB_GETCURSEL` +
   `CB_GETLBTEXT`, mapped to codes), passing `src=`/`tgt=` through.
-- Geometry (595×753) is now correct post-fix.
+- Geometry is now correct post-fix (595×376 — the height arithmetic was itself fixed 2026-10-16: `/8` vertically, not `/4`).
 - Pinned by `regress_ui_parity_fixes` §4 (4 checks).
 
 ## 41. headless.py audit (same day, no changes needed)

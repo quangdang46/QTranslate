@@ -23,7 +23,7 @@ Full blob decode (`<11i`, 44 bytes):
 ## 2. Template DU → px does not equal the placement
 
 At 8pt MS Shell Dlg the dialog baseunit is ~6×13 to ~7×15, so 340×201 DU
-converts to roughly **510×653 – 595×753 px** — neither axis near 530×430.
+converts to roughly **510×326 – 595×376 px** — neither axis near 530×430. *(Range corrected 2026-10-16: the old upper bound divided the height by 4 instead of 8, and `510×653` was not any metric pair's product at all. `/4` horizontally, `/8` vertically.)*
 The placement size is therefore **not** the template scaled: it is a user-
 or session-resized rect that native saved back via `FUN_004561F0` and
 restores via `FUN_00422DDD` (checklist A7).

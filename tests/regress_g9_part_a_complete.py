@@ -15,7 +15,7 @@ recovered image, the part-(a) facts the row claims:
 | geometry 340×201 DU, cDlgItems 17, style/exStyle | the template bytes |
 | font `MS Shell Dlg` 8pt (not Tahoma 9) | the `DS_SETFONT` string |
 | 3× `RichEdit50W`, ComboBoxes, `Translate`/`Fav`/`Info` | control atoms |
-| the port sizes to the template's DLU→px (595×753) | `placement.py` |
+| the port sizes to the template's DLU→px (595×376) | `placement.py` |
 | the 8 themes' BGR colour expansion | `theme.py` |
 
 If any of these regresses, G9's *part (a)* is unfinished and must be fixed
@@ -79,8 +79,12 @@ placement = io.open(os.path.join(REPO, "qtranslate", "placement.py"),
                     encoding="utf-8").read()
 ck("placement.py documents the DU->px conversion",
    "340x201" in placement and "MS Shell Dlg" in placement)
-ck("...with the standard 7x15 baseunit giving 595x753",
-   "595" in placement and "753" in placement)
+# /4 horizontally and /8 vertically: 340*7/4=595, 201*15/8=376. An earlier
+# revision divided both by 4 and shipped a 753px-tall window.
+ck("...with the standard 7x15 baseunit giving 595x376",
+   "595" in placement and "376" in placement, "placement.py")
+ck("...and the wrong /4-on-height value (753) is gone from the constant",
+   'TEMPLATE_GEOMETRY = "595x753"' not in placement, "placement.py")
 win32app = io.open(os.path.join(REPO, "qtranslate", "win32app.py"),
                    encoding="utf-8").read()
 # The constant may survive in a COMMENT that records why it was removed

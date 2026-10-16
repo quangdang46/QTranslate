@@ -177,12 +177,22 @@ if _rc:
 check("placement-bad", A._decode_placement("00") is None
       and A._decode_placement("") is None)
 # Template fallback (G9_TEMPLATE_VS_PLACEMENT_2026-10-15): DLG129 340x201 DU
-# at MS Shell Dlg 8pt (baseunit 7x15) -> 595x753 px. Must be the constant
+# at MS Shell Dlg 8pt (baseunit 7x15) -> 595x376 px. Must be the constant
 # the no-blob path uses, not a stale pixel size from another machine.
-check("placement-template-const", A.TEMPLATE_GEOMETRY == "595x753",
+#
+# The two axes divide differently -- /4 horizontally, /8 vertically
+# (MapDialogRect). This line used to assert `201 * 15 // 4 == 753`, i.e.
+# it pinned the very bug it was meant to catch: the port's main window
+# opened 753px tall when native's is 376. A test that documents the
+# arithmetic wrong is worse than no test, because it makes the wrong value
+# look verified. Real derivations:
+#   px_x = (du_x * avg_char_w) / 4   -> 340 * 7 / 4  = 595
+#   px_y = (du_y * char_h)     / 8   -> 201 * 15 / 8 = 376
+check("placement-template-const", A.TEMPLATE_GEOMETRY == "595x376",
       repr(getattr(A, "TEMPLATE_GEOMETRY", None)))
 check("placement-template-arith",
-      340 * 7 // 4 == 595 and 201 * 15 // 4 == 753)
+      340 * 7 // 4 == 595 and 201 * 15 // 8 == 376,
+      "595x376 expected, got %dx%d" % (340 * 7 // 4, 201 * 15 // 8))
 
 # 11. full language table (75 codes from SUPPORTED_LANGS)
 check("langs-75", len(A.LANGS) == 75, str(len(A.LANGS)))
