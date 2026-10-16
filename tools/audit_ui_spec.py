@@ -16,6 +16,7 @@ Checks, per screen:
 
 Exit 0 = no drift; 1 = drift found (and every drift is printed).
 """
+import io
 import os
 import re
 import sys
@@ -23,9 +24,24 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SPEC = os.path.join(ROOT, "ui-html-port-need-strict-follow", "UI-FULL.html")
 PORT = os.path.join(ROOT, "qtranslate", "screens.py")
+PORT_SRC = io.open(PORT, encoding="utf-8").read()
 
 fails = []
 n = [0]
+def _fn_src(header):
+    """The source of one screens.py function, by its `def` header regex.
+
+    `header` is a regex whose first group is the literal `def NAME(`. The
+    body runs to the next top-level `def`, `PAGE_BODIES` or `SCREENS`.
+    """
+    m = re.search(header, PORT_SRC)
+    if not m:
+        return ""
+    rest = PORT_SRC[m.start():]
+    nxt = re.search(r"\n(def |PAGE_BODIES|SCREENS)", rest)
+    return rest[:nxt.start()] if nxt else rest[:2000]
+
+
 
 
 def ck(name, cond, detail=""):
@@ -147,6 +163,61 @@ ck("splitter double line + grip",
 # perimeter rules
 for y in (29, 242, 392):
     ck("main-window hline at spec y=%d" % y, "_hline(win, 1, %d," % y in port)
+
+# ------------------------------------------- group-box fill + page origins
+# 2026-10-16. Two defects made the Options pages render as large SOLID GRAY
+# blocks (the user's "sai nặng nhất" report, screenshots/screens/*.png).
+#
+# 1. `_group_box` created a full-size opaque `--border` (#7e7e7e) frame and
+#    drew ONE 1px white line inside it, so a 484x226 box was a solid gray
+#    panel with controls floating on it. Native `BS_GROUPBOX` has no fill at
+#    all -- it is a border plus a caption. Measured before the fix: 2
+#    uncovered gray frames on the Appearance page alone (484x56, 484x226).
+#
+# 2. `_page_services` / `_page_languages` drew at the spec's FR()-shell
+#    offsets (x=5..38, relative to the page-list frame at P(5,30,141,323))
+#    while `options_window` places the page list ON THE WINDOW at x=10..152,
+#    so those columns landed underneath the "Basics/Hotkeys/..." labels.
+#
+# Checked statically (regex over screens.py), because the user asked that
+# tkinter never be opened again.
+_gb = _fn_src(r"def _group_box\(win, x, y, w, h, title\):")
+if _gb:
+    _FILLED = ("outer = tk.Frame(win, bg=BORDER"
+               and re.search(r"outer = tk\.Frame\(win, bg=BORDER[^)]*\)"
+                             r"\s*outer\.place\(x=x, y=y, width=w,"
+                             r" height=h\)", _gb))
+    ck("group_box does not fill the whole box in --border (the gray panels)",
+       _FILLED is None,
+       "a group box is an OUTLINE: draw the 4 edges, never a filled body")
+    ck("group_box draws its border as 4 separate edge frames",
+       _gb.count("tk.Frame(win, bg=BORDER") >= 4
+       or "for _ex, _ey, _ew, _eh in" in _gb,
+       "the outline form is what leaves the interior transparent")
+    ck("group_box still places its caption on the top edge",
+       "y=y - 7" in _gb)
+else:
+    ck("group_box exists", False)
+
+for _page in ("_page_services", "_page_languages"):
+    _src = _fn_src(r"def %s\(win\):" % _page)
+    if not _src:
+        ck("%s exists" % _page, False)
+        continue
+    _xs = [int(m) for m in re.findall(
+        r"(?:_label|_check|_btn)\(win, (\d+),", _src)]
+    _xs += [int(m) for m in re.findall(r"\.place\(x=(\d+),", _src)]
+    if _xs:
+        ck("%s draws PAST the page list (min x >= 152)" % _page,
+           min(_xs) >= 152,
+           "min x=%d -- the spec's FR() offsets are relative to the page "
+           "list at P(5,30,141,323); options_window puts that list on the "
+           "window at x=10..152, so the page body must be offset or it "
+           "collides with the page titles" % min(_xs))
+    ck("%s records the two-shell reconciliation" % _page,
+       "COORDINATE ORIGIN" in _src,
+       "the spec carries two different shells for this dialog; a silent "
+       "guess is how the first version mixed them")
 
 # ------------------------------------------------------------- popup
 ck("popup row is 24px tall",

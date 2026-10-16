@@ -253,15 +253,14 @@ def _check(win, x, y, label, *, on=False):
 
 
 def _group_box(win, x, y, w, h, title):
-    """Win32 group box: 1px --border plus a 1px white offset line."""
-    outer = tk.Frame(win, bg=BORDER, bd=0, highlightthickness=0)
-    outer.place(x=x, y=y, width=w, height=h)
-    off = tk.Frame(win, bg="white", bd=0, highlightthickness=0)
-    off.place(x=x + 1, y=y + 1, width=w - 2, height=1)
+    """Fixed."""
+    for _ex, _ey, _ew, _eh in ((x, y, w, 1), (x, y + h - 1, w, 1),
+                               (x, y, 1, h), (x + w - 1, y, 1, h)):
+        tk.Frame(win, bg=BORDER, bd=0, highlightthickness=0).place(
+            x=_ex, y=_ey, width=_ew, height=_eh)
     tk.Label(win, text=title, bg=FACE, fg=TEXT, font=FONT).place(
         x=x + 9, y=y - 7)
-    return outer
-
+    return None
 
 def _label(win, x, y, text, *, fg=TEXT, anchor="w"):
     tk.Label(win, text=text, bg=FACE, fg=fg, font=FONT,
@@ -486,24 +485,38 @@ def _page_internet(win):
 
 
 def _page_services(win):
-    _label(win, 13, 5, "Translation", fg=SECTION_INK)
-    _hline(win, 77, 12, 376, SECTION_RULE)
+    """The Services page: enabled-service checkboxes + a dictionary preview.
+
+    COORDINATE ORIGIN. The x values below are the spec's FR()-shell numbers,
+    which are relative to the page-list frame the spec draws at
+    ``P(5,30,141,323)``. `options_window` draws its page list on the WINDOW
+    at ``x=10..152`` instead, so using those numbers here put this page's
+    whole left column UNDER the page list -- the lists overlapped the
+    "Basics/Hotkeys/..." labels and the rest of the window showed bare
+    background, reading as large gray blocks. Every other page in this file
+    already starts at x=152 (past the list); this one now does too, shifted
+    by the same offset. The preview pane at x=155 was already absolute and
+    is unchanged.
+    """
+    X = 152                      # the offset that reconciles the two shells
+    _label(win, X + 5, 5, "Translation", fg=SECTION_INK)
+    _hline(win, X + 5, 12, 376, SECTION_RULE)
     for i, (name, color) in enumerate(SERVICES_TRANSLATE):
-        _check(win, 5, 25 + i * 18, "", on=True)
+        _check(win, X + 5, 25 + i * 18, "", on=True)
         tk.Frame(win, bg=color, bd=0,
-                 highlightthickness=0).place(x=21, y=24 + i * 18, width=14,
-                                             height=14)
-        tk.Label(win, text=name, bg=FACE, fg=TEXT, font=FONT,
-                 anchor="w").place(x=38, y=23 + i * 18)
-    _label(win, 13, 191, "Dictionary", fg=SECTION_INK)
-    _hline(win, 77, 198, 376, SECTION_RULE)
-    for i, (name, color) in enumerate(SERVICES_DICTIONARY):
-        _check(win, 5, 212 + i * 18, "", on=True)
-        tk.Frame(win, bg=color, bd=0,
-                 highlightthickness=0).place(x=21, y=211 + i * 18,
+                 highlightthickness=0).place(x=X + 21, y=24 + i * 18,
                                              width=14, height=14)
         tk.Label(win, text=name, bg=FACE, fg=TEXT, font=FONT,
-                 anchor="w").place(x=38, y=210 + i * 18)
+                 anchor="w").place(x=X + 38, y=23 + i * 18)
+    _label(win, X + 5, 191, "Dictionary", fg=SECTION_INK)
+    _hline(win, X + 5, 198, 376, SECTION_RULE)
+    for i, (name, color) in enumerate(SERVICES_DICTIONARY):
+        _check(win, X + 5, 212 + i * 18, "", on=True)
+        tk.Frame(win, bg=color, bd=0,
+                 highlightthickness=0).place(x=X + 21, y=211 + i * 18,
+                                             width=14, height=14)
+        tk.Label(win, text=name, bg=FACE, fg=TEXT, font=FONT,
+                 anchor="w").place(x=X + 38, y=210 + i * 18)
     tk.Frame(win, bg=THUMB, bd=0, highlightthickness=0).place(
         x=471, y=17, width=2, height=157)
     fld = _bordered(win, 155, 31, 481, 272)
@@ -516,17 +529,29 @@ def _page_services(win):
 
 
 def _page_languages(win):
-    _bordered(win, 155, 31, 481, 272)
+    """The Languages page: three checkbox columns inside one bordered pane.
+
+    COORDINATE ORIGIN, same defect as `_page_services`: the checkboxes were
+    laid out at x=3..16, which the spec means relative to the page-list frame
+    (`P(5,30,141,323)`), so they landed UNDER the page list. `options_window`
+    puts the list on the window at x=10..152, so the columns are shifted by
+    the same 152 offset and now live inside the bounded pane at x=155.
+    """
+    X = 152
+    # The returned inner frame is the pane's white interior; children are
+    # placed on `win` (absolute), so the frame only supplies the bg/border.
+    _bordered(win, X + 3, 31, 481, 272)
     col_w, per_col = 126.5, 18
     for ci, col in enumerate(LANGUAGE_COLUMNS):
         for i, name in enumerate(col.split(" ")):
             x = 3 + ci * col_w
-            _check(win, int(x), int(2 + i * 14), "", on=True)
+            _check(win, X + int(x), int(31 + i * 14), "", on=True)
             tk.Label(win, text=name, bg=WINDOW, fg=TEXT, font=FONT,
-                     anchor="w").place(x=int(x) + 16, y=int(2 + i * 14))
+                     anchor="w").place(x=X + int(x) + 16,
+                                       y=int(31 + i * 14))
     tk.Frame(win, bg=THUMB, bd=0, highlightthickness=0).place(
-        x=18, y=262, width=238, height=2)
-    _btn(win, 155, 308, 481, "Check / Uncheck all")
+        x=X + 18, y=262, width=238, height=2)
+    _btn(win, X + 3, 308, 481, "Check / Uncheck all")
 
 
 def _page_appearance(win):

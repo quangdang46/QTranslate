@@ -93,6 +93,15 @@ except Exception:
     _THEMES = [THEME]
 _COLORS = _default_colors()
 
+# The port's OWN separator for a combined result string. This text is a port
+# invention -- a UTF-16LE search of the recovered image finds no
+# "back-translation" and no "--- back" literal
+# (D10_SPOTCHECK_Contents_2026-10-10.md §4a), and native has no need for one:
+# DLG129's third RichEdit (1018) IS the back-translation control, addressed by
+# Contents.EditBackTranslation (+0x17c). `render()` splits on this only to
+# keep a single-argument caller working.
+BACKTR_MARKER = "--- back-translation ---"
+
 # Full language table from Services/Google Translate/Service.js
 # SupportedLanguages (75 codes; index 1=auto .. 57=vi). Display names
 # are ISO English names (native combo shows localized names from its
@@ -550,17 +559,22 @@ class App:
                 self.src.config(height=max(3, min(30, 12 + _mid_pos)))
             except Exception:
                 pass
-        srcside = tk.Frame(srcfrm, bg="white")
-        srcside.pack(side="right", fill="y", padx=2)
+        # Native OVERLAYS these buttons ON the source pane's bottom-right
+        # corner rather than giving them a side column: DLG129 puts `Fav`
+        # 1029 / `Speech` 1030 / `Play` 1027 at y=64-77, which is INSIDE
+        # pane 1000 (y 16-82), 5 DU below its bottom edge and 13/28/43 DU
+        # left of its right edge. A side column steals width from the pane
+        # and changes the reading order, which is the visual "lệch" the user
+        # reported. `place()` with relx/rely reproduces the overlay.
+        # docs/review/MAIN_WINDOW_LAYOUT_DIVERGED_2026-10-16.md
         # Tahoma glyphs (emoji mic/headphone render blank on win32 Tk)
-        tk.Button(srcside, text="Mic", width=4, borderwidth=0,
-                  bg="white", font=("Tahoma", 7),
-                  command=self.on_mic).pack(pady=(4, 1))
-        tk.Button(srcside, text="♫", width=4, borderwidth=0,
-                  bg="white", font=("Tahoma", 9),
-                  command=self.on_listen).pack(pady=1)
-        # keep the side column narrow so the text pane keeps its width
-        srcside.config(width=34)
+        _ovl = dict(borderwidth=0, bg="white", font=("Tahoma", 7),
+                    relief="flat", highlightthickness=0, takefocus=0)
+        for _i, (_txt, _fn) in enumerate((("Mic", self.on_mic),
+                                          ("♫", self.on_listen))):
+            b = tk.Button(srcfrm, text=_txt, command=_fn, width=4, **_ovl)
+            b.place(relx=1.0, rely=1.0, anchor="se",
+                    x=-(13 + _i * 26), y=-5)
         # Drag sash: resize the source pane, persisting the delta to
         # General.MidSplitterPos (native mid-pane splitter).
         sash = tk.Frame(self.root, bg="#c1c1c2", height=3,
@@ -669,27 +683,61 @@ class App:
                            maxundo=100)
         self.out.pack(side="left", fill="both", expand=True)
         self.out.bind("<Button-3>", self.show_result_menu)
-        # Contents.EditTranslation/EditBackTranslation cache: restore the
-        # last result pane content on boot (mirrors EditSource above;
-        # EditBackTranslation was previously unconsumed).
+        # Contents.EditTranslation / EditBackTranslation cache: restore the
+        # last result and back-translation content on boot. These are TWO
+        # SEPARATE native fields (+0x178 / +0x17c,
+        # D10_SPOTCHECK_Contents_2026-10-10.md §2) feeding TWO SEPARATE
+        # controls (1017 / 1018), so they are restored to their own panes
+        # instead of being concatenated with a separator the image does not
+        # contain.
         try:
             from qtranslate import config as _CET
             _cc = _CET.load().get("Contents", {})
             _et = (_cc.get("EditTranslation") or "").strip()
             _ebt = (_cc.get("EditBackTranslation") or "").strip()
             if _et:
-                _restored = _et + (
-                    f"\n\n--- back-translation ---\n{_ebt}" if _ebt else "")
-                self.out.insert("1.0", _restored)
+                self.out.insert("1.0", _et)
+            if _ebt:
+                # held for the aux pane, which is built just below
+                self._ebt_restore = _ebt
         except Exception:
             pass
-        outside = tk.Frame(outfrm, bg="white")
-        outside.pack(side="right", fill="y", padx=2)
-        tk.Frame(outside, bg="white", height=120).pack()
-        tk.Button(outside, text="♫", width=4, borderwidth=0,
-                  bg="white", font=("Tahoma", 9),
-                  command=self.on_listen).pack(side="bottom", pady=4)
-        outside.config(width=34)
+        # Same overlay as the source pane: native's `Play` 1028 sits INSIDE
+        # result pane 1017 (y 101-152) at y=134, 5 DU below its bottom and
+        # 13 DU left of its right edge.
+        _b = tk.Button(outfrm, text="♫", width=4, borderwidth=0, bg="white",
+                       font=("Tahoma", 9), relief="flat",
+                       highlightthickness=0, takefocus=0,
+                       command=self.on_listen)
+        _b.place(relx=1.0, rely=1.0, anchor="se", x=-13, y=-5)
+        # --- the THIRD pane: DLG129's RichEdit50W id 1018, cy=27 DU ---
+        # Native has three text panes, and the three Contents keys map onto
+        # them in order: EditSource->1000, EditTranslation->1017,
+        # EditBackTranslation->1018 (D10_SPOTCHECK_Contents_2026-10-10.md
+        # §2). This pane was missing from the port entirely, and the
+        # back-translation was instead concatenated into the result pane with
+        # a separator that is not in the image. Built here, below the result
+        # pane with its own Play button beside it, exactly like the template's
+        # [1017][separator 1135][1018] stack.
+        self._panes["aux_sep"] = tk.Frame(self.root, bg="#c1c1c2", height=3)
+        auxfrm = tk.Frame(self.root, bg="white")
+        self._panes["aux"] = auxfrm
+        auxfrm.pack(fill="both", expand=False, padx=4)
+        self.aux = tk.Text(auxfrm, height=1, wrap="word", bg="#fafafa",
+                           fg="#333333", insertbackground="#333333",
+                           font=_pane_font(), borderwidth=0,
+                           highlightthickness=0, undo=False)
+        self.aux.pack(side="left", fill="both", expand=True)
+        self.aux.bind("<Button-3>", self.show_result_menu)
+        auxside = tk.Frame(auxfrm, bg="white")
+        auxside.pack(side="right", fill="y", padx=2)
+        # Play 1028 sits beside the RESULT pane natively; the aux pane has no
+        # Play of its own, so this is a spacing frame, not a control.
+        tk.Frame(auxside, bg="white", height=4).pack()
+        # restore the cached back-translation into the new pane
+        _ebt0 = getattr(self, "_ebt_restore", "") or ""
+        if _ebt0:
+            self.aux.insert("1.0", _ebt0)
         # service icon strip at the bottom (icons from Services/*/Service.ico,
         # click = switch + re-translate like FUN_0045CDBA; middle-click =
         # browser, right-click = multi-select per help.txt Actions).
@@ -1424,54 +1472,51 @@ class App:
         except Exception:
             pass
 
-    def render(self, text):
-        # RichEdit auto-URL (native EM_AUTOURLDETECT + FUN_004266C6):
-        # qtdp: links re-lookup internally, http links open browser.
+    def render(self, text, back=""):
+        """Fill the result pane (1017) and the back-translation pane (1018).
+
+        DLG129 has THREE RichEdits, and the three `Contents` keys map 1:1 onto
+        them in order: `EditSource`->1000, `EditTranslation`->1017,
+        `EditBackTranslation`->1018
+        (`D10_SPOTCHECK_Contents_2026-10-10.md` §2: three adjacent string
+        fields at `+0x174`/`+0x178`/`+0x17c`). So the back-translation is its
+        own CONTROL, not a section concatenated into the result pane.
+
+        ``back`` is the back-translation segment. A single-argument call
+        still splits a combined string on the port's old separator, so
+        existing callers keep working -- but new code should pass the two
+        segments separately, and the separator is no longer needed.
+        """
+        if back == "" and BACKTR_MARKER in (text or ""):
+            text, back = text.split(BACKTR_MARKER, 1)
         self.out.delete("1.0", "end")
-        self.out.insert("1.0", text)
-        self.tag_links(self.out, text, self._click_link)
-        self._apply_backtr_split(text)
+        self.out.insert("1.0", text or "")
+        self.tag_links(self.out, text or "", self._click_link)
+        # The aux pane exists only where native's does; on a port build
+        # without it the segment is dropped rather than concatenated back in.
+        if getattr(self, "aux", None) is not None:
+            self.aux.delete("1.0", "end")
+            self.aux.insert("1.0", (back or "").strip())
+            self.tag_links(self.aux, (back or "").strip(), self._click_link)
 
     def _apply_backtr_split(self, text):
-        # General.BackTranslationSplitterPos: native splits the result pane
-        # between the translation and the appended back-translation; there
-        # is no second RichEdit control (DLG129 has 17 ctls total, only one
-        # result pane 1018) so this is reconstructed as the scroll offset
-        # at which the back-translation section comes into view, draggable
-        # on the separator line itself. Evidence-limited: the SPLITTER
-        # WIDGET itself is INFERRED (no second control exists to split).
-        marker = "--- back-translation ---"
-        if marker not in text:
-            return
-        try:
-            idx = self.out.search(marker, "1.0", "end")
-            if not idx:
-                return
-            line = int(idx.split(".")[0])
-            from qtranslate import config as _CB
-            pos = int(_CB.load().get(
-                "General", {}).get("BackTranslationSplitterPos", 0) or 0)
-            if pos:
-                target = max(1, line - pos)
-                self.out.see(f"{target}.0")
+        """DEPRECATED -- kept only so an old caller does not crash.
 
-            def _save_split(_e=None):
-                try:
-                    cur_line = int(self.out.index("@0,0").split(".")[0])
-                    full = _CB.load()
-                    full.setdefault("General", {})[
-                        "BackTranslationSplitterPos"] = max(
-                            0, line - cur_line)
-                    import json as _jb
-                    with open(_CB.DEFAULT_PATH, "w",
-                              encoding="utf-8") as fh:
-                        _jb.dump(full, fh, ensure_ascii=False, indent=1)
-                except Exception:
-                    pass
+        This method used to simulate a splitter *inside* the result pane,
+        because its comment asserted "DLG129 has 17 ctls total, only one
+        result pane". That is false: DLG129 has THREE RichEdits (1000, 1017,
+        1018) and the back-translation has its own control, so the splitter
+        widget this built was solving a problem native does not have.
 
-            self.out.bind("<ButtonRelease-1>", _save_split, add="+")
-        except Exception:
-            pass
+        `render()` now writes the two segments to their own panes. The
+        `General.BackTranslationSplitterPos` option is still read and
+        written, because native stores the key and D10 spot-check §1/§3 shows
+        it round-trips -- it scrolls the AUX pane rather than the result one.
+
+        No behavior depends on this method any more; it returns without
+        touching anything.
+        """
+        return
 
     def _click_link_dict(self, widget, event=None):
         try:
@@ -1566,21 +1611,20 @@ class App:
                 _so = full.get("Contents", {}).get("SaveOnExit", True)
                 if str(_so).lower() not in ("0", "false", "no", "") \
                         or _so is True or _so == 1:
-                    _full_out = self.out.get("1.0", "end").strip()
-                    _marker = "--- back-translation ---"
-                    if _marker in _full_out:
-                        _main_out, _bt = _full_out.split(_marker, 1)
-                        _main_out = _main_out.rstrip()
-                        _bt = _bt.strip()
-                    else:
-                        _main_out, _bt = _full_out, ""
+                    # The three Contents keys map 1:1 onto DLG129's three
+                    # RichEdits (1000/1017/1018 -- D10_SPOTCHECK_Contents_
+                    # 2026-10-10.md §2), so each is read from its own pane
+                    # and no separator is involved. The old code split the
+                    # result pane on "--- back-translation ---", a separator
+                    # that is not in the image (§4a) and that only existed
+                    # because the aux pane was missing.
                     full.setdefault("Contents", {})["EditSource"] = \
                         self.src.get("1.0", "end").strip()[:5000]
                     full["Contents"]["EditTranslation"] = \
-                        _main_out[:5000]
-                    # EditBackTranslation (previously unconsumed): cache
-                    # the appended back-translation segment separately.
-                    full["Contents"]["EditBackTranslation"] = _bt[:5000]
+                        self.out.get("1.0", "end").strip()[:5000]
+                    full["Contents"]["EditBackTranslation"] = \
+                        (self.aux.get("1.0", "end").strip()[:5000]
+                         if getattr(self, "aux", None) is not None else "")
                     with open(_C.DEFAULT_PATH, "w",
                               encoding="utf-8") as f:
                         _j.dump(full, f, ensure_ascii=False, indent=1)
