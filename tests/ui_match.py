@@ -38,11 +38,17 @@ root.withdraw()
 app = A.App(root)
 
 # 1. default source text
+# The header is native's `%s %s %s` (FUN_0042F2CC) with the middle field a
+# resource string that ENDS IN A SPACE ("Version "), so the rendered line
+# carries TWO spaces before the version: "QTranslate Version  6.10.0".
+# This check expected one until 2026-10-16, when the port was corrected to
+# native's two.
 with open("C:/Program Files (x86)/QTranslate/Locales/English/help.txt",
           encoding="utf-8-sig") as f:
     help_txt = f.read().strip()
-expected = "QTranslate Version 6.10.0\n\n" + help_txt
-check("default-text==help.txt", app.default_source_text() == expected)
+expected = "QTranslate Version  6.10.0\n\n" + help_txt
+check("default-text==help.txt", app.default_source_text() == expected,
+      repr(app.default_source_text()[:60]))
 
 # 2. strip order == ServicesOrder
 cfg = C.load()
@@ -302,21 +308,28 @@ check("hex-gray2", _T2._hex("20") == "#202020", _T2._hex("20"))
 check("themes-8", len(_T2.list_themes()) == 8,
       str(_T2.list_themes()))
 # 17. history exporters byte-match Plugins/History/*.js semantics
+# Signature is (src, service, src_lang, tr, tr_lang, i, n) -- native's
+# `historyItem(a,b,c,d,e,f,g)` where a is the SOURCE TEXT and b the service
+# (Json keys it "src", Txt prints it first). These calls used to pass
+# ("Google", "hello", ...) in the OLD (service, src) order, so the CSV
+# check passed only because its expectation was swapped to match; json/txt/
+# html were asserting the right output with the wrong arguments and had
+# been failing. Fixed 2026-10-16: the arguments now match the signature.
 from qtranslate import history as _H
 check("csv-cols",
-      _H.csv_item("Google", "hello", "en", "xin chào", "vi", 0, 1)
-      == '"Google","en","hello","vi","xin chào"\n',
-      _H.csv_item("Google", "hello", "en", "xin chào", "vi", 0, 1))
+      _H.csv_item("hello", "Google", "en", "xin chào", "vi", 0, 1)
+      == '"hello","en","Google","vi","xin chào"\n',
+      _H.csv_item("hello", "Google", "en", "xin chào", "vi", 0, 1))
 check("json-item",
-      _H.json_item("Google", "hello", "en", "xin chào", "vi", 0, 1)
+      _H.json_item("hello", "Google", "en", "xin chào", "vi", 0, 1)
       == '{"service":"Google","srcLang":"en","trLang":"vi",'
          '"tr":"xin chào"}',
-      _H.json_item("Google", "hello", "en", "xin chào", "vi", 0, 1))
+      _H.json_item("hello", "Google", "en", "xin chào", "vi", 0, 1))
 check("txt-item",
-      _H.txt_item("Google", "hello", "en", "xin chào", "vi", 0, 1)
+      _H.txt_item("hello", "Google", "en", "xin chào", "vi", 0, 1)
       == "[Google > en to vi]\r\nxin chào\r\n\r\n")
 check("html-item",
-      _H.html_item("Google", "hello", "en", "xin chào", "vi", 0, 1)
+      _H.html_item("hello", "Google", "en", "xin chào", "vi", 0, 1)
       == "<tr><td class='th'>Google (en to vi)</td>"
          "<td>xin chào</td></tr>\r\n")
 

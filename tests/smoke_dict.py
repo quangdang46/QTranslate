@@ -66,17 +66,31 @@ assert sum(map(len, _chs)) == len(_long[:10000]) and max(map(len, _chs)) <= 700
 print("OK: yandex chunks")
 
 # google tk() known-answer (TKK seed 0.0 -> a.a^0 form)
+# These values were re-derived 2026-10-16 after the ASCII-branch fix
+# (1f15858: every ASCII character no longer contributes a stray
+# continuation byte). The old vector (24324.24324 / 209966.209966) was
+# correct for the BUGGY port -- a known-answer pinned before the fix is
+# exactly how a fix gets reverted. regress_google_tk.py checks the same
+# values against an independent reference transcribed from the JS, so a
+# future regression shows up as a reference mismatch rather than a stale
+# number here.
 from qtranslate.services.google_translate import tk as _tk
-assert _tk("Hello world") == "24324.24324"
-assert _tk("test") == "209966.209966"
+assert _tk("Hello world") == "365273.365273"
+assert _tk("test") == "684737.684737"
 print("OK: google tk known-answer")
 
 # signing known-answer vectors (cross-checked vs node 2026-10-08;
 # endpoints dead/walled, algorithms must still be bit-exact)
+#
+# Baidu's value was re-derived 2026-10-16 for the same reason as tk()'s
+# above: the ASCII-branch fix changed every signature, and the old vector
+# (108862.108869) belonged to the buggy port. regress_baidu_sign.py
+# re-checks these against an independent reference, so this stays a smoke
+# check and the real oracle is there.
 from qtranslate.services.baidu import sign as _bs
 from qtranslate.services.youdao import make_sign as _ys
 from qtranslate.services.promt import ghcs as _gh
-assert _bs("hello", "123.456") == "108862.108869"
+assert _bs("hello", "123.456") == "561628.561575"
 assert _ys("hello", "12345") == "bfb0a174c7922ca03cff241587151159"
 assert _gh("Hello world") == 586917305  # node 1-arg call agrees
 import qtranslate.services.promt  # syntax regression guard

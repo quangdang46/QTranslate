@@ -131,9 +131,23 @@ port-side fallback, not a native port).
 
 ### Dictionary placement
 
-The dictionary web hostnames (`multitran`, `wordreference`, `lingvo`,
-`oxford`, `urban`, `reverso`, `wikipedia`, `imtranslator`, `merriam`)
-are **absent** (0 hits); only local-XDXF strings exist
-(`XdxfArticle.xslt`, `XDXF Dictionary (*.xdxf)`, `*.xdxf`, `.xdxf`).
-This is expected: dictionary web providers live in the JS plugin files
-that the recovered artifact does not contain (cf. Appendix above).
+In **this image** the dictionary web hostnames (`multitran`,
+`wordreference`, `lingvo`, `oxford`, `urban`, `reverso`, `wikipedia`,
+`imtranslator`, `merriam`) are **absent** (0 hits); only local-XDXF
+strings exist (`XdxfArticle.xslt`, `XDXF Dictionary (*.xdxf)`, `*.xdxf`,
+`.xdxf`). That is expected — the dictionary providers are JavaScript
+plugins loaded at runtime, so their hostnames live in the plugin text,
+not the binary.
+
+> **Correction 2026-10-16 — the inference drawn here was wrong.** The note
+> concluded "the JS plugin files that the recovered artifact does not
+> contain". It DOES contain them: `nsis_payload_unpacked.bin` carries all
+> 19 `Service.js` files with their hosts — `multitran` ×2,
+> `oxfordlearnersdictionaries` ×2, `reverso.net` ×2, `wikipedia` ×3,
+> `imtranslator` ×2, and `wordreference` / `lingvolive` /
+> `urbandictionary` once each. (Only `merriam` is genuinely absent, in
+> either artifact.) The 0-hit counts were measured against the exe and are
+> correct; the conclusion drawn from them was not. All 19 files have since
+> been read against the port — see
+> `PLUGIN_JS_VERIFIED_AGAINST_PORT_2026-10-11.md` §"CLOSED 2026-10-16" and
+> `DICT_RESPONSE_CHAINS_2026-10-16.md`.
