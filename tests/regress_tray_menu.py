@@ -70,9 +70,13 @@ if HAVE_PYSTRAY:
            bool(modes) and modes[0].text == "Show icon",
            modes[0].text if modes else "-")
 
-        # the handler must write the flag it names
+        # the handler must write the flag it names. Phase 7 (2026-10-16):
+        # _make_tray's body moved to qtranslate/windows.py as
+        # TrayController.build; A._make_tray is now a forwarder, so
+        # inspect.getsource on it would only show the delegator.
         import inspect
-        src = inspect.getsource(A._make_tray)
+        from qtranslate.windows import TrayController
+        src = inspect.getsource(TrayController.build)
         ck("Enable-global-hotkeys handler writes General.EnableHotKeys",
            "EnableHotKeys" in src)
         ck("hotkeys toggle keeps a real state cell", "_hotkeys_on[" in src)
@@ -84,10 +88,13 @@ else:
 # single assertion that proves nothing (exactly the trap to avoid).
 import re as _re  # noqa: E402
 
-SRC = open("qtranslate/app.py", encoding="utf-8").read()
-START = SRC.find("    menu = Menu(")
-END = SRC.find("    icon = pystray.Icon(", START)
-ck("_make_tray's Menu(...) block found", 0 <= START < END,
+# Phase 7 (2026-10-16): the Menu(...) block moved to windows.py's
+# TrayController.build, with app.py's indentation (4 spaces) now at the
+# class's method-body indentation (8 spaces).
+SRC = open("qtranslate/windows.py", encoding="utf-8").read()
+START = SRC.find("menu = Menu(")
+END = SRC.find("icon = pystray.Icon(", START)
+ck("TrayController.build's Menu(...) block found", 0 <= START < END,
    "start=%d end=%d" % (START, END))
 if 0 <= START < END:
     block = SRC[START:END]

@@ -144,17 +144,24 @@ src2 = io.open("qtranslate/speech_input.py", encoding="utf-8").read()
 ck("speech_input exists on disk but is deliberately NOT frozen",
    "speech_input" in tool_src and "NOT_FROZEN_OK" in tool_src)
 
-# The tray-state divergence this pass fixed: app._sync_icon must use the
+# The tray-state divergence this pass fixed: _sync_icon must use the
 # native rule via tray_state, not an inlined hotkeys-based guess.
+# Phase 7 (2026-10-16): _make_tray (and _sync_icon inside it) moved to
+# qtranslate/windows.py as TrayController.build; app.py keeps a forwarder.
 appsrc = io.open("qtranslate/app.py", encoding="utf-8").read()
-ck("app._sync_icon resolves the icon through tray_state (the native rule)",
-   "from qtranslate import tray_state as _TS" in appsrc
-   and "_TS.select_state(" in appsrc,
+winsrc = io.open("qtranslate/windows.py", encoding="utf-8").read()
+_tray_src = appsrc + winsrc
+ck("_sync_icon resolves the icon through tray_state (the native rule)",
+   "from qtranslate import tray_state as _TS" in _tray_src
+   and "_TS.select_state(" in _tray_src,
    "the port must not inline a different 3-state rule than FUN_00418DA0")
 ck("...and it feeds the mouse-arm flag and the hook-availability bit",
-   "_TS.select_state(_mouse_mode[0], bool(_MOUSE_HOOK" in appsrc)
+   "_TS.select_state(_mouse_mode[0], bool(_MOUSE_HOOK" in _tray_src)
 ck("the old hotkeys-based guess is gone",
-   "any HotKey bound = on" not in appsrc)
+   "any HotKey bound = on" not in _tray_src)
+ck("...and the wiring is in windows.py now (TrayController), not app.py",
+   "_TS.select_state(" in winsrc,
+   "the pin followed the code to its new home")
 
 # The ImportError this pass found: `from X import <submodule>` inside a
 # try/except swallowed the failure and the D18 dialog never opened.

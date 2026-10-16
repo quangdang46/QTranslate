@@ -291,6 +291,53 @@ if HEAD_APP:
        "a rename of the window variable would have broken open(..., 'w')")
     ck("anchor=\"w\" survived too", 'anchor="w"' in _blob)
 
+
+# ------------------------------------------- the TrayController move, verbatim
+# A third class, transcribed from a plain module FUNCTION (`_make_tray`) --
+# so there are no `self.` renames at all and the body is compared verbatim
+# after the two edits that are the whole point of the extraction (it became
+# a method, and the icon is kept on `self.icon`).
+if HEAD_APP:
+    old_t = next(x for x in ast.walk(ast.parse(HEAD_APP))
+                 if isinstance(x, ast.FunctionDef) and x.name == "_make_tray")
+    t_cls = next((x for x in ast.walk(ast.parse(WIN))
+                  if isinstance(x, ast.ClassDef)
+                  and x.name == "TrayController"), None)
+    t_build = next((x for x in ast.walk(t_cls)
+                    if isinstance(x, ast.FunctionDef)
+                    and x.name == "build"), None) if t_cls else None
+    ck("TrayController defines build()", t_build is not None)
+
+    def _lines(src, fn):
+        out = []
+        for ln in ast.get_source_segment(src, fn).splitlines()[1:]:
+            s = ln.strip()
+            if not s or s.startswith("#"):
+                continue
+            out.append(s)
+        return out
+
+    _ALIAS = "icon = pystray.Icon("
+    o_t = _lines(HEAD_APP, old_t)
+    w_t = _lines(WIN, t_build)
+    # The one allowed ADDITION: the icon is also kept on `self.icon` so
+    # `sync()` can be reached without rebuilding it. Normalize it away on
+    # the new side (the original never had it).
+    w_t = [l.replace("self.icon = icon = pystray.Icon(",
+                     "icon = pystray.Icon(") for l in w_t]
+    # cut both at a line that exists exactly once in each
+    _anc = "from PIL import Image"
+    o_t = o_t[o_t.index(_anc):]
+    w_t = w_t[w_t.index(_anc):]
+    t_diffs = [(i, x, y) for i, (x, y) in enumerate(zip(o_t, w_t))
+               if x != y]
+    ck("the TrayController body is identical (a plain function moved as-is)",
+       not t_diffs and len(o_t) == len(w_t),
+       (repr(t_diffs[0]) if t_diffs else
+        "HEAD %d lines, windows.py %d" % (len(o_t), len(w_t))))
+    ck("...and the tray still returns the icon object",
+       w_t[-1] == "return icon", repr(w_t[-1]))
+
 # -------------------------------------------------------- the delegator half
 ck("App.open_history_window delegates to HistoryView",
    re.search(r'def open_history_window\(self\):.*?'
