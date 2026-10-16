@@ -64,16 +64,15 @@ ck("it is not the collapsed one-space form",
    "Version 6.10.0" not in header, repr(header))
 
 # --- 2. the two independent renderers agree ------------------------------
-# screens.py concatenates the header and the help body in one literal, so
-# compare the HEADER FRAGMENT (before the first newline), not the whole.
+# screens.py concatenates the header and the help body in one literal, whose
+# line breaks are the two characters \ + n. Compare the first FRAGMENT.
 s = re.search(r'help_text = \(\s*"([^"]*)"', SCREENS)
 ck("screens.py's help_text is found", s is not None)
+scr_lit = s.group(1) if s else ""
 ck("screens.py's help_text starts with the same header",
-   s is not None and s.group(1).split("\n")[0] == header,
-   repr(s.group(1) if s else None))
+   scr_lit.split("\\n")[0] == header, repr(scr_lit[:44]))
 ck("screens.py separates the header from the body with a blank line",
-   s is not None and s.group(1).startswith(header + "\n\n"),
-   repr(s.group(1)[:40] if s else None))
+   scr_lit.startswith(header + "\\n\\n"), repr(scr_lit[:44]))
 
 spec_path = os.path.join(ROOT, "ui-html-port-need-strict-follow",
                          "UI-FULL.html")
