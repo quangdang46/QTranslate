@@ -80,8 +80,9 @@ def menu_slots() -> list[Slot]:
 
 def panel_slots() -> list[Slot]:
     """The three showable panes native's Options page toggles."""
-    doc = "native Options key Show%sPane" % name.capitalize()
-    return [Slot("panel", name, None, doc) for name in PANES]
+    return [Slot("panel", name, None,
+                 "native Options key Show%sPane" % name.capitalize())
+            for name in PANES]
 
 
 def popup_slots() -> list[Slot]:

@@ -365,6 +365,22 @@ class ExtensionAPI:
         """
         return self._manager.register_theme(name, record, replaces=replaces)
 
+    def register_ui(self, kind, slot, contribution, replaces=None):
+        """Register a UI contribution (menu / panel / popup slot).
+
+        The slot names are ``ui_slots``'s, which are derived from the native
+        UI surface rather than invented: the menu ids are the ``Menus[].Id``
+        values a locale pack declares, and the panel names are the three
+        ``Show*Pane`` toggles the Options page reads.
+
+        Contributions land in ``self._manager.ui_slots``; a host reads them
+        through ``UISlotRegistry.contributions`` / ``winner``. Same
+        last-wins-with-declared-replaces policy as the provider and theme
+        slots, so an outcome never depends on discovery order.
+        """
+        return self._manager.register_ui(kind, slot, contribution,
+                                         replaces=replaces)
+
 
 class ExtensionManager:
     """Manager over ``registry``: built-ins plus loaded extensions."""
@@ -377,6 +393,7 @@ class ExtensionManager:
         self._claims = {}
         self._themes = {}
         self._theme_replaces = {}
+        self._ui = None      # ui_slots.UISlotRegistry, created on first use
         for name in self._rg.TRANSLATORS:
             self._providers[name] = self._rg.TRANSLATORS[name]
 
@@ -418,6 +435,25 @@ class ExtensionManager:
         if replaces:
             self._theme_replaces[replaces] = name
         return name
+
+    def register_ui(self, kind, slot, contribution, replaces=None):
+        """Register a UI contribution into the ``ui_slots`` registry.
+
+        Lazily creates the registry so a headless caller that never touches
+        UI slots pays nothing for it. Fail-open: a bad ``kind``/``slot``
+        raises from ``ui_slots.UISlotRegistry.add`` and the caller keeps the
+        built-in surface, which is the same contract the provider and theme
+        registrations use.
+        """
+        if self._ui is None:
+            from qtranslate.ui_slots import UISlotRegistry
+            self._ui = UISlotRegistry()
+        return self._ui.add(kind, slot, contribution, replaces=replaces)
+
+    @property
+    def ui_slots(self):
+        """The UI slot registry, or None until something registers a slot."""
+        return self._ui
 
     def providers(self):
         """All registered providers, including retired-host ones."""
