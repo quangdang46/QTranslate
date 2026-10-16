@@ -1,11 +1,19 @@
 """Native Win32 main window — RE 1:1 of QTranslate DLG 129 via pywin32.
 
 Same controls as the exe dialog (340x201 DLUs, 17 controls):
-  RichEdit50W id1017 (source) / id1018 (result),
+  RichEdit50W id1000 (source) / id1017 (result) / id1018 (aux, third pane),
   ComboBox id1001 (src lang) / id1002 (tgt lang),
-  Buttons: New 1021, menu 1022, swap 1015, Translate 1004,
-           Fav 1029, Speech-radio 1030, Play 1027/1028, help 1009,
-  Separators 1134/1135, Dl service strip 108.
+  Buttons: help 1009, New 1021, menu 1022, swap 1015, Translate 1004,
+           Fav 1029, Speech-radio 1030, Play 1027 (src) / 1028 (result),
+  SysLink 1161 "Info", separators 1134/1135.
+
+  ID MAPPING CORRECTED 2026-10-16. This file claimed "RE 1:1" while using
+  the source pane's id as 1017 and the result pane's as 1018 -- the two were
+  off by one. DLG129 has THREE RichEdits and the two Play buttons settle
+  which is which: 1027 sits inside the top pane (1000), so 1000 is the
+  SOURCE; 1028 sits inside the middle pane (1017), so 1017 is the RESULT.
+  1018 is the small bottom pane, which native's docs do not name. See
+  docs/review/MAIN_WINDOW_LAYOUT_DIVERGED_2026-10-16.md.
 Backend reuses qtranslate.services + config/history/locale/theme.
 
 Run: uv run --with pywin32 -- python -I qtranslate/win32app.py
@@ -32,8 +40,11 @@ APP_TITLE = "QTranslate"
 W, H = 595, 376
 
 # control ids from DLG 129
-ID_SRC = 1017
-ID_OUT = 1018
+# DLG129's real ids (corrected 2026-10-16; see the module docstring).
+ID_SRC = 1000          # the top, largest pane
+ID_OUT = 1017          # the middle pane
+ID_AUX = 1018          # the small bottom pane -- native-only, see note
+ID_INFO = 1161         # SysLink "Info" strip
 ID_SRC_LANG = 1001
 ID_TGT_LANG = 1002
 ID_NEW = 1021
@@ -95,7 +106,7 @@ class MainWindow:
         self.svc_link = self._child("Static", "Google", 58, 6, 60, 18,
                                      1103, win32con.SS_NOTIFY)
         self._child("Button", ":", 496, 4, 22, 22, ID_MENU)
-        # source pane (id1017) + result pane (id1018)
+        # source pane (id1000) + result pane (id1017)
         self.src = self._child("RichEdit50W", "", 4, 30, 514, 120, ID_SRC,
                                win32con.ES_MULTILINE | win32con.ES_AUTOVSCROLL
                                | win32con.WS_VSCROLL)

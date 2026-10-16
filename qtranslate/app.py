@@ -4,7 +4,9 @@ Faithful to DLG 129 in QTranslate.exe `.rsrc` (340x201, 17 controls):
   - service icon row (custom Dl control id108 — here as small buttons
     with service names; same function: click = switch + re-translate,
     cf. FUN_0045CDBA service switcher)
-  - source RichEdit (id1017) / result RichEdit (id1018) with separator
+  - source RichEdit (id1000) / result RichEdit (id1017) with separator
+    (native also has a third small pane, id1018 -- not built here; see
+    docs/review/MAIN_WINDOW_LAYOUT_DIVERGED_2026-10-16.md)
     statics (id1134/1135)
   - lang row: src ComboBox (id1001) + swap `<` (id1015) + tgt ComboBox
     (id1002) + Translate (id1004)
@@ -507,9 +509,11 @@ class App:
                            lambda e: self.open_service_page())
         tk.Button(nav, text="⋮", width=3,
                   command=self.show_nav_menu).pack(side="right", padx=1)
-        # source pane (id1017) + mic/headphone overlay at right edge,
-        # exactly like the native main window (mic above headphone,
-        # top-right of the source pane)
+        # source pane (id1000) + mic/headphone overlay at right edge.
+        # The id here used to read 1017; DLG129 has three RichEdits and the
+        # two Play buttons settle the mapping -- 1027 sits inside the top
+        # pane, so the top pane (1000) is the source.
+        # docs/review/MAIN_WINDOW_LAYOUT_DIVERGED_2026-10-16.md
         srcfrm = tk.Frame(self.root, bg="white")
         srcfrm.pack(fill="x", padx=4)
         self._panes = getattr(self, "_panes", {})
@@ -634,7 +638,11 @@ class App:
         self.suggest.bind("<Button-1>",
                           lambda e: self.accept_suggestion())
         self._suggestions = []
-        # result pane (id1018) + headphone overlay bottom-right
+        # result pane (id1017) + headphone overlay bottom-right.
+        # Was labelled 1018; that is DLG129's small BOTTOM pane, which this
+        # port does not build. Native also has no side column for these
+        # buttons -- they overlay the pane.
+        # docs/review/MAIN_WINDOW_LAYOUT_DIVERGED_2026-10-16.md
         outfrm = tk.Frame(self.root, bg="white")
         outfrm.pack(fill="both", expand=True, padx=4)
         self._panes["mid"] = outfrm

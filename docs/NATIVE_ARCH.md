@@ -72,7 +72,7 @@ Appearance, Advanced, Updates, Exceptions.
 
 | ID | Title | Content | Port status |
 |---|---|---|---|
-| 129 | QTranslate (main, 340x201, 17 ctls) | RichEdit 1017/1018, combos 1001/1002, swap 1015, Translate 1004, New 1021, menu 1022, Fav 1029, Speech-radio 1030, Play 1027/1028, help 1009, separators 1134/1135, Dl strip 108 | 1:1 (placement blob, help.txt, ServicesOrder) |
+| 129 | QTranslate (main, 340x201, 17 ctls) | RichEdit 1000/1017/1018, combos 1001/1002, swap 1015, Translate 1004, New 1021, menu 1022, Fav 1029, Speech-radio 1030, Play 1027/1028, help 1009, SysLink 1161, separators 1134/1135, Dl strip 108 | 1:1 (placement blob, help.txt, ServicesOrder) |
 | 133 | About | 2 SysLinks + OK | dedicated window |
 | 154 | Options | 9-page frame + OK/Cancel(snapshot)/Apply | 9/9 live on Options.json |
 | 162 | Virtual keyboard | empty (keys drawn dynamic) | 3 rows + JCUKEN per LanguageKeyboard |
@@ -1647,3 +1647,22 @@ Each user action = a `Task` object posted to a worker thread:
 `ServiceHeader`/`RequestData`/`ResponseData`, capability bitmask
 (TRANSLATE=1, DETECT=2, LISTEN=4, DICTIONARY=8), limits (URI 1800 / source 5000 chars).
 17 providers; see `qtranslate/services/`.
+
+## 2026-10-16 correction — DLG129's three text panes
+
+The row above listed `RichEdit 1017/1018`; the template has **three**
+RichEdits (`1000`, `1017`, `1018`), and the port had labelled the two it
+builds as `1017` (source) / `1018` (result), which is off by one.
+`tools/dlg_parse.py` (fixed 2026-10-16: the control id is 4 bytes, not 2)
+resolves it — the two Play buttons settle which pane is which, because
+`Play` beside a pane means "listen to *this* pane":
+
+| Pane | Role | Evidence |
+|---|---|---|
+| `1000` | **source** (top, cy=66) | `Play 1027` sits inside it (y=64, pane spans 16–82) |
+| `1017` | **result** (middle, cy=51) | `Play 1028` sits inside it (y=134, pane spans 101–152) |
+| `1018` | third, small (bottom, cy=27) | no control inside it; unnamed in the docs here |
+
+The port builds **two** panes and does not build `1018`; it also places
+mic/listen in a side column where native overlays them on the pane. See
+`docs/review/MAIN_WINDOW_LAYOUT_DIVERGED_2026-10-16.md`.

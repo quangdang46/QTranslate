@@ -156,11 +156,15 @@ ck("...and the four icon buttons share WS_EX_TRANSPARENT-ish 0x20",
 # --- 4. cross-check against the port's independent id table -------------
 # This is what turns a doc claim into evidence: win32app.py's ids were
 # written from native separately, so agreement is real corroboration.
+# The pane mapping was CORRECTED 2026-10-16: the source pane is 1000 and the
+# result pane 1017, decided by which pane each Play button sits inside
+# (§7 below). It used to be (1017: ID_SRC, 1018: ID_OUT), which was off by
+# one and made win32app.py build controls with native's wrong ids.
 PORT_IDS = {
-    1017: "ID_SRC", 1018: "ID_OUT", 1001: "ID_SRC_LANG", 1002: "ID_TGT_LANG",
+    1000: "ID_SRC", 1017: "ID_OUT", 1001: "ID_SRC_LANG", 1002: "ID_TGT_LANG",
     1021: "ID_NEW", 1022: "ID_MENU", 1015: "ID_SWAP", 1004: "ID_GO",
     1029: "ID_FAV", 1030: "ID_SPEECH", 1027: "ID_PLAY_SRC",
-    1028: "ID_PLAY_OUT", 1009: "ID_HELP",
+    1028: "ID_PLAY_OUT", 1009: "ID_HELP", 1018: "ID_AUX",
 }
 for cid, name in sorted(PORT_IDS.items()):
     m = re.search(r"^%s\s*=\s*(\d+)" % name, WSRC, re.M)
@@ -190,6 +194,47 @@ ck("all 19 RT_DIALOGs parse with a sane control count",
        dlg_parse.parse_template(cur, dialogs[d][0] - rva_base)[0]["cdit"]
        >= 2 for d in dialogs),
    "a control-count of 0/1 means the parser lost alignment")
+
+
+# --- 7. which pane is SOURCE and which is RESULT (settled by Play) ------
+# The 2026-10-10 table never resolved this, and the port guessed: it called
+# 1017 the source and 1018 the result, which is off by one -- and win32app.py
+# built real controls with those wrong ids while claiming "RE 1:1".
+# The two Play buttons disambiguate it, because "Play" beside a pane means
+# "listen to THIS pane" and native has a listen action per pane.
+def _pane_containing(ctrl_id):
+    for p in (1000, 1017, 1018):
+        pp = by_id[p]
+        cc = by_id[ctrl_id]
+        if pp["y"] <= cc["y"] < pp["y"] + pp["cy"]:
+            return p
+    return None
+
+ck("Play 1027 sits inside pane 1000", _pane_containing(1027) == 1000,
+   str(_pane_containing(1027)))
+ck("Play 1028 sits inside pane 1017", _pane_containing(1028) == 1017,
+   str(_pane_containing(1028)))
+ck("...so 1000 is the SOURCE pane (the top, largest one)",
+   by_id[1000]["y"] < by_id[1017]["y"] and by_id[1000]["cy"] > by_id[1017]["cy"])
+ck("...and 1017 is the RESULT pane (the middle one)",
+   by_id[1017]["y"] < by_id[1018]["y"] < by_id[1017]["y"] + by_id[1017]["cy"] + 40
+   and by_id[1018]["y"] > by_id[1017]["y"])
+ck("...and 1018 is a THIRD, smaller pane the port does not build",
+   by_id[1018]["cy"] < by_id[1000]["cy"])
+
+# The port's own label, now pinned to the right ids.
+w32 = io.open(os.path.join(ROOT, "qtranslate", "win32app.py"),
+              encoding="utf-8").read()
+ck("win32app.py now names 1000 as the source pane",
+   re.search(r"^ID_SRC = 1000", w32, re.M) is not None,
+   "it used to be 1017")
+ck("win32app.py now names 1017 as the result pane",
+   re.search(r"^ID_OUT = 1017", w32, re.M) is not None,
+   "it used to be 1018")
+ck("win32app.py records the third pane as native-only",
+   re.search(r"^ID_AUX = 1018", w32, re.M) is not None)
+ck("...and the correction is documented where a reader will look",
+   "ID MAPPING CORRECTED 2026-10-16" in w32)
 
 if fails:
     print("FAIL %d/%d" % (len(fails), n[0]))
