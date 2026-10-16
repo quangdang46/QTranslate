@@ -52,3 +52,10 @@ Two things this inventory does **not** claim:
   screenshots in this pass.
 - The tray menu's live `X: / Y:` cursor readout (visible in 2126) has no
   port counterpart — a real gap found by this inventory, not yet fixed.
+
+> **RESOLVED 2026-10-16 — it is not a gap.** See
+> `TRAY_CURSOR_READOUT_CLOSED_2026-10-16.md`: the spec's tray menu carries no
+> such element (its `.bar` footer is empty in the markup), the binary holds no
+> `X: %d` / `Y: %d` format string, and the coordinates in that capture are a
+> mouse-mode **debug overlay** the analyst's session happened to be showing.
+> The port's tray needs no change.
