@@ -56,3 +56,43 @@ defect, and it does not become evidence of anything by being retried.
 
 **This directory still received no files.** The G9 row stays `UNKNOWN` and
 the Gate stays `BLOCKED (1)`.
+
+## 2026-10-16 — re-verified on a different host: the reason changed
+
+The two attempts above were recorded on **arm64 Darwin 25.4.0**, where a
+32-bit i386 PE32 cannot execute at all and there was no `wine`. That is no
+longer this host. Re-checked rather than inherited:
+
+| Side | Then (arm64 Darwin) | Now (AMD64 Windows 11) |
+|---|---|---|
+| Native `QTranslate.6.10.0.exe` | `PE32 i386`, unrunnable, no wine | **`PE32 i386` and `C:\Windows\SysWOW64` is present** — WoW64 runs 32-bit x86 natively. The installed copy at `%ProgramFiles(x86)%\QTranslate\QTranslate.exe` is the **same 1,462,272-byte binary** (sha256 `f35a3bc8e09e217130ff97efe85ba02bd86573b2e0796b003526604454338227`), so there is no x64 rebuild to wait for. |
+| Port | Tk rendered; `screencapture` denied by Screen Recording | Tk renders; the capture ban is now an **explicit operator instruction** ("đừng dùng tool chụp hình"), not an OS permission. |
+
+So G9's part (b) is blocked **by policy, not by capability** — a materially
+different statement, and worth having right, because the fix for each is
+different. The arm64/wine reasoning above is kept for the record but must
+not be read as current.
+
+`tests/regress_g9_part_a_complete.py` pins the machine facts (the PE32
+machine type, SysWOW64's presence) so the next reader cannot inherit the
+stale reason again.
+
+### What would unblock it
+
+Per the operator's own analysis (2026-10-16), if G9 part (b) is ever wanted:
+
+- **A — Windows VM, separate from the working desktop.** The port is a
+  ordinary Tkinter Win32 app that depends on `user32` (mouse capture),
+  `OLEACC` (cursor text) and the registry, so a Linux container with Xvfb
+  cannot host it. A VM keeps the keyboard/mouse and desktop of the working
+  machine untouched, which is the requirement.
+- **B — Docker + Xvfb.** Lighter, but only viable if the Windows APIs are
+  stubbed or the test is restricted to pure-Tk surfaces. Rejected for this
+  app on dependency grounds.
+
+Either way the capture must come from `tools/g9_screenshot_diff.py capture`
+on a genuine native window and a genuine port window, with matching
+`ui_state`, `input` **and** `size_origin` (added 2026-10-16).
+
+Until then: **no files here**, G9 stays `UNKNOWN`, the Gate stays
+`BLOCKED (1)`.
