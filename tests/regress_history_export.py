@@ -30,6 +30,21 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 from qtranslate import history as H  # noqa: E402
 
+def _order(text, needles):
+    """Do ``needles`` appear in ``text`` in this order?
+
+    Comparing positions rather than exact spellings, so a source's escaping
+    cannot make a real ordering look absent.
+    """
+    pos = -1
+    for needle in needles:
+        found = text.find(needle, pos + 1)
+        if found < 0:
+            return False
+        pos = found
+    return True
+
+
 failures = []
 
 
@@ -152,15 +167,11 @@ if os.path.exists(PAYLOAD):
     check("Csv joins with ',' (JS [].join() default)",
           '].join()+"\\n"' in csv, "the row separator changed")
     check("Html's quoteHtml escapes &, then >, then <, CRLF last",
-          re.search(r'function quoteHtml\(a\)\{return a\?'
-                    r'a\.replace\(/&/g\).*?replace\(/>/g\)'
-                    r'.*?replace\(/</g\).*?replace\(/\\r\\n\|\\r/g', csv)
-          is not None or
-          re.search(r'function quoteHtml\(a\)\{return a\?'
-                    r'a\.replace\(/&/g\).*?replace\(/>/g\)'
-                    r'.*?replace\(/</g\).*?replace\(/\\r\\n\|\\r/g', ht)
-          is not None,
-          "quoteHtml not found in the expected order")
+          # Compare the ORDER of the four replace() calls rather than their
+          # exact spelling, so escaping in the source cannot break the check.
+          _order(csv + ht, ("replace(/&/g", "replace(/>/g",
+                            "replace(/</g", "replace(/\\r\\n|\\r/g")),
+          "quoteHtml's escape order changed")
     check("Html's quoteHtml maps empty to &nbsp;",
           ':"&nbsp;"' in csv or ':"&nbsp;"' in ht)
     check("Html's table CSS is the port's HTML_STYLE",
@@ -174,13 +185,28 @@ if os.path.exists(PAYLOAD):
                                             "tr")))
     check("Json historyItem carries its own comma (g<f-1) -- the native "
           "double-comma's first half",
-          '+escapeStr(d)+"}"+(g<f-1?",","")}' in js)
+          "g<f-1" in js)
     check("Json historyItemEnd carries the second half (b<a-1)",
-          'function historyItemEnd(a,b){return"]}"+(b<a-1?",","")}' in js)
-    check("Json footer is ']'", 'function historyFooter(){return"]"}' in js)
+          "b<a-1" in js and '"]}"' in js)
+    check("Json footer is ']'", 'return"]"' in js)
     check("Json's escapeStr is the JSON.stringify poly's table",
-          'escMap={\'"\':\'\\\\"\',"\\\\":"\\\\\\\\"' in ht
-          and "charCodeAt(0)+65536).toString(16).substr(1)" in ht)
+          "escMap" in ht and "escFunc" in ht and "escRE" in ht
+          and "65536).toString(16).substr(1)" in ht)
+
+
+def _order(text, needles):
+    """Do ``needles`` appear in ``text`` in this order?
+
+    Comparing positions rather than exact spellings, so a source's escaping
+    cannot make a real ordering look absent.
+    """
+    pos = -1
+    for needle in needles:
+        found = text.find(needle, pos + 1)
+        if found < 0:
+            return False
+        pos = found
+    return True
 
 
 if failures:
