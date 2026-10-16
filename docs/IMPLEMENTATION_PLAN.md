@@ -300,3 +300,23 @@ bundles the runtime and the extension vendors its own deps (D17).
 - **No phase claims success via a single green run** (`TEST_STRATEGY.md`).
 - Each phase produces a short status note appended to `CHANGELOG.md` when code
   lands.
+
+---
+
+## 2026-10-16 — bead status after the headless pass
+
+Four beads tracked the remaining work. One is closed; the other three have
+their port-side halves done and are blocked on decisions rather than code.
+
+| Bead | Status | What is left, and why it is not code |
+|---|---|---|
+| ~~tray `X:/Y:` readout~~ | **CLOSED — it was never a feature** | The spec's tray menu has no such element (its `.bar` footer is empty in the markup), the binary has no `X: %d`/`Y: %d` format string, and the coordinates in the reference capture are a mouse-mode **debug overlay** the analyst's session happened to be showing. A right-click menu is modal — a cursor coordinate could be read once, then never update, so it has no function. `TRAY_CURSOR_READOUT_CLOSED_2026-10-16.md`. |
+| G9 (`qt-fj5`) | **Part (a) verified complete; part (b) blocked, and the reason changed** | Part (a) is re-derived by `regress_g9_part_a_complete.py` (19) — font, control classes, ids, control count, and the port's DU→px. Part (b) was recorded as blocked because the native binary is i386 and the host was arm64 without wine. **This host is AMD64 Windows with `SysWOW64` present, and the installed `QTranslate.exe` is the same 1,462,272-byte PE32** — so native is runnable here via WoW64, and the honest block is the screenshot ban. Policy, not capability. A waiver would close the row, but the validator never assigns one; it takes a human, and the Gate arithmetic depends on that. |
+| Phase 7 (`qt-o7p`) | **Port-side half landed** | `qtranslate/ui_slots.py` publishes menu/panel/popup slots with names derived from native (menu ids are the locale pack's `Menus[].Id`; panels are the three `Show*Pane` toggles), wired through `ExtensionManager.register_ui`/`ExtensionAPI.register_ui` with the same declared-`replaces` conflict policy as providers and themes (`regress_ui_slots.py`, 26). The **UI split into 6 window classes is deliberately not started**: the user has twice said the UI is settled, and with the screenshot ban there is no verification signal for a blind restructure. |
+| Phase 8 (`qt-3ro`) | **D17 verified; only the bundler choice remains** | `regress_extension_vendored_dep.py` (11) proves an extension can vendor its own dependency on a real filesystem: the import resolves during load, the folder leaves `sys.path`, the dep is not left under its plain name, the entrypoint stays namespaced, and a broken extension leaves the built-ins intact. What remains is choosing a bundler and producing a bundle — a product decision the plan already records as "not asked yet", and one an agent should not make alone. |
+
+**What this pass did close**, none of which needed a decision: 29 suites added this pass
+(117 regress suites; 119 total including ui_match and smoke_dict, all exit-0), 6 real port bugs found in code
+that looked wired (Bing/Promt/Baidu session scrapes, OCR part order and
+language coverage, Yandex spell's POST, the TTS encoders, youdao's salt), and
+3 known-answer vectors that had been pinning pre-fix behaviour.
