@@ -92,6 +92,59 @@ ck("image bytes are embedded verbatim",
 ck("overlay flag is a lowercase bool string",
    b'name="isOverlayRequired"\r\n\r\nfalse\r\n' in body, "overlay")
 
+# --- the part ORDER: file first, then the fields -----------------------
+# Native's format strings are (0x529e10) the FILE part, (0x529e90) one
+# FIELD part per `%s`, (0x529ed8) the closer. The port used to emit every
+# field first and the file last -- a body the native client never sends.
+# This was the bug; the checks above all passed with the wrong order.
+_first = body.find(part_delim)
+_i_file = body.find(b'name="file"')
+_i_apikey = body.find(b'name="apikey"')
+_i_lang = body.find(b'name="language"')
+ck("the FILE part comes first (native 0x529e10 order)",
+   0 < _i_file < _i_apikey, "file@%d apikey@%d" % (_i_file, _i_apikey))
+ck("apikey precedes language", 0 < _i_apikey < _i_lang,
+   "apikey@%d language@%d" % (_i_apikey, _i_lang))
+ck("body STARTS with the file part (no leading field)",
+   body.startswith(part_delim + b'\r\nContent-Disposition: form-data; '
+                                b'name="file"'),
+   repr(body[:60]))
+
+# --- the format strings themselves, read from the image ---------------
+EXE = os.path.join(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))), "docs", "review", "artifacts",
+    "QTranslate.6.10.0.exe")
+if os.path.exists(EXE):
+    raw = io.open(EXE, "rb").read()
+    # the aligned offsets measured 2026-10-16 (2-byte aligned wide reads)
+    FILE_PART = ('Content-Disposition: form-data; name="%s"; filename="%s"'
+                 "\r\nContent-Type: application/octet-stream\r\n\r\n")
+    FIELD_PART = 'Content-Disposition: form-data; name="%s"\r\n\r\n%s\r\n'
+    for label, lit in (("file part", FILE_PART), ("field part", FIELD_PART),
+                       ("closer", "Boundary%08X--\r\n"),
+                       ("header",
+                        "boundary=----Boundary%08X\r\n")):
+        wide = lit.replace("\r\n", "\r\n").encode("utf-16-le")
+        ck("image contains the %s format string" % label,
+           wide in raw or lit.encode("ascii") in raw, lit[:50])
+    # and the 4-vs-6 dash rule. The part delimiters live in the ASCII
+    # copies; the header literal is the WIDE one -- measured 2026-10-16 at
+    # the aligned offsets 1216016 (delimiter) and 1216310 (header).
+    _hdr = "boundary=----Boundary%08X".encode("utf-16-le")
+    _delim = "------Boundary%08X".encode("ascii")
+    ck("header literal has FOUR dashes", _hdr in raw)
+    ck("part delimiter literal has SIX dashes", _delim in raw)
+    _dashes = 0
+    if _m:
+        _dashes = re.match(r"(-+)", _m.group(0).split("boundary=")[1])
+        _dashes = len(_dashes.group(1)) if _dashes else 0
+    ck("the port's header boundary is 4 dashes", _dashes == 4,
+       repr(_m.group(0) if _m else None))
+    ck("the port's part delimiter is header + 2 dashes (6 total)",
+       part_delim.decode() == "------" + "Boundary" + hexid, part_delim)
+else:
+    ck("image present for the format-string check", False, "artifact absent")
+
 if fails:
     print("FAIL %d" % len(fails))
     for f in fails:

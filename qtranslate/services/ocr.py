@@ -16,29 +16,54 @@ OCR_HOST = "https://api.ocr.space/parse/image"
 _UA = {"User-Agent": "QTranslate-re/1.0"}
 
 
+def _native_multipart(image_bytes: bytes, api_key: str, lang: str,
+                      overlay: bool) -> tuple[bytes, str]:
+    """Build the multipart body the way native's format strings do.
+
+    The image's `.rdata` carries the builder verbatim, as three adjacent
+    wide strings (all found, offsets recorded in
+    `tests/regress_ocr_multipart.py`)::
+
+        ------Boundary%08X\r\nContent-Disposition: form-data; name="%s"; filename="%s"\r\nContent-Type: application/octet-stream\r\n\r\n
+        \r\n------Boundary%08X\r\nContent-Disposition: form-data; name="%s"\r\n\r\n%s\r\n
+        ------Boundary%08X--\r\n
+
+    so the **file part comes first** (with a filename), then one part per
+    plain field, then the closing boundary. The port previously emitted
+    every field first and the file last -- a body the native client never
+    sends. `Content-Type: multipart/form-data; boundary=------Boundary…`
+    is the fourth literal, matching the `------Boundary` prefix used
+    throughout.
+    """
+    tag = uuid.uuid4().int & 0xFFFFFFFF
+    # The header literal (0x529ef0, verified 2026-10-16 against the aligned
+    # offset 1216310) is `boundary=----Boundary%08X` -- FOUR dashes. The
+    # part delimiters are `------Boundary%08X` -- SIX. That is 2 header
+    # dashes + the 4-dash token, deliberately not equal.
+    marker = "----Boundary{:08X}".format(tag)
+    delim = "--" + marker
+    body = (
+        delim + '\r\nContent-Disposition: form-data; name="file"; '
+        'filename="capture.png"\r\nContent-Type: application/octet-stream'
+        "\r\n\r\n"
+    ).encode() + image_bytes + b"\r\n"
+    for name, value in (("apikey", api_key), ("language", lang),
+                        ("isOverlayRequired",
+                         "true" if overlay else "false")):
+        body += ("\r\n" + delim + '\r\nContent-Disposition: form-data; '
+                 'name="' + name + '"\r\n\r\n' + value + "\r\n").encode()
+    body += (delim + "--\r\n").encode()
+    return body, marker
+
+
 def ocr_space(image_bytes: bytes, api_key: str = "helloworld",
               lang: str = "eng", overlay: bool = False) -> dict:
     """Upload image bytes, return parsed JSON (matches native multipart layout)."""
-    boundary = "----Boundary{:08X}".format(uuid.uuid4().int & 0xFFFFFFFF)
-    parts = []
-    fields = {"apikey": api_key, "language": lang,
-              "isOverlayRequired": "true" if overlay else "false"}
-    for k, v in fields.items():
-        parts.append(
-            f"------Boundary{boundary.split('----Boundary')[1]}\r\n"
-            f'Content-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'
-            .encode())
-    parts.append(
-        f"------Boundary{boundary.split('----Boundary')[1]}\r\n"
-        'Content-Disposition: form-data; name="file"; filename="capture.png"\r\n'
-        "Content-Type: application/octet-stream\r\n\r\n".encode()
-        + image_bytes + b"\r\n")
-    parts.append(f"------Boundary{boundary.split('----Boundary')[1]}--\r\n".encode())
-    body = b"".join(parts)
+    body, marker = _native_multipart(image_bytes, api_key, lang, overlay)
     req = urllib.request.Request(
         OCR_HOST, data=body,
         headers={**_UA,
-                 "Content-Type": f"multipart/form-data; boundary={boundary}"})
+                 "Content-Type": "multipart/form-data; boundary=" + marker})
     with common.http_open(req) as r:
         return json.loads(r.read().decode("utf-8"))
 

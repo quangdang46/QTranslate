@@ -991,11 +991,20 @@ class App:
     def default_source_text(self):
         """Default source-pane text: version line + full help.txt.
 
+        The header is native's ``%s %s %s`` format (`FUN_0042F2CC`) with its
+        three fields ``QTranslate`` / ``Version `` / ``6.10.0``. The middle
+        field is a **resource string that ends in a space** (recovered from
+        the image's UTF-16 string table, immediately after ``\\x08About``:
+        ``"Version "``), and the format joins with a space too -- so the
+        rendered line carries **two** spaces before the version number:
+        ``QTranslate Version  6.10.0``. Collapsing them to one (as this did
+        until 2026-10-16) reads better and is not what native shows.
+
         Verified side-by-side vs the native window: it shows the whole
         help.txt (Global hotkeys + Main window hotkeys + mouse modes +
         Actions), not just 4 lines.
         """
-        lines = ["QTranslate Version 6.10.0", ""]
+        lines = ["QTranslate Version  6.10.0", ""]
         try:
             with open("C:/Program Files (x86)/QTranslate/Locales/English/"
                       "help.txt", encoding="utf-8-sig") as f:
@@ -3627,10 +3636,22 @@ class App:
             except Exception:
                 _table = []
             _code = _table[_oi] if 0 <= _oi < len(_table) else "eng"
+            # ocr.space's own 3-letter language codes, which the image
+            # carries as one wide string: ara bul chs cht hrv cze dan dut
+            # eng fin fre ger gre hun ita jpn kor nor pol por rus spa swe
+            # tur (22 values, verified by tests/regress_ocr_languages.py).
+            # Mapped from Google's 2-letter codes; an unmapped language
+            # falls back to eng as native does for a language it lacks.
             _lang = {"en": "eng", "vi": "vie", "fr": "fre",
                      "de": "ger", "es": "spa", "ru": "rus",
                      "ja": "jpn", "ko": "kor",
-                     "zh-CN": "chs"}.get(_code, "eng")
+                     "zh-CN": "chs", "zh-TW": "cht", "ar": "ara",
+                     "bg": "bul", "hr": "hrv", "cs": "cze",
+                     "da": "dan", "nl": "dut", "fi": "fin",
+                     "el": "gre", "hu": "hun", "it": "ita",
+                     "no": "nor", "pl": "pol", "pt": "por",
+                     "sv": "swe", "tr": "tur",
+                     "zh": "chs"}.get(_code, "eng")
             _savep = _cfg.get("Ocr", {}).get("SaveImagePath", "")
             if _savep:
                 try:
