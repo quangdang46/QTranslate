@@ -89,9 +89,10 @@ def normalize(body: str) -> list:
 
 
 def head_source(rel: str, func: str, cls: str = None):
-    """The named function's body as it exists in git HEAD."""
+    """The named function's body as it existed BEFORE the split."""
+    rev = ("%s:" % _PRE_SPLIT) if _PRE_SPLIT else "HEAD:"
     proc = subprocess.run(
-        ["git", "show", "HEAD:%s" % rel.replace("\\", "/")],
+        ["git", "show", "%s%s" % (rev, rel.replace("\\", "/"))],
         cwd=ROOT, capture_output=True, encoding="utf-8")
     if proc.returncode:
         return None
@@ -126,9 +127,33 @@ def extracted_method(cls_name: str, inner: str):
 # Every nested closure the original window defined must exist in the
 # extracted class, with the same body. This is the check that catches a
 # rewritten split: a renamed helper, an invented label, a dropped guard.
-HEAD_APP = subprocess.run(["git", "show", "HEAD:qtranslate/app.py"],
-                          cwd=ROOT, capture_output=True,
-                          encoding="utf-8").stdout or ""
+#
+# The baseline is the commit IMMEDIATELY BEFORE the split, resolved by
+# searching for the split commit's subject and taking its parent -- not by
+# counting back a fixed number of commits (which would silently compare
+# against a body that had already moved once a few more commits land, the
+# exact staleness this repo hit with its known-answer vectors) and not by
+# `HEAD` (which stops being the pre-split state the moment the split is
+# committed). If it cannot be resolved, the verbatim checks say SKIPPED
+# rather than passing against nothing.
+def _pre_split_rev():
+    log = subprocess.run(["git", "log", "--format=%H%x00%s", "-n", "200"],
+                         cwd=ROOT, capture_output=True,
+                         encoding="utf-8").stdout or ""
+    for entry in log.splitlines():
+        sha, _, subject = entry.partition("\x00")
+        if "HistoryView extracted" in subject:
+            return sha + "^"
+    return None
+
+
+_PRE_SPLIT = _pre_split_rev()
+HEAD_APP = ""
+if _PRE_SPLIT:
+    _proc = subprocess.run(["git", "show", "%s:qtranslate/app.py" % _PRE_SPLIT],
+                           cwd=ROOT, capture_output=True,
+                           encoding="utf-8")
+    HEAD_APP = _proc.stdout or ""
 if HEAD_APP:
     old = next(x for x in ast.walk(ast.parse(HEAD_APP))
                if isinstance(x, ast.FunctionDef)
