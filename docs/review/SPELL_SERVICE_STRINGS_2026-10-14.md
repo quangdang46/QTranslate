@@ -79,6 +79,28 @@ bool FUN_0042c968(undefined4 *param_1, int *param_2)
    text travels as a `?text=` GET query (the port's form) or as a POST
    body. Recorded as open, not guessed.
 
+> **CLOSED 2026-10-16 — by reading `.rdata`, not the decompile.**
+> Native **POSTs a form body**. The image holds, in this order:
+>
+> ```
+> text=                                              @1172340
+> Accept-Encoding: gzip,deflate\r\nAccept-Charset: utf-8\r\n
+> Content-Type: application/x-www-form-urlencoded\r\n
+> /services/spellservice.json/checkText              @1172352
+> speller.yandex.net
+> pos  len  s
+> ```
+>
+> Three facts settle it without tracing the body register: the literal
+> `text=` sits immediately **before** (and apart from) the form-urlencoded
+> header; the path carries **no `?`**; and `pos`/`len`/`s` — the response's
+> suggestion fields — follow the host, confirming this is the spell block.
+> A query-less path + a urlencoded header + a bare `text=` is a form body.
+> `yandex_spell()` now POSTs `text=…&lang=…`; pinned by
+> `tests/regress_spell_request.py` (15) and the rewritten
+> `tests/regress_spell_headers.py` (11), which had been asserting the GET
+> form this document left open.
+
 ## Consequence for the port
 
 * `qtranslate/services/spell.py` docstring: the "not present verbatim"
@@ -86,5 +108,6 @@ bool FUN_0042c968(undefined4 *param_1, int *param_2)
   body-shape question.
 * `yandex_spell()` now sends the verbatim three headers (plus its
   User-Agent), instead of UA only.
-* The row stays `VERIFIED` for the strings/headers; the body shape is the
-  one remaining honest unknown.
+* **2026-10-16:** the body shape is closed as POST — the port's GET was the
+  one remaining unknown, so nothing is left open on this row.
+* The row stays `VERIFIED` for the strings/headers.
