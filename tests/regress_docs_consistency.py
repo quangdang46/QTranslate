@@ -28,12 +28,16 @@ def ck(name, cond, detail=""):
         fail.append(name + (" -- " + detail if detail else ""))
 
 
-def run_tool(cwd, repo=None):
-    """Run the tool from ``cwd``; ``repo`` overrides where it resolves
-    module/citation names (the tool derives that from its own location)."""
+def run_tool(cwd, repo=None, docs=None):
+    """Run the tool from ``cwd``. ``repo`` overrides where it resolves
+    module/citation names; ``docs`` overrides the corpus it scans. Both
+    defaults come from the tool's own location, which is why a scratch tree
+    needs them set explicitly."""
     env = dict(os.environ)
     if repo:
         env["QTRANSLATE_REPO"] = repo
+    if docs:
+        env["QTRANSLATE_DOCS"] = docs
     p = subprocess.run([sys.executable, "-I", "docs_consistency.py"],
                        cwd=cwd, capture_output=True, text=True, env=env)
     return p.returncode, p.stdout + p.stderr
@@ -63,7 +67,7 @@ try:
                           "*string/structural* match\nSee "
                           "`tests/regress_DOES_NOT_EXIST.py` for details.")
     io.open(target, "w", encoding="utf-8").write(TEXT)
-    rc, out = run_tool(tmp_tools)
+    rc, out = run_tool(tmp_tools, REPO, os.path.join(tmp, "docs"))
     ck("a dead test citation is reported",
        "dead-test" in out and "regress_DOES_NOT_EXIST.py" in out, out[:300])
 
@@ -72,7 +76,7 @@ try:
                           "*string/structural* match\nSee "
                           "`qtranslate/does_not_exist.py:99` for details.")
     io.open(target, "w", encoding="utf-8").write(TEXT)
-    rc, out = run_tool(tmp_tools)
+    rc, out = run_tool(tmp_tools, REPO, os.path.join(tmp, "docs"))
     ck("a dead port citation is reported",
        "dead-port" in out and "does_not_exist.py" in out, out[:300])
 
@@ -81,16 +85,17 @@ try:
                           "*string/structural* match\nSee "
                           "`docs/review/NOT_A_REAL_DOC.md` for details.")
     io.open(target, "w", encoding="utf-8").write(TEXT)
-    rc, out = run_tool(tmp_tools)
+    rc, out = run_tool(tmp_tools, REPO, os.path.join(tmp, "docs"))
     ck("a dead doc citation is reported",
        "dead-doc" in out and "NOT_A_REAL_DOC.md" in out, out[:300])
 
-    # a stale suite count in a living doc
-    TEXT = before.replace("*string/structural* match",
-                          "*string/structural* match\nThe suite count is 3 "
-                          "suites, all green.")
+    # a stale suite count in a living doc. Appended as its OWN paragraph:
+    # the anchor paragraph legitimately carries a historical figure
+    # ("Earlier doc said 32/32 suites") and is skipped for that reason, so
+    # injecting there would test the historical filter, not the detector.
+    TEXT = before.rstrip() + "\n\n## injected drift\n\nCurrent status: 3 suites, all green.\n"
     io.open(target, "w", encoding="utf-8").write(TEXT)
-    rc, out = run_tool(tmp_tools)
+    rc, out = run_tool(tmp_tools, REPO, os.path.join(tmp, "docs"))
     ck("a stale suite count is reported",
        "stale-suite-count" in out and "3 suites" in out, out[:300])
 
@@ -101,7 +106,7 @@ try:
         "`tests/regress_screens.py` and `qtranslate/common.py:412` and "
         "`docs/NATIVE_ARCH.md`.")
     io.open(target, "w", encoding="utf-8").write(TEXT)
-    rc, out = run_tool(tmp_tools)
+    rc, out = run_tool(tmp_tools, REPO, os.path.join(tmp, "docs"))
     ck("valid citations are not flagged", rc == 0 and "0 findings" in out,
        out[:300])
 finally:

@@ -35,8 +35,10 @@ DOCS = "docs"
 # the tool works from the repo root, from tools/, or from a copied tree.
 SELF = os.path.dirname(os.path.abspath(__file__))
 DOCS = os.path.join(os.path.dirname(SELF), DOCS)
-# Module/citation names resolve against the real repo unless overridden --
-# a scratch copy of tools/ + docs/ has no qtranslate/ or tests/ beside it.
+# Both roots are overridable so a scratch tree (used by the self-test to
+# inject drift) can point the corpus at its own copy while still resolving
+# module names against the real repo.
+DOCS = os.environ.get("QTRANSLATE_DOCS") or DOCS
 REPO = os.environ.get("QTRANSLATE_REPO") or os.path.dirname(DOCS)
 
 TEST_CITE = re.compile(r"(tests/[A-Za-z0-9_./-]+\.py)")
@@ -58,7 +60,10 @@ def md_files():
 
 
 def actual_test_count():
-    return len([f for f in os.listdir(os.path.join(REPO, "tests"))
+    tests_dir = os.path.join(REPO, "tests")
+    if not os.path.isdir(tests_dir):
+        return 0
+    return len([f for f in os.listdir(tests_dir)
                 if f.startswith("regress_") and f.endswith(".py")])
 
 
@@ -69,8 +74,13 @@ def main(argv):
         print("no markdown under docs/")
         return 2
 
-    all_tests = {f for f in os.listdir(os.path.join(REPO, "tests"))
-                 if f.endswith(".py")}
+    # A scratch repo (the selftest's) may hold only tools/ + docs/. A
+    # missing directory means "no such names exist", not a crash: every
+    # citation into the absent tree is then dangling, which is what the
+    # detector should report.
+    tests_dir = os.path.join(REPO, "tests")
+    all_tests = ({f for f in os.listdir(tests_dir) if f.endswith(".py")}
+                 if os.path.isdir(tests_dir) else set())
     # Port/tool modules live in several places; collect every .py name in the
     # repo except the artifact/review trees.
     all_ports = set()
@@ -92,7 +102,12 @@ def main(argv):
     md_paths = set()
     for p in files:
         md_names.add(os.path.basename(p))
-        md_paths.add(os.path.relpath(p, REPO).replace("\\", "/"))
+        # Citations are written relative to the repo root ("docs/review/X.md")
+        # regardless of where the scanned tree lives, so the key is the path
+        # BELOW docs/ -- never relative to the (possibly scratch) repo root.
+        rel = os.path.relpath(p, DOCS).replace("\\", "/")
+        md_paths.add("docs/" + rel)
+        md_paths.add(rel)
     # docs outside docs/ that are legitimately citable
     for extra in ("CHANGELOG.md", "README.md", "LICENSE"):
         if os.path.exists(os.path.join(REPO, extra)):
@@ -106,7 +121,13 @@ def main(argv):
 
     for path in files:
         text = open(path, encoding="utf-8", errors="replace").read()
-        rel = os.path.relpath(path, REPO).replace("\\", "/")
+        # ALWAYS the path below docs/, prefixed with "docs/" -- never
+        # relative to REPO. When DOCS lives outside REPO (the selftest's
+        # scratch corpus, or an out-of-tree checkout) a REPO-relative path
+        # becomes an absolute temp path, which then matches no
+        # "docs/CURRENT_STATE.md" allow-list and silently disables the
+        # per-document checks below.
+        rel = "docs/" + os.path.relpath(path, DOCS).replace("\\", "/")
 
         # dead test citations
         for cite in set(TEST_CITE.findall(text)):
@@ -135,9 +156,9 @@ def main(argv):
             for p in holder:
                 i = paras.index(p)
                 window.extend(paras[max(0, i - 1):i + 1])
-            external = any(re.search(r"REA|installer|vendor|third-party|"
-                                     r"their own|its own|native README",
-                                     p, re.I) for p in window)
+            external = any(re.search(
+                r"\bREA\b|installer|vendor|third-party|their own|its own|"
+                r"native README", p, re.I) for p in window)
             if external:
                 continue
             findings.append(("dead-doc", rel, cite))
@@ -153,9 +174,14 @@ def main(argv):
                    "docs/TEST_STRATEGY.md"):
             paragraphs = re.split(r"\n\s*\n", text)
             for para in paragraphs:
-                if re.search(r"earlier|historical|was\b|used to|previously|"
-                             r"as of \d{4}-\d{2}-\d{2}|doc said", para,
-                             re.I):
+                # Only skip a paragraph that marks its figure as historical
+                # in so many words -- a bare past-tense verb ("was last
+                # green") appears all over this doc and would hide a real
+                # drift in the same paragraph.
+                if re.search(r"earlier (?:doc|version|note)s?\b|historical|"
+                             r"previously (?:said|recorded|reported)|"
+                             r"doc said|as of \d{4}-\d{2}-\d{2}|"
+                             r"used to be \d", para, re.I):
                     continue
                 for m in re.finditer(r"\b(\d[\d,]*)\s+suites?\b", para, re.I):
                     got = int(m.group(1).replace(",", ""))
