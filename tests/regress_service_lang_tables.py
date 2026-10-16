@@ -23,6 +23,14 @@ either ``-1`` or ``None`` -- both mean the same thing to
 failing on a representation choice.
 
 Headless: the JS is read straight from the artifact, never executed.
+
+youdao (id 26) was added 2026-10-16 when checking that every
+DICTIONARY-capable service is reachable: it is the only
+TRANSLATE|DICTIONARY service, and its table carried **77** entries where
+native has **76** — one extra trailing unsupported. The length mattered
+even though every present entry matched: `is_language(76)` answered True
+in the port and false in native, so a language index one past the end was
+accepted. Byte-equal now.
 """
 import os
 import sys
@@ -84,6 +92,9 @@ TABLES = [
     (28, "Baidu", baidu.SUPPORTED_LANGS),
     (30, "Papago", naver.SUPPORTED_LANGS),
     (31, "DeepL", deepl.SUPPORTED_LANGS),
+    (26, "youdao", __import__(
+        "qtranslate.services.youdao", fromlist=["SUPPORTED_LANGS"]
+    ).SUPPORTED_LANGS),
 ]
 
 for sid, label, port in TABLES:

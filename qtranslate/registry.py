@@ -129,6 +129,21 @@ DICTS = {
     "babylon": lambda w, sl, tl: _dict.babylon_dict_lookup(w, sl, tl),
     "imtranslator": lambda w, sl, tl: _dict.imtranslator_lookup(w, sl, tl),
     "google-search": lambda w, sl, tl: _dict.google_search_lookup(w, sl, tl),
+    # youdao is the only TRANSLATE|DICTIONARY service (id 26) and its
+    # dictionary half was missing here: `_ID2FN` mapped "youdao" to a key
+    # this table had no entry for, so the lookup returned None and the
+    # service silently never ran. Found 2026-10-16.
+    #
+    # `dictionary()` takes language CODES while the other entries forward
+    # the raw sl/tl, so an index arriving here has to resolve through
+    # youdao's own SupportedLanguages table first -- silently defaulting to
+    # AUTO/en would mistranslate every non-English request.
+    "youdao": lambda w, sl, tl: _youdao.dictionary(
+        w,
+        _youdao.code_from_language(sl, _youdao.SUPPORTED_LANGS)
+        if isinstance(sl, int) else sl,
+        _youdao.code_from_language(tl, _youdao.SUPPORTED_LANGS)
+        if isinstance(tl, int) else tl)[0],
 }
 
 

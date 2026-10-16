@@ -145,7 +145,18 @@ else:
     ck("app.TRANSLATORS IS registry.TRANSLATORS (alias, not copy)",
        A.TRANSLATORS is RG.TRANSLATORS)
     ck("10 translate entries", len(t) == 10, str(sorted(t)))
-    ck("10 dict entries", len(d) == 10, str(sorted(d)))
+    # 11, not 10: youdao (id 26) is the one TRANSLATE|DICTIONARY service, and
+    # an earlier version of this table omitted it -- so `_ID2FN`'s "youdao"
+    # key had no entry, the lookup returned None, and the service silently
+    # never ran. The count going 10 -> 11 was the fix; the old assertion
+    # would have flagged it as a regression.
+    ck("11 dict entries (10 dictionary + youdao, the TRANSLATE|DICTIONARY "
+       "service)", len(d) == 11, str(sorted(d)))
+    ck("youdao is one of them", "youdao" in d, str(sorted(d)))
+    ck("...and its entry resolves language indices before calling",
+       all(k in __import__("inspect").getsource(d["youdao"])
+           for k in ("SUPPORTED_LANGS", "code_from_language")),
+       repr(__import__("inspect").getsource(d["youdao"]))[:200])
 
     order = RG.router_order()
     # Slice 1 rule (b): "bing" is an alias of "microsoft" (same

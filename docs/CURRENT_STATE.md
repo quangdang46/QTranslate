@@ -86,6 +86,23 @@ deps only (`keyboard`, `pyperclip` required; `pystray`, `Pillow`, `comtypes`,
   suites" and `docs/review/HEADLESS_SWEEP_RULE_2026-10-15.md` (61 headless
   = 63 total minus the 2 window-opening suites).
 
+> **Verified 2026-10-16 — the suite count is not stated here on purpose.**
+> It is a number that rots the moment a suite is added, and this very
+> paragraph had a hardcoded `113` that was wrong within the hour. Get it
+> from the tool instead:
+>
+> ```
+> python -I tools/run_suites.py
+> ```
+>
+> That judges every suite by **exit code**, not by grepping for "FAIL".
+> Several suites print `FAIL n/m` without a colon, so a grep-based check
+> both over- and under-reports — the reason this tool exists.
+>
+> The dated notes in `docs/review/` record the count *as of their date*
+> (95 on 2026-10-16, 61 on 2026-10-15, 32 earlier) and are historical
+> records; this section and the README are the two meant to be current.
+
 > **Honesty note:** "UI match" does **not** mean the UI looks like the
 > native window. The user's own assessment is that the UI "chả giống tý nào"
 > (doesn't look alike at all). The test verifies *structure/strings/order*, not
