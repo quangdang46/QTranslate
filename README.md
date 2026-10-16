@@ -62,6 +62,13 @@ python -I start_app.py
 > (`regress_screens`, `regress_tray_menu`) open a Tk window and are run
 > only in a GUI session — see `docs/review/HEADLESS_SWEEP_RULE_2026-10-15.md`.)
 
+> **Use `python -I tools/run_suites.py` for the sweep**, not a shell loop that
+> greps the last line for `FAIL`. Three stale known-answer vectors (as of
+> 2026-10-16) lived in exactly that blind spot: each suite aborted with a
+> traceback before reaching its own `FAIL n/m` summary, so a grep sweep read
+> the traceback's last line, saw no `FAIL`, and called it green. The tool
+> checks exit codes and prints the failing suite's last line.
+
 ```bash
 python -I tests/ui_match.py        # 103/103 (2026-10-15, GUI session only;
                                    #   it builds tk.Tk() — rerun before release)
@@ -73,6 +80,7 @@ python -I tools/coverage_tally.py --selftest   # PASS 6/6 (2026-10-15)
 python -I tools/gate_artifact_audit.py         # 147/147 (2026-10-16, offline)
 python -I tools/docs_consistency.py            # 0 findings (2026-10-16, offline)
 python -I tools/audit_ui_spec.py               # 48 checks (2026-10-16, offline)
+python -I tools/run_suites.py      # 114/114 by EXIT CODE (2026-10-16, offline, 45s)
 python -I tests/live_providers.py  # 21/21 vs real endpoints (2026-10-08, historical)
 ```
 
