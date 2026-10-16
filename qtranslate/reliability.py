@@ -26,6 +26,7 @@ import datetime
 import email.utils
 import enum
 import errno
+import re
 import socket
 import time
 
@@ -171,22 +172,47 @@ def classify(exc: BaseException | None, *, status: int | None = None) -> ErrorKi
 
 
 def parse_retry_after(value) -> float | None:
-    """Seconds from a Retry-After header: delta-seconds or an HTTP-date (§3)."""
-    if value is None:
+    """Seconds from a Retry-After header: delta-seconds or an HTTP-date (§3).
+
+    ``Retry-After``'s delta-seconds form is an **integer** grammar per
+    RFC 7231 (`delta-seconds = 1*DIGIT`), and every real implementation
+    reads it with an integer parse -- the port's host gets this behaviour
+    from libcurl, whose strings sit in the recovered image at `1249348`
+    (`"Retry-After:"` among the other header names it knows).
+
+    A naive ``float(text)`` therefore accepts shapes no server legitimately
+    sends and no client legitimately reads: ``"1e3"`` becomes 1000 seconds
+    (a quarter-hour stall), ``"inf"`` and ``"nan"`` become unclampable
+    specials, and ``"+5"``/``"  5 "`` become 5. Those are all rejected
+    here; only digits, a whole-number float, or a date are accepted, and a
+    float is truncated toward zero the way an integer parse would be.
+    """
+    if value is None or isinstance(value, bool):
         return None
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, (int, float)):
+    if isinstance(value, int):
         return float(value) if value >= 0 else None
+    if isinstance(value, float):
+        # a whole float is a delta-seconds value; anything else is junk
+        if value != value or value in (float("inf"), float("-inf")):
+            return None
+        return float(int(value)) if value >= 0 else None
     text = str(value).strip()
     if not text:
         return None
+    if text.isdigit():                      # the RFC grammar, exactly
+        return float(int(text))
+    # A float-shaped value (e.g. from a test double or a lenient server)
+    # is still honoured, but truncated -- and only when it is genuinely a
+    # plain decimal, not scientific notation and not a signed special.
     try:
-        seconds = float(text)
+        secs = float(text)
     except ValueError:
         pass
     else:
-        return seconds if seconds >= 0 else None
+        plain = re.fullmatch(r"\d+(?:\.\d+)?", text)
+        if plain is None:                   # +5, -5, 1e3, inf, nan, hex...
+            return None
+        return float(int(secs)) if secs >= 0 else None
     try:
         when = email.utils.parsedate_to_datetime(text)
     except (TypeError, ValueError):

@@ -120,6 +120,33 @@ check("Retry-After HTTP-date in the future",
       R.parse_retry_after("Wed, 21 Oct 2099 07:28:00 GMT") > 0)
 check("Retry-After garbage is None", R.parse_retry_after("soon") is None)
 
+# delta-seconds is an INTEGER grammar (RFC 7231: 1*DIGIT) and the host
+# reads it with libcurl -- whose "Retry-After:" string is in the recovered
+# image at 1249348. These pin the shapes a naive float(text) accepts and no
+# real server/client uses.
+check("Retry-After '1e3' is NOT 1000 seconds",
+      R.parse_retry_after("1e3") is None)
+check("Retry-After '1E3' is likewise rejected",
+      R.parse_retry_after("1E3") is None)
+check("Retry-After '+5' is rejected (not signed)",
+      R.parse_retry_after("+5") is None)
+check("Retry-After 'inf'/'nan'/'Infinity' are rejected",
+      all(R.parse_retry_after(v) is None
+          for v in ("inf", "nan", "Infinity", "-inf")))
+check("Retry-After '0x10' is not hex",
+      R.parse_retry_after("0x10") is None)
+check("Retry-After a whole float is truncated, not honoured as-is",
+      R.parse_retry_after("3.9") == 3.0 and R.parse_retry_after(3.9) == 3.0)
+check("Retry-After a negative float is None",
+      R.parse_retry_after("-3.9") is None)
+check("Retry-After a float inf/nan is None",
+      R.parse_retry_after(float("inf")) is None
+      and R.parse_retry_after(float("nan")) is None)
+check("Retry-After surrounding whitespace still parses",
+      R.parse_retry_after("  42  ") == 42.0)
+check("Retry-After huge delta is honoured verbatim",
+      R.parse_retry_after("12345678901234567890") > 1e18)
+
 # --------------------------------------------------- 3. backoff shape (§3)
 pol = R.RetryPolicy()
 check("backoff grows 0.2 -> 0.4 -> 0.8 (capped)",
