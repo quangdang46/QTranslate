@@ -180,6 +180,17 @@ def _load_meta(path: Path) -> dict:
         raise ValueError("metadata 'capture_kind' must be 'mechanics' or 'acceptance'")
     if not isinstance(meta["source"], str) or not meta["source"].strip():
         raise ValueError("metadata 'source' must be a non-empty string (provenance)")
+    # Accept the two documented size origins plus "unspecified" (the
+    # default, and what fixtures predating the field carry). A capture that
+    # knows which it is must say so: comparing a fresh-template window
+    # against a restored-placement one would measure window-manager state
+    # instead of the UI. Anything else is a typo or an invented origin.
+    origin = meta.get("size_origin") or "unspecified"
+    if origin not in ("template", "placement", "unspecified"):
+        raise ValueError(
+            "metadata 'size_origin' must be 'template', 'placement' or "
+            "'unspecified'")
+    meta["size_origin"] = origin
     # Acceptance captures MUST carry a content hash; mechanics captures may omit it.
     if meta["capture_kind"] == "acceptance":
         h = meta.get("sha256")
@@ -305,6 +316,19 @@ def cmd_compare(args) -> int:
             "protocol mismatch: ui_state/input differ "
             f"(native ui_state={nm['ui_state']!r} input={nm['input']!r}; "
             f"port ui_state={pm['ui_state']!r} input={pm['input']!r})"
+        )
+    # A size_origin mismatch is a protocol mismatch, not a fidelity FAIL:
+    # comparing a FRESH-TEMPLATE native window against a RESTORED-PLACEMENT
+    # port window measures window-manager state (DLG129's 340x201 DU template
+    # converts to ~595x753 px, while the real saved placement on the analyst's
+    # machine is 530x430) and would report a real-looking diff for a UI that is
+    # identical. See G9_TEMPLATE_VS_PLACEMENT_2026-10-15.md §3.
+    if nm["size_origin"] != pm["size_origin"]:
+        return blocked(
+            "protocol mismatch: size_origin differs "
+            f"(native={nm['size_origin']!r} port={pm['size_origin']!r}) -- "
+            "one side is a fresh template and the other a restored placement, "
+            "so the diff would measure window-manager state, not UI fidelity"
         )
 
     # --- geometry: a size mismatch is a real negative (FAIL), not a block ---
@@ -630,6 +654,11 @@ def cmd_capture(args) -> int:
         "input": args.input,
         "capture_kind": args.capture_kind,
         "source": source,
+        # Where this side's window size came from. The port restores a saved
+        # WINDOWPLACEMENT when one exists (General.WindowMainPlacement) and
+        # otherwise shows the DLG129 template size, so the value is
+        # operator-declared and validated against the two known origins.
+        "size_origin": args.size_origin,
         # content hash of the PNG actually written — verifiable provenance
         "sha256": _sha256_file(out_p),
     }
@@ -670,6 +699,7 @@ def _write_meta(
     source="synthetic fixture (harness mechanics only)",
     png: Path | None = None,
     sha256: str | None = None,
+    size_origin="unspecified",
 ):
     meta = {
         "app": app,
@@ -680,6 +710,11 @@ def _write_meta(
         "input": inp,
         "capture_kind": capture_kind,
         "source": source,
+        # Where this side's WINDOW SIZE came from: the dialog template's
+        # DLU size (first run), or a restored WINDOWPLACEMENT (a resized
+        # window). Both sides of a comparison must agree or the diff
+        # measures window-manager state -- see G9_TEMPLATE_VS_PLACEMENT.
+        "size_origin": size_origin,
     }
     if sha256:
         meta["sha256"] = sha256
@@ -764,9 +799,9 @@ def cmd_selftest(args) -> int:
             _save(p, W, H, rgb)
             return p
 
-        def meta(name, app, ui="main", inp="none"):
+        def meta(name, app, ui="main", inp="none", origin="unspecified"):
             p = t / f"{name}.json"
-            _write_meta(p, app, W, H, ui_state=ui, inp=inp)
+            _write_meta(p, app, W, H, ui_state=ui, inp=inp, size_origin=origin)
             return p
 
         # 1. identical -> PASS (exit 0)
@@ -808,6 +843,34 @@ def cmd_selftest(args) -> int:
         rc = _run_compare_quiet(n6, p6, meta("n6", "native"), t / "p6.json",
                                 t / "o6", 4, 0.005)
         cases.append(("geometry mismatch -> FAIL", rc == 1))
+
+        # 6b. size_origin mismatch -> BLOCKED (exit 2). Two identical images
+        # whose sides disagree about WHERE the window size came from is a
+        # protocol mismatch: the diff would measure window-manager state, not
+        # the UI. DLG129's template (340x201 DU ~= 595x753 px at 8pt MS Shell
+        # Dlg) and the real saved placement (530x430) are genuinely different
+        # windows, so an agreement must be declared.
+        n6b = img("n6b", _solid(W, H, base_rgb))
+        p6b = img("p6b", _solid(W, H, base_rgb))
+        rc = _run_compare_quiet(n6b, p6b,
+                                meta("n6b", "native", origin="template"),
+                                meta("p6b", "port", origin="placement"),
+                                t / "o6b", 4, 0.005)
+        cases.append(("size_origin mismatch -> BLOCKED", rc == 2))
+        # 6c. matching origins still PASS (the check does not over-trigger)
+        rc = _run_compare_quiet(n6b, p6b,
+                                meta("n6b", "native", origin="template"),
+                                meta("p6b", "port", origin="template"),
+                                t / "o6c", 4, 0.005)
+        cases.append(("matching size_origin -> PASS", rc == 0))
+        # 6d. an unknown origin value is rejected by the metadata loader
+        try:
+            _write_meta(t / "bad.json", "port", W, H, size_origin="whatever")
+            _load_meta(t / "bad.json")
+            bad_ok = False
+        except ValueError:
+            bad_ok = True
+        cases.append(("unknown size_origin value rejected", bad_ok))
 
         # 7. mechanics tag propagates; NOT eligible as G9 evidence
         rep = json.loads((t / "o1" / "report.json").read_text())
@@ -946,6 +1009,12 @@ def main(argv=None) -> int:
     k.add_argument("--app", choices=["native", "port"], required=True)
     k.add_argument("--ui-state", default="unspecified")
     k.add_argument("--input", default="none")
+    k.add_argument("--size-origin",
+                   choices=["template", "placement", "unspecified"],
+                   default="unspecified",
+                   help="where this side's window size came from; both sides "
+                        "of a comparison must agree, or the diff measures "
+                        "window-manager state instead of UI fidelity")
     k.add_argument("--capture-kind", choices=["mechanics", "acceptance"],
                    default="mechanics",
                    help="acceptance captures carry provenance (source + sha256)")

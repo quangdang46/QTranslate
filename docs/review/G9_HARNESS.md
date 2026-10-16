@@ -37,7 +37,7 @@ touched. `docs/NATIVE_ARCH.md` is untouched.
 
 | Result | Exit | Meaning |
 |--------|------|---------|
-| `PASS` | 0 | Both images decoded, geometry equal, protocol metadata (`ui_state`/`input`) equal, diff ratio ≤ tolerance. |
+| `PASS` | 0 | Both images decoded, geometry equal, protocol metadata (`ui_state`/`input`/`size_origin`) equal, diff ratio ≤ tolerance. |
 | `FAIL` | 1 | Evidence exists but comparison is negative: window geometries differ, **or** diff ratio > tolerance. |
 | `BLOCKED` | 2 | Comparison could not run on usable evidence: a missing/unreadable input, an undecodable image, a failed capture, a protocol mismatch, wrong-side metadata, or **invalid provenance**. |
 
@@ -120,6 +120,7 @@ Required metadata fields per capture:
 | `width`, `height` | Pixel dimensions — must match the decoded image |
 | `ui_state` | e.g. `main`, `popup`, `options`, `history` — **must match across sides** |
 | `input` | The exact test input used — **must match across sides** |
+| `size_origin` | `template` / `placement` / `unspecified` — **must match across sides** (added 2026-10-16; see below) |
 | `capture_kind` | `mechanics` or `acceptance` (§3.1) |
 | `source` | Provenance string (non-empty) |
 | `sha256` | PNG content hash — **required** for `acceptance`, re-verified at compare |
@@ -134,13 +135,27 @@ Protocol rules:
 3. **Same input** — identical text/clipboard/hotkey context so content matches.
 4. **Same DPI awareness** — capture the native window with the process DPI-aware
    so pixel sizes are physical, not scaled.
+5. **Same `size_origin`** — declare where each side's window size came from and
+   make them agree. A mismatch is reported as `BLOCKED`, never `FAIL`.
+
+Rule 5 exists because "window size" is **two different numbers** in QTranslate:
+DLG129's template is `340×201` dialog units (≈`595×753` px at `MS Shell Dlg`
+8pt), while a run native session restores a saved `WINDOWPLACEMENT` — the real
+blob on the analyst's machine is `530×430` px. Neither is the other scaled
+(`G9_TEMPLATE_VS_PLACEMENT_2026-10-15.md`). Two identical UIs captured at those
+two sizes produce a large, real-looking diff that says nothing about fidelity,
+so the harness refuses to compare them rather than reporting a misleading
+negative.
+
+`unspecified` is the default and matches across sides only when both sides say
+it; a capture that knows which it is should say so.
 
 ### 4.1 Capturing the native app (Windows)
 
 ```
 python -I tools/g9_screenshot_diff.py capture \
     --app native --title "QTranslate" \
-    --ui-state main --input "hello world" \
+    --ui-state main --input "hello world" --size-origin template \
     --capture-kind acceptance --source "QTranslate.exe 6.10.0, Win11 26200" \
     --out docs/review/g9_evidence/native.png
 ```
