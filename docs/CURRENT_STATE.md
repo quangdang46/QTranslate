@@ -39,7 +39,8 @@
 
 | Path | Lines/Size | Role |
 |------|-----------|------|
-| `qtranslate/app.py` | ~4017 lines / 167 KB | Tkinter UI + hotkey + clipboard + orchestration (see §3) |
+| `qtranslate/app.py` | 3,083 lines | Tkinter UI + hotkey + clipboard + orchestration (see §3). Five of the six window classes Phase 7 names were extracted out of it 2026-10-16 — see `qtranslate/windows.py` below |
+| `qtranslate/windows.py` | 2,209 lines | The Phase 7 split: `HistoryView`, `DictionaryView`, `TrayController`, `PopupHost`, `OptionsDialog` (the 6th, `MainWindow`, remains in `app.py`). Each class is a transcription of the pre-split body, proven identical by `tests/regress_windows.py` (39 assertions, compared against the split commit's *parent*) |
 | `qtranslate/common.py` | 356 lines | 1:1 port of `Common.js` (RequestData/ResponseData, capability bitmask, helpers) |
 | `qtranslate/config.py` | 161 lines | `Options.json` model, hotkey decode, service ids/order |
 | `qtranslate/session.py` | 179 lines | Session/token scrape (Bing, Promt), net timeout/proxy |
@@ -47,7 +48,7 @@
 | `qtranslate/win32app.py` | 203 lines | Native Win32 DLG129 re-creation (pywin32) |
 | `qtranslate/{theme,locale,history,layout,xdxf,tts,player,sapi,headless,exclusions}.py` | small | feature modules |
 | `docs/NATIVE_ARCH.md` | 1649 lines | native binary RE analysis |
-| `tests/` | 4 files | `live_providers.py`, `ui_match.py`, `smoke_dict.py`, `live_bass.py` |
+| `tests/` | 124 files | 120 `regress_*.py` suites (headless unless named), plus `ui_match.py`, `smoke_dict.py`, `live_providers.py`, `live_bass.py`. Sweep them with `python -I tools/run_suites.py` (exit-code judged, not grep) — see §Test suites in `README.md` |
 
 **[verified]** Language: Python, Tkinter UI, stdlib `urllib` for HTTP; optional
 deps only (`keyboard`, `pyperclip` required; `pystray`, `Pillow`, `comtypes`,
@@ -112,17 +113,26 @@ deps only (`keyboard`, `pyperclip` required; `pystray`, `Pillow`, `comtypes`,
 
 Full structural audit (delegated, line-cited):
 
-- **`class App` owns everything** (`app.py:581-3335`): main window, popup,
-  Options (`open_options` is one ~1073-line method, `app.py:1742-2815`),
-  History, Dictionary, OCR, virtual keyboard.
+- **`class App` owns everything** (`app.py:440-2229`): main window, OCR,
+  virtual keyboard, hotkey routing, the clipboard monitor, and the nav menu.
+  **Partially relieved 2026-10-16 (Phase 7):** the popup, Options, History,
+  Dictionary and tray have moved to `qtranslate/windows.py` — `open_options`
+  was one ~1,056-statement method and is now a delegator; `show_popup`,
+  `_make_tray`, `open_history_window` and `open_dict_window` likewise.
+  `App` is down from ~3,400 to 1,789 lines. The remainder is the main window
+  itself, which is not a window hanging off the app but the app, and is
+  recorded rather than claimed (`IMPLEMENTATION_PLAN.md` Phase 7).
 - **Provider dispatch is dict-based but hardcoded:** `TRANSLATORS` (`:221`),
   `DICTS` (`:234`); detection is a **hardcoded tuple** (`:496-503`). A separate
   `services/__init__.py` `REGISTRY` registers only 5 providers — **three
   sources of truth**, none complete.
 - **Orchestration interleaved with widgets:** `on_hotkey` (`:3337`) reads
   `app.current()` then writes `app.src`/render/history; same for the clipboard
-  monitor (`:3407`) and `_replace` (`:3592`). `show_popup._to_main`
-  (`:3999-4008`) builds a **second `tk.Tk()` + `App`** inside a popup callback.
+  monitor (`:3407`) and `_replace` (`:3592`). `PopupHost.open`'s
+  `_to_main` (`qtranslate/windows.py:902`) builds a **second `tk.Tk()` +
+  `App`** inside a popup callback — noted here again because the extraction
+  *moved* that latent problem without fixing it, and `app.py`'s only
+  remaining `tk.Tk()` is the legitimate `main()` one (`:2966`).
 - **Windows coupling:** `ctypes.windll.user32` (`:3419`, `:3790`), `winreg`
   autostart (`:1788`), `comtypes` SAPI (`:1251`), `keyboard` global hooks
   (`:3668`), `PIL.ImageGrab` (`:3277`), hardcoded `C:/Program Files (x86)/…`
