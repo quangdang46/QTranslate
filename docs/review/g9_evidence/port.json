@@ -1,0 +1,12 @@
+{
+ "app": "port",
+ "window_title": "QTranslate",
+ "width": 530,
+ "height": 409,
+ "ui_state": "main",
+ "input": "hello world",
+ "size_origin": "placement",
+ "capture_kind": "acceptance",
+ "source": "port bundle dist/QTranslate/QTranslate.exe desktop-crop selftest 18/18 Win11 26200 AMD64 2026-10-16",
+ "sha256": "1f3f3ff1a763bf99a4d998dcbdc863e1a6f9e3d6d9680c34190f02dabd106ccc"
+}
