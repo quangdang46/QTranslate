@@ -265,7 +265,331 @@ class HistoryView:
 # The remaining Phase 7 classes are extracted in follow-up slices. Each is
 # added here and wired to a delegator in app.py in the same change, so the
 # split is never half-landed:
+class DictionaryView:
+    """The Dictionary window (native DLG 184) -- `App.open_dict_window`.
+
+    Search bar + services pane (left, toggleable via
+    `Dictionary.ShowServicesPane`) + XDXF-rendered article view + zoom
+    (`DictionaryZoom`) + exact search (`DictionaryExactSearch`) + per-word
+    history (`DictionaryHistory.json`).
+
+    Transcribed from `App.open_dict_window` with the ONE substitution the
+    Phase 7 split allows: ``self.`` -> ``self.app.``. The window variable is
+    deliberately **kept as `w`**: this body also uses the literal ``"w"``
+    as a file mode and as ``anchor="w"``, so a regex that renames `w` would
+    have to be told to skip those -- and a rename capable of corrupting an
+    ``open(path, "w")`` is not worth the tidiness. `self.win` is set once as
+    an alias, purely so `open()` can be idempotent.
+
+    tests/regress_windows.py compares this body against the pre-split commit
+    and fails on any difference beyond that substitution.
+    """
+
+    def __init__(self, root, app):
+        self.root = root
+        self.app = app
+        self.win = None
+
+    def open(self):
+        """Build (or raise) the window."""
+        if self.win is not None:
+            try:
+                self.win.lift()
+                return self.win
+            except Exception:
+                self.win = None
+        # Native Dictionary window: search bar + services pane (left,
+        # toggleable via Dictionary.ShowServicesPane) + article view
+        # (XDXF-rendered HTML like dict_render) + zoom
+        # (DictionaryZoom) + exact search (DictionaryExactSearch) +
+        # per-word history (DictionaryHistory.json).
+        from qtranslate import config as _C
+        try:
+            _dcfg = _C.load().get("Dictionary", {})
+            _dorder = _C.load().get("DictionariesOrder",
+                                    [10, 19, 20, 14, 17, 18, 22, 24, 25,
+                                     26, 29])
+            # DisabledDictionaries: globally disabled dicts must not
+            # appear at all (was previously shown and queried regardless).
+            _ddis = set(_C.load().get("DisabledDictionaries", []))
+            _dorder = [sid for sid in _dorder if sid not in _ddis]
+        except Exception:
+            _dcfg, _dorder = {}, [10, 19, 20, 14, 17, 18, 22, 24, 25,
+                                  26, 29]
+        try:
+            _disp = _C.DICT_DISPLAY
+        except Exception:
+            _disp = {}
+        _zoom = _dcfg.get("DictionaryZoom", -1)
+        _font = max(6, 11 + (0 if _zoom in (-1, None) else int(_zoom)))
+        self.win = w = tk.Toplevel(self.app.root)
+        w.title(_W(5, "Dictionary"))
+        w.configure(bg=_COLORS["back"])
+        _place_aux(w, "WindowDictionaryPlacement", "640x460")
+        frm = tk.Frame(w, bg=_COLORS["back"])
+        frm.pack(fill="x", padx=8, pady=8)
+        tk.Label(frm, text="Word:", bg=_COLORS["back"],
+                 fg="gray").pack(side="left")
+        ent = tk.Entry(frm, width=28)
+        ent.pack(side="left", padx=4)
+        ent.bind("<Return>", lambda e: go_all())
+        _exact_v = tk.BooleanVar(
+            value=bool(_dcfg.get("DictionaryExactSearch", True)))
+
+        def _save_exact(*_a):
+            # Persist DictionaryExactSearch like the native loader/saver
+            # (options +0x181); the flag gates the XDXF match breadth.
+            try:
+                full = _C.load()
+                full.setdefault("Dictionary", {})[
+                    "DictionaryExactSearch"] = bool(_exact_v.get())
+                import json as _j2
+                with open(_C.DEFAULT_PATH, "w",
+                          encoding="utf-8") as fh:
+                    _j2.dump(full, fh, ensure_ascii=False, indent=1)
+            except Exception:
+                pass
+
+        tk.Checkbutton(frm, text="Exact", variable=_exact_v,
+                       command=_save_exact,
+                       bg=_COLORS["back"], fg=_COLORS["text"],
+                       selectcolor=_COLORS["back"]).pack(side="left")
+        tk.Button(frm, text="Look up",
+                  command=lambda: go_all()).pack(side="left", padx=4)
+        mid = tk.Frame(w, bg=_COLORS["back"])
+        mid.pack(fill="both", expand=True, padx=8, pady=(0, 4))
+        pane = tk.Frame(mid, bg=_COLORS["back"])
+        if _dcfg.get("ShowServicesPane", True):
+            pane.pack(side="left", fill="y", padx=(0, 6))
+            tk.Label(pane, text="Dictionaries", bg=_COLORS["back"],
+                     fg=_COLORS["text"],
+                     font=("Segoe UI", 9, "bold")).pack(anchor="w")
+            _dlb = tk.Listbox(pane, height=18, width=22,
+                              selectmode="multiple", bg="white", fg="black")
+            _dlb.pack(fill="y", expand=True)
+            try:
+                _active_d = set(_C.load().get("General", {}).get(
+                    "ActiveDictionaryServices", _dorder))
+            except Exception:
+                _active_d = set(_dorder)
+            for i, sid in enumerate(_dorder):
+                _dlb.insert("end", _disp.get(sid, f"id:{sid}"))
+                if sid in _active_d:
+                    _dlb.selection_set(i)
+        else:
+            _dlb = None
+        out = tk.Text(mid, wrap="word", bg="white", fg="black",
+                      insertbackground="black", font=("Tahoma", _font))
+        out.pack(side="left", fill="both", expand=True)
+
+        def _sel_ids():
+            if _dlb is None:
+                return list(_dorder)
+            sel = _dlb.curselection()
+            ids = [_dorder[i] for i in sel if i < len(_dorder)]
+            out_ids = ids or list(_dorder)
+            # persist ActiveDictionaryServices (native remembers)
+            try:
+                from qtranslate import config as C3
+                import json as _j
+                full = C3.load()
+                full.setdefault("General", {})[
+                    "ActiveDictionaryServices"] = out_ids
+                with open(C3.DEFAULT_PATH, "w",
+                          encoding="utf-8") as f:
+                    _j.dump(full, f, ensure_ascii=False, indent=1)
+            except Exception:
+                pass
+            return out_ids
+
+        _ID2FN = {"googlesearch": "google-search", "wikipedia": "wikipedia",
+                  "multitran": "multitran", "imtranslator": "imtranslator",
+                  "wordreference": "wordreference", "babylon": "babylon",
+                  "reverso": "reverso", "urban": "urban",
+                  "lingvo": "lingvo", "youdao": "youdao",
+                  "oxford": "oxford"}
+
+        def go_all():
+            word = ent.get().strip()[:500]
+            if not word:
+                return
+            # DictionaryExactSearch (native options +0x181): exact is the
+            # default; when off, match is broadened to substring. Only the
+            # exact-vs-broader distinction is evidence-backed (consumer
+            # FUN_004151c3); the precise native index algorithm is INFERRED.
+            word_q = word
+            exact = bool(_exact_v.get())
+            sids = _sel_ids()
+            out.delete("1.0", "end")
+            out.insert("1.0", f"querying {len(sids)} dictionaries...")
+            try:
+                import json as _j
+                import os as _o
+                _hp = _o.path.join(_o.path.dirname(
+                    _C.DEFAULT_PATH), "DictionaryHistory.json")
+                try:
+                    _h = _j.load(open(_hp, encoding="utf-8"))
+                except Exception:
+                    _h = []
+                if word not in _h:
+                    _h.insert(0, word)
+                    open(_hp, "w", encoding="utf-8").write(
+                        _j.dumps(_h[:200], ensure_ascii=False))
+            except Exception:
+                pass
+
+            def work():
+                from qtranslate import dict_render as DR
+                cards = []
+                # Offline XDXF first (native OfflineDictionaries list;
+                # empty on this machine, but honored when configured).
+                try:
+                    from qtranslate import xdxf as _X
+                    _off = _C.load().get("OfflineDictionaries", []) or []
+                    for _xp in _off:
+                        try:
+                            _frag = _X.lookup(word_q, _xp, exact=exact)
+                            if _frag:
+                                cards.append(("xdxf", _xp.split(
+                                    "/")[-1].split("\\")[-1],
+                                    _frag[:8000]))
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+                # Native dict-task builder (FUN_00414f54): param_1[4]
+                # (target) is overwritten with DAT_005493f4
+                # (General.LanguageDictionary, default 17 = "en") when == 1
+                # (auto). The dict calls use that resolved code, not the
+                # hardcoded "en" that used to sit here. Evidence:
+                # docs/review/DICT_LANG_BUILDER_2026-10-15.md.
+                try:
+                    import qtranslate.services.google_translate as _G
+                    _ld = _C.load().get("General", {}).get(
+                        "LanguageDictionary", 17)
+                    _dsl = _G.SUPPORTED_LANGS[_ld] \
+                        if 0 <= _ld < len(_G.SUPPORTED_LANGS) else "en"
+                    if _dsl in (-1, "auto"):
+                        _dsl = "en"
+                except Exception:
+                    _dsl = "en"
+                for sid in sids:
+                    key = {_v: _k for _k, _v in _disp.items()
+                           }.get(_disp.get(sid, ""), "")
+                    fn = DICTS.get(
+                        _ID2FN.get(
+                            _disp.get(sid, "").lower().split()[0], ""))
+                    if fn is None:
+                        continue
+                    try:
+                        frag = fn(word_q, _dsl, self.app.target)
+                        if frag:
+                            cards.append((str(sid), _disp.get(sid, str(
+                                sid)), frag[:8000]))
+                    except Exception:
+                        pass
+                page = DR.render_cards(cards, word_q)
+                try:
+                    open("dict_last.html", "w",
+                         encoding="utf-8").write(page)
+                except Exception:
+                    pass
+                summary = "\n\n".join(
+                    f"===== {t} =====\n" + _strip_html(f)[:800]
+                    for _, t, f in cards)
+
+                def _show():
+                    out.delete("1.0", "end")
+                    out.insert("1.0", summary or "[empty]")
+                    self.app.tag_links(
+                        out, summary,
+                        lambda e: self.app._click_link_dict(out, e))
+
+                self.app.root.after(0, _show)
+            threading.Thread(target=work, daemon=True).start()
+
+        def _zoom_by(d):
+            try:
+                size = int(str(out.cget("font")).split()[-1])
+            except Exception:
+                size = _font
+            out.config(font=("Tahoma", max(6, size + d)))
+
+        zb = tk.Frame(w, bg=_COLORS["back"])
+        zb.pack(fill="x", padx=8, pady=(0, 8))
+        tk.Button(zb, text="A-",
+                  command=lambda: _zoom_by(-1)).pack(side="left")
+        tk.Button(zb, text="A+",
+                  command=lambda: _zoom_by(1)).pack(side="left", padx=4)
+
+        def _manage_offline():
+            # DLG 173: offline XDXF dictionary manager
+            # (Add dictionary... / Remove dictionary).
+            mw = tk.Toplevel(w)
+            mw.title("Offline dictionaries")
+            mw.configure(bg=_COLORS["back"])
+            mw.geometry("420x280")
+            lb = tk.Listbox(mw, bg="white", fg="black")
+            lb.pack(fill="both", expand=True, padx=8, pady=8)
+
+            def _load():
+                lb.delete(0, "end")
+                try:
+                    _items = _C.load().get("OfflineDictionaries",
+                                           []) or []
+                except Exception:
+                    _items = []
+                for p in _items:
+                    lb.insert("end", p)
+                return _items
+
+            _items = _load()
+
+            def _save(items):
+                try:
+                    from qtranslate import config as C3
+                    import json as _j
+                    full = C3.load()
+                    full["OfflineDictionaries"] = items
+                    with open(C3.DEFAULT_PATH, "w",
+                              encoding="utf-8") as f:
+                        _j.dump(full, f, ensure_ascii=False, indent=1)
+                except Exception:
+                    pass
+
+            def _add():
+                p = filedialog.askopenfilename(
+                    title="Add dictionary...",
+                    filetypes=[("XDXF dictionaries", "*.xdxf"),
+                               ("All files", "*.*")])
+                if not p:
+                    return
+                _items = _load()
+                if p not in _items:
+                    _items.append(p)
+                    _save(_items)
+                    _load()
+
+            def _remove():
+                s = lb.curselection()
+                if not s:
+                    return
+                _items = _load()
+                _items.pop(s[0])
+                _save(_items)
+                _load()
+
+            fr = tk.Frame(mw, bg=_COLORS["back"])
+            fr.pack(pady=(0, 8))
+            tk.Button(fr, text="Add dictionary...",
+                      command=_add).pack(side="left", padx=4)
+            tk.Button(fr, text="Remove dictionary",
+                      command=_remove).pack(side="left", padx=4)
+
+        tk.Button(zb, text="Dictionaries...",
+                  command=_manage_offline).pack(side="left", padx=8)
+        return self.win
+
 #   OptionsDialog  <- App.open_options
-#   DictionaryView <- App.open_dict_window
 #   TrayController <- _make_tray
 #   PopupHost      <- show_popup

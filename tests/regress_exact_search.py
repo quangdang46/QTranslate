@@ -71,16 +71,27 @@ finally:
     os.remove(path)
 
 # app wiring: the flag is read and threaded into the offline lookup.
+# Phase 7 (2026-10-16): the Dictionary window moved to `qtranslate/windows.py`
+# as `DictionaryView`, so the wiring is searched across BOTH modules. A pin
+# that reads only `app` would go red for a legitimate move -- or, worse, be
+# narrowed to the delegator and stop covering the wiring at all.
 import inspect  # noqa: E402
 
 try:
     import qtranslate.app as app  # noqa: E402
-    src = inspect.getsource(app)
-    check("app threads DictionaryExactSearch into xdxf.lookup (no dead branch)",
+    import qtranslate.windows as _win  # noqa: E402
+    src = inspect.getsource(app) + "\n" + inspect.getsource(_win)
+    _winsrc = inspect.getsource(_win)
+    check("the exact-search flag is threaded into xdxf.lookup "
+          "(no dead branch)",
           "_X.lookup(word_q, _xp, exact=exact)" in src
           and "if _exact_v.get():\n                word_q = word" not in src)
-    check("app persists DictionaryExactSearch on toggle",
+    check("the toggle persists DictionaryExactSearch",
           '"DictionaryExactSearch"] = bool(_exact_v.get())' in src)
+    check("...and that wiring is in windows.py now (the Phase 7 "
+          "DictionaryView), not a stale copy in app.py",
+          "_X.lookup(word_q, _xp, exact=exact)" in _winsrc,
+          "the pin followed the code to its new home")
 except Exception as e:  # pragma: no cover - headless
     check("app import for wiring check", False, repr(e))
 

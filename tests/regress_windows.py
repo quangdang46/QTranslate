@@ -227,6 +227,70 @@ if HEAD_APP:
 else:
     print("NOTE: git HEAD unavailable -- the verbatim-move checks skipped")
 
+
+# ------------------------------------------- the DictionaryView move, verbatim
+# A second class transcribed from a body that contains `"w"` as a FILE MODE
+# and `anchor="w"`, which is why the window variable was NOT renamed (see
+# the class docstring). The scaffolding inserted at the top of `open()`
+# (docstring + the idempotency guard) is excluded, and the trailing
+# `return self.win` likewise, so only the moved body is compared.
+if HEAD_APP:
+    old_d = next(x for x in ast.walk(ast.parse(HEAD_APP))
+                 if isinstance(x, ast.FunctionDef)
+                 and x.name == "open_dict_window")
+    d_cls = next((x for x in ast.walk(ast.parse(WIN))
+                  if isinstance(x, ast.ClassDef)
+                  and x.name == "DictionaryView"), None)
+    d_open = next((x for x in ast.walk(d_cls)
+                   if isinstance(x, ast.FunctionDef)
+                   and x.name == "open"), None) if d_cls else None
+    ck("DictionaryView defines open()", d_open is not None)
+
+    def _moved(src, fn, drop_head_scaffolding):
+        """The function's normalized lines, minus the extraction's own."""
+        out = []
+        for ln in ast.get_source_segment(src, fn).splitlines()[1:]:
+            s = ln.strip()
+            if not s or s.startswith("#"):
+                continue
+            # The one allowed ADDITION in the body: the window-creation
+            # line gains a `self.win =` alias so `open()` can be idempotent.
+            if s == "self.win = w = tk.Toplevel(self.app.root)":
+                s = "w = tk.Toplevel(self.root)"
+            out.append(s.replace("self.app.", "self."))
+        return out
+
+    # The scaffold inserted by the extraction is docstring + the
+    # idempotency guard, which sits between the imports and the body. Cut
+    # both sides at the first real statement they SHARE, so an off-by-one
+    # in the scaffold's size cannot masquerade as a body change.
+    o_d = _moved(HEAD_APP, old_d, False)
+    w_raw = _moved(WIN, d_open, False)
+    _cut = next(i for i, l in enumerate(o_d)
+                if "from qtranslate import config as _C" in l)
+    w_d = w_raw[w_raw.index(o_d[_cut]):]
+    d_diffs = []
+    for i, (x, y) in enumerate(zip(o_d, w_d)):
+        if x != y:
+            d_diffs.append("%d: HEAD=%r new=%r" % (i, x, y))
+            break
+    ck("the DictionaryView body is identical after the allowed substitution",
+       not d_diffs and len(o_d) <= len(w_d),
+       (d_diffs[0] if d_diffs else
+        "HEAD %d lines, windows.py %d" % (len(o_d), len(w_d))))
+    # The tail is the one allowed ADDITION: the delegator needs the window.
+    ck("...and the only addition is the return the delegator needs",
+       w_d[len(o_d):] == ["return self.win"]
+       or w_d[-1] == "return self.win",
+       repr(w_d[len(o_d):][:3]))
+    # The `"w"` file-mode literals must have survived a `self.` rewrite.
+    _blob = "\n".join(w_d)
+    ck("the file-mode literal \"w\" was not corrupted by the rewrite",
+       w_d.count('DEFAULT_PATH, "w"') >= 2
+       or 'open("dict_last.html", "w"' in _blob,
+       "a rename of the window variable would have broken open(..., 'w')")
+    ck("anchor=\"w\" survived too", 'anchor="w"' in _blob)
+
 # -------------------------------------------------------- the delegator half
 ck("App.open_history_window delegates to HistoryView",
    re.search(r'def open_history_window\(self\):.*?'
