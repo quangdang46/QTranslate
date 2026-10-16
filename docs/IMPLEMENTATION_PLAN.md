@@ -315,8 +315,16 @@ their port-side halves done and are blocked on decisions rather than code.
 | Phase 7 (`qt-o7p`) | **Port-side half landed** | `qtranslate/ui_slots.py` publishes menu/panel/popup slots with names derived from native (menu ids are the locale pack's `Menus[].Id`; panels are the three `Show*Pane` toggles), wired through `ExtensionManager.register_ui`/`ExtensionAPI.register_ui` with the same declared-`replaces` conflict policy as providers and themes (`regress_ui_slots.py`, 26). The **UI split into 6 window classes is deliberately not started**: the user has twice said the UI is settled, and with the screenshot ban there is no verification signal for a blind restructure. |
 | Phase 8 (`qt-3ro`) | **D17 verified; only the bundler choice remains** | `regress_extension_vendored_dep.py` (11) proves an extension can vendor its own dependency on a real filesystem: the import resolves during load, the folder leaves `sys.path`, the dep is not left under its plain name, the entrypoint stays namespaced, and a broken extension leaves the built-ins intact. What remains is choosing a bundler and producing a bundle — a product decision the plan already records as "not asked yet", and one an agent should not make alone. |
 
-**What this pass did close**, none of which needed a decision: 29 suites added this pass
-(117 regress suites; 119 total including ui_match and smoke_dict, all exit-0), 6 real port bugs found in code
-that looked wired (Bing/Promt/Baidu session scrapes, OCR part order and
-language coverage, Yandex spell's POST, the TTS encoders, youdao's salt), and
-3 known-answer vectors that had been pinning pre-fix behaviour.
+**What this pass did close**, none of which needed a decision: 29 suites added
+(117 regress suites; 119 total including ui_match and smoke_dict, all exit-0),
+17 fixes found in code that looked wired or complete — the Bing/Promt/Baidu
+session scrapes (markers the image does not contain, `key`/`token` swapped,
+an Options seed nothing ever filled), OCR's multipart part order and 8-of-24
+language coverage, Yandex spell's POST-vs-GET, the three TTS encoders,
+youdao's concatenated-not-added salt and its 77-entry table, Google/Baidu
+seed coercion, `removeAttributes`' double-escaped dot, Yandex's `\s+` split,
+`Retry-After`'s grammar, the version header's two spaces, the CSV column
+swap, 7 unreadable locale packs, and three stale doc claims — plus 5 tools
+(`run_suites`, `gate_artifact_audit`, `docs_consistency`, `audit_ui_spec`,
+`coverage_tally`) and 3 known-answer vectors that had been pinning
+pre-fix behaviour.
