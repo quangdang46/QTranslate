@@ -58,6 +58,11 @@ def find_wide(lit):
     return IW.find(lit)
 
 
+def present(lit):
+    """Is ``lit`` in the image, wide or ascii?"""
+    return lit in IW or lit.encode("ascii") in RAW
+
+
 # --- 1. the literals are there, and in the order claimed ----------------
 I_TEXT = find_wide("text=")
 I_HDR = find_wide("Accept-Encoding: gzip,deflate\r\nAccept-Charset: utf-8")
@@ -135,6 +140,48 @@ ck("the module docstring says the question is closed",
    "closed 2026-10-16" in io.open(
        os.path.join(REPO, "qtranslate", "services", "spell.py"),
        encoding="utf-8").read())
+
+# --- the Google suggest path, and its encoder -------------------------
+# `.rdata` carries `/complete/search?client=firefox&q=` immediately followed
+# by `https://www.google.com`, in the same block as the spellcheck strings.
+ck("the image carries the suggest path",
+   present("/complete/search?client=firefox&q="))
+ck("...and its host", present("https://www.google.com"))
+SUGGEST = io.open(os.path.join(REPO, "qtranslate", "services", "spell.py"),
+                  encoding="utf-8").read()
+ck("the port's suggest path and host match",
+   "/complete/search?client=firefox&q=" in SUGGEST
+   and "https://www.google.com" in SUGGEST)
+ck("google_suggest encodes with encode_get_param, not quote",
+   "encode_get_param(text)" in SUGGEST)
+ck("the two encoders really differ on a slash",
+   "quote(text" not in SUGGEST.split("def google_suggest")[1]
+   .split("\ndef ")[0])
+captured2 = {}
+
+
+class _R2:
+    def read(self):
+        return b'["q",["alpha","beta"]]'
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+class _O2:
+    def open(self, req, timeout=None):
+        captured2["url"] = req.full_url
+        return _R2()
+
+
+SP.google_suggest("a/b", opener=_O2())
+ck("google_suggest encodes the slash", "%2F" in captured2.get("url", ""),
+   captured2.get("url"))
+ck("...and returns the second array element",
+   SP.google_suggest("a/b", opener=_O2()) == ["alpha", "beta"])
 
 if fail:
     print("FAIL %d/%d" % (len(fail), n[0]))

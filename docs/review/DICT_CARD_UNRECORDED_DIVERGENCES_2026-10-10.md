@@ -98,8 +98,8 @@ card-builder document's own four, reached on two more items.
 | "eight substitutions" in `dict_render.py`'s comment | **wrong — it is nine, and the port emits seven** |
 | header has two `%s`, port fills one | **measured** |
 | what the missing header slot holds | **UNKNOWN — icon or markup, not separated by the evidence** |
-| `No results found for '%s'.` absent from the port | **measured**, at pool offset +354 |
-| empty result set renders a blank pane | **measured** |
+| `No results found for '%s'.` absent from the port | **measured** at pool offset +354, and **CLOSED 2026-10-16** — the note's claim is stale: `dict_render.NO_RESULTS` carries the literal verbatim and the zero-result path uses it (`tests/regress_dict_card_native.py`). Pinned so the claim cannot rot again |
+| empty result set renders a blank pane | **measured** then **CLOSED 2026-10-16**: it now renders native's message, using the same card counter that gates `showNavigation()` — one native branch, not a case the renderer forgets |
 
 ## 5. Reproduce
 

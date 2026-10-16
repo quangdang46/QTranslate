@@ -32,6 +32,7 @@ import json
 import urllib.parse
 import urllib.request
 from qtranslate import common
+from qtranslate.common import encode_get_param
 
 _UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
@@ -45,12 +46,24 @@ _SPELL_HEADERS = {
 }
 
 
-def google_suggest(text: str, lang: str = "en") -> list:
-    """Port of GoogleSuggest: autocomplete suggestions."""
+def google_suggest(text: str, lang: str = "en", opener=None) -> list:
+    """Port of GoogleSuggest: autocomplete suggestions.
+
+    Path and host are the image's own literals (recovered 2026-10-16 from
+    `.rdata`: `/complete/search?client=firefox&q=` immediately followed by
+    `https://www.google.com`, in the same block as the spellcheck strings).
+    The text goes through `encode_get_param` like every other provider's
+    query value -- `urllib.parse.quote`'s default `safe="/"` leaves slashes
+    alone, so the two differ on any text containing one.
+
+    `opener` is accepted and forwarded to `http_open` so a caller can share
+    a cookie jar and tests can stub the transport -- the same parameter
+    `yandex_spell` has, whose absence here was an inconsistency.
+    """
     url = ("https://www.google.com/complete/search?client=firefox&q="
-           + urllib.parse.quote(text) + "&hl=" + lang)
+           + encode_get_param(text) + "&hl=" + lang)
     req = urllib.request.Request(url, headers=_UA)
-    with common.http_open(req) as r:
+    with common.http_open(req, opener) as r:
         obj = json.loads(r.read().decode("utf-8"))
     return obj[1] if len(obj) > 1 else []
 
