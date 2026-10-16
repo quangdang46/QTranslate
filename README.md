@@ -58,9 +58,14 @@ python -I start_app.py
 > and override-persistence slices and their neighbours, then to `110/110`
 > with the Service.js reading passes, the four Gate audit tools, and the
 > artifact-driven suites (35 locale packs, 8 themes, 4 history exporters,
-> OCR/spell/session/TTS, and the 19-service capability map). Two suites
-> (`regress_screens`, `regress_tray_menu`) open a Tk window and are run
-> only in a GUI session — see `docs/review/HEADLESS_SWEEP_RULE_2026-10-15.md`.)
+> OCR/spell/session/TTS, and the 19-service capability map), then to
+> `117/117` after the commit-message audit, the payload-asset census, and the
+> Phase 7/8 suites (`regress_ui_slots`, `regress_extension_vendored_dep`,
+> `regress_packaging`, `regress_windows`, `regress_dlg129_spec`, and their
+> neighbours), and finally to **`120/120` regress suites / `122/122`
+> including `ui_match` and `smoke_dict` — all exit 0** (2026-10-16).
+> Two suites (`regress_screens`, `regress_tray_menu`) open a Tk window and
+> are run only in a GUI session — see `docs/review/HEADLESS_SWEEP_RULE_2026-10-15.md`.)
 
 > **Use `python -I tools/run_suites.py` for the sweep**, not a shell loop that
 > greps the last line for `FAIL`. Three stale known-answer vectors (as of
