@@ -57,19 +57,47 @@ if m:
        "_gen.get(key, 17) or 0" not in APP)
 
 # --- 2. history I6 five-entry menu -------------------------------------
-hm = [x for x in ast.walk(tree)
+# 2026-10-16 (Phase 7): the history window moved to `qtranslate/windows.py`
+# as `HistoryView`, with `App.open_history_window` left as a delegator. The
+# menu is therefore searched in BOTH files: a check that reads only app.py
+# would either go red for a legitimate move, or (worse) be narrowed to the
+# delegator and stop covering the menu at all. This pins the menu wherever
+# it lives AND pins that the two stay connected.
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _src(rel):
+    return io.open(os.path.join(ROOT, rel), encoding="utf-8").read()
+
+
+WIN = _src(os.path.join("qtranslate", "windows.py"))
+wtree = ast.parse(WIN)
+hm = [x for x in ast.walk(wtree)
       if isinstance(x, ast.FunctionDef) and x.name == "_hist_menu"]
-ck("history window defines _hist_menu", len(hm) == 1)
+ck("history window defines _hist_menu (in windows.py after the Phase 7 split)",
+   len(hm) == 1)
 if hm:
-    seg = ast.get_source_segment(APP, hm[0])
+    seg = ast.get_source_segment(WIN, hm[0])
     ck("menu has 5 entries", seg.count("add_command") == 5,
        str(seg.count("add_command")))
     for op in ("load_sel", "_pcopy", "_hdel", "_hear"):
         ck("menu references %s" % op, op in seg, op)
     ck("bound to right-click",
-       'tv.bind("<Button-3>", _hist_menu)' in APP)
+       'tv.bind("<Button-3>", _hist_menu)' in WIN)
     ck("entries disabled without selection",
        'state="normal" if _ent else "disabled"' in seg)
+# The delegator half: App must reach the extracted class, not keep a stale
+# copy of the body (which would make the split a duplicate, not a move).
+ck("App.open_history_window delegates to windows.HistoryView",
+   re.search(r'def open_history_window\(self\):.*?'
+             r'from qtranslate\.windows import HistoryView.*?'
+             r'return HistoryView\(self\.root, self, self\.history\)\.open\(\)',
+             APP, re.S) is not None,
+   "the delegator must pass the LIVE history list by reference")
+ck("the old body is gone from app.py (not duplicated)",
+   'w = tk.Toplevel(self.root)' not in APP.split(
+       "def open_history_window")[1].split("def clear_history")[0],
+   "a leftover copy would silently diverge from windows.py")
 
 # --- 3. OCR overlay keys -----------------------------------------------
 ov = [x for x in ast.walk(tree) if isinstance(x, ast.FunctionDef)
