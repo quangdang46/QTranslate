@@ -434,7 +434,7 @@ that undercounted the inventory; fixed here.
 | F6 Global dispatch (invoke-by-name) | `FUN_0043B8CE` (gate `this+0x40==2`) → `FUN_00427AD4`: slot5=`GetIDsOfNames`(1 name,1 arg5th param), slot6=`Invoke` | VERIFIED | ported | this is the mechanism behind every JS call (`serviceHeader`, `serviceTranslateRequest`, `usesAutoDetectCode`, `codeFromLanguage`, …) |
 | F7 UtilsDispatch → JS `addOption` | `FUN_00465A92` calls `FUN_0043B8CE(this,L"addOption",…)` | VERIFIED | ported | **corrects D11 framing**: this is native **calling into** the JS-defined `addOption(a,b){Options[a]=b}` (matches `common.py` docstring exactly), not a native-side option setter being exposed to JS |
 | F8 `services::UtilsDispatch` (native→JS exposed object) | RTTI: `IDispDynImpl<services::UtilsDispatch,&GUID_NULL>` | VERIFIED | ported | the **reverse direction**: a native `IDispatch` the *script* can call back into (registered as `"Utils"` in `FUN_0045F609`, group D) — distinct object from F6/F7 |
-| F9 MD5 / signing (Baidu/Youdao/Promt) | crypto section; known-answer vectors | VERIFIED | ported | smoke vectors. Artifacts: `tests/regress_baidu_sign.py` (29), `tests/regress_promt_hash.py` (25) — each compares against an INDEPENDENT reference written inside the test, so a wrong port cannot pass |
+| F9 MD5 / signing (Baidu/Youdao/Promt) | crypto section; known-answer vectors | VERIFIED | ported | **The row named three providers and cited two suites — Youdao had none**, so its key was never compared against anything and a typo in `_SIGN_KEY` would have silently changed every request's signature. Closed 2026-10-16 with `tests/regress_youdao_sign.py` (18), which byte-verifies the key `Y2FYu%TNSbMCxc3t2u^XT` against the recovered `Utils.md5("fanyideskweb"+a+e+key)` and checks the digest against an independent reference. Artifacts: `tests/regress_baidu_sign.py` (29), `tests/regress_promt_hash.py` (25), `tests/regress_youdao_sign.py` (18) — each compares against an INDEPENDENT reference written inside the test, so a wrong port cannot pass |
 | F10 Google `tk()` algo | `Service.js` | VERIFIED | ported | 1:1 + vector |
 | F11 Cookie engine (curl) | group-D `FUN_00460467`/`FUN_00460580` + curl fetch wrappers `FUN_0045BCED`(GET)/`FUN_0045BF7D`(POST) + proxy/timeout; per-call opener | VERIFIED | ported | **recast:** evidence is the fetch wrappers + Options proxy, not a "shared jar" (the shared-jar claim was our port's inference) |
 | F12 Google tkk seed | `FUN_0040FB54`/`FUN_0040FEC9` (same as E21): page fetch + `Find`-slice; seeded into JS via `GoogleTkk` in `FUN_0045F6C1`. **Binary-verified 2026-10-10** with E21 from the recovered image (both now share one evidence set) | VERIFIED | behaviour-verified | closes the tkk chain (JS `tk()` ← `Options.GoogleTkk` ← `FUN_0040FEC9` parse); port writes `Options["GoogleTkk"]` and the test pins cache + retry |
@@ -901,3 +901,24 @@ The four `not-started` rows (C10, F13, G9, J6) are unchanged and deliberate —
 two proven negatives about native, one uncapturable runtime comparison, one new
 dependency. **G9 remains `UNKNOWN`, so the Gate remains `BLOCKED (1)`.**
 
+
+---
+
+## 2026-10-16 (second pass) — session scrapes, OCR, spell, Retry-After
+
+Continuing the same method (read the recovered artifact, compare, fix): six
+more port bugs, all in code that had *looked* wired.
+
+| Where | What was wrong | Pinned by |
+|---|---|---|
+| `session.py` Bing scrape | looked for `params_AbusePreventionHelper=[(\d+),…]` — a name the image does not contain; native's helper array's first member is the `IG:"` marker itself. Also read `key=group(1)` (the IG) and `token=group(2)`, i.e. the two slots **swapped** — invisible for eleven months because the old fixture put its numbers in the token slot | `regress_session_markers.py` (51) |
+| `session.py` Promt scrape | looked for `name="aft"` where the image spells `id="_paft"` — wrong attribute AND wrong value, so paft was always empty | same |
+| `session.py` Baidu | read `Options.BaiduGtk`/`BaiduToken` but **nothing ever filled them**, so every request signed with the `0.0` seed. Native definitely scrapes this page: `.rdata` carries `http://fanyi.baidu.com`, `BAIDUID`, `token: '` and `gtk = '` | `regress_session.py` (24) |
+| `microsoft.py` | never honoured `BingCookie`/`BingToken`/`BingKey` from Options, unlike every other provider — a saved session was silently ignored and re-scraped | same |
+| `ocr.py` multipart | the **file part came last**; native's format strings emit it first (0x529e10), then one field part each (0x529e90), then the closer (0x529ed8) | `regress_ocr_multipart.py` (20) |
+| `ocr.py` languages | 8 of native's 24 codes; Turkish/Polish/Greek/Czech/Croatian… all fell to `eng`. Native's list is one NULL-separated run right after `ErrorMessage` | `regress_ocr_languages.py` (71) |
+| `spell.py` Yandex | GET with `?text=` where native **POSTs a form body** — settled by reading `.rdata` (the `text=` literal sits beside a urlencoded header and the path has no `?`), closing the row's last open question | `regress_spell_request.py` (15) |
+| `reliability.py` `parse_retry_after` | `float(text)` accepted `1e3` (→ 1000 s), `+5`, `inf`, `nan`. delta-seconds is an integer grammar; libcurl's `"Retry-After:"` string is in the image at `1249348` | `regress_reliability.py` (74) |
+
+**G9 and the Gate are unchanged** — `UNKNOWN`, `BLOCKED (1)`. The four
+`not-started` rows stay deliberate. Phase C still not started.
