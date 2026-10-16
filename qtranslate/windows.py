@@ -48,9 +48,12 @@ from tkinter import ttk
 # app.py imports THIS module lazily (inside the method), so the cycle
 # resolves at call time either way.
 from qtranslate.app import (  # noqa: E402
-    _COLORS, _Cw, _T, _W, speak,
+    LANG_DISPLAY, _COLORS, _Cw, _T, _W, _safe_destroy, speak,
 )
-from qtranslate.placement import place_aux as _place_aux  # noqa: E402
+from qtranslate.placement import (  # noqa: E402
+    place_aux as _place_aux,
+    save_placement as _save_placement,
+)
 
 
 class HistoryView:
@@ -786,5 +789,191 @@ class TrayController:
         _sync_icon(icon)
         return icon
 
+
+
+class PopupHost:
+    """The borderless topmost popup window -- the port's `show_popup`.
+
+    Mirrors native's `FUN_0040C393` render path: `SetWindowTextW(title)` ->
+    `WM_SETICON`(service icon) -> RichEdit child content ->
+    EM_EXLIMITTEXT-style config -> second control text -> auto-resize
+    (`FUN_0044B4F4`) -> `SetWindowPos(HWND_TOPMOST, SWP_NOMOVE|NOSIZE|SHOWWINDOW)`.
+
+    Transcribed from the module function `show_popup(source, result,
+    service="google", target="vi", src_lang="auto")` with NO `self.`
+    renames -- it took no `self` to begin with, every dependency already
+    arrived as an argument or (`_MAIN_APP`, `_COLORS`, ...) a module global.
+    The only change is that it became a `@staticmethod`, keeping the exact
+    same signature so `app.py`'s three call sites and the module-level
+    `show_popup` forwarder are untouched.
+    """
+
+    @staticmethod
+    def open(source, result, service="google", target="vi",
+            src_lang="auto"):
+        """Popup window — mirrors FUN_0040c393 render path.
+
+        Native order: SetWindowTextW(title) -> WM_SETICON(service icon) ->
+        RichEdit child content -> EM_EXLIMITTEXT-style config -> second
+        control text -> auto-resize (FUN_0044B4F4) ->
+        SetWindowPos(HWND_TOPMOST, SWP_NOMOVE|NOSIZE|SHOWWINDOW).
+        """
+        # Native popup (WindowPopup/TopmostWindow): borderless topmost text
+        # window, themed by Themes/*.json. No buttons — header double-click
+        # opens the main window; Esc closes.
+        win = tk.Toplevel()
+        win.title(f"{service.title()} - QTranslate")
+        win.attributes("-topmost", True)
+        win.overrideredirect(True)
+        try:
+            from qtranslate.theme import active_theme, tk_colors, window_colors
+            from qtranslate import config as _C
+            _tn = _C.load().get("Appearance", {}).get("ThemeName", "")
+            # FUN_0044b44f: a ThemeName that names no file on disk leaves the
+            # loader empty, and the *installer* then substitutes
+            # theme::DefaultColorTheme — the GetSysColor palette, never another
+            # file. `_tn or "Flat Dark"` did the one thing native never does, and
+            # its FileNotFoundError was swallowed by the `except` below, so a stale
+            # ThemeName silently produced _COLORS while reading as success.
+            _pc = tk_colors(window_colors(active_theme(_tn)))
+        except Exception:
+            _pc = _COLORS
+        win.configure(bg=_pc.get("border", "#7a7a7a"))
+        # Appearance.PopupWindowFrameThickness: border width in px (native 0..8).
+        try:
+            from qtranslate import config as _CFW
+            _fw = max(0, min(8, int(_CFW.load().get("Appearance", {}).get(
+                "PopupWindowFrameThickness", 2))))
+        except Exception:
+            _fw = 1
+        inner = tk.Frame(win, bg=_pc.get("back", "#f0f0f0"))
+        inner.pack(fill="both", expand=True, padx=max(1, _fw), pady=max(1, _fw))
+        # Header line = the native popup CAPTION (FUN_0040C393:
+        # SetWindowTextW(hwnd+4, [+0x3c])). Shipped order (user-verified
+        # screenshots): "<Source> to <Target>…", a favourite star, then the
+        # PopupIcons glyph row. `win.title()` sets the OS title, which is
+        # invisible in an overrideredirect window -- so this Label IS the header.
+        _hdr_src = LANG_DISPLAY.get(src_lang or "auto", "Auto-Detect")
+        _hdr_tgt = LANG_DISPLAY.get(target, target)
+        _hdr = tk.Frame(inner, bg=_pc.get("back", "#f0f0f0"))
+        _hdr.pack(fill="x", padx=4, pady=(3, 0))
+        tk.Label(_hdr, text="%s to %s…" % (_hdr_src, _hdr_tgt),
+                 bg=_pc.get("back", "#f0f0f0"),
+                 fg=_pc.get("text", "#000000")).pack(side="left")
+        tk.Label(_hdr, text="★", bg=_pc.get("back", "#f0f0f0"),
+                 fg=_pc.get("text", "#000000")).pack(side="left", padx=(2, 0))
+        try:
+            from qtranslate import config as _CPH
+            _icons_h = int(_CPH.load().get("Appearance", {}).get(
+                "PopupIcons", 30))
+        except Exception:
+            _icons_h = 30
+        if _icons_h:
+            _bar = tk.Frame(_hdr, bg=_pc.get("back", "#f0f0f0"))
+            _bar.pack(side="left", padx=(2, 0))
+            if _icons_h & 2:
+                tk.Label(_bar, text="\U0001F4D6",
+                         bg=_pc.get("back", "#f0f0f0")).pack(side="left", padx=1)
+            if _icons_h & 4:
+                tk.Label(_bar, text="\U0001F50A",
+                         bg=_pc.get("back", "#f0f0f0")).pack(side="left", padx=1)
+            if _icons_h & 8:
+                tk.Label(_bar, text="\U0001F4CB",
+                         bg=_pc.get("back", "#f0f0f0")).pack(side="left", padx=1)
+            if _icons_h & 16:
+                tk.Label(_bar, text="↻",
+                         bg=_pc.get("back", "#f0f0f0")).pack(side="left", padx=1)
+        txt = tk.Text(inner, wrap="word",
+                      bg=_pc.get("back", "#f0f0f0"),
+                      fg=_pc.get("text", "#000000"),
+                      insertbackground=_pc.get("text", "#000000"),
+                      font=("Segoe UI", 11), borderwidth=0,
+                      highlightthickness=0)
+        lines = max(2, min(12, result.count("\n") + len(result) // 60 + 1))
+        txt.config(height=lines, width=60)
+        txt.pack(fill="both", expand=True, padx=6, pady=6)
+        txt.insert("1.0", result)
+        txt.config(state="disabled")
+
+        # (The icon glyph row lives in the header Labels above -- the old copy
+        # of this block that rendered below the text was removed 2026-10-14 when
+        # the header moved up, matching the native title-glyph order.)
+
+        def _to_main(_e=None):
+            # Native: double-clicking the popup header shows the EXISTING main
+            # window with the current text. (Previously this created a second
+            # tk.Tk(), which corrupted Tk state.)
+            _close_popup()
+            try:
+                from qtranslate.app import _MAIN_APP
+                a = _MAIN_APP
+                if a is not None:
+                    a.root.deiconify()
+                    a.root.lift()
+                    a.root.focus_force()
+                    a.src.delete("1.0", "end")
+                    a.src.insert("1.0", source)
+                    a.render(result)
+            except Exception:
+                pass
+
+        txt.bind("<Double-1>", _to_main)
+        def _close_popup(_e=None):
+            try:
+                from qtranslate import config as _CAP
+                if not _CAP.load().get("Appearance", {}).get(
+                        "PopupAutoPos", True):
+                    _save_placement("WindowPopupPlacement", win)
+            except Exception:
+                pass
+            _safe_destroy(win)
+
+        win.bind("<Escape>", _close_popup)
+
+        # --- Appearance popup settings (native ShowPopupWindow) --------------
+        try:
+            from qtranslate import config as _CA
+            _ap = _CA.load().get("Appearance", {})
+        except Exception:
+            _ap = {}
+        # PopupAutoFocus: steal focus only when enabled (default False)
+        if _ap.get("PopupAutoFocus"):
+            try:
+                win.attributes("-topmost", True)
+                win.focus_force()
+            except Exception:
+                pass
+        # Transparency 0..255 -> window alpha (only when < 255).
+        # Native default 217 (DAT_005494A4, NATIVE_ARCH.md:1200; also
+        # DEFAULT_APPEARANCE in config.py) — not 255.
+        try:
+            _tr = int(_ap.get("Transparency", 217))
+            if 0 < _tr < 255:
+                win.attributes("-alpha", _tr / 255.0)
+        except Exception:
+            pass
+        # PopupAutoPos: place near the pointer. When off, restore the
+        # remembered geometry (General.WindowPopupPlacement, previously
+        # unused) like the other aux windows.
+        if _ap.get("PopupAutoPos", True):
+            try:
+                px, py = win.winfo_pointerx(), win.winfo_pointery()
+                win.geometry(f"+{px + 12}+{py + 12}")
+            except Exception:
+                pass
+        else:
+            try:
+                win.update_idletasks()
+                _place_aux(win, "WindowPopupPlacement",
+                          f"{win.winfo_width()}x{win.winfo_height()}")
+            except Exception:
+                pass
+        # PopupTimeout (seconds): auto-close; 0/absent = stay
+        try:
+            _to = int(_ap.get("PopupTimeout", 0))
+            if _to > 0:
+                win.after(_to * 1000, lambda: _safe_destroy(win))
+        except Exception:
+            pass
+
 #   OptionsDialog  <- App.open_options
-#   PopupHost      <- show_popup

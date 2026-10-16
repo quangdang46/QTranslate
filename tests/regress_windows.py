@@ -56,9 +56,32 @@ APP = read(os.path.join("qtranslate", "app.py"))
 
 ck("windows.py imports cleanly",
    __import__("qtranslate.windows") is not None)
+def _module_level_tk_calls(src):
+    """True if a `tk.Tk(` call sits at module scope (not inside a def)."""
+    tree = ast.parse(src)
+    calls = []
+    for node in ast.walk(tree):
+        if (isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "Tk"
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id == "tk"):
+            calls.append(node)
+    # A call is module-level if no enclosing function/class-method scope
+    # contains it -- cheapest correct check: walk every FunctionDef's body
+    # and remove calls found there.
+    nested = set()
+    for fn in ast.walk(tree):
+        if isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            nested.update(id(c) for c in ast.walk(fn)
+                          if isinstance(c, ast.Call))
+    return [c for c in calls if id(c) not in nested]
+
+
 ck("...and creates no window at import",
-   "tk.Tk(" not in WIN.split('"""', 2)[2],
-   "a module-level Tk would open a window on import")
+   not _module_level_tk_calls(WIN),
+   "a module-level Tk() would open a window on import "
+   "(a text search for 'tk.Tk(' is not enough -- it matches comments too)")
 ck("...and holds no module-level widget construction",
    not re.search(r"^[a-z_]+ = (tk|ttk)\.(Toplevel|Frame|Button|Menu)\(",
                   WIN, re.M),
@@ -337,6 +360,53 @@ if HEAD_APP:
         "HEAD %d lines, windows.py %d" % (len(o_t), len(w_t))))
     ck("...and the tray still returns the icon object",
        w_t[-1] == "return icon", repr(w_t[-1]))
+
+
+# -------------------------------------------- the PopupHost move, verbatim
+# A fourth class, transcribed from a plain module FUNCTION (`show_popup`)
+# that took no `self` at all -- every dependency arrived as an argument or
+# a module global (re-imported locally where it needed the LIVE value, e.g.
+# `_MAIN_APP`). So there are no renames whatsoever; the body is identical.
+if HEAD_APP:
+    old_p = next(x for x in ast.walk(ast.parse(HEAD_APP))
+                 if isinstance(x, ast.FunctionDef) and x.name == "show_popup")
+    p_cls = next((x for x in ast.walk(ast.parse(WIN))
+                  if isinstance(x, ast.ClassDef)
+                  and x.name == "PopupHost"), None)
+    p_open = next((x for x in ast.walk(p_cls)
+                   if isinstance(x, ast.FunctionDef)
+                   and x.name == "open"), None) if p_cls else None
+    ck("PopupHost defines a static open()", p_open is not None)
+    ck("...decorated @staticmethod (no self -- it never had one)",
+       p_cls is not None and any(
+           isinstance(d, ast.Name) and d.id == "staticmethod"
+           for d in p_open.decorator_list) if p_open else False)
+
+    def _body_lines(src, fn):
+        out = []
+        for ln in ast.get_source_segment(src, fn).splitlines()[1:]:
+            s = ln.strip()
+            if not s or s.startswith("#"):
+                continue
+            out.append(s)
+        return out
+
+    o_p = _body_lines(HEAD_APP, old_p)
+    w_p = _body_lines(WIN, p_open)
+    _anc = "win = tk.Toplevel()"
+    o_p = o_p[o_p.index(_anc):]
+    w_p = w_p[w_p.index(_anc):]
+    p_diffs = [(i, x, y) for i, (x, y) in enumerate(zip(o_p, w_p))
+               if x != y]
+    ck("the PopupHost body is byte-identical (no substitutions at all)",
+       not p_diffs and len(o_p) == len(w_p),
+       (repr(p_diffs[0]) if p_diffs else
+        "HEAD %d lines, windows.py %d" % (len(o_p), len(w_p))))
+    ck("...and it still re-imports the LIVE _MAIN_APP, not a stale copy",
+       "from qtranslate.app import _MAIN_APP" in w_p
+       if any("_MAIN_APP" in l for l in w_p) else True,
+       "a module-level import of _MAIN_APP would capture it at import "
+       "time, before main() ever sets it")
 
 # -------------------------------------------------------- the delegator half
 ck("App.open_history_window delegates to HistoryView",

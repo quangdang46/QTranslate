@@ -31,12 +31,19 @@ def ck(name, cond, detail=""):
         fail.append(name + (" -- " + detail if detail else ""))
 
 
-SRC = open("qtranslate/app.py", encoding="utf-8").read()
+# Phase 7 (2026-10-16): show_popup's body moved to qtranslate/windows.py as
+# PopupHost.open; app.py keeps the forwarder with the original signature.
+# The call-site count check below only needs the forwarder's NAME (every
+# call site still says `show_popup(...)`), but the structural checks on the
+# body need windows.py now.
+SRC_APP = open("qtranslate/app.py", encoding="utf-8").read()
+SRC_WIN = open("qtranslate/windows.py", encoding="utf-8").read()
+SRC = SRC_APP + "\n" + SRC_WIN
 
 # 1. the hotkey path reaches show_popup (a popup, not just a table render)
 ck("on_hotkey calls show_popup",
-   "def on_hotkey" in SRC
-   and SRC.count("show_popup(") >= 2,
+   "def on_hotkey" in SRC_APP
+   and SRC_APP.count("show_popup(") >= 2,
    "the press-Q popup must be in the hotkey chain")
 
 # 2. popup placement honours Appearance.PopupAutoPos (cursor-adjacent)
