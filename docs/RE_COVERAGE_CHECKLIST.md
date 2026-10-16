@@ -864,12 +864,14 @@ So the ambiguous-key set is `q w ' , . /` — the checklist's earlier
 
 ## Gate checklist (must all be true before Phase C)
 
-- [ ] Every row has RE state ∈ {`VERIFIED`, `UNRECOVERABLE`}. No `INFERRED`/`UNKNOWN` remaining.
-- [ ] Every `UNRECOVERABLE` row states **reason + impact** and appears in `COMPATIBILITY_MATRIX.md`.
-- [ ] Every `VERIFIED` row cites a concrete artifact (Ghidra address **with decompile**, JS source, asset hash, or test) — not a doc line.
-- [ ] Cross-document consistency pass done; no contradictions with D1–D20.
-- [ ] The working-tree `app.py` change is preserved and its behavior decision recorded.
-- [ ] User has **explicitly** approved the Gate. (Document agreement ≠ Gate approval.)
+- [ ] Every row has RE state ∈ {`VERIFIED`, `UNRECOVERABLE`}. No `INFERRED`/`UNKNOWN` remaining. — **NOT MET: G9 is `UNKNOWN`.** Its part (a) is complete (window spec, all 19 dialog templates, 8 themes, DLU→px), but part (b) is a runtime screenshot-diff this machine cannot produce: native is i386 and the port cannot be screenshotted under the current ban. Tooling exists (`docs/review/G9_HARNESS.md`) and is not the blocker.
+- [x] Every `UNRECOVERABLE` row states **reason + impact** and appears in `COMPATIBILITY_MATRIX.md`. — **vacuous: there are 0 `UNRECOVERABLE` rows.** The 9 `dead:*` rows each carry a reason slug + evidence, and all 9 appear in the Matrix.
+- [x] Every `VERIFIED` row cites a concrete artifact (Ghidra address **with decompile**, JS source, asset hash, or test) — not a doc line. — **`tools/gate_artifact_audit.py`: 147/147.** Writing it found 14 rows whose only citation was a doc pointer; 8 were fixed by recognising artifact classes the Gate already names (CLSID byte searches, `file.py:NNN` refs, payload asset globs), 4 by adding the real citation (B2, F9, H4, P3), and it corrected one **wrong** citation (`H4` pointed at the Youdao `Utils.md5` line).
+- [x] Cross-document consistency pass done; no contradictions with D1–D20. — **`tools/docs_consistency.py`: 91 files, 0 findings**, with `tests/regress_docs_consistency.py` proving it detects drift rather than merely reporting clean. Five classes checked: dead test/port/doc citations, stale suite counts in living docs, and TALLY disagreement between the docs that quote it.
+- [x] The working-tree `app.py` change is preserved and its behavior decision recorded. — no uncommitted diff in `app.py`; the `svc, _, tgt, src = app.current()` line is committed and recorded.
+- [ ] User has **explicitly** approved the Gate. (Document agreement ≠ Gate approval.) — **NOT MET, and it is the one item that cannot be self-served.**
+
+**Gate: still `BLOCKED`.** Three of six items are now tool-verified; the two that remain are G9's uncapturable runtime comparison and an explicit approval that only the user can give.
 
 ---
 
