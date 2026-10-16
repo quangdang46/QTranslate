@@ -84,7 +84,10 @@ a = Analysis(
         # Platform/provider modules the registry resolves by NAME at runtime,
         # so a static import walk never sees them.
         'qtranslate.registry',
-        'qtranslate.unavailable_adapter',
+        # `qtranslate.platforms.UnavailableAdapter` holds the honest fallback
+        # (every capability reports unavailable off-Windows); the registry
+        # resolves adapters by name at runtime, so Analysis never sees them.
+        'qtranslate.platforms',
         # `qtranslate.screens` and `qtranslate.win32app` are standalone
         # entry points (`python -m qtranslate.screens`, the pywin32
         # variant) reached only via `__main__`, which Analysis never
@@ -341,20 +344,27 @@ def _pyinstaller_argv():
     except ImportError:
         pass
     want = "%d.%d" % sys.version_info[:2]
-    # The deps that MUST be in the bundle. keyboard/pyperclip come from
-    # requirements.txt; Pillow is imported by the icon paths (service strip,
-    # tray glyphs, OCR region capture) and is a hard import in this env, so
-    # it ships too. The optional ones (pystray, comtypes, playwright) are
-    # deliberately absent -- the app explains each when it is missing.
-    deps = ["--with", "pillow"]
+    # The deps that MUST be in the bundle. pyperclip ships on every platform;
+    # keyboard is Windows-only (it aborts the process on macOS Cocoa), so it
+    # is only bundled on Windows. Pillow ships on every platform (service
+    # strip, tray glyphs, OCR region capture). The optional ones (pystray,
+    # comtypes, playwright) are deliberately absent -- the app explains each
+    # when it is missing.
+    deps = ["--with", "pillow", "--with", "pyperclip"]
+    if sys.platform == "win32":
+        deps.append("--with keyboard==0.13.5")
     req = os.path.join(HERE, "requirements.txt")
     if os.path.exists(req):
         for line in open(req, encoding="utf-8"):
             line = line.strip()
             if line and not line.startswith("#") and "==" in line:
                 mod = line.split("==")[0].strip()
-                if mod in ("keyboard", "pyperclip"):
-                    deps.extend(["--with", line])
+                if mod == "pyperclip":
+                    # already injected above with the exact version
+                    pass
+                elif mod == "keyboard" and sys.platform == "win32":
+                    # already injected above
+                    pass
     argv = ["uv", "tool", "run", "--python", want]
     argv += deps
     argv += ["--from", "pyinstaller", "pyinstaller"]

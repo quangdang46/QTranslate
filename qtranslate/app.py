@@ -33,12 +33,23 @@ from tkinter import filedialog, ttk
 
 sys.path.insert(0, ".")
 
-try:
-    import keyboard
-    import pyperclip
-    _HAS_KEYS = True
-except ImportError:
-    _HAS_KEYS = False
+# `keyboard` crashes at import on macOS Cocoa (a process-level abort,
+# not a catchable Python exception), so it is only imported on Windows
+# where the app actually uses global hotkeys. `pyperclip` is safe on any
+# platform and is used for clipboard read/write regardless of hotkeys.
+_HAS_KEYS = False
+if sys.platform == "win32":
+    try:
+        import keyboard
+        import pyperclip
+        _HAS_KEYS = True
+    except Exception:
+        pass
+else:
+    try:
+        import pyperclip
+    except Exception:
+        pass
 
 # NOTE (Phase 2 slice 2026-10-15): provider modules moved to
 # qtranslate/registry.py, which is tkinter-free. app.py must NOT import
@@ -2930,10 +2941,14 @@ def _frozen_selftest():
 
     # The runtime deps that must be INSIDE the bundle. Without them the
     # app starts but has no hotkeys and no icons -- a silent degradation
-    # that looks like a feature, so it is checked.
-    for _dep in ("keyboard", "pyperclip", "PIL"):
+    # that looks like a feature, so it is checked. `keyboard` is Windows-only
+    # (it aborts the process on macOS Cocoa), so the check is skipped there.
+    for _dep in ("pyperclip", "PIL"):
         _ck("bundled dep %s" % _dep,
             lambda d=_dep: __import__(d, fromlist=["*"]))
+    if sys.platform == "win32":
+        _ck("bundled dep keyboard",
+            lambda: __import__("keyboard", fromlist=["*"]))
 
     # A theme must load when its data file is present. NOTE the honest
     # caveat this check cannot hide: `theme.THEMES_DIR` points at the

@@ -11,13 +11,16 @@ import sys
 sys.path.insert(0, ".")
 
 missing = []
-try:
-    import keyboard  # noqa: F401
-except ImportError:
-    missing.append("keyboard")
+# `keyboard` aborts the process on macOS Cocoa (not a catchable ImportError),
+# so only import it where the app actually uses global hotkeys: Windows.
+if sys.platform == "win32":
+    try:
+        import keyboard  # noqa: F401
+    except Exception:
+        missing.append("keyboard")
 try:
     import pyperclip  # noqa: F401
-except ImportError:
+except Exception:
     missing.append("pyperclip")
 
 if missing:

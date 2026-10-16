@@ -31,7 +31,10 @@ a = Analysis(
         # Platform/provider modules the registry resolves by NAME at runtime,
         # so a static import walk never sees them.
         'qtranslate.registry',
-        'qtranslate.unavailable_adapter',
+        # `qtranslate.platforms.UnavailableAdapter` holds the honest fallback
+        # (every capability reports unavailable off-Windows); the registry
+        # resolves adapters by name at runtime, so Analysis never sees them.
+        'qtranslate.platforms',
         # `qtranslate.screens` and `qtranslate.win32app` are standalone
         # entry points (`python -m qtranslate.screens`, the pywin32
         # variant) reached only via `__main__`, which Analysis never
@@ -103,8 +106,8 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    version='C:\\Users\\ADMIN\\qtranslate-re\\build\\assets\\version_info.txt',
-    icon=['C:\\Users\\ADMIN\\qtranslate-re\\build\\assets\\QTranslate.ico'],
+    version='/Users/tranquangdang21/Projects/QTranslate/build/assets/version_info.txt',
+    icon=['QTranslate.ico'],
 )
 
 coll = COLLECT(
