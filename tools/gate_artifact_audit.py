@@ -40,8 +40,13 @@ import os
 import re
 import sys
 
-DOC = os.path.join("docs", "RE_COVERAGE_CHECKLIST.md")
-REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DOC = os.environ.get("QTRANSLATE_DOCS") or os.path.join(
+    "docs", "RE_COVERAGE_CHECKLIST.md")
+# Where port/test names are resolved. `QTRANSLATE_REPO` overrides it so a
+# scratch corpus (a copy of docs/ alone) can still find the real suites --
+# the same override tools/docs_consistency.py honours.
+REPO = os.environ.get("QTRANSLATE_REPO") or os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__)))
 # The installed QTranslate copy -- the authority on which payload files
 # exist (the installer is NOT run; only its extracted tree is read).
 INSTALLED = os.environ.get(
