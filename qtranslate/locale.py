@@ -17,33 +17,61 @@ wrong type in every case: a `[id, text]` list instead of the text for
 `Strings`, and a whole dialog/menu object for the other two. Fixed
 2026-10-16 to resolve by **id**, which is what the array position is not.
 
-Not every pack parses: `English/lang.json` is truncated upstream (it ends
-at `"Id": 10`), so `list_locales()` skips it rather than dropping every
-language after it alphabetically.
+Not every pack is well-formed: all 35 carry **trailing commas**, and 7
+(Bulgarian, Danish, English, Indonesia, Italian, Mongolian, Turkish) were
+unreadable to strict `json` before 2026-10-16 — they are read with the
+trailing commas stripped, the same way `theme.load_theme_at` handles
+`Themes/*.json`.
 """
 import glob
 import json
 import os
+import re
 
 LOCALES_DIR = "C:/Program Files (x86)/QTranslate/Locales"
+
+
+def _read_pack(path: str) -> dict:
+    """Read one ``lang.json``, tolerating what the packs actually contain.
+
+    The shipped packs are JSON **with trailing commas** (all 35 have them
+    -- e.g. Danish's Appearance dialog closes its ``Controls`` array with
+    ``],`` before ``"Id": 14``). Native reads them with a lenient parser,
+    so strict ``json.load`` rejects **7 of the 35 languages outright**:
+    Bulgarian, Danish, English, Indonesia, Italian, Mongolian, Turkish.
+
+    Strip the trailing commas before parsing, exactly as the theme loader
+    does (``theme.load_theme_at``). ``//`` comments are not used in any
+    pack, but the same reason applies, so this goes through the theme
+    loader's quote-aware scanner rather than a second regex.
+    """
+    with open(path, encoding="utf-8-sig") as f:
+        text = f.read()
+    from qtranslate.theme import _strip_jsonc
+    text = _strip_jsonc(text)
+    text = re.sub(r",(\s*[}\]])", r"\1", text)
+    # Bulgarian and Mongolian carry a DOUBLE comma ("...],,") -- a
+    # hand-editing slip that is malformed even for a lenient parser, and
+    # that no amount of trailing-comma stripping fixes. Dropping a whole
+    # language over one redundant comma is a worse outcome than ignoring
+    # it, so collapse runs of commas before the value they separate.
+    text = re.sub(r",(\s*,)+\s*", ",", text)
+    return json.loads(text)
 
 
 def list_locales(locales_dir: str = LOCALES_DIR) -> list:
     out = []
     for p in glob.glob(os.path.join(locales_dir, "*", "lang.json")):
         try:
-            with open(p, encoding="utf-8-sig") as f:
-                d = json.load(f)
-            out.append((d.get("LanguageName", "?"), d.get("LanguageCode", "?")))
+            d = _read_pack(p)
         except (OSError, ValueError):
-            pass  # English/lang.json is truncated upstream (ends at Id:10)
+            continue
+        out.append((d.get("LanguageName", "?"), d.get("LanguageCode", "?")))
     return sorted(out)
 
 
 def load_pack(name: str, locales_dir: str = LOCALES_DIR) -> dict:
-    with open(os.path.join(locales_dir, name, "lang.json"),
-              encoding="utf-8-sig") as f:
-        return json.load(f)
+    return _read_pack(os.path.join(locales_dir, name, "lang.json"))
 
 
 def t(pack: dict, section: str, index: int, default: str = "") -> str:
