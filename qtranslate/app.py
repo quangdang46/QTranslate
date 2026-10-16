@@ -4474,6 +4474,21 @@ def main():
         pass
     _consume_crash_reports()
     _install_crash_hook()
+    # FUN_0040345B's fail-fast: an out-of-memory condition terminates
+    # without unwinding, so it must NOT fall through to the crash-report
+    # excepthook installed just above (native's Q-row records exactly that
+    # separation). qtranslate/crash.py holds the code mapping.
+    def _oom_hook(typ, val, tb):
+        if typ is MemoryError:
+            from qtranslate import crash as _crash
+            _crash.fail_fast(-0x7FF8FFF2)   # -> 0xC0000017, never returns
+        return _prev_hook(typ, val, tb)
+
+    try:
+        _prev_hook = sys.excepthook
+        sys.excepthook = _oom_hook
+    except Exception:
+        pass
     # Single-instance guard (FUN_00435175): an existing
     # QTranslate_ApplicationWindow is activated and this launch exits,
     # unless the command line carries allow-multiple-instances.
