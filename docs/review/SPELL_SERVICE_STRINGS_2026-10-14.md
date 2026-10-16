@@ -74,6 +74,17 @@ bool FUN_0042c968(undefined4 *param_1, int *param_2)
      separator against the byte at `0x522534`; that byte is the tail of a
      longer native string whose head was not located (`wstr` from the
      guess point reads `Pane`). Recorded as unresolved, not decoded.
+     **Resolved 2026-10-16 — it is NOT a string.** Resolving the RVA
+     through the verified `0x401000` image base gives file offset
+     `1185076`, whose bytes are `\xff\xff\xff\xff}\x98\x00\xfc\x01\x00\x00`
+     — relocation/vtable filler. The nearby `Pane` strings are all
+     Options-key names (`ShowTopPane`, `ShowMiddlePane`,
+     `ShowServicesPane`) in the NULL-separated key table, which is what
+     the guess point landed on; it is a **different datum**. So the third
+     argument is a data slot (a length/offset), not a separator string,
+     and the `'\x01'` fourth argument is the separator. Nothing here
+     affects the port: the join is over RT_STRING ids, which the dictionary
+     builder already reproduces.
 5. **Body shape not proven.** The `Content-Type` header is present, so a
    form body is possible; but the decompile does not show whether the
    text travels as a `?text=` GET query (the port's form) or as a POST

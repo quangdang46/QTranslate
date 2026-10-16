@@ -802,9 +802,9 @@ now read and `VERIFIED` (see their rows).
 | Item | Native evidence (artifact) | RE state | Port state | Note |
 |------|----------------------------|----------|------------|------|
 | O1 lang.json loader | `FUN_0045B716`: builds `Locales\<name>` path via `FUN_0045B1CF`/`FUN_0045B9D9` (loader `FUN_0045B29A`) | VERIFIED | ported | locale.py |
-| O2 36 strings / 14 windows packs | `Locales/*/lang.json` | VERIFIED | ported | vi pack |
+| O2 36 strings / 14 windows packs | `Locales/*/lang.json` (all 35 read 2026-10-16) | VERIFIED | ported | **PORT BUGS FIXED 2026-10-16:** 7 of 35 packs were unreadable (bare `json.load` vs the packs' trailing commas — Bulgarian/Mongolian additionally have a double comma), and `locale.t()` returned an `[id,text]` pair for Strings and a whole dialog object for Windows/Menus. Now 35/35 load and `t()` resolves by id; `window_caption()`/`menu_labels()` expose the other two shapes. `tests/regress_locale_packs.py` (167) |
 | O3 help.txt default text | `FUN_0042F2CC`: default source = `"%s %s %s\n\n"` (name+version+date) + `Locales\...\help.txt` text (or resource 199 fallback); set on the source pane | VERIFIED | ported | matches `ui_match` help.txt check |
-| O4 English/lang.json pages | asset: file ends **validly** at `"Id": 10` (closing `}]}`), i.e. valid JSON but fewer pages than other locales | VERIFIED | ported | **correction:** earlier "truncated mid-Items" is imprecise — it is valid JSON ending at Id 10; fallback still handles any gap |
+| O4 English/lang.json pages | asset: file ends at `"Id": 10` (closing `}]}`), so the Windows section has fewer pages than other locales | VERIFIED | ported | **corrected twice.** Earlier "truncated mid-Items" was imprecise; then this row claimed the file is **valid JSON** — also wrong, and disproved 2026-10-16: strict `json.load` fails on English exactly as on 6 other packs, with a trailing comma before `"Id": 14` in the same Windows array that ends at Id 10. The ending-at-Id-10 fact and the trailing-comma defect are independent. `tests/regress_locale_packs.py` loads all 35 and asserts the 7 non-strict ones really are non-strict |
 
 ## P. Keyboard-layout convert
 
