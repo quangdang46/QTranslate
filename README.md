@@ -43,7 +43,7 @@ python -I start_app.py
 > `os.path.dirname(os.path.dirname(os.path.abspath(__file__)))` form on
 > 2026-10-10; the `PYTHONPATH=. python3 …` workaround is no longer needed.
 
-## Test suites (last verified 2026-10-15 — offline only)
+## Test suites (last verified 2026-10-16 — offline only)
 
 > These counts are **verified offline results, not a live claim**. Live suites
 > (`live_providers`, `live_bass`) were last run 2026-10-08; see
@@ -55,7 +55,10 @@ python -I start_app.py
 > regress grew `37/37` → `61/61` headless with the Core/Extensions slice
 > pins, the port-fix pins, and one suite per module, then to `68/68` with the
 > extension-loading, extension-e2e, override-consistency, app-undefined-name,
-> and override-persistence slices and their neighbours. Two suites
+> and override-persistence slices and their neighbours, then to `110/110`
+> with the Service.js reading passes, the four Gate audit tools, and the
+> artifact-driven suites (35 locale packs, 8 themes, 4 history exporters,
+> OCR/spell/session/TTS, and the 19-service capability map). Two suites
 > (`regress_screens`, `regress_tray_menu`) open a Tk window and are run
 > only in a GUI session — see `docs/review/HEADLESS_SWEEP_RULE_2026-10-15.md`.)
 
@@ -63,10 +66,13 @@ python -I start_app.py
 python -I tests/ui_match.py        # 103/103 (2026-10-15, GUI session only;
                                    #   it builds tk.Tk() — rerun before release)
 python -I tests/smoke_dict.py      # PASS exit 0 (2026-10-15, offline)
-python -I tests/regress_*.py       # 68/68 headless suites PASS (2026-10-15, offline)
+python -I tests/regress_*.py       # 110/110 headless suites PASS (2026-10-16, offline)
                                    #   check the EXIT CODE, not a "FAIL" grep
                                    #   (suites print FAIL n/m without a colon)
 python -I tools/coverage_tally.py --selftest   # PASS 6/6 (2026-10-15)
+python -I tools/gate_artifact_audit.py         # 147/147 (2026-10-16, offline)
+python -I tools/docs_consistency.py            # 0 findings (2026-10-16, offline)
+python -I tools/audit_ui_spec.py               # 48 checks (2026-10-16, offline)
 python -I tests/live_providers.py  # 21/21 vs real endpoints (2026-10-08, historical)
 ```
 
