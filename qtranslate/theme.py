@@ -290,11 +290,25 @@ def _normalize_common(record: dict) -> dict:
             v = str(raw).strip()
             out[k] = (v.lower() not in ("", "false", "0", "no"))
         else:  # colour ints
+            # The file stores a BGR NIBBLE STRING, not a number, and
+            # `int(body, 16)` is therefore NOT the value the theme means:
+            # Flat Dark's `"20"` is `#202020` and Holo Light's `"f2"` is
+            # `#f2f2f2` (the grayscale shorthand `_hex` documents), whereas
+            # `int("20",16)` is `0x20` and `int("f2",16)` is `0x22f2` --
+            # the latter with its channels REVERSED.
+            #
+            # This dict is kept int-shaped because the extension contract
+            # documents it that way, but NOTHING currently reads these ints:
+            # every renderer path goes through `state_colors()`/`slot()`,
+            # which re-read the RAW record and expands it with `_hex`. So
+            # this branch is a latent trap, not a live bug -- recorded here
+            # (and pinned by tests/regress_theme_all.py) so the next reader
+            # does not assume `int(x,16)` was checked against native.
             body = str(raw).strip().lstrip("#")
             if body.strip("0123456789abcdefABCDEF") or len(body) not in (1, 2, 3, 6):
                 out[k] = 0xffffffff  # the 0xffffffff => GetSysColor(COLOR_BTNFACE) path
             else:
-                out[k] = int(body, 16)
+                out[k] = int(_hex(body).lstrip("#"), 16)
     return out
 
 
