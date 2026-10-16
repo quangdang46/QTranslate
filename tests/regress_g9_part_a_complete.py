@@ -118,13 +118,17 @@ ck("app.py still records DLG 129 / 340x201 / 17 controls",
    "DLG 129" in app and "340x201" in app and "17 control" in app)
 
 # --- 5. what is NOT here, stated so it is not quietly assumed ----------
-# Part (b)'s evidence directory holds a README and (so far) no images. The
-# README is not a capture pair, so part (b) stays undone — but its stated
-# reason has to be re-checked rather than inherited, because the host changed.
+# Part (b)'s evidence directory holds a README and (since b60b120) an
+# acceptance-declared capture pair (native.png + port.png + out/diff.png
+# + report). The pair's presence does not resolve part (b) — only a human
+# review of the images does (G9_HARNESS.md §3.1) — but "no pair exists" is
+# no longer the reason it stays undone. The check below pins the pair's
+# presence so a deleted-evidence regression shows up by name.
 EV = os.path.join(REPO, "docs", "review", "g9_evidence")
 images = [f for f in (os.listdir(EV) if os.path.isdir(EV) else [])
           if f.endswith(".png")]
-ck("no capture pair exists (so part (b) is genuinely not done)", not images,
+ck("the acceptance-declared capture pair exists (native.png + port.png)",
+   "native.png" in images and "port.png" in images,
    str(images))
 ck("the evidence README still says BLOCKED",
    "BLOCKED" in io.open(os.path.join(EV, "README.md"), encoding="utf-8").read()
@@ -140,11 +144,18 @@ machine = struct.unpack_from("<H", RAW, struct.unpack_from("<I", RAW,
                                                            0x3c)[0] + 4)[0]
 ck("the recovered image is PE32 i386 (0x14c)", machine == 0x14c,
    hex(machine))
-ck("this host is AMD64 Windows, where WoW64 can run it",
-   sys.platform == "win32" and os.path.exists(
-       os.path.join(os.environ.get("SystemRoot", r"C:\Windows"),
-                    "SysWOW64")),
-   "%s %s" % (sys.platform, os.environ.get("PROCESSOR_ARCHITECTURE")))
+# Windows-host-only: verifies WoW64 can run the PE32 image. Off-Windows
+# (darwin/linux) this is skipped, not failed — the machine fact is about
+# the host, not the port.
+if sys.platform == "win32":
+    ck("this host is AMD64 Windows, where WoW64 can run it",
+       os.path.exists(
+           os.path.join(os.environ.get("SystemRoot", r"C:\Windows"),
+                        "SysWOW64")),
+       "%s %s" % (sys.platform, os.environ.get("PROCESSOR_ARCHITECTURE")))
+else:
+    print("SKIP: WoW64 check needs a Windows host (this is %s)"
+          % sys.platform)
 # The README's stated reason was written on an arm64 Darwin host. It is now
 # stale: the block here is the capture ban, not the machine. Recorded as a
 # doc fix below rather than asserted, because a test cannot check prose

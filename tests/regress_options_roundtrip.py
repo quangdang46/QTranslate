@@ -34,7 +34,10 @@ KNOWN_SECTIONS = ["Advanced", "Appearance", "Application", "AutoDetection",
                   "Internet", "LanguagePairs", "Ocr", "OfflineDictionaries",
                   "Proxy", "ServicesOrder", "Update"]
 
-d = C.load()
+try:
+    d = C.load()
+except (FileNotFoundError, OSError):
+    d = None
 if d:
     ck("live Options.json has 20 sections", len(d) == 20,
        "sections=%d" % len(d))

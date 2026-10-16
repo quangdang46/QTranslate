@@ -399,9 +399,16 @@ if HEAD_APP:
     p_diffs = [(i, x, y) for i, (x, y) in enumerate(zip(o_p, w_p))
                if x != y]
     ck("the PopupHost body is byte-identical (no substitutions at all)",
-       not p_diffs and len(o_p) == len(w_p),
+       not p_diffs and len(o_p) <= len(w_p),
        (repr(p_diffs[0]) if p_diffs else
         "HEAD %d lines, windows.py %d" % (len(o_p), len(w_p))))
+    # The tail is the one allowed ADDITION: callers need the window back
+    # (the `show_popup` forwarder returns `PopupHost.open(...)`; without it
+    # the popup opened but no caller could close or test it). Same allowance
+    # the DictionaryView check already grants its trailing return.
+    ck("...and the only addition is the return the callers need",
+       w_p[len(o_p):] == ["return win"],
+       repr(w_p[len(o_p):][:3]))
     ck("...and it still re-imports the LIVE _MAIN_APP, not a stale copy",
        "from qtranslate.app import _MAIN_APP" in w_p
        if any("_MAIN_APP" in l for l in w_p) else True,
@@ -449,9 +456,16 @@ if HEAD_APP:
             break
     ck("the OptionsDialog body (all 13 pages) is identical after the "
        "allowed substitution",
-       not o_diffs and len(o_o) == len(w_o),
+       not o_diffs and len(o_o) <= len(w_o),
        (o_diffs[0] if o_diffs else
         "HEAD %d lines, windows.py %d" % (len(o_o), len(w_o))))
+    # The tail is the one allowed ADDITION: the delegator needs the window
+    # back (`App.open_options` returns `OptionsDialog(...).open()`; without
+    # it the window opened but the caller got None). Same allowance the
+    # DictionaryView check already grants its trailing return.
+    ck("...and the only addition is the return the delegator needs",
+       w_o[len(o_o):] == ["return w"],
+       repr(w_o[len(o_o):][:3]))
     # The 13 pages by name, so a page silently dropped shows up by name
     # rather than just as a line-count mismatch.
     PAGES = ["show_basics", "show_appearance", "show_hotkeys",

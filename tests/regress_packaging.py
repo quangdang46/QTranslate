@@ -116,10 +116,25 @@ def _run_selftest_without(*dep_names):
 
 
 rc_pass, out_pass = _run_selftest_without()
-ck("the selftest passes as shipped", rc_pass == 0, out_pass[-300:])
-ck("...and prints exactly one machine marker line",
-   sum(1 for l in out_pass.split("\n") if l.startswith("SELFTEST ")) == 1)
-ck("...and the marker says PASS", "SELFTEST PASS" in out_pass)
+# The "passes as shipped" half only holds where the RUNTIME deps exist:
+# `keyboard` crashes on import under macOS Cocoa, and `-I` hides the user
+# site-packages where pyperclip/PIL live. In a frozen bundle (sys.frozen)
+# they are inside the exe so this always runs; on a source host without
+# them it is skipped, not failed — the failure would be the host's, not
+# the bundle's. Part B below (missing dep turns FAIL) still runs: it uses
+# a fake importer, so it is host-independent.
+import importlib.util as _ilu
+_have_runtime_deps = all(
+    _ilu.find_spec(d) is not None
+    for d in ("keyboard", "pyperclip", "PIL"))
+if getattr(sys, "frozen", False) or _have_runtime_deps:
+    ck("the selftest passes as shipped", rc_pass == 0, out_pass[-300:])
+    ck("...and prints exactly one machine marker line",
+       sum(1 for l in out_pass.split("\n") if l.startswith("SELFTEST ")) == 1)
+    ck("...and the marker says PASS", "SELFTEST PASS" in out_pass)
+else:
+    print("SKIP: 'passes as shipped' needs keyboard/pyperclip/PIL "
+          "(absent on this host; bundle-only check)")
 
 # This is the pin that matters: each of these must turn the marker red.
 for dep in ("keyboard", "pyperclip", "PIL", "qtranslate.registry",
