@@ -177,8 +177,18 @@ ck("a MemoryError terminates silently with 0x17",
    child.returncode == 23 and "Traceback" not in child.stderr,
    "rc=%d err=%r" % (child.returncode, child.stderr[-160:]))
 child2 = run_child(
-    "import sys; sys.path.insert(0, %r)\n"
+    "import os, sys, tempfile\n"
+    # `_install_crash_hook` writes Exceptions.json next to config.DEFAULT_PATH,
+    # which resolves to the user's REAL %APPDATA%/QTranslate. A headless suite
+    # must not leave a file there (the next app launch then prints a fake
+    # "[previous crash]" the user never had), so point the config at a temp
+    # dir first. ROOT is passed as the repo path, TMP as the sandbox.
+    "sys.path.insert(0, %r)\n"
+    "tmp = tempfile.mkdtemp()\n"
+    "os.environ['APPDATA'] = tmp\n"
     "from qtranslate import app as A\n"
+    "from qtranslate import config as _C\n"
+    "_C.DEFAULT_PATH = os.path.join(tmp, 'Options.json')\n"
     "A._install_crash_hook()\n"
     "def _h(typ, val, tb):\n"
     "    if typ is MemoryError:\n"
@@ -186,10 +196,15 @@ child2 = run_child(
     "    return _p(typ, val, tb)\n"
     "_p = sys.excepthook\n"
     "sys.excepthook = _h\n"
-    "raise ValueError('not oom')\n" % ROOT)
+    "raise ValueError('not oom')\n" % (ROOT,))
 ck("a non-OOM error still produces a traceback",
    child2.returncode == 1 and "ValueError" in child2.stderr,
    "rc=%d err=%r" % (child2.returncode, child2.stderr[-160:]))
+ck("...and the crash report lands in the temp config, not the user's",
+   child2.stdout == "" and not os.path.exists(
+       os.path.join(os.environ.get("APPDATA", ""), "QTranslate",
+                    "Exceptions.json")),
+   "the suite must not write to the real %%APPDATA%/QTranslate")
 
 if failures:
     print("FAIL %d/%d" % (len(failures), n[0]))

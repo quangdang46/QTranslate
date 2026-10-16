@@ -9,3 +9,9 @@ __pycache__/
 # docs/review/ARTIFACT_RECOVERY_2026-10-10.md §7 — blobs not committed)
 docs/review/artifacts/
 qt6
+
+# Phase 8 packaging outputs (rebuilt by tools/build_bundle.py; the SPEC is
+# committed, the ~48MB tree is not). build/assets/ holds the derived exe
+# icon + version resource, regenerated at build time.
+build/
+dist/

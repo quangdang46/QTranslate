@@ -94,8 +94,17 @@ KNOWN_DEAD = {"speech_input"}
 # and the tray-state helper. Each is exercised by its own suite.
 # Slice 8 (2026-10-15) wired extension loading into app.main
 # (`load_user_extensions`), so `extensions` left this set and `platforms`
-# is now reached through it. `sdk` and `tray_state` remain published-only.
-KNOWN_UNWIRED = {"sdk", "tray_state"}
+# is now reached through it. `sdk` remains published-only.
+# 2026-10-16: `tray_state` LEFT this set. The packaging pass (Phase 8)
+# found `app._sync_icon` had inlined a DIFFERENT 3-state rule (hotkeys
+# bound -> on) while `tray_state.select_state` held the real one from
+# FUN_00418DA0 (mouse-capture arm flag + hook-availability bit) -- and
+# nothing called it. `_sync_icon` now routes through the module, so the
+# port follows the native rule and the module is reachable from a frozen
+# build. `providers` is not an orphan concern here: only
+# tests/regress_provider_contract.py imports it, and the packaging tool
+# freezes it deliberately (see tools/build_bundle.py's hiddenimports).
+KNOWN_UNWIRED = {"sdk"}
 
 expected = sorted(ENTRY_POINTS | KNOWN_DEAD | KNOWN_UNWIRED)
 ck("orphan set is exactly the known one",

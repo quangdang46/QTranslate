@@ -1850,7 +1850,15 @@ class App:
         """
         try:
             from qtranslate.extensions import (
-                ExtensionManager, override_ui, write_saved_overrides)
+                ExtensionManager, write_saved_overrides)
+            # `override_ui` is a MODULE (`qtranslate/override_ui.py`), not a
+            # name in extensions.py -- importing it from there raised
+            # ImportError, which the surrounding `except Exception: return`
+            # swallowed, so this dialog silently never opened. Importing it
+            # from its own module also lets PyInstaller's Analysis see the
+            # dependency (a `from X import Y` where Y is a submodule is
+            # invisible to a static import walk).
+            from qtranslate import override_ui
             from qtranslate import platforms as _P
             ext_dir = _P.current().extensions_dir()
         except Exception:
@@ -4457,7 +4465,106 @@ def _install_crash_hook():
     _sys.excepthook = _hook
 
 
+def _frozen_selftest():
+    """``--selftest``: prove the frozen import graph, open no window.
+
+    Used to verify a *bundled* build (tools/build_bundle.py). The failure
+    it exists to catch is a module PyInstaller's Analysis never followed --
+    the app would start, hit a lazy ``import``, and die in front of the
+    user. So this touches the same lazily-imported surface the real startup
+    and its first actions use, rather than just ``import qtranslate``.
+
+    Returns the process exit code; raises nothing. Prints one machine
+    marker line (``SELFTEST ...``) so a tool can parse it, and a human
+    readable summary otherwise.
+    """
+    import json as _json
+
+    checks = []
+
+    def _ck(name, fn):
+        try:
+            fn()
+            checks.append((name, True, ""))
+        except Exception as exc:            # noqa: BLE001 -- report, don't die
+            checks.append((name, False, "%s: %s"
+                           % (type(exc).__name__, exc)))
+
+    # The import the UI lives behind. `screens`/`win32app` are standalone
+    # entry points and are included in the bundle deliberately.
+    _ck("qtranslate.app", lambda: __import__("qtranslate.app"))
+
+    # The provider table must resolve by NAME (registry imports every
+    # service module at module scope, so a missing one fails here).
+    def _registry():
+        from qtranslate import registry as _RG
+        names = sorted(_RG.TRANSLATORS)
+        if len(names) < 9:
+            raise AssertionError("only %d providers: %r" % (len(names), names))
+    _ck("registry.TRANSLATORS", _registry)
+
+    # The lazily-imported modules the main paths reach. Each of these was
+    # once invisible to a static import walk.
+    for _mod, _why in (
+            ("qtranslate.registry", "dispatch table"),
+            ("qtranslate.engine", "orchestration"),
+            ("qtranslate.theme", "themes"),
+            ("qtranslate.history", "history window"),
+            ("qtranslate.dict_render", "dictionary cards"),
+            ("qtranslate.locale", "locale packs"),
+            ("qtranslate.placement", "window placement"),
+            ("qtranslate.sdk", "published SDK surface"),
+            ("qtranslate.providers", "Provider contract"),
+            ("qtranslate.ui_slots", "UI extension slots"),
+            ("qtranslate.tray_state", "tray icon states"),
+            ("qtranslate.screens", "reference screens"),
+    ):
+        _ck("import %s (%s)" % (_mod, _why),
+            lambda m=_mod: __import__(m, fromlist=["*"]))
+
+    # The runtime deps that must be INSIDE the bundle. Without them the
+    # app starts but has no hotkeys and no icons -- a silent degradation
+    # that looks like a feature, so it is checked.
+    for _dep in ("keyboard", "pyperclip", "PIL"):
+        _ck("bundled dep %s" % _dep,
+            lambda d=_dep: __import__(d, fromlist=["*"]))
+
+    # A theme must load when its data file is present. NOTE the honest
+    # caveat this check cannot hide: `theme.THEMES_DIR` points at the
+    # INSTALLED native copy ("C:/Program Files (x86)/QTranslate/Themes"),
+    # so a bundle on a machine without that install has no themes. That is
+    # a real packaging gap (Phase 8 should ship Themes/ inside the bundle),
+    # not something to assert around -- so the check reports which case it
+    # saw rather than passing either way.
+    def _theme():
+        import os as _os
+        from qtranslate import theme as _T
+        have = _os.path.exists(_T.THEMES_DIR)
+        t = _T.load_theme("Blue") if have else {}
+        if not have:
+            return "skipped: no Themes dir at %s" % _T.THEMES_DIR
+        if not t:
+            raise AssertionError("load_theme('Blue') returned nothing")
+        return "ok"
+    _ck("theme loads from its data file", _theme)
+
+    bad = [(n, d) for n, ok, d in checks if not ok]
+    print("SELFTEST %s %d/%d" % ("PASS" if not bad else "FAIL",
+                                 len(checks) - len(bad), len(checks)))
+    for name, ok, detail in checks:
+        if not ok:
+            print("  MISSING %s -- %s" % (name, detail))
+    return 0 if not bad else 1
+
+
 def main():
+    # A headless startup probe, used by the packaging tool
+    # (tools/build_bundle.py) to prove a FROZEN build's imports resolve
+    # without opening a window. It is deliberately first, before any
+    # config/crash/single-instance work, so it exercises the same import
+    # graph the real startup uses and nothing else.
+    if "--selftest" in sys.argv[1:]:
+        return _frozen_selftest()
     _seed_service_options()
     # User extensions (D16): load from the per-user folder, fail-open, and
     # commit the winners into the live dispatch table so a provider/override
@@ -4617,21 +4724,25 @@ def _make_tray(root, app):
     _mouse_mode = [False]
 
     def _sync_icon(icon):
-        # hotkey-state -> tray icon: any HotKey bound = on, else off
-        # (partial = mouse-mode armed without hotkeys).
+        # Native rule (FUN_00418DA0 -> FUN_00418B69), now via tray_state:
+        #   param_2==0 -> 199 (off/gray)
+        #   param_2==1 -> 0x84 (on/blue)      flag set, hook unavailable
+        #   param_2==2 -> 0x8A (partial/orange) flag set, hook available
+        # The flag is the MOUSE-CAPTURE arm state, and the "hook available"
+        # bit is whether the Win32 low-level mouse hook actually installed
+        # (mouse_capture.start) -- NOT the HotKeys list. The previous
+        # inlined mapping (hotkeys-bound -> on) was a port-side guess;
+        # `tray_state.select_state` had the real rule but nothing called it.
         try:
-            from qtranslate import config as _C
-            hk = _C.load().get("HotKeys", {})
-            _any = any(hk.get(n, 0) for n in _C.HOTKEY_NAMES)
+            from qtranslate import tray_state as _TS
+            _idx = _TS.select_state(_mouse_mode[0], bool(_MOUSE_HOOK["on"]))
+            _name = _TS.state_name(_idx)
         except Exception:
-            _any = False
+            _name = "off"
         try:
-            if _mouse_mode[0] and not _any:
-                icon.icon = _imgs["partial"]
-            elif _any or _mouse_mode[0]:
-                icon.icon = _imgs["on"]
-            else:
-                icon.icon = _imgs["off"]
+            icon.icon = _imgs.get(_name, _imgs["off"])
+            icon.title = ("QTranslate (mouse mode: %s)"
+                          % ("on" if _mouse_mode[0] else "off"))
         except Exception:
             pass
 
