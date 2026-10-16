@@ -408,6 +408,63 @@ if HEAD_APP:
        "a module-level import of _MAIN_APP would capture it at import "
        "time, before main() ever sets it")
 
+
+# ---------------------------------------------- the OptionsDialog move, verbatim
+# The fifth and largest class: 1056 statement lines across 13 pages. The
+# ONE allowed substitution is `self.` -> `self.app.`; the window variable
+# stays `w` for the same reason as DictionaryView (a dozen `open(path,
+# "w")` calls and `anchor="w"` throughout).
+if HEAD_APP:
+    old_o = next(x for x in ast.walk(ast.parse(HEAD_APP))
+                 if isinstance(x, ast.FunctionDef)
+                 and x.name == "open_options")
+    o_cls = next((x for x in ast.walk(ast.parse(WIN))
+                  if isinstance(x, ast.ClassDef)
+                  and x.name == "OptionsDialog"), None)
+    o_open = next((x for x in ast.walk(o_cls)
+                   if isinstance(x, ast.FunctionDef)
+                   and x.name == "open"), None) if o_cls else None
+    ck("OptionsDialog defines open()", o_open is not None)
+
+    def _norm_opts(src, fn):
+        out = []
+        for ln in ast.get_source_segment(src, fn).splitlines()[1:]:
+            s = ln.strip()
+            if not s or s.startswith("#"):
+                continue
+            if s == "self.win = w = tk.Toplevel(self.app.root)":
+                s = "w = tk.Toplevel(self.root)"
+            out.append(s.replace("self.app.", "self."))
+        return out
+
+    o_o = _norm_opts(HEAD_APP, old_o)
+    w_o = _norm_opts(WIN, o_open)
+    _anc = "w = tk.Toplevel(self.root)"
+    o_o = o_o[o_o.index(_anc):]
+    w_o = w_o[w_o.index(_anc):]
+    o_diffs = []
+    for i, (x, y) in enumerate(zip(o_o, w_o)):
+        if x != y:
+            o_diffs.append("%d: HEAD=%r new=%r" % (i, x, y))
+            break
+    ck("the OptionsDialog body (all 13 pages) is identical after the "
+       "allowed substitution",
+       not o_diffs and len(o_o) == len(w_o),
+       (o_diffs[0] if o_diffs else
+        "HEAD %d lines, windows.py %d" % (len(o_o), len(w_o))))
+    # The 13 pages by name, so a page silently dropped shows up by name
+    # rather than just as a line-count mismatch.
+    PAGES = ["show_basics", "show_appearance", "show_hotkeys",
+            "show_services", "show_languages", "show_internet",
+            "show_exceptions", "show_advanced", "show_updates"]
+    _blob = "\n".join(w_o)
+    for page in PAGES:
+        ck("page %s survived the move" % page,
+           "def %s(" % page in _blob)
+    # The file-mode literal, proof the rename-avoidance actually worked.
+    ck("file-mode \"w\" literals were not touched (a dozen open(path, \"w\"))",
+       _blob.count('DEFAULT_PATH, "w"') >= 10)
+
 # -------------------------------------------------------- the delegator half
 ck("App.open_history_window delegates to HistoryView",
    re.search(r'def open_history_window\(self\):.*?'

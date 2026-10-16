@@ -33,13 +33,19 @@ def ck(name, cond, detail=""):
         fails.append("%s -- %s" % (name, detail))
 
 
-APP = io.open(os.path.join(os.path.dirname(os.path.dirname(
-    os.path.abspath(__file__))), "qtranslate", "app.py"),
-    encoding="utf-8").read()
+_REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+APP = io.open(os.path.join(_REPO, "qtranslate", "app.py"),
+             encoding="utf-8").read()
+# Phase 7 (2026-10-16): the Options window (incl. the Languages page with
+# the per-key defaults below) moved to qtranslate/windows.py as
+# OptionsDialog. Searched together so the move does not go red.
+WIN = io.open(os.path.join(_REPO, "qtranslate", "windows.py"),
+             encoding="utf-8").read()
+BOTH = APP + "\n" + WIN
 tree = ast.parse(APP)
 
 # --- 1. per-key language defaults -------------------------------------
-m = re.search(r"_defs = (\{[^}]*\})", APP)
+m = re.search(r"_defs = (\{[^}]*\})", BOTH)
 ck("per-key _defs table exists", m is not None)
 if m:
     defs = eval(m.group(1))
@@ -52,9 +58,9 @@ if m:
     ck("Keyboard defaults to 17 (en)",
        defs.get("LanguageKeyboard") == 17, repr(defs))
     ck("combos use _defs, not a single 17",
-       "_gen.get(key, _defs[key])" in APP)
+       "_gen.get(key, _defs[key])" in BOTH)
     ck("no single-default-17 for the four combos",
-       "_gen.get(key, 17) or 0" not in APP)
+       "_gen.get(key, 17) or 0" not in BOTH)
 
 # --- 2. history I6 five-entry menu -------------------------------------
 # 2026-10-16 (Phase 7): the history window moved to `qtranslate/windows.py`

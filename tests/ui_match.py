@@ -239,8 +239,11 @@ except Exception as e:
     check("i18n-vi-load", False, str(e)[:100])
 
 # 13. options pages native order (Windows Ids 10-18)
+# Phase 7 (2026-10-16): the Options window (and its _PAGES table) moved to
+# qtranslate/windows.py as OptionsDialog; app.py keeps the forwarder.
 import re as _re
-_src = open("qtranslate/app.py", encoding="utf-8").read()
+_src = (open("qtranslate/app.py", encoding="utf-8").read()
+        + open("qtranslate/windows.py", encoding="utf-8").read())
 _m = _re.search(r"_PAGES = \[(.*?)\]", _src, re.S)
 _pages = _re.findall(r'\("(\w+)", (\d+)\)', _m.group(1)) if _m else []
 check("pages-9", len(_pages) == 9, str(len(_pages)))
