@@ -20,10 +20,13 @@ Also kept from 2026-10-09: ``json_item_end`` returns ``"]}"``, not ``"]"``.
 """
 import json
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(
                        os.path.abspath(__file__))))
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 from qtranslate import history as H  # noqa: E402
 
@@ -106,6 +109,79 @@ check("quoteHtml of empty is &nbsp;", _qhtml("") == "&nbsp;"
       and _qhtml(None) == "&nbsp;")
 check("quoteHtml turns CR/LF and CRLF into <br>",
       _qhtml("a\r\nb\rc") == "a<br>b<br>c", _qhtml("a\r\nb\rc"))
+
+# --- byte-verified against the payload's own copies of the four plugins ---
+# This half reads the JS out of the artifact (never executed), so a
+# divergence is a port bug and not two copies of the same mistake. The
+# four exporters appear consecutively, each starting at
+# `function historyHeader(){`, so the region up to the next such marker is
+# exactly one exporter.
+import io  # noqa: E402
+
+PAYLOAD = os.path.join(REPO, "docs", "review", "artifacts",
+                       "nsis_payload_unpacked.bin")
+if os.path.exists(PAYLOAD):
+    TS = io.open(PAYLOAD, "rb").read().decode("utf-8", "replace")
+    starts = [m.start() for m in
+              re.finditer(r"function historyHeader\(\)\{", TS)]
+    check("the payload carries exactly 4 history exporters",
+          len(starts) == 4, str(len(starts)))
+    EXPORTERS = {}
+    for k, s in enumerate(starts):
+        end = starts[k + 1] if k + 1 < len(starts) else len(TS)
+        m = re.search(r'function historyFileExtension\(\)\{return"(\w+)"\}',
+                      TS[s:end])
+        if m:
+            EXPORTERS[m.group(1)] = TS[s:end]
+    check("extensions csv/html/json/txt all present",
+          sorted(EXPORTERS) == ["csv", "html", "json", "txt"],
+          str(sorted(EXPORTERS)))
+
+    csv, js, ht = (EXPORTERS.get("csv", ""), EXPORTERS.get("json", ""),
+                   EXPORTERS.get("html", ""))
+    # NOTE on the slicing: the payload concatenates the plugin files, so a
+    # region cut at the next `function historyHeader(){` ends with the NEXT
+    # file's leading helper -- csv's region ends with Html.js's `quoteHtml`,
+    # html's ends with Json.js's `escapeStr` preamble. That is why the
+    # csv/html checks below look in the *neighbouring* region: the helper
+    # belongs to the file whose region it trails.
+    check("Csv's argument order is a,c,b,e,d (source first)",
+          csv.index("escapeValue(a)") < csv.index("escapeValue(c)")
+          < csv.index("escapeValue(b)") < csv.index("escapeValue(e)")
+          < csv.index("escapeValue(d)"), "argument order changed")
+    check("Csv joins with ',' (JS [].join() default)",
+          '].join()+"\\n"' in csv, "the row separator changed")
+    check("Html's quoteHtml escapes &, then >, then <, CRLF last",
+          re.search(r'function quoteHtml\(a\)\{return a\?'
+                    r'a\.replace\(/&/g\).*?replace\(/>/g\)'
+                    r'.*?replace\(/</g\).*?replace\(/\\r\\n\|\\r/g', csv)
+          is not None or
+          re.search(r'function quoteHtml\(a\)\{return a\?'
+                    r'a\.replace\(/&/g\).*?replace\(/>/g\)'
+                    r'.*?replace\(/</g\).*?replace\(/\\r\\n\|\\r/g', ht)
+          is not None,
+          "quoteHtml not found in the expected order")
+    check("Html's quoteHtml maps empty to &nbsp;",
+          ':"&nbsp;"' in csv or ':"&nbsp;"' in ht)
+    check("Html's table CSS is the port's HTML_STYLE",
+          all(part in ht for part in
+              ("border-collapse:collapse", "#c1c1c2", "#e7e7e8", "#1382ce"))
+          and "Segoe UI" in ht)
+    check("Json itemBegin opens {\"src\":...,\"trs\":[",
+          '\'{"src":\'+escapeStr(a)+\',"trs":[\'' in js)
+    check("Json item emits the 4 fields native names",
+          all(('"%s":' % k) in js for k in ("service", "srcLang", "trLang",
+                                            "tr")))
+    check("Json historyItem carries its own comma (g<f-1) -- the native "
+          "double-comma's first half",
+          '+escapeStr(d)+"}"+(g<f-1?",","")}' in js)
+    check("Json historyItemEnd carries the second half (b<a-1)",
+          'function historyItemEnd(a,b){return"]}"+(b<a-1?",","")}' in js)
+    check("Json footer is ']'", 'function historyFooter(){return"]"}' in js)
+    check("Json's escapeStr is the JSON.stringify poly's table",
+          'escMap={\'"\':\'\\\\"\',"\\\\":"\\\\\\\\"' in ht
+          and "charCodeAt(0)+65536).toString(16).substr(1)" in ht)
+
 
 if failures:
     raise SystemExit("FAIL:\n  " + "\n  ".join(failures))
