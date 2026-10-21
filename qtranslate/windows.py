@@ -2245,23 +2245,101 @@ class OptionsDialog:
                                                     _cls or "* All Windows *"))
             _refresh()
 
-            _fr = tk.Frame(body, bg=_COLORS["back"])
-            _fr.pack(fill="x")
-            _er = tk.Entry(_fr, width=16)
-            _er.pack(side="left", padx=1)
-            _er.insert(0, "exe or empty")
-            _cr = tk.Entry(_fr, width=16)
-            _cr.pack(side="left", padx=1)
-            _cr.insert(0, "class or empty")
+            # 1101 / 1103 / 1102 open DLG178 -- a separate "Exception"
+            # dialog with a Program name combo (1112) + a '...' browse
+            # button (1109), a Window class name edit (1107) + its own
+            # '...' (1110), and OK / Cancel. The port drew the two fields
+            # inline under the table instead, which is a different page.
+            def _entry_dialog(title, exe="", cls=""):
+                """DLG178: the add/modify entry editor."""
+                _d = tk.Toplevel(body)
+                _d.title(title)
+                _d.configure(bg=_COLORS["back"])
+                _d.transient(body)
+                _f = tk.Frame(_d, bg=_COLORS["back"])
+                _f.pack(fill="both", expand=True, padx=8, pady=6)
+                tk.Label(_f, text="Program name:", bg=_COLORS["back"],
+                         fg=_COLORS["text"], anchor="w").pack(fill="x")
+                _r1 = tk.Frame(_f, bg=_COLORS["back"])
+                _r1.pack(fill="x", pady=1)
+                _pe = tk.Entry(_r1, width=44)
+                _pe.pack(side="left", fill="x", expand=True)
+                _pe.insert(0, exe)
+
+                def _browse_prog():
+                    try:
+                        from tkinter import filedialog as _fd
+                        _p = _fd.askopenfilename(
+                            title="Program name",
+                            filetypes=[("Programs", "*.exe *.bat *.cmd"),
+                                       ("All files", "*.*")])
+                        if _p:
+                            _pe.delete(0, "end")
+                            _pe.insert(0, _p)
+                    except Exception:
+                        pass
+                tk.Button(_r1, text="...", width=3,
+                          command=_browse_prog).pack(side="left", padx=2)
+                tk.Label(_f, text="Window class name:", bg=_COLORS["back"],
+                         fg=_COLORS["text"],
+                         anchor="w").pack(fill="x", pady=(6, 0))
+                _r2 = tk.Frame(_f, bg=_COLORS["back"])
+                _r2.pack(fill="x", pady=1)
+                _ce = tk.Entry(_r2, width=44)
+                _ce.pack(side="left", fill="x", expand=True)
+                _ce.insert(0, cls)
+                _known = sorted({c for _p in (_dis_list + _en_list)
+                                 for _c in [_p[1]] if c})
+
+                def _browse_cls():
+                    """Native's 1110 lists the window classes in use; the
+                    port has no window enumerator, so it offers the
+                    classes already configured."""
+                    if not _known:
+                        return
+                    _top = tk.Toplevel(_d)
+                    _top.title("Window class name")
+                    _lb2 = tk.Listbox(_top, height=min(8, len(_known)),
+                                      width=40)
+                    for _c in _known:
+                        _lb2.insert("end", _c)
+                    _lb2.pack(fill="both", expand=True)
+
+                    def _pick():
+                        _s = _lb2.curselection()
+                        if _s:
+                            _ce.delete(0, "end")
+                            _ce.insert(0, _known[_s[0]])
+                        _top.destroy()
+                    _b = tk.Frame(_top)
+                    _b.pack(fill="x")
+                    tk.Button(_b, text="OK", command=_pick).pack(
+                        side="right", padx=2)
+                    tk.Button(_b, text="Cancel",
+                              command=_top.destroy).pack(side="right",
+                                                         padx=2)
+                tk.Button(_r2, text="...", width=3,
+                          command=_browse_cls).pack(side="left", padx=2)
+                _out = {}
+
+                def _ok():
+                    _out["value"] = [_pe.get().strip(), _ce.get().strip()]
+                    _d.destroy()
+                _bt = tk.Frame(_d, bg=_COLORS["back"])
+                _bt.pack(fill="x", padx=8, pady=(0, 8))
+                tk.Button(_bt, text="OK", command=_ok).pack(side="right",
+                                                            padx=2)
+                tk.Button(_bt, text="Cancel",
+                          command=_d.destroy).pack(side="right", padx=2)
+                _d.grab_set()
+                _d.wait_window(_d)
+                return _out.get("value")
 
             def _add():
-                _exe = _er.get().strip()
-                _cls = _cr.get().strip()
-                if _exe == "exe or empty":
-                    _exe = ""
-                if _cls == "class or empty":
-                    _cls = ""
-                _pairs().append([_exe, _cls])
+                _v = _entry_dialog(_W(5, "Exception"), "", "")
+                if not _v:
+                    return
+                _pairs().append([_v[0], _v[1]])
                 _refresh()
                 _save_x()
 
@@ -2270,13 +2348,11 @@ class OptionsDialog:
                 if not _s:
                     return
                 _i = _s[0]
-                _exe = _er.get().strip()
-                _cls = _cr.get().strip()
-                if _exe in ("", "exe or empty"):
-                    _exe = _pairs()[_i][0]
-                if _cls in ("", "class or empty"):
-                    _cls = _pairs()[_i][1]
-                _pairs()[_i] = [_exe, _cls]
+                _v = _entry_dialog(_W(5, "Exception"), _pairs()[_i][0],
+                                   _pairs()[_i][1])
+                if not _v:
+                    return
+                _pairs()[_i] = [_v[0], _v[1]]
                 _refresh()
                 _lb.selection_set(_i)
                 _save_x()
@@ -2289,6 +2365,8 @@ class OptionsDialog:
                 _refresh()
                 _save_x()
 
+            _fr = tk.Frame(body, bg=_COLORS["back"])
+            _fr.pack(fill="x")
             tk.Button(_fr, text=_Cw(15, 1101, "Add"),
                       command=_add).pack(side="left", padx=2)
             tk.Button(_fr, text=_Cw(15, 1103, "Modify"),

@@ -284,6 +284,12 @@ ck("Exceptions has ONE list, not two",
    repr(classes(b)))
 ck("Exceptions has Add / Modify / Delete",
    all(x in texts(b) for x in ("Add", "Modify", "Delete")), repr(texts(b)))
+# Native's Add/Modify open DLG178, a separate "Exception" dialog, so the
+# page itself carries NO entry fields -- the port used to draw two
+# inline ones under the table.
+ck("Exceptions has no inline entry fields",
+   not [c for (_d, cl, _t, c) in walk(b) if cl == "Entry"],
+   repr([(cl, t) for (_d, cl, t, _c) in walk(b) if cl == "Entry"]))
 ck("Exceptions keeps Enable smart detection",
    "Enable smart detection" in texts(b), repr(texts(b)))
 
