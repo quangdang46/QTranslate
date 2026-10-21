@@ -92,7 +92,18 @@ directions and the fail-safe conflict with no `load_dir` involved.
 
 ## 5. Still out of scope (unchanged)
 
-- **Override UI + persistent winner selection (D18)** — the next slice. It
-  will read `conflicts()`/`active()` and must store the winner by **canonical
-  id**, applying it across the alias group.
-- **True D17 isolation**, **packaging**, **macOS adapters**.
+> **The first item has landed.** The winner-selection UI is
+> `qtranslate/override_ui.py`'s `pick_override_winners(root, conflicts)`,
+> called from the app's extension menu; the winners go to
+> `write_saved_overrides()` (`Options.json` → `ExtensionOverrides`) and are
+> read back on the next load. Alias-equivalent claims are merged **by
+> callable identity** before the dialog opens, so the user sees one row per
+> provider — the "canonical id" this section asked for is the provider's
+> own callable identity, which is rule (b)'s definition of an alias.
+> Pinned by `tests/regress_override_persistence.py` and
+> `tests/regress_packaging.py`.
+
+- **True D17 isolation** — unchanged from Slice 7 (an import-path
+  mechanism only).
+- **macOS adapters** — the non-Windows adapter still reports every
+  platform capability as unavailable (honestly, and by design).

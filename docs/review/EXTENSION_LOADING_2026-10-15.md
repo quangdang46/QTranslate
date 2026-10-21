@@ -64,6 +64,13 @@ Outcome shape per discovered folder:
 
 ## 4. What is deliberately NOT here
 
+> **The first item has since landed** (`qtranslate/override_ui.py`, wired
+> from the app's extension menu, with the winner persisted in
+> `Options.json` → `ExtensionOverrides`; see
+> `EXTENSION_OVERRIDE_2026-10-15.md` and
+> `EXTENSION_WIRING_2026-10-15.md` §5). This slice only *reported* the
+> conflict, as it says below.
+
 - **Override UI** — who picks the D18 winner is a UI slice; this slice only
   *reports* the conflict (`conflicts()` + the disabled reason).
 - **True D17 isolation** — `import_entrypoint` puts the extension folder on

@@ -81,9 +81,19 @@ known-unwired set and a positive pin asserts extension loading stays wired.
 
 ## 5. Still out of scope
 
-- **Override UI** (D18 winner selection) — conflicts are still only
-  reported.
+> **Two of the three have since landed (2026-10-15/16).** The *Override
+> UI* and *persistent winner selection* are in `qtranslate/override_ui.py`
+> (`pick_override_winners`) and wired from the app's extension menu
+> (`windows.py`: `manager.override_conflicts()` → the dialog →
+> `write_saved_overrides(winners)`); the saved winners are read back on
+> the next load (`load_dir(..., saved=saved)`) and a winner whose
+> extension is no longer installed is cleared so the built-in stays. See
+> `EXTENSION_OVERRIDE_2026-10-15.md` §2 and
+> `tests/regress_override_persistence.py`. *Packaging* is built and
+> verified (`tools/build_bundle.py`, `tests/regress_packaging.py`, which
+> also pins that the override UI is reachable from a bundle's startup).
+> **True D17 isolation** is the only one that has not: it is unchanged
+> from Slice 7 (an import-path mechanism only).
+
 - **True D17 isolation** — unchanged from Slice 7 (import-path mechanism
   only).
-- **Packaging** — bundler decision still open; the loader is now callable
-  from a bundle's startup, which was the prerequisite.
