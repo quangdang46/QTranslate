@@ -1,5 +1,5 @@
 {
- "note": "Main-window UI icons recovered from the QTranslate 6.10.0 EXE's RT_ICON resources (via `rea inspect-pe-resources`). Each is 16x16 and matches the glyph the native main window draws.",
+ "note": "Main-window UI icons recovered from the QTranslate 6.10.0 EXE's RT_ICON resources (via `rea inspect-pe-resources`). Each is 16x16 and matches the glyph the native main window draws. The native's nav arrows, its ':' menu and its 'New' button are BS_ICON buttons, not text: drawn as text they came out 47px wide on macOS (the fallback font's glyph is that wide) where native's are 20px.",
  "provenance": {
   "binary": "docs/review/artifacts/QTranslate.6.10.0.exe",
   "extracted_by": "tools/_scratch/extract_ui_icons.py",
@@ -17,6 +17,22 @@
   "headphone": {
    "file": "headphone.png",
    "recovered_from": "ui_08_0_16x16.png"
+  },
+  "back": {
+   "file": "back.png",
+   "recovered_from": "ui_17_0_16x16.png"
+  },
+  "forward": {
+   "file": "forward.png",
+   "recovered_from": "ui_18_0_16x16.png"
+  },
+  "menu": {
+   "file": "menu.png",
+   "recovered_from": "ui_22_0_16x16.png"
+  },
+  "new": {
+   "file": "new.png",
+   "recovered_from": "ui_06_0_16x16.png"
   }
  }
 }

@@ -8,9 +8,15 @@ HotKeyPopupWindow=593 (0x251: vk=0x51 'Q', mod=2).
 import json
 import os
 
-DEFAULT_PATH = os.path.join(
-    os.environ.get("APPDATA", ""),
-    "QTranslate", "Options.json")
+from qtranslate.platforms import app_data_dir
+
+# The native keeps its settings in ``%APPDATA%\QTranslate\Options.json``.
+# Off Windows ``%APPDATA%`` is empty, so the old join produced a RELATIVE
+# path -- and on macOS, where the filesystem is case-insensitive, that
+# resolved to ``qtranslate/Options.json`` INSIDE the package directory.
+# `platforms.app_data_dir()` gives the same shape everywhere:
+# ``~/.config/QTranslate`` off Windows.
+DEFAULT_PATH = os.path.join(app_data_dir(), "Options.json")
 
 # SERVICE_ID order from Options.json ServicesOrder (default provider priority)
 DEFAULT_SERVICES_ORDER = [1, 5, 12, 13, 11, 26, 28, 30, 31]
@@ -168,17 +174,30 @@ def format_hotkey(code: int) -> str:
     return " + ".join(parts)
 
 
-def load(path: str = DEFAULT_PATH) -> dict:
+def load(path: str | None = None) -> dict:
+    """Read the settings file.
+
+    ``path`` defaults to ``DEFAULT_PATH`` **at call time**, not at import
+    time: a default argument freezes its value when the function is
+    defined, so a caller that points ``DEFAULT_PATH`` somewhere else --
+    the tests do, and so does the pane toggle -- would still read the
+    original file.
+    """
+    if path is None:
+        path = DEFAULT_PATH
     with open(path, encoding="utf-8-sig") as f:
         return json.load(f)
 
 
-def save(cfg: dict, path: str = DEFAULT_PATH) -> None:
+def save(cfg: dict, path: str | None = None) -> None:
     """Write the settings dict back to Options.json (D18 persistence).
 
     UTF-8 without BOM; a trailing newline keeps the file friendly to
-    editors. The caller owns the dict — this never mutates it.
+    editors. The caller owns the dict — this never mutates it. As with
+    `load`, the path is resolved at call time.
     """
+    if path is None:
+        path = DEFAULT_PATH
     with open(path, "w", encoding="utf-8") as f:
         json.dump(cfg, f, ensure_ascii=False, indent=2)
         f.write("\n")

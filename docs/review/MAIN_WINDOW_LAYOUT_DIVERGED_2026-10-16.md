@@ -52,14 +52,19 @@ size of an auxiliary/status strip rather than a body pane.
 
 | # | Closed by | How |
 |---|---|---|
-| 1 | the third pane | `auxfrm` / `self.aux` (a 1-line RichEdit) is built, with its own separator — the port's band structure now matches native's: source, tool row, result, aux, service strip |
+| 1 | the third pane | `auxfrm` / `self.aux` (a 1-line RichEdit) is built, with its own separator. **Refined 2026-10-21** by `UI_FIDELITY_MAIN_WINDOW_BANDS_2026-10-21.md`: native's capture shows that pane **collapsed to zero height** when it is empty (the separator 1135 is there, the RichEdit is not), so the port now shows it only while it carries a back-translation — and the port's band structure matches native's: source, tool row, result, service strip |
 | 2 | the pane ids | `app.py` and `win32app.py` now say `ID_SRC = 1000` / `ID_OUT = 1017`; the *old* wrong ids (`1000` = source was labelled 1017) are gone |
 | 3 | the overlay | the mic/headphone/listen buttons are `place()`d **over** the panes at their native offsets, not given a side column |
 
 **#4 (fluid vs absolute) is still open** and is the one that needs a decision
 rather than a fix: the port's bands are now *measured* against native's
-(`docs/review/UI_FIDELITY_MAIN_WINDOW_2026-10-21.md` §4), and the residual
-difference is two extra 16-17px bands and a different source-pane height --
+(`docs/review/UI_FIDELITY_MAIN_WINDOW_2026-10-21.md` §4). **The two extra
+16-17px bands and the source-pane height are closed 2026-10-21** by
+`UI_FIDELITY_MAIN_WINDOW_BANDS_2026-10-21.md` — native has no permanent
+suggestion band and its third pane is collapsed, and the source pane now
+takes native's measured 153px — so the residual difference is only that
+native positions its controls by absolute DU offsets while the port
+re-flows --
 which is a font-metric and layout-model question, not a mistake.
 
 The main window's own body also moved on 2026-10-21: Phase 7 (6/6) extracted

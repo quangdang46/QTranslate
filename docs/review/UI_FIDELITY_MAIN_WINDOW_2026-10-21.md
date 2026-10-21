@@ -218,12 +218,13 @@ the port below, both at the same width:
 
 **Still open, and deliberately not claimed as fixed:**
 
-- The port's source pane is 170 px where native's is 151 px, and the port
-  carries two bands native's capture does not show (a 17 px suggestion
-  strip and a 16 px third pane). Those are DLG129's third RichEdit (1018)
-  and the suggestion line — the open "third pane" question in
-  `MAIN_WINDOW_LAYOUT_DIVERGED_2026-10-16.md` §2(a), which is a product
-  decision, not a defect with an obvious answer.
+- ~~The port's source pane is 170 px where native's is 151 px, and the
+  port carries two bands native's capture does not show (a 17 px
+  suggestion strip and a 16 px third pane).~~ **Closed 2026-10-21** by
+  `UI_FIDELITY_MAIN_WINDOW_BANDS_2026-10-21.md`: native's capture shows
+  the third pane (1018) COLLAPSED to zero height and no suggestion band
+  at all, so both are now shown only when they have content, and the
+  source pane takes native's 153 px.
 - The port's result pane is empty on boot where native shows
   "No data returned (timeout while sending data.)" — native has attempted a
   translation by then; the port has not.

@@ -131,6 +131,89 @@ for frame in root.winfo_children():
 ck("the source pane overlays carry images (mic + headphone)",
    found_imgs >= 2, f"{found_imgs} image buttons found")
 
+# --- the band structure matches native's seven bands ------------------------
+# Native's capture (2131) measures: nav row, source pane, separator, tool
+# row, RESULT pane, separator, service strip -- with the third pane
+# (DLG129's 1018) COLLAPSED to zero height and no suggestion band at all.
+from qtranslate.windows import SRC_PANE_PX  # noqa: E402
+
+kids = list(root.winfo_children())
+ck("the main window has no empty suggestion band",
+   not any(k.winfo_class() == "Label" and str(k.cget("text")) == ""
+           and k.winfo_manager() == "pack" for k in kids),
+   "an empty suggestion label is packed")
+
+src = (getattr(app, "_panes", {}) or {}).get("src")
+ck("the source pane is reachable", src is not None)
+if src is not None:
+    ck("the source pane is native's height",
+       src.winfo_height() == SRC_PANE_PX,
+       f"{src.winfo_height()}px, native's is {SRC_PANE_PX}px")
+
+aux = (getattr(app, "_panes", {}) or {}).get("aux")
+ck("the third pane (1018) exists", aux is not None)
+if aux is not None:
+    ck("the third pane is COLLAPSED while it is empty, like native's",
+       aux.winfo_manager() != "pack",
+       f"the third pane is packed ({aux.winfo_height()}px)")
+
+# --- the pane toggles actually toggle ---------------------------------------
+# `toggle_pane` reads `_panes["src"]` / `_panes["mid"]`; the builder used
+# to REPLACE the whole dict, so both were None and Ctrl+F1/F2 did nothing.
+# The toggle also WRITES the settings file, so it is pointed at a
+# throwaway path first -- the live one is the user's.
+import tempfile  # noqa: E402
+from qtranslate import config as _CFG  # noqa: E402
+
+_saved_path = _CFG.DEFAULT_PATH
+_cfg_dir = tempfile.mkdtemp(prefix="qtranslate-cfg-")
+_CFG.DEFAULT_PATH = os.path.join(_cfg_dir, "Options.json")
+try:
+    ck("the source pane is registered for the pane toggles",
+       (getattr(app, "_panes", {}) or {}).get("src") is not None)
+    ck("the result pane is registered for the pane toggles",
+       (getattr(app, "_panes", {}) or {}).get("mid") is not None)
+    _before = src.winfo_manager() if src is not None else ""
+    app.toggle_pane("ShowTopPane", "src")
+    root.update_idletasks()
+    _after = src.winfo_manager() if src is not None else ""
+    ck("the ShowTopPane toggle changes the source pane",
+       _before != _after, f"{_before!r} -> {_after!r}")
+    app.toggle_pane("ShowTopPane", "src")
+    root.update_idletasks()
+    ck("...and puts it back",
+       src.winfo_manager() == _before if src is not None else False,
+       repr(src.winfo_manager()) if src is not None else "no source pane")
+finally:
+    _CFG.DEFAULT_PATH = _saved_path
+    try:
+        os.remove(_CFG.DEFAULT_PATH)
+    except Exception:
+        pass
+    try:
+        os.rmdir(_cfg_dir)
+    except Exception:
+        pass
+
+# --- the nav arrows and the menu are native's icon buttons -------------------
+# Native's back/forward, its ':' menu and its 'New' button are BS_ICON
+# buttons. As text they were 47px wide on macOS, where native's are 20.
+_nav_buttons = []
+for frame in root.winfo_children():
+    for sub in frame.winfo_children():
+        if sub.winfo_class() == "Button":
+            _nav_buttons.append(sub)
+_icons = [b for b in _nav_buttons
+          if str(b.cget("image")) not in ("", "none")]
+_text_arrows = [b for b in _nav_buttons
+                if str(b.cget("text")) in ("◀", "▶", "⋮")]
+ck("the nav arrows and the kebab carry native's own icons, not text",
+   len(_icons) >= 4 and not _text_arrows,
+   f"{len(_icons)} icon buttons, {_text_arrows} text arrows")
+for _b in _icons[:4]:
+    ck("an icon button is pixel-sized, not character-sized",
+       _b.winfo_reqwidth() <= 24, str(_b.winfo_reqwidth()))
+
 root.destroy()
 
 if fail:

@@ -106,6 +106,13 @@ _DICT_ICON_FILES = {
     "Wikipedia": "wikipedia",
 }
 
+# The main window's SOURCE pane, in pixels: native's own capture
+# (docs/review/native_screens/2131.png, a 516x423 window) measures the
+# pane at 153px -- DLG129's control 1000, 66 DU tall -- showing ten and a
+# half lines of the help text. The port's line pitch is the same
+# (14.2px against native's 14.6px), so the height transfers directly.
+SRC_PANE_PX = 153
+
 
 class HistoryView:
     """The History window (native DLG 164) — `App.open_history_window`.
@@ -2917,18 +2924,25 @@ class MainWindow:
         # nav row
         nav = tk.Frame(self.app.root, bg=bg)
         nav.pack(fill="x", padx=4, pady=(2, 0))
-        tk.Button(nav, text="◀", width=3,
-                  command=self.app.hist_back).pack(side="left", padx=1)
-        tk.Button(nav, text="▶", width=3,
-                  command=self.app.hist_forward).pack(side="left", padx=1)
+        # Native's nav arrows are BS_ICON buttons -- the EXE's own RT_ICON
+        # resources -- not text. Drawn as text they came out 47 pixels
+        # wide on macOS (the fallback font's arrow glyph is that wide)
+        # where native's are 20.
+        self._icon_button(nav, "back", "◀",
+                          self.app.hist_back).pack(side="left", padx=1)
+        self._icon_button(nav, "forward", "▶",
+                          self.app.hist_forward).pack(side="left", padx=1)
         self.app.svc_link = tk.Label(nav, text=self.app.service.title(),
                                  fg="blue", cursor="hand2", bg=bg,
                                  font=("Segoe UI", 9, "underline"))
         self.app.svc_link.pack(side="left", padx=6)
         self.app.svc_link.bind("<Button-1>",
                            lambda e: self.app.open_service_page())
-        tk.Button(nav, text="⋮", width=3,
-                  command=self.app.show_nav_menu).pack(side="right", padx=1)
+        # 1009: the ':' menu. Native draws the three dots as an icon
+        # (the EXE's RT_ICON group), and as text the glyph is wide
+        # enough to make the button three characters across.
+        self._icon_button(nav, "menu", "⋮",
+                          self.app.show_nav_menu).pack(side="right", padx=1)
         # source pane (id1000) + mic/headphone overlay at right edge.
         # The id here used to read 1017; DLG129 has three RichEdits and the
         # two Play buttons settle the mapping -- 1027 sits inside the top
@@ -2936,10 +2950,23 @@ class MainWindow:
         # docs/review/MAIN_WINDOW_LAYOUT_DIVERGED_2026-10-16.md
         srcfrm = tk.Frame(self.app.root, bg="white")
         srcfrm.pack(fill="x", padx=4)
+        # Native's source pane is DLG129's control 1000 -- 66 DU tall -- and
+        # in its own capture (2131, a 516x423 window) it measures **153px**,
+        # showing ten and a half lines of the same help text the port
+        # renders at the same line pitch (14.6px there, 14.2px here). The
+        # port's Text asks for twelve lines (170px), so the port showed a
+        # line and a half MORE of the help text than native and a result
+        # pane 21px shorter. The frame is given native's height and stops
+        # propagating the Text's request; the eleventh line is clipped
+        # exactly as native's is.
+        #
+        # Native's own value moves a little with the window height (153px
+        # at 423, 142px at 402, 145px at 409 across the three captures);
+        # 153 is the value at the reference window size.
+        srcfrm.pack_propagate(False)
+        srcfrm.configure(height=SRC_PANE_PX)
         self.app._panes = getattr(self.app, "_panes", {})
         self.app._panes["src"] = srcfrm
-        # taller source pane: native shows ~9 lines (through
-        # "Ctrl+N => Clear current translation")
         self.app.src = tk.Text(srcfrm, height=12, wrap="word", bg="white",
                            fg="black", insertbackground="black",
                            font=_pane_font(), borderwidth=0,
@@ -3044,11 +3071,10 @@ class MainWindow:
         bar.columnconfigure(2, weight=1)
         bar.columnconfigure(4, weight=1)
         # id1021 "New": clears source for a fresh translation
-        tk.Button(bar, text="\U0001f4cb", width=3,
-                  command=self.app.on_new).grid(row=0, column=0, sticky="w", padx=1)
-        tk.Button(bar, text="⋮", width=3,
-                  command=self.app.show_nav_menu).grid(row=0, column=1, sticky="w",
-                                                   padx=1)
+        self._icon_button(bar, "new", "\U0001f4cb", self.app.on_new).grid(
+            row=0, column=0, sticky="w", padx=1)
+        self._icon_button(bar, "menu", "⋮", self.app.show_nav_menu).grid(
+            row=0, column=1, sticky="w", padx=1)
         # width is in CHARACTERS for a ttk combobox; native's Auto-Detect
         # combo is 150px wide and shows the whole label, so 13 characters
         # clipped it to "Auto-Detec".
@@ -3080,7 +3106,10 @@ class MainWindow:
         self.app.suggest = tk.Label(self.app.root, text="", bg=bg, fg="gray",
                                 anchor="w", font=("Tahoma", 7),
                                 cursor="hand2")
-        self.app.suggest.pack(fill="x", padx=4, pady=0)
+        # NOT packed: native has no permanent suggestion band -- the
+        # capture (2131) shows the main window without one -- so the line
+        # is packed only while it carries a suggestion. Packing it
+        # unconditionally left a 17px empty grey band under the tool row.
         self.app.suggest.bind("<Button-1>",
                           lambda e: self.app.accept_suggestion())
         self.app._suggestions = []
@@ -3160,9 +3189,15 @@ class MainWindow:
         # pane with its own Play button beside it, exactly like the template's
         # [1017][separator 1135][1018] stack.
         self.app._panes["aux_sep"] = tk.Frame(self.app.root, bg="#c1c1c2", height=3)
+        self.app._panes["aux_sep"].pack(fill="x", padx=4)
         auxfrm = tk.Frame(self.app.root, bg="white")
         self.app._panes["aux"] = auxfrm
-        auxfrm.pack(fill="both", expand=False, padx=4)
+        # NOT packed: native's capture shows DLG129's third RichEdit (1018)
+        # COLLAPSED to zero height when there is no back-translation --
+        # the separator 1135 is there, the pane is not -- so the port's
+        # always-visible 16px empty band was a divergence. The pane is
+        # packed only while it carries a back-translation.
+        auxfrm.pack_forget()
         self.app.aux = tk.Text(auxfrm, height=1, wrap="word", bg="#fafafa",
                            fg="#333333", insertbackground="#333333",
                            font=_pane_font(), borderwidth=0,
@@ -3184,8 +3219,11 @@ class MainWindow:
         # Native shows icon above a short name (Go.., Mi.., Pr.., ...).
         strip = tk.Frame(self.app.root, bg=bg)
         strip.pack(fill="x", padx=4, pady=(2, 4))
-        self.app._panes = {"src": None, "mid": None, "svc": strip,
-                       "bar": None}
+        # The dict is UPDATED, not replaced. Replacing it dropped "src"
+        # and "mid" back to None, and the pane toggles (Ctrl+F1/F2/F3 and
+        # the menu items) read exactly those two keys -- so they did
+        # nothing at all.
+        self.app._panes.update({"svc": strip})
         if not _gp.get("ShowServicesPane", True):
             strip.pack_forget()
         self.app.svc_btns = {}
@@ -3361,19 +3399,31 @@ class MainWindow:
         except Exception:
             pass
     def toggle_pane(self, key, pane):
-        """Show/hide a main-window pane, persisting General.<key>."""
+        """Show/hide a main-window pane, persisting General.<key>.
+
+        The read and the write of the settings file are each in their own
+        ``try``: a machine with no Options.json yet made ``_C.load()``
+        raise, and because the whole body shared one ``except``, the
+        pane never toggled either. The file's absence is not a reason to
+        refuse to show the pane.
+        """
+        w = (self.app._panes or {}).get(pane)
+        if w is None:
+            return
+        from qtranslate import config as _C
+        import json as _j
         try:
-            w = (self.app._panes or {}).get(pane)
-            if w is None:
-                return
-            from qtranslate import config as _C
-            import json as _j
             full = _C.load()
-            cur = bool(full.setdefault("General", {}).get(key, True))
-            full["General"][key] = not cur
-            with open(_C.DEFAULT_PATH, "w",
-                      encoding="utf-8") as f:
+        except Exception:
+            full = {}
+        cur = bool(full.setdefault("General", {}).get(key, True))
+        full["General"][key] = not cur
+        try:
+            with open(_C.DEFAULT_PATH, "w", encoding="utf-8") as f:
                 _j.dump(full, f, ensure_ascii=False, indent=1)
+        except Exception:
+            pass
+        try:
             if cur:
                 w.pack_forget()
             else:
@@ -3390,6 +3440,25 @@ class MainWindow:
             _open_url(_dict_service_link(name))
         except Exception as e:
             self.app.render(f"[error] {e}")
+    def _icon_button(self, parent, name, text, command, **kw):
+        """A button carrying one of the bundled native icons.
+
+        Native's nav arrows, its ':' menu and its 'New' button are
+        BS_ICON buttons -- the EXE's own RT_ICON resources, bundled under
+        ``qtranslate/assets/ui_icons/``. Drawn as TEXT they came out 47
+        pixels wide on macOS, because the fallback font's arrow glyph is
+        that wide, where native's buttons are 20.
+        """
+        img = self._ui_icon(name)
+        bg = kw.pop("bg", _COLORS["back"])
+        if img is not None:
+            return tk.Button(parent, image=img, width=SVC_ICON_PX,
+                             height=SVC_ICON_PX, relief="flat", bd=0,
+                             highlightthickness=0, bg=bg,
+                             command=command, **kw)
+        return tk.Button(parent, text=text, width=3, command=command,
+                         bg=bg, **kw)
+
     def _ui_icon(self, name):
         """The bundled native UI icon (``mic`` / ``headphone``), or None.
 
@@ -3982,6 +4051,55 @@ class MainWindow:
             self.app.aux.delete("1.0", "end")
             self.app.aux.insert("1.0", (back or "").strip())
             self.app.tag_links(self.app.aux, (back or "").strip(), self.app._click_link)
+            # Native shows the third pane only when it has something to
+            # show: its capture has the separator (1135) and no pane.
+            self._set_aux_visible(bool((back or "").strip()))
+    def _set_aux_visible(self, visible):
+        """Show or hide DLG129's third pane (1018).
+
+        Native's capture (2131) shows the separator 1135 and a ZERO-height
+        third pane -- the RichEdit is collapsed when there is no
+        back-translation -- so the port's always-visible 16px empty band
+        was a divergence from the native's own pixels.
+        """
+        try:
+            auxfrm = (self.app._panes or {}).get("aux")
+            if auxfrm is None:
+                return
+            if visible:
+                if auxfrm.winfo_manager() != "pack":
+                    auxfrm.pack(fill="both", expand=False, padx=4,
+                                before=self.app._panes.get("svc"))
+            elif auxfrm.winfo_manager() == "pack":
+                auxfrm.pack_forget()
+        except Exception:
+            pass
+    def _set_suggest_text(self, text):
+        """Show or hide the suggestion line.
+
+        Native has no permanent suggestion band: the capture (2131) shows
+        the main window with no such row, so the label is packed only
+        while it carries a suggestion. Packing it unconditionally left a
+        17px empty grey band under the tool row.
+        """
+        lbl = getattr(self.app, "suggest", None)
+        if lbl is None:
+            return
+        try:
+            if text:
+                lbl.config(text=text)
+                if lbl.winfo_manager() != "pack":
+                    _before = (self.app._panes or {}).get("mid")
+                    if _before is not None:
+                        lbl.pack(fill="x", padx=4, pady=0, before=_before)
+                    else:
+                        lbl.pack(fill="x", padx=4, pady=0)
+            else:
+                lbl.config(text="")
+                if lbl.winfo_manager() == "pack":
+                    lbl.pack_forget()
+        except Exception:
+            pass
     def _apply_backtr_split(self, text):
         """DEPRECATED -- kept only so an old caller does not crash.
 
@@ -4154,7 +4272,7 @@ class MainWindow:
             from qtranslate import registry as _RG
             sug = _RG.google_suggest(cur)
             self.app._suggestions = list(sug[:5])
-            self.app.suggest.config(text=" | ".join(self.app._suggestions))
+            self._set_suggest_text(" | ".join(self.app._suggestions))
         except Exception:
             pass
     def accept_suggestion(self):
@@ -4165,7 +4283,7 @@ class MainWindow:
             if sug:
                 self.app.src.delete("1.0", "end")
                 self.app.src.insert("1.0", sug[0])
-                self.app.suggest.config(text="")
+                self._set_suggest_text("")
                 self.app._suggestions = []
         except Exception:
             pass

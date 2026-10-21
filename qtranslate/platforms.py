@@ -60,6 +60,27 @@ class Paths:
         raise NotImplementedError
 
 
+def app_data_dir() -> str:
+    """The per-user data directory (D16).
+
+    Windows: ``%APPDATA%\\QTranslate``. Everywhere else:
+    ``~/.config/QTranslate``.
+
+    The native keeps its ``Options.json`` in the Windows location; the
+    port keeps the same shape everywhere, so its settings file does not
+    land in the CURRENT WORKING DIRECTORY. It used to: ``%APPDATA%`` is
+    empty off Windows, ``os.path.join("", "QTranslate", "Options.json")``
+    is a RELATIVE path, and on macOS -- where the filesystem is
+    case-insensitive -- that resolved to ``qtranslate/Options.json``
+    *inside the package directory*.
+    """
+    import os
+    base = os.environ.get("APPDATA", "")
+    if not base:
+        base = os.path.join(os.path.expanduser("~"), ".config")
+    return os.path.join(base, "QTranslate")
+
+
 class SpeechInput:
     def recognize_once(self, lang):
         raise NotImplementedError
@@ -100,8 +121,7 @@ class WindowsAdapter:
 
     def app_data(self):
         """Per-user app-data dir (D16): ``%APPDATA%/QTranslate``."""
-        import os
-        return os.path.join(os.environ.get("APPDATA", ""), "QTranslate")
+        return app_data_dir()
 
     def extensions_dir(self):
         """Where QTranslate looks for user extensions (D16).
