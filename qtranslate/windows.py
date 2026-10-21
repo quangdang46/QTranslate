@@ -364,12 +364,87 @@ class DictionaryView:
         w.title(_W(5, "Dictionary"))
         w.configure(bg=_COLORS["back"])
         _place_aux(w, "WindowDictionaryPlacement", _TEMPLATE_GEOMETRY("dictionary"))
+        # Native DLG 184's row is three controls -- a language ComboBox
+        # (1142), a search Edit (1183) and a ':' menu button (1187) --
+        # and the capture 2132 shows what native draws around them:
+        #
+        #   [English v] [<][>] [        search field        ] [q] [d] [v]
+        #
+        # The port drew "Word:" + an entry + an "Exact" checkbutton + a
+        # "Look up" button, which is a different row. The lookup now
+        # goes through the magnifier, the word history through the clock,
+        # and "Exact" / the services pane live in the ':' menu, as
+        # native's do.
         frm = tk.Frame(w, bg=_COLORS["back"])
         frm.pack(fill="x", padx=8, pady=8)
-        tk.Label(frm, text="Word:", bg=_COLORS["back"],
-                 fg="gray").pack(side="left")
+        # 1142: the language the lookup runs in.
+        _lang_c = ttk.Combobox(frm, values=list(LANG_DISPLAY.values()),
+                               width=14, state="readonly")
+        _lang_c.pack(side="left")
+        try:
+            _ltbl = list(__import__(
+                "qtranslate.services.google_translate",
+                fromlist=["SUPPORTED_LANGS"]).SUPPORTED_LANGS)
+            _lidx = int(_C.load().get("General", {}).get(
+                "LanguageDictionary", 17))
+            _lcode = _ltbl[_lidx] if 0 <= _lidx < len(_ltbl) else "en"
+            _lang_c.set(LANG_DISPLAY.get(_lcode, _lcode))
+        except Exception:
+            _lang_c.set("English")
+
+        def _set_lang(_e=None):
+            try:
+                _name = _lang_c.get()
+                for _code, _disp in LANG_DISPLAY.items():
+                    if _disp == _name:
+                        _tbl = list(__import__(
+                            "qtranslate.services.google_translate",
+                            fromlist=["SUPPORTED_LANGS"]).SUPPORTED_LANGS)
+                        if _code in _tbl:
+                            _full = _C.load()
+                            _full.setdefault("General", {})[
+                                "LanguageDictionary"] = _tbl.index(_code)
+                            import json as _jl
+                            with open(_C.DEFAULT_PATH, "w",
+                                      encoding="utf-8") as _fh:
+                                _jl.dump(_full, _fh, ensure_ascii=False,
+                                         indent=1)
+                        break
+            except Exception:
+                pass
+        _lang_c.bind("<<ComboboxSelected>>", _set_lang)
+
+        # Native's order is: [language v] [<][>] [field] [q] [d] [v]
+        # -- the history arrows sit BETWEEN the language combo and the
+        # field, not after it.
+        _hpos = [0]
+
+        def _hist():
+            try:
+                import json as _jh
+                import os as _oh
+                _hp = _oh.path.join(_oh.path.dirname(
+                    _C.DEFAULT_PATH), "DictionaryHistory.json")
+                with open(_hp, encoding="utf-8") as _fh:
+                    _h = _jh.load(_fh)
+                return [str(x) for x in _h]
+            except Exception:
+                return []
+
+        def _hist_step(_d):
+            _h = _hist()
+            if not _h:
+                return
+            _hpos[0] = max(0, min(len(_h) - 1, _hpos[0] + _d))
+            ent.delete(0, "end")
+            ent.insert(0, _h[_hpos[0]])
+
+        tk.Button(frm, text="\u25c0", width=2,
+                  command=lambda: _hist_step(-1)).pack(side="left")
+        tk.Button(frm, text="\u25b6", width=2,
+                  command=lambda: _hist_step(1)).pack(side="left")
         ent = tk.Entry(frm, width=28)
-        ent.pack(side="left", padx=4)
+        ent.pack(side="left", padx=4, fill="x", expand=True)
         ent.bind("<Return>", lambda e: go_all())
         _exact_v = tk.BooleanVar(
             value=bool(_dcfg.get("DictionaryExactSearch", True)))
@@ -388,12 +463,46 @@ class DictionaryView:
             except Exception:
                 pass
 
-        tk.Checkbutton(frm, text="Exact", variable=_exact_v,
-                       command=_save_exact,
-                       bg=_COLORS["back"], fg=_COLORS["text"],
-                       selectcolor=_COLORS["back"]).pack(side="left")
-        tk.Button(frm, text="Look up",
-                  command=lambda: go_all()).pack(side="left", padx=4)
+        # The magnifier is the lookup; the clock opens the history.
+        tk.Button(frm, text="\u2315", width=2,
+                  command=lambda: go_all()).pack(side="left", padx=(2, 0))
+
+        def _hist_pick():
+            _h = _hist()
+            if not _h:
+                return
+            _top = tk.Toplevel(w)
+            _top.title("History")
+            _lb = tk.Listbox(_top, height=min(10, len(_h)), width=36)
+            for _x in _h:
+                _lb.insert("end", _x)
+            _lb.pack(fill="both", expand=True)
+
+            def _use():
+                _s = _lb.curselection()
+                if _s:
+                    ent.delete(0, "end")
+                    ent.insert(0, _h[_s[0]])
+                _top.destroy()
+            _b = tk.Frame(_top)
+            _b.pack(fill="x")
+            tk.Button(_b, text="OK", command=_use).pack(side="right",
+                                                         padx=2)
+            tk.Button(_b, text="Cancel",
+                      command=_top.destroy).pack(side="right", padx=2)
+        tk.Button(frm, text="\u2317", width=2,
+                  command=_hist_pick).pack(side="left")
+        # 1187: native's ':' menu.
+        _menu = tk.Menu(w, tearoff=0)
+        _menu.add_checkbutton(label="Exact search", variable=_exact_v,
+                              command=_save_exact)
+        _menu.add_separator()
+        _menu.add_command(label="History", command=_hist_pick)
+        _menu.add_command(label="Look up", command=lambda: go_all())
+        tk.Button(frm, text="\u22ee", width=2,
+                  command=lambda: _menu.post(
+                      frm.winfo_rootx() + frm.winfo_width() - 20,
+                      frm.winfo_rooty() + frm.winfo_height())).pack(side="left")
         mid = tk.Frame(w, bg=_COLORS["back"])
         mid.pack(fill="both", expand=True, padx=8, pady=(0, 4))
         pane = tk.Frame(mid, bg=_COLORS["back"])

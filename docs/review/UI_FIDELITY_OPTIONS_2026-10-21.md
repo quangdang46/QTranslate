@@ -171,7 +171,7 @@ class name `...` lists the classes already configured.
 | Checkbox colour | blue | blue (drawn on a canvas) | the Languages checklist is drawn, so it can be blue |
 | Popup | 265x115, header truncated with "…" | wider, header not truncated | the popup sizes itself to its header |
 | Transparency field | `15` | `217` | the *value* differs (different Options.json), the field is the same |
-| Dictionary window (DLG184) | a language combo + a search field + a `:` menu button over a large result area, with a service icon strip along the bottom | a `Word:` field + `Exact` + `Look up`, a list of the eleven dictionary services, and a result area | the port's dictionary is the XDXF one -- a different design from native's; `docs/review/DICT_TEMPLATE_NATIVE_2026-10-10.md` |
+| Dictionary window (DLG184) | a language combo + a search field + a `:` menu button over a large result area, with a service icon strip along the bottom | the same row now (language combo, history arrows, magnifier, clock, ':' menu) but no bottom icon strip | the dictionary services' own icons are not in the recovered asset set; `docs/review/UI_FIDELITY_SURFACES_2026-10-21.md` |
 | Popup | 265x115, header truncated with "…" | wider, header not truncated | the popup sizes itself to its header |
 | Tray menu | 2126.png | not captured | the tray menu is a Tk menu, not a window, so the window capture cannot see it |
 | Options window | 646x389 (a resized instance) | 751x417 (the template) | the template is the default size |

@@ -302,18 +302,54 @@ if HEAD_APP:
         '_TEMPLATE_GEOMETRY("dictionary"))',
         # 2026-10-21: the dictionary language default now reads the
         # shared per-slot table (`LANG_DEFAULTS`) instead of a literal.
-        '"LanguageDictionary", LANG_DEFAULTS["LanguageDictionary"])',)
+        '"LanguageDictionary", LANG_DEFAULTS["LanguageDictionary"])',
+        # The line is split across two source lines, so the second half
+        # is matched on its own.
+        'LANG_DEFAULTS["LanguageDictionary"])',)
+    # 2026-10-21: the dictionary window's TOP ROW was rebuilt against
+    # native's DLG184, whose three controls are a language ComboBox
+    # (1142), a search Edit (1183) and a ':' menu button (1187). The
+    # capture 2132 shows what native draws around them --
+    # "[language v] [<][>] [search field] [q] [d] [v]" -- while the port
+    # drew "Word:" + an entry + an "Exact" checkbutton + a "Look up"
+    # button. The rest of the body is still compared line for line.
+    def _row_region(lines):
+        _a = next(i for i, l in enumerate(lines) if "frm = tk.Frame(w," in l)
+        _b = next(i for i, l in enumerate(lines) if "mid = tk.Frame(w," in l)
+        return _a, _b
+
+    def _keep(lines):
+        _a, _b = _row_region(lines)
+        return [l for i, l in enumerate(lines)
+                if not (_a <= i < _b)] + [l for i, l in enumerate(lines)
+                                          if _b <= i]
+
+    o_keep = [l for i, l in enumerate(o_d)
+              if not (_row_region(o_d)[0] <= i < _row_region(o_d)[1])]
+    w_keep = [l for i, l in enumerate(w_d)
+              if not (_row_region(w_d)[0] <= i < _row_region(w_d)[1])]
     d_diffs = []
-    for i, (x, y) in enumerate(zip(o_d, w_d)):
+    for i, (x, y) in enumerate(zip(o_keep, w_keep)):
         if x != y:
             if y in ALLOWED_DICT:
                 continue
             d_diffs.append("%d: HEAD=%r new=%r" % (i, x, y))
             break
-    ck("the DictionaryView body is identical after the allowed substitution",
-       not d_diffs and len(o_d) <= len(w_d),
+    # One extra line is allowed: the trailing `return self.win` the
+    # delegator needs (asserted separately below).
+    ck("the DictionaryView body outside the top row is identical after "
+       "the allowed substitution",
+       not d_diffs and len(w_keep) == len(o_keep) + 1,
        (d_diffs[0] if d_diffs else
         "HEAD %d lines, windows.py %d" % (len(o_d), len(w_d))))
+    _row = "\n".join(w_d[_row_region(w_d)[0]:_row_region(w_d)[1]])
+    ck("the dictionary row has native's language combo (1142)",
+       "ttk.Combobox(frm" in _row, "no language combo")
+    ck("the dictionary row has native's history arrows and menu",
+       r"\u25c0" in _row and r"\u25b6" in _row and r"\u22ee" in _row,
+       "no history arrows / menu button")
+    ck("the dictionary row has native's magnifier (the lookup)",
+       r"\u2315" in _row, "no magnifier")
     # The tail is the one allowed ADDITION: the delegator needs the window.
     ck("...and the only addition is the return the delegator needs",
        w_d[len(o_d):] == ["return self.win"]
