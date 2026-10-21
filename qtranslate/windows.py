@@ -892,9 +892,19 @@ class PopupHost:
         _hdr_tgt = LANG_DISPLAY.get(target, target)
         _hdr = tk.Frame(inner, bg=_pc.get("back", "#f0f0f0"))
         _hdr.pack(fill="x", padx=4, pady=(3, 0))
-        tk.Label(_hdr, text="%s to %s…" % (_hdr_src, _hdr_tgt),
-                 bg=_pc.get("back", "#f0f0f0"),
-                 fg=_pc.get("text", "#000000")).pack(side="left")
+        # Native's popup header starts with a CLOSE button (the capture
+        # 2130 shows an "X" at the far left of the caption row).
+        try:
+            tk.Button(_hdr, text="\u2715", width=1, relief="flat",
+                      bd=0, bg=_pc.get("back", "#f0f0f0"),
+                      fg=_pc.get("text", "#000000"),
+                      command=_close_popup).pack(side="left", padx=(0, 2))
+        except Exception:
+            pass
+        _hdr_text = tk.Label(_hdr, text="%s to %s…" % (_hdr_src, _hdr_tgt),
+                             bg=_pc.get("back", "#f0f0f0"),
+                             fg=_pc.get("text", "#000000"))
+        _hdr_text.pack(side="left")
         tk.Label(_hdr, text="★", bg=_pc.get("back", "#f0f0f0"),
                  fg=_pc.get("text", "#000000")).pack(side="left", padx=(2, 0))
         try:
@@ -916,7 +926,11 @@ class PopupHost:
                 tk.Label(_bar, text="\U0001F4CB",
                          bg=_pc.get("back", "#f0f0f0")).pack(side="left", padx=1)
             if _icons_h & 16:
-                tk.Label(_bar, text="↻",
+                # Native's fourth popup glyph is "b" over "a" -- the
+                # ROMANIZATION mark (measured off the native capture
+                # 2130 and the Appearance page's Icons row), not a
+                # refresh arrow.
+                tk.Label(_bar, text="b\u2090",
                          bg=_pc.get("back", "#f0f0f0")).pack(side="left", padx=1)
         txt = tk.Text(inner, wrap="word",
                       bg=_pc.get("back", "#f0f0f0"),
@@ -924,11 +938,36 @@ class PopupHost:
                       insertbackground=_pc.get("text", "#000000"),
                       font=("Segoe UI", 11), borderwidth=0,
                       highlightthickness=0)
+        # Native sizes the popup to its CONTENT, not to a fixed column
+        # count: the capture 2130 is ~200px wide for the one-line result
+        # "người_record", where the port drew a fixed 60 columns (616px).
+        # The width is the widest of the caption row and the result, and
+        # the CAPTION is truncated with an ellipsis to fit -- which is
+        # why native reads "English to Viet…" and not "English to
+        # Vietnamese…".
+        _longest = max((len(x) for x in result.split("\n")), default=1)
+        _cols = max(16, min(60, _longest + 2))
         lines = max(2, min(12, result.count("\n") + len(result) // 60 + 1))
-        txt.config(height=lines, width=60)
+        txt.config(height=lines, width=_cols)
         txt.pack(fill="both", expand=True, padx=6, pady=6)
         txt.insert("1.0", result)
         txt.config(state="disabled")
+        try:
+            win.update_idletasks()
+            _w_max = 265
+            _want = max(_hdr.winfo_reqwidth(), txt.winfo_reqwidth())
+            _w = max(120, min(_w_max, _want))
+            win.geometry("%dx%d" % (_w, win.winfo_reqheight()))
+            win.update_idletasks()
+            # Truncate the caption to what is left after the close
+            # button, the star and the glyph row.
+            _fixed = _hdr.winfo_reqwidth() - _hdr_text.winfo_reqwidth()
+            _room = max(4, (_w - _fixed - 8) // 7)
+            _full = "%s to %s…" % (_hdr_src, _hdr_tgt)
+            if len(_full) > _room:
+                _hdr_text.config(text=_full[:max(1, _room - 1)] + "…")
+        except Exception:
+            pass
 
         # (The icon glyph row lives in the header Labels above -- the old copy
         # of this block that rendered below the text was removed 2026-10-14 when

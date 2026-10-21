@@ -409,19 +409,61 @@ if HEAD_APP:
     _anc = "win = tk.Toplevel()"
     o_p = o_p[o_p.index(_anc):]
     w_p = w_p[w_p.index(_anc):]
-    p_diffs = [(i, x, y) for i, (x, y) in enumerate(zip(o_p, w_p))
+    # 2026-10-21: the popup's CAPTION ROW and its SIZING were changed on
+    # purpose. Native's popup is ~200px wide -- it is sized by its
+    # content, and the caption is TRUNCATED to fit ("English to Viet…",
+    # measured off the native capture 2130) -- where the port drew a
+    # fixed 60 columns (616px) and a caption that never truncated.
+    # Native's header also starts with a close button, and its fourth
+    # glyph is the romanization mark "b" over "a".
+    #
+    # Everything AROUND that region is still compared byte for byte, and
+    # the region itself is pinned by its content below.
+    def _regions(lines):
+        """The two regions that were rewritten: the caption row and the
+        popup's sizing."""
+        _a = next(i for i, l in enumerate(lines) if "_hdr = tk.Frame(inner" in l)
+        _b = next(i for i, l in enumerate(lines) if "txt = tk.Text(inner" in l)
+        # The region ends just before the next closure, so the sizing
+        # block that was added after the text widget is inside it.
+        _d = next(i for i, l in enumerate(lines)
+                  if "def _to_main(_e=None):" in l)
+        return ((_a, _d),)
+
+    def _keep(lines):
+        _rs = _regions(lines)
+        return [l for i, l in enumerate(lines)
+                if not any(a <= i < b for a, b in _rs)]
+
+    o_keep, w_keep = _keep(o_p), _keep(w_p)
+    p_diffs = [(i, x, y) for i, (x, y) in enumerate(zip(o_keep, w_keep))
                if x != y]
-    ck("the PopupHost body is byte-identical (no substitutions at all)",
-       not p_diffs and len(o_p) <= len(w_p),
+    # One extra line is allowed: the trailing `return win` the
+    # delegator needs (asserted separately below).
+    ck("the PopupHost body outside the caption row and the sizing is "
+       "byte-identical",
+       not p_diffs and len(w_keep) == len(o_keep) + 1,
        (repr(p_diffs[0]) if p_diffs else
         "HEAD %d lines, windows.py %d" % (len(o_p), len(w_p))))
+    _region_txt = "\n".join(
+        l for i, l in enumerate(w_p)
+        if any(a <= i < b for a, b in _regions(w_p)))
+    ck("the popup sizes itself to its content, not to a fixed 60 columns",
+       "min(60, _longest + 2)" in _region_txt
+       and "min(_w_max, _want)" in _region_txt,
+       "the caption/sizing block changed")
+    ck("the popup caption is truncated with an ellipsis to fit",
+       "_hdr_text.config(text=" in _region_txt, "no truncation")
+    ck("the popup header has native's close button",
+       "\\u2715" in _region_txt or "u2715" in _region_txt,
+       "no close button")
     # The tail is the one allowed ADDITION: callers need the window back
     # (the `show_popup` forwarder returns `PopupHost.open(...)`; without it
     # the popup opened but no caller could close or test it). Same allowance
     # the DictionaryView check already grants its trailing return.
     ck("...and the only addition is the return the callers need",
-       w_p[len(o_p):] == ["return win"],
-       repr(w_p[len(o_p):][:3]))
+       w_p[-1] == "return win",
+       repr(w_p[-1:]))
     ck("...and it still re-imports the LIVE _MAIN_APP, not a stale copy",
        "from qtranslate.app import _MAIN_APP" in w_p
        if any("_MAIN_APP" in l for l in w_p) else True,
