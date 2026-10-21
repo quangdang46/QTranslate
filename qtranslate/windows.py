@@ -137,6 +137,46 @@ def _bundle_icon(name):
     return photo
 
 
+def _text_scrollbar(parent, text):
+    """A text pane's scrollbar, shown only when the content overflows.
+
+    Native's RichEdits grow a scrollbar when the content does not fit:
+    the capture (2131) shows one on the main window's SOURCE pane --
+    whose help text is clipped at the eleventh line -- and none on its
+    RESULT pane, whose single line fits; the Dictionary window's result
+    pane has one (the capture 2132 shows its up and down arrows at the
+    right edge). A Tk scrollbar is always drawn, so it is gridded in and
+    out to match, and the text's width follows.
+
+    The parent must lay its children out with GRID: the bar is added and
+    removed as the content changes, and pack would give it the cavity
+    the text already holds.
+    """
+    bar = tk.Scrollbar(parent, command=text.yview, width=12,
+                       bd=0, highlightthickness=0)
+    text.configure(yscrollcommand=bar.set)
+
+    def _sync(*_a):
+        try:
+            # `yview()` returns the visible fraction of the document: the
+            # last fraction is 1.0 only when everything fits.
+            need = text.yview()[1] < 1.0
+        except Exception:
+            need = False
+        try:
+            if need and not bar.grid_info():
+                bar.grid(row=0, column=1, sticky="ns")
+            elif not need and bar.grid_info():
+                bar.grid_remove()
+        except Exception:
+            pass
+
+    text.bind("<Configure>", _sync, add="+")
+    text.bind("<<Modified>>", _sync, add="+")
+    _sync()
+    return bar
+
+
 class HistoryView:
     """The History window (native DLG 164) — `App.open_history_window`.
 
@@ -610,9 +650,18 @@ class DictionaryView:
                     _dlb.selection_set(i)
         else:
             _dlb = None
-        out = tk.Text(mid, wrap="word", bg="white", fg="black",
+        # The result pane, with the scrollbar native's has (the capture
+        # 2132 shows its up and down arrows at the right edge). The text
+        # and the bar are gridded inside their own frame: the bar is
+        # added and removed as the content changes, and pack would give
+        # it the cavity the text already holds.
+        outfrm = tk.Frame(mid, bg="white")
+        outfrm.pack(side="left", fill="both", expand=True)
+        outfrm.columnconfigure(0, weight=1)
+        out = tk.Text(outfrm, wrap="word", bg="white", fg="black",
                       insertbackground="black", font=("Tahoma", _font))
-        out.pack(side="left", fill="both", expand=True)
+        out.grid(row=0, column=0, sticky="nsew")
+        w._dict_scroll = _text_scrollbar(outfrm, out)
 
         def _sel_ids():
             if _dlb is None:
@@ -3031,7 +3080,7 @@ class MainWindow:
         srcfrm.columnconfigure(0, weight=1)
         srcfrm.rowconfigure(0, weight=1)
         self.app.src.grid(row=0, column=0, sticky="nsew")
-        self.app._src_scroll = self._text_scrollbar(srcfrm, self.app.src)
+        self.app._src_scroll = _text_scrollbar(srcfrm, self.app.src)
         # Contents.EditSource cache wins over the default help text
         # (native restores last session panes on boot).
         try:
@@ -3204,7 +3253,7 @@ class MainWindow:
         outfrm.columnconfigure(0, weight=1)
         outfrm.rowconfigure(0, weight=1)
         self.app.out.grid(row=0, column=0, sticky="nsew")
-        self.app._out_scroll = self._text_scrollbar(outfrm, self.app.out)
+        self.app._out_scroll = _text_scrollbar(outfrm, self.app.out)
         self.app.out.bind("<Button-3>", self.app.show_result_menu)
         # Contents.EditTranslation / EditBackTranslation cache: restore the
         # last result and back-translation content on boot. These are TWO
@@ -3502,39 +3551,6 @@ class MainWindow:
             _open_url(_dict_service_link(name))
         except Exception as e:
             self.app.render(f"[error] {e}")
-    def _text_scrollbar(self, parent, text):
-        """A text pane's scrollbar, shown only when the content overflows.
-
-        Native's RichEdits grow a scrollbar when the content does not fit:
-        the capture (2131) shows one on the SOURCE pane -- whose help
-        text is clipped at the eleventh line -- and none on the RESULT
-        pane, whose single line fits. A Tk scrollbar is always drawn, so
-        it is gridded in and out to match, and the text's width follows.
-        """
-        bar = tk.Scrollbar(parent, command=text.yview, width=12,
-                           bd=0, highlightthickness=0)
-        text.configure(yscrollcommand=bar.set)
-
-        def _sync(*_a):
-            try:
-                # `yview()` returns the visible fraction of the document:
-                # the last fraction is 1.0 only when everything fits.
-                need = text.yview()[1] < 1.0
-            except Exception:
-                need = False
-            try:
-                if need and not bar.grid_info():
-                    bar.grid(row=0, column=1, sticky="ns")
-                elif not need and bar.grid_info():
-                    bar.grid_remove()
-            except Exception:
-                pass
-
-        text.bind("<Configure>", _sync, add="+")
-        text.bind("<<Modified>>", _sync, add="+")
-        _sync()
-        return bar
-
     def _icon_button(self, parent, name, text, command, **kw):
         """A button carrying one of the bundled native icons.
 

@@ -142,7 +142,7 @@ real Tk image names and the real label text.
 |---|---|---|
 | Left service list | none — the strip *is* the selector | a `Dictionaries` listbox (`Dictionary.ShowServicesPane`) |
 | Zoom row | none | `A-` / `A+` / `Dictionaries…` |
-| Result pane | a vertical scrollbar | no scrollbar |
+| Result pane | a vertical scrollbar (the capture's up and down arrows at the right edge) | **added 2026-10-21** |
 | Width | 476 px | 553 px (the template's width, not the captured instance's) |
 
 The left list and the zoom row are **port features**, not native

@@ -188,6 +188,14 @@ ck("the window holds the PhotoImages",
    len(getattr(win, "_dict_icon_images", []) or []) == 11,
    str(len(getattr(win, "_dict_icon_images", []) or [])))
 
+# The result pane's scrollbar: native's dictionary window has one (the
+# capture 2132 shows its up and down arrows at the right edge).
+_sbar = getattr(win, "_dict_scroll", None)
+ck("the dictionary result pane has a scrollbar", _sbar is not None)
+if _sbar is not None:
+    ck("the scrollbar scrolls the result pane",
+       _sbar.cget("command") != "", repr(_sbar.cget("command")))
+
 # The zoom row: it must have a size. It used to be packed after the
 # result pane and measured 1x1.
 zoom = [f for f in allw

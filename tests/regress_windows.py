@@ -378,8 +378,20 @@ if HEAD_APP:
             out.append(l)
         return out
 
-    o_keep = _keep(o_d)
-    w_keep = _keep(w_d)
+    # 2026-10-21: the dictionary's RESULT PANE was rebuilt too -- it now
+    # carries the scrollbar native's has (the capture 2132 shows its up
+    # and down arrows at the right edge), so the text and the bar live
+    # in their own gridded frame instead of being packed into `mid`.
+    def _result_pane(line):
+        return ("out = tk.Text(" in line or "out.pack(" in line
+                or "out.grid(" in line or "outfrm" in line
+                or "_text_scrollbar(outfrm" in line)
+
+    def _keep2(lines, src):
+        return [s for s in lines if not _result_pane(s)]
+
+    o_keep = _keep2(_keep(o_d), HEAD_APP)
+    w_keep = _keep2(_keep(w_d), WIN)
     d_diffs = []
     for i, (x, y) in enumerate(zip(o_keep, w_keep)):
         if x != y:
