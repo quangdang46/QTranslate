@@ -28,6 +28,19 @@
 > winners and clears stale ones, and a thin tkinter dialog picks the winner —
 > pinned by `tests/regress_override_persistence.py`. The RE Gate is unchanged:
 > `151 VERIFIED / 1 UNKNOWN (G9)`, `BLOCKED (1)`.
+>
+> **SUPERSEDING NOTE (2026-10-21).** The **sixth** window class,
+> `MainWindow`, was extracted last (the Phase 7 `6/6` slice), so §1's
+> "the 6th, `MainWindow`, remains in `app.py`" no longer holds. The
+> 2026-10-21 UI-fidelity pass then rebuilt the surfaces against native's
+> own captures — the main window's band structure, the dictionary
+> window's service strip, the virtual keyboard's key grid, the history
+> window's bottom row — and fixed the defects that pass exposed, among
+> them `render()` being unable to fill the result pane at all (a
+> `@staticmethod` delegator whose body used `self`). See
+> `docs/review/UI_FIDELITY_*.md` and
+> `docs/review/G9_DIFF_DECOMPOSITION_2026-10-21.md`. The RE Gate is still
+> `151 VERIFIED / 1 UNKNOWN (G9)`, `BLOCKED (1)`.
 
 > Status: **PLANNING / READ-ONLY AUDIT.** Grounded in direct reads of the
 > repository at commit `0cb0e78` (branch `main`) on 2026-10-09. No files were
@@ -39,16 +52,16 @@
 
 | Path | Lines/Size | Role |
 |------|-----------|------|
-| `qtranslate/app.py` | 3,083 lines | Tkinter UI + hotkey + clipboard + orchestration (see §3). Five of the six window classes Phase 7 names were extracted out of it 2026-10-16 — see `qtranslate/windows.py` below |
-| `qtranslate/windows.py` | 2,209 lines | The Phase 7 split: `HistoryView`, `DictionaryView`, `TrayController`, `PopupHost`, `OptionsDialog` (the 6th, `MainWindow`, remains in `app.py`). Each class is a transcription of the pre-split body, proven identical by `tests/regress_windows.py` (39 assertions, compared against the split commit's *parent*) |
+| `qtranslate/app.py` | 2,088 lines | Tkinter UI + hotkey + clipboard + orchestration (see §3). **All six** window classes Phase 7 names were extracted out of it on 2026-10-16 — see `qtranslate/windows.py` below |
+| `qtranslate/windows.py` | 5,016 lines | The Phase 7 split: `HistoryView`, `DictionaryView`, `TrayController`, `PopupHost`, `OptionsDialog` and `MainWindow` (the 6th, extracted last, on 2026-10-16). Each class is a transcription of the pre-split body, proven identical by `tests/regress_windows.py` (53 assertions, compared against the split commit's *parent*) |
 | `qtranslate/common.py` | 356 lines | 1:1 port of `Common.js` (RequestData/ResponseData, capability bitmask, helpers) |
-| `qtranslate/config.py` | 161 lines | `Options.json` model, hotkey decode, service ids/order |
+| `qtranslate/config.py` | 247 lines | `Options.json` model, hotkey decode, service ids/order |
 | `qtranslate/session.py` | 179 lines | Session/token scrape (Bing, Promt), net timeout/proxy |
 | `qtranslate/services/` | 12 provider modules + `dictionary.py` + `ocr.py` + `spell.py` | provider ports |
 | `qtranslate/win32app.py` | 203 lines | Native Win32 DLG129 re-creation (pywin32) |
 | `qtranslate/{theme,locale,history,layout,xdxf,tts,player,sapi,headless,exclusions}.py` | small | feature modules |
 | `docs/NATIVE_ARCH.md` | 1649 lines | native binary RE analysis |
-| `tests/` | 124 files | 120 `regress_*.py` suites (headless unless named), plus `ui_match.py`, `smoke_dict.py`, `live_providers.py`, `live_bass.py`. Sweep them with `python -I tools/run_suites.py` (exit-code judged, not grep) — see §Test suites in `README.md` |
+| `tests/` | 134 files | 130 `regress_*.py` suites (headless unless named), plus `ui_match.py`, `smoke_dict.py`, `live_providers.py`, `live_bass.py`. Sweep them with `python -I tools/run_suites.py` (exit-code judged, not grep) — see §Test suites in `README.md` |
 
 **[verified]** Language: Python, Tkinter UI, stdlib `urllib` for HTTP; optional
 deps only (`keyboard`, `pyperclip` required; `pystray`, `Pillow`, `comtypes`,

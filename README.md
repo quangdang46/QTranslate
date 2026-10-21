@@ -43,6 +43,38 @@ python -I start_app.py
 > `os.path.dirname(os.path.dirname(os.path.abspath(__file__)))` form on
 > 2026-10-10; the `PYTHONPATH=. python3 …` workaround is no longer needed.
 
+## Extensions
+
+The app loads **extensions** from a per-user folder at startup — no
+rebuild, no admin rights, and a broken extension is disabled with a
+reason instead of stopping the app.
+
+| Platform | Extensions directory |
+|---|---|
+| Windows | `%APPDATA%\QTranslate\extensions` |
+| macOS | `~/Library/Application Support/QTranslate/extensions` |
+
+Copy a folder that carries a `manifest.json` into that directory and
+restart the app. `examples/extensions/hello_provider/` is a complete
+worked example: it registers one provider, `hello`, that needs no
+network.
+
+```bash
+# Windows
+cp -r examples/extensions/hello_provider "%APPDATA%/QTranslate/extensions/"
+# macOS
+mkdir -p ~/Library/Application\ Support/QTranslate/extensions
+cp -r examples/extensions/hello_provider ~/Library/Application\ Support/QTranslate/extensions/
+python -I start_app.py          # restart: the provider is live
+```
+
+Pick `hello` in the main window's service list and translate; the result
+is "Hello, <your text>". Rename `ext.py` and restart again: the app
+starts normally and the built-in providers still work.
+
+The contract is `docs/EXTENSION_SDK.md`; the example is pinned by
+`tests/regress_example_extension.py`.
+
 ## Test suites (last verified 2026-10-16 — offline only)
 
 > These counts are **verified offline results, not a live claim**. Live suites

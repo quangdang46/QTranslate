@@ -254,10 +254,22 @@ QTranslate.
 > **Updated by Slice 8:** the startup **wiring** landed — `app.main` calls
 > `load_user_extensions()`, which loads and commits winners into
 > `registry.TRANSLATORS`; an extension provider (or a declared override)
-> now serves translations end-to-end. The "copy folder → restart → live"
-> demo therefore has a working code path; what is still missing for a
-> *shipped* demo is vendored-dep isolation and packaging, plus the
-> override UI from Phase 3.
+> now serves translations end-to-end.
+>
+> **Shipped 2026-10-21:** the demo is now a real folder —
+> `examples/extensions/hello_provider/` (a `manifest.json`, an `ext.py`
+> and its own README) — and the README documents the workflow ("copy
+> folder → restart → change is live"). `tests/regress_example_extension.py`
+> runs it the way a user would: copy it into a per-user extensions
+> directory, restart, the provider answers, and a deliberately broken
+> copy beside it is disabled with a reason while the built-in providers
+> keep working. Vendored-dep isolation is proved by
+> `tests/regress_extension_vendored_dep.py` (11) and the override UI
+> from Phase 3 landed (see `EXTENSION_OVERRIDE_2026-10-15.md`).
+>
+> **What is still missing:** the remaining demos (a custom **theme** and
+> a custom **UI** contribution) are not shipped as example folders, and
+> the SDK is not published under its own package name.
 
 ## Phase 7 — UI redesign & fidelity pass
 
@@ -270,16 +282,18 @@ QTranslate.
 **Done when:** UI screenshots approach the native window and UI extensions can
 add panel/menu/popup without touching Core.
 
-> **Landed 2026-10-16 (slices 1–5 of the split):** five of the six classes
-> are extracted into `qtranslate/windows.py` — `HistoryView`,
-> `DictionaryView`, `TrayController`, `PopupHost`, `OptionsDialog` — each
+> **Landed 2026-10-16 (slices 1–5 of the split), and the sixth on
+> 2026-10-16 (slice 6/6):** **all six** classes are extracted into
+> `qtranslate/windows.py` — `HistoryView`, `DictionaryView`,
+> `TrayController`, `PopupHost`, `OptionsDialog` and `MainWindow` — each
 > verified **byte-identical** to the pre-split body by
-> `tests/regress_windows.py` (39 assertions, compared against the parent of
+> `tests/regress_windows.py` (53 assertions, compared against the parent of
 > the split commit so the baseline cannot drift). `app.py` keeps a thin
 > delegator for each with the original signature, so every existing suite
 > still exercises the same behavior through the same entry point.
-> `App` is down from ~3,400 to 1,789 lines / 62 methods (what remains is
-> the main window itself).
+> `App` is down from ~3,400 to 2,088 lines (what remains is the
+> delegators, the hotkeys, the clipboard monitor and the app-level
+> state).
 >
 > **What the split is NOT:** a rewrite. The first attempt at `HistoryView`
 > invented menu labels the locale packs do not have, dropped the per-entry
@@ -292,12 +306,21 @@ add panel/menu/popup without touching Core.
 > because a rename capable of corrupting an `open(path, "w")` is not worth
 > the tidiness — and that is now pinned by a test.
 >
-> **Still not done, and why it is not a small remainder:** `MainWindow`
-> (the 6th class) is the main window itself — 1,789 lines of panes,
+> **RESOLVED 2026-10-16 (slice 6/6):** the sixth class, `MainWindow`,
+> was extracted as a **transcription** rather than a restructure — the
+> mechanical `self.` → `self.app.` substitution and nothing else, proved
+> by `tests/regress_windows.py` (53 assertions) and by a before/after
+> widget-geometry comparison that came out band for band identical. The
+> 2026-10-21 UI-fidelity pass then rebuilt the surfaces against native's
+> own captures (`docs/review/UI_FIDELITY_*.md`).
+>
+> **What was not done, and why it is not a small remainder:** `MainWindow`
+> was the last one out because it is the main window itself — panes,
 > translation orchestration, hotkey routing and the clipboard monitor,
 > cross-referenced far more tightly than the extracted windows. Cutting it
-> out is a large restructure of the code the UI is *built* from rather than
-> a window that hangs off it, and with the screenshot ban there is no
+> out had been called a large restructure of the code the UI is *built*
+> from rather than a window that hangs off it, and with the screenshot ban
+> there is no
 > fidelity signal to verify it by. Recorded, not claimed.
 >
 > **Fidelity half:** still blocked (screenshots banned). G9 part (a) — the
@@ -340,14 +363,14 @@ happened is recorded here rather than deferred.
 | Bead | Decided | Outcome |
 |---|---|---|
 | **G9 (`qt-fj5`)** | Part (a) is a *binary* question and needs no screenshot. | **CLOSED.** `tools/dlg_parse.py` fixed a field-width bug (the control id is 4 bytes; reading it as 2 shifted every later field, which is where `1342275648` came from — a *style* value read as an id). All three of the 2026-10-10 doc's unresolved items are now resolved: control id `1001` **is** present (the source ComboBox; the checklist was right, the walker was wrong), the six icon buttons are `1021/1022/1029/1030/1027/1028` (not "four owner-draw, ids unknown"), and DLU→px is a **range** (`510×326` … `595×376`), which no candidate metric reduces to `526×366`. Corroborated by all 13 ids in `win32app.py`, written independently. `G9_PART_A_CLOSED_2026-10-16.md`. Part (b) still needs a human reviewer, so **G9 stays `UNKNOWN` and the Gate stays `BLOCKED (1)`** — closing (a) does not promote G9. |
-| **Phase 7 (`qt-o7p`)** | Do the extraction, but as a *transcription* with mechanical proof, not a restructure. | **5 of 6 classes landed.** `HistoryView`, `DictionaryView`, `TrayController`, `PopupHost`, `OptionsDialog` moved to `qtranslate/windows.py` (2,209 lines), each proven byte-identical by `tests/regress_windows.py` against the split commit's *parent* — so a rewritten move cannot pass. `App` is down from ~3,400 to 1,789 lines. `MainWindow` (the 6th) is deliberately not started: it *is* the app, not a window hanging off it. See Phase 7's entry for the reasoning and the bug the discipline caught. |
+| **Phase 7 (`qt-o7p`)** | Do the extraction, but as a *transcription* with mechanical proof, not a restructure. | **6 of 6 classes landed** (`MainWindow` was the last, on 2026-10-16). `HistoryView`, `DictionaryView`, `TrayController`, `PopupHost`, `OptionsDialog` moved to `qtranslate/windows.py` (2,209 lines), each proven byte-identical by `tests/regress_windows.py` against the split commit's *parent* — so a rewritten move cannot pass. `App` is down from ~3,400 to 1,789 lines. `MainWindow` (the 6th) is deliberately not started: it *is* the app, not a window hanging off it. See Phase 7's entry for the reasoning and the bug the discipline caught. |
 | **Phase 8 (`qt-3ro`)** | PyInstaller, onedir, Windows-only — the only choice that can be *verified* here. | **Bundle built and verified.** `tools/build_bundle.py` writes the committed spec, builds, then runs the frozen exe's `--selftest` (18/18) — a sys.path probe against `_internal` is not equivalent, since pure modules live in the compressed PYZ. 48 MB onedir. Five real defects found by actually doing it, all fixed: `uv tool install pyinstaller` bundles its **own** Python (3.13) and silently dropped `keyboard`/`pyperclip`/`Pillow`, which would have shipped an app with no hotkeys and no icons; `app.show_override_conflicts` imported `override_ui` from a package that does not export it, and the surrounding `except Exception: return` swallowed the `ImportError` so the D18 dialog never opened (and the same `from X import <submodule>` shape hid it from PyInstaller too); `app._sync_icon` had inlined a *different* tray rule while `tray_state.select_state` held native's and nothing called it; six qtranslate modules existed that the bundle would not have carried (`_frozen_gap()` now fails the build); and `regress_crash_failfast` wrote `Exceptions.json` into the user's real `%APPDATA%`. macOS is recorded as open, not silently dropped — a bundle that cannot be produced *or verified* here must not be claimed. |
 
 | Bead | Status | What is left, and why it is not code |
 |---|---|---|
 | ~~tray `X:/Y:` readout~~ | **CLOSED — it was never a feature** | The spec's tray menu has no such element (its `.bar` footer is empty in the markup), the binary has no `X: %d`/`Y: %d` format string, and the coordinates in the reference capture are a mouse-mode **debug overlay** the analyst's session happened to be showing. A right-click menu is modal — a cursor coordinate could be read once, then never update, so it has no function. `TRAY_CURSOR_READOUT_CLOSED_2026-10-16.md`. |
 | G9 (`qt-fj5`) | **Part (a) verified complete; part (b) blocked, and the reason changed** | Part (a) is re-derived by `regress_g9_part_a_complete.py` (19) — font, control classes, ids, control count, and the port's DU→px. Part (b) was recorded as blocked because the native binary is i386 and the host was arm64 without wine. **This host is AMD64 Windows with `SysWOW64` present, and the installed `QTranslate.exe` is the same 1,462,272-byte PE32** — so native is runnable here via WoW64, and the honest block is the screenshot ban. Policy, not capability. A waiver would close the row, but the validator never assigns one; it takes a human, and the Gate arithmetic depends on that. |
-| Phase 7 (`qt-o7p`) | ~~Port-side half landed~~ **now 5-of-6 extracted — see the decision table above** | The UI-slot publishing (`qtranslate/ui_slots.py`, menu/panel/popup slots named from native's `Menus[].Id` and the three `Show*Pane` toggles, wired through `ExtensionManager.register_ui`/`ExtensionAPI.register_ui` with the same declared-`replaces` conflict policy as providers and themes — `regress_ui_slots.py`, 26) stands. What this row originally added — "the UI split into 6 window classes is deliberately not started" — is **superseded**: 5 of those classes landed, and only `MainWindow` remains. |
+| Phase 7 (`qt-o7p`) | ~~Port-side half landed~~ **now 6-of-6 extracted — see the decision table above** | The UI-slot publishing (`qtranslate/ui_slots.py`, menu/panel/popup slots named from native's `Menus[].Id` and the three `Show*Pane` toggles, wired through `ExtensionManager.register_ui`/`ExtensionAPI.register_ui` with the same declared-`replaces` conflict policy as providers and themes — `regress_ui_slots.py`, 26) stands. What this row originally added — "the UI split into 6 window classes is deliberately not started" — is **superseded**: 5 of those classes landed, and only `MainWindow` remains. |
 | Phase 8 (`qt-3ro`) | ~~D17 verified; only the bundler choice remains~~ **now a built, verified Windows bundle — see the decision table above** | D17's proof stands (`tests/regress_extension_vendored_dep.py`, 11: an extension vendors its own dependency on a real filesystem, the folder leaves `sys.path`, the dep is not left under its plain name, the entrypoint stays namespaced, and a broken extension leaves the built-ins intact). What this row added — that the bundler choice was "not asked yet" and "a product decision an agent should not make alone" — is **superseded**: it was decided (PyInstaller onedir, on the criterion that its output can be verified in-tree) and a bundle was built. Only macOS remains. |
 
 **What the first pass closed**, none of which needed a decision: 29 suites added
