@@ -282,8 +282,12 @@ def main() -> int:
     # --- the other surfaces ------------------------------------------------
     # native: 2130 popup, 2133 keyboard, 2134 history, 2131 main.
     for surface, opener, title in (
+            # the source language is passed RESOLVED, as the app's own
+            # call sites do (`res.source_language_code or src`), so the
+            # caption reads "English to Viet..." like native's
             ("popup", lambda: A.show_popup("English to Vietnamese",
-                                          "người_record"), "QTranslate"),
+                                          "người_record", "google", "vi",
+                                          "en"), "QTranslate"),
             ("keyboard", app.open_keyboard, "keyboard"),
             ("history", app.open_history_window, "History"),
             ("dict", app.open_dict_window, "Dictionary")):
