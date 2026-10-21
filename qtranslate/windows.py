@@ -106,12 +106,26 @@ _DICT_ICON_FILES = {
     "Wikipedia": "wikipedia",
 }
 
-# The main window's SOURCE pane, in pixels: native's own capture
-# (docs/review/native_screens/2131.png, a 516x423 window) measures the
-# pane at 153px -- DLG129's control 1000, 66 DU tall -- showing ten and a
-# half lines of the help text. The port's line pitch is the same
-# (14.2px against native's 14.6px), so the height transfers directly.
-SRC_PANE_PX = 153
+# The main window's SOURCE pane. Native's is DLG129's control 1000 --
+# 66 DU tall -- and its capture (docs/review/native_screens/2131.png, a
+# 516x423 window) measures it at 153px, showing TEN AND A HALF lines of
+# the same help text the port renders.
+#
+# The LINE COUNT is the invariant that travels: the pixel height follows
+# the font, and the font follows the display's scaling. A fixed 153px
+# would show a different number of lines on a Windows machine at 150%
+# scaling, where native's own pane is 66 DU again.
+SRC_PANE_LINES = 10.5
+SRC_PANE_PX = 153          # the reference measurement, at 125% scaling
+
+
+def _src_pane_px():
+    """The source pane's height in pixels, for the font in use."""
+    try:
+        pitch = max(1, tkfont.Font(font=_pane_font()).metrics("linespace"))
+    except Exception:
+        pitch = 14
+    return int(round(SRC_PANE_LINES * pitch))
 
 
 # The bundled native icons, cached for the life of the process. A
@@ -3124,7 +3138,8 @@ class MainWindow:
 
         # kept on the app so the sash and the tests can move the pane
         self.app._set_src_height = _set_src_height
-        _set_src_height(SRC_PANE_PX)
+        self.app._src_pane_base = _src_pane_px()
+        _set_src_height(self.app._src_pane_base)
         self.app._panes = getattr(self.app, "_panes", {})
         self.app._panes["src"] = srcfrm
         self.app.src = tk.Text(srcfrm, height=12, wrap="word", bg="white",
@@ -3162,7 +3177,7 @@ class MainWindow:
             # General.MidSplitterPos is a PIXEL offset from native's
             # measured pane height (the sash writes the same unit).
             try:
-                _set_src_height(SRC_PANE_PX + _mid_pos)
+                _set_src_height(self.app._src_pane_base + _mid_pos)
             except Exception:
                 pass
         # Native OVERLAYS these buttons ON the source pane's bottom-right
@@ -3203,11 +3218,13 @@ class MainWindow:
             except Exception:
                 return
             try:
-                base = SRC_PANE_PX + self.app._mid_splitter_base[0]
+                base = self.app._src_pane_base + \
+                    self.app._mid_splitter_base[0]
                 new_h = max(60, min(400, base + delta_px))
                 if new_h != srcfrm.winfo_height():
                     _set_src_height(new_h)
-                    self.app._mid_splitter_base[0] = new_h - SRC_PANE_PX
+                    self.app._mid_splitter_base[0] = \
+                        new_h - self.app._src_pane_base
             except Exception:
                 pass
 

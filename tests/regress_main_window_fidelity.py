@@ -135,7 +135,7 @@ ck("the source pane overlays carry images (mic + headphone)",
 # Native's capture (2131) measures: nav row, source pane, separator, tool
 # row, RESULT pane, separator, service strip -- with the third pane
 # (DLG129's 1018) COLLAPSED to zero height and no suggestion band at all.
-from qtranslate.windows import SRC_PANE_PX  # noqa: E402
+from qtranslate.windows import _src_pane_px  # noqa: E402
 
 kids = list(root.winfo_children())
 ck("the main window has no empty suggestion band",
@@ -147,8 +147,9 @@ src = (getattr(app, "_panes", {}) or {}).get("src")
 ck("the source pane is reachable", src is not None)
 if src is not None:
     ck("the source pane is native's height",
-       src.winfo_height() == SRC_PANE_PX,
-       f"{src.winfo_height()}px, native's is {SRC_PANE_PX}px")
+       src.winfo_height() == _src_pane_px(),
+       f"{src.winfo_height()}px, native's is {_src_pane_px()}px "
+       f"(10.5 lines of the app's font)")
 
 aux = (getattr(app, "_panes", {}) or {}).get("aux")
 ck("the third pane (1018) exists", aux is not None)
