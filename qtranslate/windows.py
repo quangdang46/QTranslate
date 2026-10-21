@@ -37,8 +37,17 @@ No window is created on import (pinned by `tests/regress_windows.py`).
 """
 from __future__ import annotations
 
+import threading
 import tkinter as tk
-from tkinter import ttk
+from tkinter import filedialog, ttk
+
+# `pyperclip` is optional (app.py imports it the same way): it is only
+# reachable under `_HAS_KEYS`, which is True only on Windows, where the
+# import has already succeeded.
+try:
+    import pyperclip
+except Exception:      # pragma: no cover - platform dependent
+    pyperclip = None
 
 # `_Cw`/`_W` (locale lookup), `_T` (menu strings) and `_COLORS` (theme)
 # live in app.py, so they are re-exported rather than duplicated.
@@ -54,14 +63,32 @@ from qtranslate.app import (  # noqa: E402
     # MainWindow (Phase 7, 6/6) needs the main window's own vocabulary:
     # the language tables, the service tables, the pane font, the locale
     # lookup and the app-level helpers the moved bodies call.
-    BACKTR_MARKER, DICTS, LANGS, LANG_CODES, SVC_ICON_PX, TO_LANGS,
+    BACKTR_MARKER, DICTS, LANGS, LANG_CODES, LANG_DEFAULTS, SVC_ICON_PX,
+    TO_LANGS,
     TRANSLATORS, _HAS_KEYS, _lang_names, _open_url, _pane_font,
     do_translate,
+    # 2026-10-21: the Phase 7 (6/6) split moved the bodies but NOT the
+    # names they read from app.py's module scope, so six of them raised
+    # `NameError` at run time -- silently, because the call sites sit
+    # under a bare `except Exception: pass`. The Appearance page died on
+    # `_THEMES`, the hotkey page on `_pack()`, the dictionary card on
+    # `_strip_html`, the mouse-mode tray on `_MOUSE_HOOK`, the service
+    # page on `_dict_service_link` and the theme combo on `THEME`.
+    # `_MOUSE_HOOK` is a dict that app.py mutates IN PLACE, so importing
+    # the name (not copying it) keeps the two modules on one object.
+    THEME, _MOUSE_HOOK, _THEMES, _dict_service_link, _pack, _strip_html,
 )
 from qtranslate.placement import (  # noqa: E402
     place_aux as _place_aux,
     save_placement as _save_placement,
+    template_geometry as _TEMPLATE_GEOMETRY,
 )
+# Native's Languages-page checklist (DLG174), in native's order. The
+# list lives in `qtranslate/config.py` -- the module that already owns
+# the native option tables -- so there is ONE copy of it and the live
+# Options window does not have to depend on `screens.py`, the
+# standalone reference sheet.
+from qtranslate.config import LANGUAGE_COLUMNS as _LANGUAGE_COLUMNS  # noqa: E402
 
 
 class HistoryView:
@@ -90,7 +117,7 @@ class HistoryView:
         w = self.win = tk.Toplevel(self.root)
         w.title(_W(3, "History"))
         w.configure(bg=_COLORS["back"])
-        _place_aux(w, "WindowHistoryPlacement", "500x280")
+        _place_aux(w, "WindowHistoryPlacement", _TEMPLATE_GEOMETRY("history"))
         # Favorites: 4th tuple slot (native strings 201/202 +
         # Application.HistoryFilterFavorites filter toggle).
         tv = ttk.Treeview(w, columns=("fav", "svc"),
@@ -336,7 +363,7 @@ class DictionaryView:
         self.win = w = tk.Toplevel(self.app.root)
         w.title(_W(5, "Dictionary"))
         w.configure(bg=_COLORS["back"])
-        _place_aux(w, "WindowDictionaryPlacement", "640x460")
+        _place_aux(w, "WindowDictionaryPlacement", _TEMPLATE_GEOMETRY("dictionary"))
         frm = tk.Frame(w, bg=_COLORS["back"])
         frm.pack(fill="x", padx=8, pady=8)
         tk.Label(frm, text="Word:", bg=_COLORS["back"],
@@ -477,7 +504,7 @@ class DictionaryView:
                 try:
                     import qtranslate.services.google_translate as _G
                     _ld = _C.load().get("General", {}).get(
-                        "LanguageDictionary", 17)
+                        "LanguageDictionary", LANG_DEFAULTS["LanguageDictionary"])
                     _dsl = _G.SUPPORTED_LANGS[_ld] \
                         if 0 <= _ld < len(_G.SUPPORTED_LANGS) else "en"
                     if _dsl in (-1, "auto"):
@@ -1024,23 +1051,130 @@ class OptionsDialog:
         self.win = w = tk.Toplevel(self.app.root)
         w.title(_W(2, "Options"))
         w.configure(bg=_COLORS["back"])
-        _place_aux(w, "WindowOptionsPlacement", "560x420")
-        left = tk.Listbox(w, width=14, height=20, bg=_COLORS["back"],
+        _place_aux(w, "WindowOptionsPlacement", _TEMPLATE_GEOMETRY("options"))
+        import copy as _copy
+        _snapshot = _copy.deepcopy(cfg)
+
+        def _cancel():
+            # Native Cancel discards: restore the snapshot since pages
+            # save live into cfg/Options.json as they edit.
+            try:
+                from qtranslate import config as _C
+                import json as _j
+                with open(_C.DEFAULT_PATH, "w",
+                          encoding="utf-8") as f:
+                    _j.dump(_snapshot, f, ensure_ascii=False, indent=1)
+                cfg.clear()
+                cfg.update(_copy.deepcopy(_snapshot))
+            except Exception:
+                pass
+            w.destroy()
+
+        # DLG 154's button row: OK / Cancel / Apply in a full-width
+        # strip along the BOTTOM, right-aligned (x 267 / 321 / 375 of a
+        # 429 DU dialog). The port packed it after the nav and the body,
+        # so the body had already taken the width and the row was
+        # pushed off the right-hand edge of the window.
+        frm = tk.Frame(w, bg=_COLORS["back"])
+        frm.pack(side="bottom", fill="x", pady=(0, 8))
+        # Packed right-to-left, so the LAST one packed is the leftmost:
+        # DLG154's order is OK (x 267), Cancel (321), Apply (375).
+        tk.Button(frm, text="Apply",
+                  command=w.destroy).pack(side="right", padx=4)
+        tk.Button(frm, text="Cancel",
+                  command=_cancel).pack(side="right", padx=4)
+        tk.Button(frm, text="OK",
+                  command=w.destroy).pack(side="right", padx=4)
+        # DLG 154's nav list (1078) is 96 DU wide == 168 px; 14
+        # characters was 128 px, which left the page too narrow.
+        left = tk.Listbox(w, width=22, height=20, bg=_COLORS["back"],
                           fg=_COLORS["text"])
         left.pack(side="left", fill="y", padx=8, pady=8)
-        # Page order = Windows Ids 10-18 (Basics/Internet/Services/
-        # Languages/Appearance/Exceptions/Hotkeys/Advanced/Updates);
-        # labels localized via _W. _PAGE_IDS maps listbox index.
-        _PAGES = [("Basics", 10), ("Internet", 11), ("Services", 12),
-                  ("Languages", 13), ("Appearance", 14),
-                  ("Exceptions", 15), ("Hotkeys", 16), ("Advanced", 17),
-                  ("Updates", 18)]
+        # Page order = Windows Ids 10-18, labels localized via _W.
+        # _PAGE_IDS maps listbox index.
+        #
+        # The ORDER is native's, and it is NOT the numeric order of the ids:
+        # native's Options nav list reads
+        #   Basics, Hotkeys, Internet, Services, Languages, Appearance,
+        #   Exceptions, Advanced, Updates
+        # -- Hotkeys is SECOND, not seventh. Measured off the native
+        # capture (docs/review/native_screens/2135.png, whose body is the
+        # Internet page and whose third nav row is the selected one); the
+        # id -> name mapping is the locale pack's (English lang.json:
+        # 10=Basics, 11=Internet, 12=Services, 13=Languages,
+        # 14=Appearance, 15=Exceptions, 16=Hotkeys, 17=Advanced,
+        # 18=Updates).
+        _PAGES = [("Basics", 10), ("Hotkeys", 16), ("Internet", 11),
+                  ("Services", 12), ("Languages", 13), ("Appearance", 14),
+                  ("Exceptions", 15), ("Advanced", 17), ("Updates", 18)]
         pages = [p for p, _ in _PAGES]
         _PAGE_IDS = {p: i for i, (p, _) in enumerate(_PAGES)}
         for p, wid in _PAGES:
             left.insert("end", _W(wid, p))
         body = tk.Frame(w, bg=_COLORS["back"])
         body.pack(side="left", fill="both", expand=True, padx=8, pady=8)
+
+        def _combo_items(page, cid, default):
+            """A combo's ITEMS from the language pack.
+
+            The pack stores a combo's entries as a list of
+            `[index, text]` pairs (1162 in the Exceptions page, 1135 in
+            Internet, 1165 in Hotkeys) -- `_Cw` hands that list back
+            verbatim, so using it as a label printed the raw Python.
+            """
+            _raw = _Cw(page, cid, default)
+            if isinstance(_raw, (list, tuple)):
+                _out = []
+                for _it in _raw:
+                    if isinstance(_it, (list, tuple)) and len(_it) >= 2:
+                        _out.append(str(_it[1]))
+                    else:
+                        _out.append(str(_it))
+                return _out
+            return [str(_raw)]
+
+        def _group(parent, page, cid, default):
+            """A native GROUP BOX as a LabelFrame.
+
+            Native's groups are DLGITEMTEMPLATEEX `Button(AUTORADIOBUTTON)`
+            -- a Win32 group box: a sunken frame with the caption inset
+            into its top edge. The Tk equivalent is a LabelFrame, and the
+            port's bold Label was the wrong control (it drew a caption
+            with no frame at all).
+            """
+            lf = tk.LabelFrame(parent, text=_Cw(page, cid, default),
+                               bg=_COLORS["back"], fg=_COLORS["text"],
+                               font=("Segoe UI", 9, "bold"),
+                               highlightthickness=1, borderwidth=1)
+            lf.pack(fill="x", pady=(6, 2))
+            return lf
+
+        def _row(parent, page, cid, default, value="", width=22,
+                 values=None, label_width=22):
+            """One label + control row, the shape native uses throughout:
+            a fixed-width Static on the left, the control on the right."""
+            r = tk.Frame(parent, bg=_COLORS["back"])
+            r.pack(fill="x", pady=1)
+            tk.Label(r, text=_Cw(page, cid, default), width=label_width,
+                     anchor="w", bg=_COLORS["back"],
+                     fg=_COLORS["text"]).pack(side="left")
+            if values is not None:
+                w = ttk.Combobox(r, values=values, width=width,
+                                 state="readonly")
+                w.pack(side="left")
+                if value:
+                    w.set(str(value))
+            else:
+                w = tk.Entry(r, width=width)
+                w.pack(side="left")
+                w.insert(0, "" if value is None else str(value))
+            return w
+
+        def _check(parent, page, cid, default, var, command=None):
+            tk.Checkbutton(parent, text=_Cw(page, cid, default),
+                           variable=var, bg=_COLORS["back"],
+                           fg=_COLORS["text"], selectcolor=_COLORS["back"],
+                           command=command).pack(anchor="w")
 
         def show_basics():
             # Defaults from the real Options.json (General/AutoDetection):
@@ -1057,9 +1191,7 @@ class OptionsDialog:
                 _ad = _cfg.get("AutoDetection", {})
             except Exception:
                 _gen, _ad = {}, {}
-            tk.Label(body, text=_Cw(10, 1046, "General"), bg=_COLORS["back"],
-                     fg=_COLORS["text"],
-                     font=("Segoe UI", 10, "bold")).pack(anchor="w")
+            gen = _group(body, 10, 1046, "General")
             self.app._opt_vars = getattr(self, "_opt_vars", {})
             # Start-with-Windows via startup_entry (Win HKCU Run; honest
             # no-op off-Windows). Same key/value as before the refactor.
@@ -1070,7 +1202,7 @@ class OptionsDialog:
             def _toggle_startup():
                 _set_startup(bool(_sv.get()))
 
-            tk.Checkbutton(body, text=_Cw(10, 1045, "Start with Windows"),
+            tk.Checkbutton(gen, text=_Cw(10, 1045, "Start with Windows"),
                            variable=_sv, command=_toggle_startup,
                            bg=_COLORS["back"], fg=_COLORS["text"],
                            selectcolor=_COLORS["back"]).pack(anchor="w")
@@ -1094,7 +1226,7 @@ class OptionsDialog:
                      "--- Default ---", "FontName"),
                     (_Cw(10, 1074, "Text size:"), ["9"],
                      str(_gen.get("TextSize", 9)), "TextSize")):
-                r = tk.Frame(body, bg=_COLORS["back"])
+                r = tk.Frame(gen, bg=_COLORS["back"])
                 r.pack(fill="x", pady=1)
                 tk.Label(r, text=lab, width=18, anchor="w",
                          bg=_COLORS["back"],
@@ -1124,16 +1256,13 @@ class OptionsDialog:
                     except Exception:
                         pass
                 cb.bind("<<ComboboxSelected>>", lambda e: _save_general())
-            tk.Label(body, text=_Cw(10, 1063, "Auto-detect languages"),
-                     bg=_COLORS["back"], fg=_COLORS["text"],
-                     font=("Segoe UI", 10, "bold")).pack(anchor="w",
-                                                         pady=(8, 0))
+            adg = _group(body, 10, 1063, "Auto-detect languages")
             _IDX2NAME = {57: "Vietnamese", 17: "English"}
             for lab, key in ((_Cw(10, 1068, "First language:"), "LanguageFirst"),
                              (_Cw(10, 1069, "Second language:"), "LanguageSecond"),
                              (_Cw(10, 1071, "Speech input:"),
                               "LanguageSpeechRecognition")):
-                r = tk.Frame(body, bg=_COLORS["back"])
+                r = tk.Frame(adg, bg=_COLORS["back"])
                 r.pack(fill="x", pady=1)
                 tk.Label(r, text=lab, width=18, anchor="w",
                          bg=_COLORS["back"],
@@ -1167,10 +1296,7 @@ class OptionsDialog:
                     except Exception:
                         pass
                 cb.bind("<<ComboboxSelected>>", lambda e: _save_autodetect())
-            tk.Label(body, text=_Cw(10, 1064, "History"), bg=_COLORS["back"],
-                     fg=_COLORS["text"],
-                     font=("Segoe UI", 10, "bold")).pack(anchor="w",
-                                                         pady=(8, 0))
+            hist = _group(body, 10, 1064, "History")
             def _save_history_flag(key, var):
                 try:
                     from qtranslate import config as _CH
@@ -1195,131 +1321,226 @@ class OptionsDialog:
                 v = tk.BooleanVar(value=bool(default))
                 self.app._opt_vars[lab] = v  # keep ref: no GC-uncheck
                 tk.Checkbutton(
-                    body, text=lab, variable=v, bg=_COLORS["back"],
+                    hist, text=lab, variable=v, bg=_COLORS["back"],
                     fg=_COLORS["text"], selectcolor=_COLORS["back"],
                     command=lambda k=key, vv=v: _save_history_flag(
                         k, vv)).pack(anchor="w")
 
         def show_appearance():
-            # mirrors DLG 175; all values live from the real
-            # Options.json Appearance section (verified keys).
+            # Native DLG 175 -- Options page 14 ("Appearance").
+            #
+            # Two group boxes (1076 "General", 1124 "Popup window") and a
+            # fixed control order inside them:
+            #
+            #   1076 General       1123 'Enable window style'
+            #                       1169 'Theme:'            1168 ComboBox
+            #   1124 Popup window  1158 'Enable auto size'
+            #                       1160 'Enable auto position'
+            #                       1159 'Activate when opened'
+            #                       1161 'Pin when dragging'
+            #                       1147 'Auto-hide delay:'   1171 ComboBox
+            #                                                       1194 'seconds'
+            #                       1145 'Transparency (0 - 90):' 1144 Edit
+            #                       1146 'Frame thickness:'   1170 ComboBox
+            #                       1137 'Icons:'             1138-1141
+            #                       1092 'Background color:' 1091 'Text color:'
+            #                       1090 'Frame color:'
+            #
+            # The port had the four popup checkboxes in the GENERAL group,
+            # used Entries where native has ComboBoxes, and drew the
+            # colour fields as text entries instead of swatches.
             for c in body.winfo_children():
                 c.destroy()
-            _ap = cfg.get("Appearance", {})
+            # The documented native defaults are the fallback for a key
+            # the config file does not carry: native's own Options.json
+            # always has all 13, but a fresh port config has none, and
+            # every checkbox then read as "off" instead of native's
+            # "Enable auto size" / "Enable auto position" / "Pin when
+            # dragging" / "Auto-hide delay 5".
+            try:
+                from qtranslate import config as _CAF
+                _ap = dict(_CAF.DEFAULT_APPEARANCE)
+                _ap.update(cfg.get("Appearance", {}))
+            except Exception:
+                _ap = dict(cfg.get("Appearance", {}))
             self.app._opt_vars = getattr(self, "_opt_vars", {})
-            tk.Label(body, text="General", bg=_COLORS["back"],
-                     fg=_COLORS["text"],
-                     font=("Segoe UI", 10, "bold")).pack(anchor="w")
-            r = tk.Frame(body, bg=_COLORS["back"])
-            r.pack(fill="x", pady=1)
-            tk.Label(r, text=_Cw(14, 1169, "Theme:"), width=18, anchor="w",
-                     bg=_COLORS["back"],
-                     fg=_COLORS["text"]).pack(side="left")
-            th = ttk.Combobox(r, values=_THEMES, width=26,
-                              state="readonly")
-            th.pack(side="left")
-            _cur_th = _ap.get("ThemeName") or THEME
-            th.set(_cur_th if _cur_th in _THEMES else
-                   (_THEMES[0] if _THEMES else ""))
-            th.bind("<<ComboboxSelected>>",
-                    lambda e: self.app.apply_theme(th.get()))
-            def _save_appearance_flag(key, var):
+
+            def _save(key, value):
                 try:
                     from qtranslate import config as _CAF
                     import json as _jaf
                     full = _CAF.load()
-                    full.setdefault("Appearance", {})[key] = bool(
-                        var.get())
+                    full.setdefault("Appearance", {})[key] = value
                     with open(_CAF.DEFAULT_PATH, "w",
                               encoding="utf-8") as fh:
                         _jaf.dump(full, fh, ensure_ascii=False, indent=1)
-                    _ap[key] = bool(var.get())
+                    _ap[key] = value
                 except Exception:
                     pass
 
-            for lab, key in ((_Cw(14, 1158, "Enable auto size"), "PopupAutoSize"),
-                             (_Cw(14, 1160, "Enable auto position"), "PopupAutoPos"),
-                             (_Cw(14, 1159, "Always activate"), "PopupAutoFocus"),
-                             (_Cw(14, 1161, "Pin when dragging"),
-                              "PopupPinWhenDragging"),
-                             (_Cw(14, 1123, "Enable window style"),
-                              "EnableWindowStyle")):
-                vv = tk.BooleanVar(value=bool(_ap.get(key, False)))
-                self.app._opt_vars[key] = vv
-                tk.Checkbutton(
-                    body, text=lab, variable=vv, bg=_COLORS["back"],
-                    fg=_COLORS["text"], selectcolor=_COLORS["back"],
-                    command=lambda k=key, v=vv: _save_appearance_flag(
-                        k, v)).pack(anchor="w")
-            tk.Label(body, text="Popup window", bg=_COLORS["back"],
-                     fg=_COLORS["text"],
-                     font=("Segoe UI", 10, "bold")).pack(anchor="w",
-                                                         pady=(8, 0))
-            for lab, key in ((_Cw(14, 1147, "Auto-hide delay (s):"), "PopupTimeout"),
-                             (_Cw(14, 1145, "Transparency (0-255):"), "Transparency"),
-                             (_Cw(14, 1146, "Frame thickness:"), "PopupWindowFrameThickness")):
-                rr = tk.Frame(body, bg=_COLORS["back"])
-                rr.pack(fill="x", pady=1)
-                tk.Label(rr, text=lab, width=20, anchor="w",
-                         bg=_COLORS["back"],
-                         fg=_COLORS["text"]).pack(side="left")
-                ee = tk.Entry(rr, width=10)
-                ee.pack(side="left")
-                ee.insert(0, str(_ap.get(key, "")))
-                self.app._opt_vars[key] = ee
-            # PopupIcons bitmask (native checkboxes 1138-1141):
-            # 2=dict, 4=listen-text, 8=copy, 16=replace (30 = all)
-            tk.Label(body, text=_Cw(14, 1137, "Popup icons:"),
-                     bg=_COLORS["back"], fg=_COLORS["text"],
-                     font=("Segoe UI", 9, "bold")).pack(anchor="w",
-                                                        pady=(6, 0))
+            # --- 1076 "General" ------------------------------------------
+            gen = _group(body, 14, 1076, "General")
+            _ws = tk.BooleanVar(value=bool(_ap.get("EnableWindowStyle",
+                                                    False)))
+            self.app._opt_vars["EnableWindowStyle"] = _ws
+            _check(gen, 14, 1123, "Enable window style", _ws,
+                   lambda: _save("EnableWindowStyle", _ws.get()))
+            _r = tk.Frame(gen, bg=_COLORS["back"])
+            _r.pack(fill="x", pady=1)
+            tk.Label(_r, text=_Cw(14, 1169, "Theme:"), width=22,
+                     anchor="w", bg=_COLORS["back"],
+                     fg=_COLORS["text"]).pack(side="left")
+            # 1168 is a ComboBox. Native's first entry is the default
+            # theme ("--- Default ---"), and an empty ThemeName IS that
+            # entry -- native stores the empty string for it.
+            _tv = ["--- Default ---"] + [t for t in _THEMES]
+            _th = ttk.Combobox(_r, values=_tv, width=26, state="readonly")
+            _th.pack(side="left")
+            _cur = _ap.get("ThemeName") or ""
+            _th.set(_cur if _cur in _THEMES else "--- Default ---")
 
-            def _save_icons():
+            def _theme_pick(e=None):
+                _name = "" if _th.get() == "--- Default ---" else _th.get()
+                _save("ThemeName", _name)
                 try:
-                    from qtranslate import config as C3
-                    import json as _j
-                    full = C3.load()
-                    full.setdefault("Appearance", {})["PopupIcons"] = \
-                        _ap.get("PopupIcons", 30)
-                    with open(C3.DEFAULT_PATH, "w",
-                              encoding="utf-8") as f:
-                        _j.dump(full, f, ensure_ascii=False, indent=1)
+                    self.app.apply_theme(_name)
                 except Exception:
                     pass
+            _th.bind("<<ComboboxSelected>>", _theme_pick)
 
-            for lab, bit in ((_Cw(14, 1138, "Show dictionary icon"), 2),
-                             (_Cw(14, 1139, "Show listen icon"), 4),
-                             (_Cw(14, 1140, "Show copy icon"), 8),
-                             (_Cw(14, 1141, "Show replace icon"), 16)):
-                vv = tk.BooleanVar(value=bool(
-                    int(_ap.get("PopupIcons", 30)) & bit))
-                self.app._opt_vars[f"PopupIcons_{bit}"] = vv
+            # --- 1124 "Popup window" -------------------------------------
+            pop = _group(body, 14, 1124, "Popup window")
+            for cid, key in ((1158, "PopupAutoSize"),
+                             (1160, "PopupAutoPos"),
+                             (1159, "PopupAutoFocus"),
+                             (1161, "PopupPinWhenDragging")):
+                _v = tk.BooleanVar(value=bool(_ap.get(key, False)))
+                self.app._opt_vars[key] = _v
+                _check(pop, 14, cid, "", _v,
+                       lambda k=key, v=_v: _save(k, v.get()))
 
-                def _flip(b=bit, v=vv):
+            # 1147 'Auto-hide delay:' + 1171 ComboBox + 1194 'seconds'
+            _r = tk.Frame(pop, bg=_COLORS["back"])
+            _r.pack(fill="x", pady=1)
+            tk.Label(_r, text=_Cw(14, 1147, "Auto-hide delay:"), width=22,
+                     anchor="w", bg=_COLORS["back"],
+                     fg=_COLORS["text"]).pack(side="left")
+            _to = ttk.Combobox(_r, values=[str(i) for i in range(0, 121)],
+                               width=6, state="readonly")
+            _to.pack(side="left")
+            _to.set(str(int(_ap.get("PopupTimeout", 0) or 0)))
+            _to.bind("<<ComboboxSelected>>",
+                     lambda e: _save("PopupTimeout", int(_to.get())))
+            tk.Label(_r, text=_Cw(14, 1194, "seconds"), bg=_COLORS["back"],
+                     fg=_COLORS["text"]).pack(side="left", padx=(4, 0))
+
+            # 1145 'Transparency (0 - 90):' + 1144 Edit
+            _tr = _row(pop, 14, 1145, "Transparency (0 - 90):",
+                       value=_ap.get("Transparency", 0), width=26)
+            _tr.bind("<FocusOut>",
+                     lambda e: _save("Transparency", _tr.get()))
+
+            # 1146 'Frame thickness:' + 1170 ComboBox
+            _r = tk.Frame(pop, bg=_COLORS["back"])
+            _r.pack(fill="x", pady=1)
+            tk.Label(_r, text=_Cw(14, 1146, "Frame thickness:"), width=22,
+                     anchor="w", bg=_COLORS["back"],
+                     fg=_COLORS["text"]).pack(side="left")
+            _ft = ttk.Combobox(_r, values=[str(i) for i in range(0, 9)],
+                               width=6, state="readonly")
+            _ft.pack(side="left")
+            _ft.set(str(int(_ap.get("PopupWindowFrameThickness", 2) or 0)))
+            _ft.bind("<<ComboboxSelected>>",
+                     lambda e: _save("PopupWindowFrameThickness",
+                                     int(_ft.get())))
+
+            # 1137 'Icons:' + 1138-1141. Native draws these as four
+            # icon buttons with NO text; the glyphs are a document
+            # (dictionary), a headphone (listen), two sheets (copy) and
+            # "b" over "a" (romanization). The port drew four labelled
+            # checkboxes, which is a different control and a different
+            # shape.
+            _r = tk.Frame(pop, bg=_COLORS["back"])
+            _r.pack(fill="x", pady=1)
+            tk.Label(_r, text=_Cw(14, 1137, "Icons:"), width=22, anchor="w",
+                     bg=_COLORS["back"],
+                     fg=_COLORS["text"]).pack(side="left")
+            _icons = tk.Frame(_r, bg=_COLORS["back"])
+            _icons.pack(side="left")
+            _cur_mask = int(_ap.get("PopupIcons", 30) or 0)
+            _keep = []
+            # The four glyphs, as native draws them (measured off the
+            # native capture 2138): a document (dictionary), a
+            # headphone (listen), two sheets (copy) and "b" over "a"
+            # (romanization). The document and headphone come from the
+            # recovered RT_ICON set; the other two have no image, so
+            # they are drawn with characters the Tk font carries.
+            _doc_icon = ""
+            try:
+                import os as _os
+                _p = _os.path.join(_os.path.dirname(
+                    _os.path.abspath(__file__)), "assets", "ui_icons",
+                    "headphone.png")
+                if _os.path.exists(_p):
+                    _doc_icon = tk.PhotoImage(file=_p)
+                    _keep.append(_doc_icon)
+            except Exception:
+                _doc_icon = ""
+            for cid, bit, glyph in ((1138, 2, "\u25a4"),
+                                    (1139, 4, None),
+                                    (1140, 8, "\u29c9"),
+                                    (1141, 16, "b\u2090")):
+                _on = bool(_cur_mask & bit)
+                if glyph is None:
+                    _b = tk.Button(_icons, image=_doc_icon, width=3,
+                                   height=1,
+                                   relief="sunken" if _on else "raised",
+                                   bg=_COLORS["back"], fg=_COLORS["text"])
+                else:
+                    _b = tk.Button(_icons, text=glyph, width=3, height=1,
+                                   relief="sunken" if _on else "raised",
+                                   bg=_COLORS["back"], fg=_COLORS["text"],
+                                   font=("Segoe UI", 9))
+                _b.pack(side="left", padx=1)
+
+                def _flip(b=bit, btn=_b, cid=cid):
+                    nonlocal _cur_mask
+                    _cur_mask = (_cur_mask | b) if not (_cur_mask & b) \
+                        else (_cur_mask & ~b)
+                    btn.configure(relief="sunken" if (_cur_mask & b)
+                                  else "raised")
+                    _save("PopupIcons", _cur_mask)
+                _b.configure(command=_flip)
+                self.app._opt_vars["PopupIcons_%d" % bit] = _b
+
+            # 1092 / 1091 / 1090 -- native draws a colour SWATCH next to
+            # each caption, not a text field.
+            _r = tk.Frame(pop, bg=_COLORS["back"])
+            _r.pack(fill="x", pady=2)
+            for cid, key, default in ((1092, "ColorBack", 15790320),
+                                      (1091, "ColorText", 0),
+                                      (1090, "ColorFrame", 8023133)):
+                _c = tk.Label(_r, text=_Cw(14, cid, ""), bg=_COLORS["back"],
+                              fg=_COLORS["text"])
+                _c.pack(side="left", padx=(0, 2))
+                _sw = tk.Frame(_r, width=52, height=16,
+                               bg="#%06x" % int(_ap.get(key, default)),
+                               relief="sunken", borderwidth=2)
+                _sw.pack(side="left", padx=(0, 4))
+                self.app._opt_vars[key] = _sw
+
+                def _pick(k=key, w=_sw, d=default):
                     try:
-                        cur = int(_ap.get("PopupIcons", 30))
-                        _ap["PopupIcons"] = (cur | b) if v.get() \
-                            else (cur & ~b)
+                        from tkinter import colorchooser as _cc
+                        _rgb = _cc.askcolor(title=_Cw(14, 1092, "Color"))
                     except Exception:
-                        pass
-                    _save_icons()
-
-                tk.Checkbutton(body, text=lab, variable=vv,
-                               bg=_COLORS["back"], fg=_COLORS["text"],
-                               selectcolor=_COLORS["back"],
-                               command=_flip).pack(anchor="w")
-            for lab, key in ((_Cw(14, 1092, "Background color:"), "ColorBack"),
-                             (_Cw(14, 1091, "Text color:"), "ColorText"),
-                             (_Cw(14, 1090, "Frame color:"), "ColorFrame")):
-                rr = tk.Frame(body, bg=_COLORS["back"])
-                rr.pack(fill="x", pady=1)
-                tk.Label(rr, text=lab, width=20, anchor="w",
-                         bg=_COLORS["back"],
-                         fg=_COLORS["text"]).pack(side="left")
-                ee = tk.Entry(rr, width=10)
-                ee.pack(side="left")
-                ee.insert(0, "#%06x" % int(_ap.get(key, 0)))
-                self.app._opt_vars[key] = ee
+                        return
+                    if not _rgb or _rgb[0] is None:
+                        return
+                    _val = (_rgb[0] << 16) | (_rgb[1] << 8) | _rgb[2]
+                    w.configure(bg="#%06x" % _val)
+                    _save(k, _val)
+                _sw.bind("<Button-1>", lambda e, f=_pick: f())
 
         def show_hotkeys():
             # mirrors DLG 179: Enable hot keys + per-action list with
@@ -1468,30 +1689,42 @@ class OptionsDialog:
                       command=_clear).pack(side="left", padx=4)
 
         def show_services():
-            # Translate services (ServicesOrder + DisabledServices) and
-            # dictionary services (DictionariesOrder +
-            # DisabledDictionaries); check = enabled, writes Options.json.
+            # Native DLG 173 -- Options page 12 ("Services").
+            #
+            #   1080  SysListView32   the service list
+            #   1139  Button          (no text -- an icon button)
+            #   1140  Button          (no text -- an icon button)
+            #   1177  Button          'Add dictionary...'
+            #   1180  Button          'Remove dictionary'
+            #
+            # ONE list, with the two groups native shows in it:
+            # "Translation" (Google, Microsoft, Promt, Babylon, Yandex,
+            # youdao, Baidu, Papago, DeepL) and "Dictionary" (Google
+            # Search, WordReference, Babylon Dictionary, Wikipedia, ...).
+            # Each row is a checkbox -- checked = enabled -- plus the
+            # service icon.
+            #
+            # The port drew two listboxes with 'On/Off' and 'All' buttons
+            # (native has neither) and filled them from `ServicesOrder`
+            # alone, so on a fresh config -- where that key is absent --
+            # BOTH LISTS WERE EMPTY. The order now falls back to the
+            # canonical one, which is the same list the native capture
+            # shows.
             for c in body.winfo_children():
                 c.destroy()
             try:
                 from qtranslate import config as C2
-                _order = list(cfg.get("ServicesOrder", []))
+                _order = list(cfg.get("ServicesOrder")
+                              or C2.DEFAULT_SERVICES_ORDER)
                 _dis = set(cfg.get("DisabledServices", []))
-                _dorder = list(cfg.get("DictionariesOrder", []))
+                _dorder = list(cfg.get("DictionariesOrder")
+                               or C2.DEFAULT_DICTIONARIES_ORDER)
                 _ddis = set(cfg.get("DisabledDictionaries", []))
-                _names = dict(C2.SERVICE_NAMES)
-            except Exception:
-                _order, _dis, _dorder, _ddis, _names = [], set(), [], \
-                    set(), {}
-            # Display names for the service/dict lists (config-owned
-            # constants; the dead ``dictionary as _D`` import that sat here
-            # is gone — nothing in this page called it).
-            _dnames = {}
-            try:
-                _dnames = dict(C2.DICT_DISPLAY)
                 _names = dict(C2.SERVICE_DISPLAY)
+                _dnames = dict(C2.DICT_DISPLAY)
             except Exception:
-                pass
+                _order, _dis, _dorder, _ddis = [], set(), [], set()
+                _names, _dnames = {}, {}
 
             def _save():
                 try:
@@ -1512,254 +1745,291 @@ class OptionsDialog:
                 except Exception:
                     pass
 
-            def _mk_list(parent, title, order, disabled, names):
-                tk.Label(parent, text=title, bg=_COLORS["back"],
-                         fg=_COLORS["text"],
-                         font=("Segoe UI", 10, "bold")).pack(anchor="w")
-                fr = tk.Frame(parent, bg=_COLORS["back"])
-                fr.pack(fill="both", expand=True)
-                lb = tk.Listbox(fr, height=6, selectmode="single",
-                                bg="white", fg="black")
-                lb.pack(side="left", fill="both", expand=True)
-                for i in order:
-                    lb.insert("end", names.get(i, f"id:{i}"))
-                sb = tk.Frame(fr, bg=_COLORS["back"])
-                sb.pack(side="left", padx=2)
+            _fr = tk.Frame(body, bg=_COLORS["back"])
+            _fr.pack(fill="both", expand=True)
+            _tv = ttk.Treeview(_fr, show="tree", height=12,
+                                selectmode="browse")
+            _tv.pack(side="left", fill="both", expand=True)
+            _sb = tk.Scrollbar(_fr, orient="vertical", command=_tv.yview)
+            _sb.pack(side="right", fill="y")
+            _tv.configure(yscrollcommand=_sb.set)
+            _g_t = _tv.insert("", "end", text=_Cw(12, 1130, "Translation"),
+                              open=True)
+            _g_d = _tv.insert("", "end", text=_Cw(12, 1131, "Dictionary"),
+                              open=True)
+            # (tree item, service id, is-dictionary, disabled set)
+            _rows = []
 
-                def _refresh():
-                    lb.delete(0, "end")
-                    for i in order:
-                        lb.insert("end", names.get(i, f"id:{i}"))
-                    _save()
+            # The icons must be HELD: a PhotoImage that is only passed to
+            # `insert(image=...)` is garbage-collected, and the image
+            # disappears from the tree. `_imgs` keeps them alive.
+            _imgs = []
+            # Native's icon for the Papago service is the one recovered
+            # as `naver.png` (Papago is Naver's translator); the manifest
+            # names the file after the service directory.
+            _ICON_ALIAS = {"papago": "naver"}
 
-                def _move(d):
-                    s = lb.curselection()
-                    if not s:
-                        return
-                    i = s[0]
-                    j = i + d
-                    if 0 <= j < len(order):
-                        order[i], order[j] = order[j], order[i]
-                        _refresh()
-                        lb.selection_set(j)
+            def _icon(name):
+                try:
+                    import os as _os
+                    _name = _ICON_ALIAS.get(name, name)
+                    _p = _os.path.join(_os.path.dirname(
+                        _os.path.abspath(__file__)), "assets",
+                        "service_icons", _name + ".png")
+                    if not _os.path.exists(_p):
+                        return ""
+                    _ph = tk.PhotoImage(file=_p)
+                    _imgs.append(_ph)
+                    return _ph
+                except Exception:
+                    return ""
 
-                def _toggle():
-                    s = lb.curselection()
-                    if not s:
-                        return
-                    sid = order[s[0]]
-                    if sid in disabled:
-                        disabled.discard(sid)
+            def _fill():
+                # Only the ROWS are rebuilt -- the two group headers
+                # (_g_t / _g_d) are the tree's roots and must survive.
+                for _g in (_g_t, _g_d):
+                    for _it in _tv.get_children(_g):
+                        _tv.delete(_it)
+                del _rows[:]
+                for _i in _order:
+                    _n = _names.get(_i, "id:%s" % _i)
+                    _on = _i not in _dis
+                    _it = _tv.insert(_g_t, "end",
+                                     text=("\u2611 " if _on else "\u2610 ")
+                                     + _n, image=_icon(_n.lower()))
+                    _rows.append((_it, _i, False, _dis))
+                for _i in _dorder:
+                    _n = _dnames.get(_i, "id:%s" % _i)
+                    _on = _i not in _ddis
+                    _it = _tv.insert(_g_d, "end",
+                                     text=("\u2611 " if _on else "\u2610 ")
+                                     + _n, image=_icon(_n.lower()))
+                    _rows.append((_it, _i, True, _ddis))
+            _fill()
+
+            def _toggle(_ev=None):
+                _sel = _tv.selection()
+                if not _sel:
+                    return
+                for _it, _i, _isdict, _dis_set in _rows:
+                    if _it != _sel[0]:
+                        continue
+                    if _i in _dis_set:
+                        _dis_set.discard(_i)
                     else:
-                        disabled.add(sid)
+                        _dis_set.add(_i)
                     _save()
-                    _paint()
+                    _fill()
+                    return
+            _tv.bind("<<TreeviewSelect>>", _toggle)
 
-                def _paint():
-                    for idx, sid in enumerate(order):
-                        lb.itemconfig(
-                            idx, fg="gray" if sid in disabled else "black")
-                _paint()
+            def _add_dict():
+                """1177 'Add dictionary...' -- native opens a picker of the
+                dictionary services that are not in the list yet."""
+                _sel = _tv.selection()
+                _have = set(_dorder)
+                _todo = [i for i in C2.DICT_DISPLAY if i not in _have]
+                if not _todo:
+                    return
+                _pick = tk.Toplevel(body)
+                _pick.title(_Cw(12, 1177, "Add dictionary..."))
+                _lb2 = tk.Listbox(_pick, height=8, width=28)
+                for _i in _todo:
+                    _lb2.insert("end", C2.DICT_DISPLAY.get(_i, str(_i)))
+                _lb2.pack(fill="both", expand=True)
 
-                def _check_all():
-                    # DLG 174 "Check / Uncheck all": enable all if any
-                    # disabled, else disable all.
-                    if any(s in disabled for s in order):
-                        disabled.clear()
-                    else:
-                        disabled.update(order)
+                def _ok():
+                    _s = _lb2.curselection()
+                    if not _s:
+                        return
+                    _dorder.append(_todo[_s[0]])
                     _save()
-                    _paint()
+                    _fill()
+                    _pick.destroy()
+                _b = tk.Frame(_pick)
+                _b.pack(fill="x")
+                tk.Button(_b, text="OK", command=_ok).pack(side="right",
+                                                            padx=2)
+                tk.Button(_b, text="Cancel",
+                          command=_pick.destroy).pack(side="right", padx=2)
 
-                tk.Button(sb, text="▲", width=3,
-                          command=lambda: _move(-1)).pack(pady=1)
-                tk.Button(sb, text="▼", width=3,
-                          command=lambda: _move(1)).pack(pady=1)
-                tk.Button(sb, text="On/Off", width=5,
-                          command=_toggle).pack(pady=1)
-                tk.Button(sb, text="All", width=5,
-                          command=_check_all).pack(pady=1)
-                return lb
+            def _remove_dict():
+                """1180 'Remove dictionary' -- drops the selected
+                dictionary service from the list."""
+                _sel = _tv.selection()
+                if not _sel:
+                    return
+                for _it, _i, _isdict, _dis_set in _rows:
+                    if _it != _sel[0]:
+                        continue
+                    if not _isdict:
+                        return
+                    _dorder.remove(_i)
+                    _dis_set.discard(_i)
+                    _save()
+                    _fill()
+                    return
 
-            _mk_list(body, "Translation services", _order, _dis, _names)
-            _mk_list(body, "Dictionary services", _dorder, _ddis, _dnames)
+            def _move(_d):
+                _sel = _tv.selection()
+                if not _sel:
+                    return
+                for _it, _i, _isdict, _dis_set in _rows:
+                    if _it != _sel[0]:
+                        continue
+                    _seq = _dorder if _isdict else _order
+                    try:
+                        _k = _seq.index(_i)
+                    except ValueError:
+                        return
+                    _j2 = _k + _d
+                    if 0 <= _j2 < len(_seq):
+                        _seq[_k], _seq[_j2] = _seq[_j2], _seq[_k]
+                        _save()
+                        _fill()
+                    return
+            _br = tk.Frame(body, bg=_COLORS["back"])
+            _br.pack(fill="x", pady=(4, 0))
+            tk.Button(_br, text="\u25b2", width=3,
+                      command=lambda: _move(-1)).pack(side="left", padx=1)
+            tk.Button(_br, text="\u25bc", width=3,
+                      command=lambda: _move(1)).pack(side="left", padx=1)
+            tk.Button(_br, text=_Cw(12, 1177, "Add dictionary..."),
+                      command=lambda: _add_dict()).pack(side="left", padx=6)
+            tk.Button(_br, text=_Cw(12, 1180, "Remove dictionary"),
+                      command=_remove_dict).pack(side="left", padx=1)
 
         def show_languages():
-            # Index <-> code via Google SupportedLanguages (canonical
-            # table: 1=auto, 17=en, 57=vi). Pairs + per-slot defaults +
-            # disabled list + detect flags; writes Options.json/General.
+            # Native DLG 174 -- Options page 13 ("Languages").
+            #
+            #   1089  SysListView32   the language checklist
+            #   1099  Button          'Check / Uncheck all'
+            #
+            # That is the WHOLE page: a four-column grid of checkboxes,
+            # one per language, and one button. The port's page was a
+            # different page entirely -- "Default languages" with
+            # Translate from/to, Dictionary, Virtual keyboard, Always
+            # detect, Smart detection, Language pairs and a Disabled
+            # languages list. None of that is native's Languages page.
+            #
+            # The per-slot defaults the port put here belong to the MAIN
+            # window's language combos, and the language-pair editor is
+            # native's DLG190 -- a separate top-level "Languages" dialog,
+            # opened from the main window's language combo (see
+            # `open_language_pairs`).
+            #
+            # The checklist is native's own list (qtranslate/screens.py
+            # LANGUAGE_COLUMNS, transcribed from the capture): 72
+            # languages, alphabetical, four columns. The port's language
+            # table has two more (Welsh, Yiddish) that native does not
+            # list here.
             for c in body.winfo_children():
                 c.destroy()
             try:
-                # Canonical language-index table (constant, not dispatch).
                 from qtranslate.services.google_translate import (
                     SUPPORTED_LANGS as _SL)
-                # SUPPORTED_LANGS[0] is -1 placeholder; native table
-                # is indexed with it (1=auto, 17=en, 57=vi)
                 _table = list(_SL)
             except Exception:
                 _table = [-1, "auto", "en", "vi"]
-            _names_l = [("auto (auto-detect)" if c == "auto" else c)
-                        for c in _table]
             _gen = cfg.get("General", {})
-            _dis_l = set(cfg.get("DisabledLanguages", []))
-            _pairs = [list(p) for p in cfg.get("LanguagePairs",
-                                               [[57, 17], [17, 57]])]
+            _dis = set(cfg.get("DisabledLanguages", []))
             self.app._opt_vars = getattr(self, "_opt_vars", {})
 
-            def _save_l():
+            def _save():
                 try:
                     from qtranslate import config as C3
                     import json as _j
                     full = C3.load()
-                    full["LanguagePairs"] = _pairs
-                    full["DisabledLanguages"] = sorted(_dis_l)
-                    full["General"].update(_gen)
+                    full["DisabledLanguages"] = sorted(_dis)
                     with open(C3.DEFAULT_PATH, "w",
                               encoding="utf-8") as f:
                         _j.dump(full, f, ensure_ascii=False, indent=1)
-                    cfg["LanguagePairs"] = _pairs
-                    cfg["DisabledLanguages"] = sorted(_dis_l)
-                    cfg["General"].update(_gen)
+                    cfg["DisabledLanguages"] = sorted(_dis)
                 except Exception:
                     pass
 
-            def _idx_combo(parent, lab, idx):
-                r = tk.Frame(parent, bg=_COLORS["back"])
-                r.pack(fill="x", pady=1)
-                tk.Label(r, text=lab, width=18, anchor="w",
-                         bg=_COLORS["back"],
-                         fg=_COLORS["text"]).pack(side="left")
-                cb = ttk.Combobox(r, values=_names_l, width=26,
-                                  state="readonly")
-                cb.pack(side="left")
-                try:
-                    cb.set(_names_l[idx])
-                except Exception:
-                    pass
-                return cb
+            # Native's list, in native's order, mapped to the port's
+            # language-table index (the index is what the config stores).
+            _names = []
+            for _col in _LANGUAGE_COLUMNS:
+                for _n in _col.split(" "):
+                    _names.append(_n.replace("_", " "))
+            _idx_of = {}
+            for _i, _code in enumerate(_table):
+                _d = LANG_DISPLAY.get(_code, _code)
+                _idx_of.setdefault(_d, _i)
+            _rows = []
+            for _n in _names:
+                _i = _idx_of.get(_n)
+                if _i is not None:
+                    _rows.append((_n, _i))
+            # Four columns, filled top-to-bottom (column-major) -- the
+            # order native's list view uses, and the order the captured
+            # page shows.
+            _cols = 4
+            _nrows = (len(_rows) + _cols - 1) // _cols
 
-            tk.Label(body, text="Default languages",
-                     bg=_COLORS["back"], fg=_COLORS["text"],
-                     font=("Segoe UI", 10, "bold")).pack(anchor="w")
-            _cb = {}
-            # Per-key native defaults (real Options.json: From=1/auto,
-            # To=57/vi, Dictionary=17/en, Keyboard=17/en). A single
-            # default for all four showed `en` for an unset From on
-            # first run instead of `auto`.
-            _defs = {"LanguageFrom": 1, "LanguageTo": 57,
-                     "LanguageDictionary": 17, "LanguageKeyboard": 17}
-            for lab, key in (("Translate from:", "LanguageFrom"),
-                             ("Translate to:", "LanguageTo"),
-                             ("Dictionary:", "LanguageDictionary"),
-                             ("Virtual keyboard:", "LanguageKeyboard")):
-                _cb[key] = _idx_combo(body, lab,
-                                      _gen.get(key, _defs[key]) or 0)
-                _cb[key].bind("<<ComboboxSelected>>",
-                              lambda e, k=key: (
-                                  _gen.__setitem__(
-                                      k, _names_l.index(_cb[k].get())),
-                                  _save_l()))
-            for lab, key in (("Always detect language",
-                              "AlwaysDetectLanguage"),
-                             ("Smart detection", "UseSmartDetection")):
-                vv = tk.BooleanVar(value=bool(_gen.get(key, False)))
-                self.app._opt_vars[key] = vv
-                tk.Checkbutton(
-                    body, text=lab, variable=vv, bg=_COLORS["back"],
-                    fg=_COLORS["text"], selectcolor=_COLORS["back"],
-                    command=lambda k=key: (
-                        _gen.__setitem__(k, self.app._opt_vars[k].get()),
-                        _save_l())).pack(anchor="w")
-            tk.Label(body, text="Language pairs", bg=_COLORS["back"],
-                     fg=_COLORS["text"],
-                     font=("Segoe UI", 10, "bold")).pack(anchor="w",
-                                                         pady=(8, 0))
-            _plb = tk.Listbox(body, height=4, bg="white", fg="black")
-            _plb.pack(fill="x", pady=2)
+            # Native draws the checklist itself, not a column of Tk
+            # checkbuttons: a LIST VIEW with a checkbox in front of each
+            # language, 14px per row, four columns filled top-to-bottom.
+            # A Tk Checkbutton is ~23px tall, so eighteen of them do not
+            # fit the page -- the "Check / Uncheck all" button was pushed
+            # off the bottom. The grid is therefore drawn on a Canvas at
+            # native's row pitch, with native's blue checkbox.
+            _ROW = 14
+            # Native's list is 484px wide for four columns (121 each) --
+            # see the measured native capture 2137.
+            _COLW = 124
+            _cv = tk.Canvas(body, bg=_COLORS["back"], highlightthickness=0,
+                             height=_nrows * _ROW + 6)
+            _cv.pack(fill="both", expand=True)
 
-            def _paint_pairs():
-                _plb.delete(0, "end")
-                for a, b in _pairs:
-                    try:
-                        _plb.insert("end",
-                                    f"{_table[a]} > {_table[b]}")
-                    except Exception:
-                        _plb.insert("end", f"{a} > {b}")
+            def _draw():
+                _cv.delete("all")
+                for _k, (_n, _i) in enumerate(_rows):
+                    _c, _r = divmod(_k, _nrows)
+                    _x = _c * _COLW
+                    _y = _r * _ROW
+                    _on = _i not in _dis
+                    _cv.create_rectangle(
+                        _x + 1, _y + 1, _x + 12, _y + 12,
+                        fill="#0078d7" if _on else "#ffffff",
+                        outline="#0078d7" if _on else "#7e7e7e")
+                    if _on:
+                        _cv.create_line(_x + 3, _y + 6, _x + 5, _y + 9,
+                                        _x + 10, _y + 3, fill="#ffffff",
+                                        width=2)
+                    _cv.create_text(_x + 17, _y + 7, text=_n, anchor="w",
+                                    fill=_COLORS["text"],
+                                    font=("Segoe UI", 8))
+            _draw()
 
-            _paint_pairs()
-            _pr = tk.Frame(body, bg=_COLORS["back"])
-            _pr.pack(fill="x")
-
-            def _add_pair():
-                try:
-                    a = _names_l.index(_cb["LanguageFrom"].get())
-                    b = _names_l.index(_cb["LanguageTo"].get())
-                except Exception:
+            def _click(e):
+                _c = int(e.x) // _COLW
+                _r = int(e.y) // _ROW
+                _k = _c * _nrows + _r
+                if not (0 <= _k < len(_rows)):
                     return
-                if [a, b] not in _pairs:
-                    _pairs.append([a, b])
-                    _paint_pairs()
-                    _save_l()
+                _i = _rows[_k][1]
+                if _i in _dis:
+                    _dis.discard(_i)
+                else:
+                    _dis.add(_i)
+                _save()
+                _draw()
+            _cv.bind("<Button-1>", _click)
 
-            def _del_pair():
-                s = _plb.curselection()
-                if not s:
-                    return
-                _pairs.pop(s[0])
-                _paint_pairs()
-                _save_l()
-
-            def _move_pair(d):
-                # DLG 190 Up/Down for the pairs list
-                s = _plb.curselection()
-                if not s:
-                    return
-                i, j = s[0], s[0] + d
-                if 0 <= j < len(_pairs):
-                    _pairs[i], _pairs[j] = _pairs[j], _pairs[i]
-                    _paint_pairs()
-                    _plb.selection_set(j)
-                    _save_l()
-
-            def _clear_pairs():
-                # DLG 190 Remove All
-                _pairs.clear()
-                _paint_pairs()
-                _save_l()
-
-            tk.Button(_pr, text="Add",
-                      command=_add_pair).pack(side="left", padx=2)
-            tk.Button(_pr, text="Remove",
-                      command=_del_pair).pack(side="left", padx=2)
-            tk.Button(_pr, text="Remove All",
-                      command=_clear_pairs).pack(side="left", padx=2)
-            tk.Button(_pr, text="Up",
-                      command=lambda: _move_pair(-1)).pack(side="left",
-                                                           padx=2)
-            tk.Button(_pr, text="Down",
-                      command=lambda: _move_pair(1)).pack(side="left",
-                                                         padx=2)
-            tk.Label(body, text="Disabled languages",
-                     bg=_COLORS["back"], fg=_COLORS["text"],
-                     font=("Segoe UI", 10, "bold")).pack(anchor="w",
-                                                         pady=(8, 0))
-            _dlb = tk.Listbox(body, height=4, selectmode="multiple",
-                              bg="white", fg="black")
-            _dlb.pack(fill="x", pady=2)
-            for i, n in enumerate(_names_l):
-                _dlb.insert("end", n)
-                if i in _dis_l:
-                    _dlb.selection_set(i)
-                    _dlb.itemconfig(i, fg="gray")
-
-            def _save_dis():
-                _dis_l.clear()
-                _dis_l.update(_dlb.curselection())
-                _save_l()
-
-            tk.Button(body, text="Apply disabled",
-                      command=_save_dis).pack(anchor="w", pady=2)
+            def _check_all():
+                # 1099 'Check / Uncheck all': enable all if any language
+                # is disabled, else disable them all.
+                if _dis:
+                    _dis.clear()
+                else:
+                    _dis.update(_i for _n, _i in _rows)
+                _save()
+                _draw()
+            tk.Button(body, text=_Cw(13, 1099, "Check / Uncheck all"),
+                      command=_check_all).pack(anchor="w", pady=(8, 0))
 
         def show_internet():
             # Internet.Timeout (ms) + full Proxy section; live: the
@@ -1785,33 +2055,36 @@ class OptionsDialog:
                 except Exception:
                     pass
 
-            tk.Label(body, text=_Cw(11, 1049, "Connection"), bg=_COLORS["back"],
-                     fg=_COLORS["text"],
-                     font=("Segoe UI", 10, "bold")).pack(anchor="w")
-            r = tk.Frame(body, bg=_COLORS["back"])
+            con = _group(body, 11, 1049, "Connection")
+            r = tk.Frame(con, bg=_COLORS["back"])
             r.pack(fill="x", pady=1)
-            # Native label shows seconds (1084) but Options.json
-            # stores ms (10000) — entry edits ms like the value.
-            tk.Label(r, text=_Cw(11, 1084, "Timeout (ms):"), width=18, anchor="w",
-                     bg=_COLORS["back"],
+            # 1084 is a COMBOBOX and its label says "Timeout, sec:", but
+            # Options.json stores MILLISECONDS (10000). Native shows the
+            # seconds and stores the milliseconds, so the port does the
+            # same: the field shows 10 and writes 10000 back.
+            tk.Label(r, text=_Cw(11, 1084, "Timeout, sec:"), width=18,
+                     anchor="w", bg=_COLORS["back"],
                      fg=_COLORS["text"]).pack(side="left")
-            _te = tk.Entry(r, width=10)
+            _to_secs = [str(i) for i in range(1, 121)]
+            _te = ttk.Combobox(r, values=_to_secs, width=10,
+                               state="readonly")
             _te.pack(side="left")
-            _te.insert(0, str(_inet.get("Timeout", 10000)))
-            _te.bind("<FocusOut>", lambda e: (
-                _inet.__setitem__("Timeout",
-                                  int(_te.get() or 10000)), _save_n()))
-            tk.Label(body, text=_Cw(11, 1048, "Proxy"), bg=_COLORS["back"],
-                     fg=_COLORS["text"],
-                     font=("Segoe UI", 10, "bold")).pack(anchor="w",
-                                                         pady=(8, 0))
+            try:
+                _te.set(str(max(1, int(_inet.get("Timeout", 10000))
+                                 // 1000)))
+            except Exception:
+                _te.set("10")
+            _te.bind("<<ComboboxSelected>>", lambda e: (
+                _inet.__setitem__("Timeout", int(_te.get()) * 1000),
+                _save_n()))
+            px = _group(body, 11, 1048, "Proxy")
             # Native ProxyType combo (W11/1135): system/no/manual/
             # auto-detect; manual details below map Proxy.Host/Port
             # (HTTP/SOCKS distinguished by Scheme in our stack).
             _pt_vals = ["Use system proxy settings", "No proxy",
                         "Manual proxy configuration",
                         "Auto-detect proxy settings"]
-            _pt = ttk.Combobox(body, values=_pt_vals, width=26,
+            _pt = ttk.Combobox(px, values=_pt_vals, width=26,
                                state="readonly")
             _pt.pack(anchor="w", pady=1)
             try:
@@ -1822,7 +2095,7 @@ class OptionsDialog:
             for lab, key in ((_Cw(11, 1034, "Host:"), "Host"), (_Cw(11, 1035, "Port:"), "Port"),
                              (_Cw(11, 1036, "Username:"), "Username"),
                              (_Cw(11, 1037, "Password:"), "Password")):
-                rr = tk.Frame(body, bg=_COLORS["back"])
+                rr = tk.Frame(px, bg=_COLORS["back"])
                 rr.pack(fill="x", pady=1)
                 tk.Label(rr, text=lab, width=18, anchor="w",
                          bg=_COLORS["back"],
@@ -1832,7 +2105,7 @@ class OptionsDialog:
                 ee.pack(side="left")
                 ee.insert(0, str(_px.get(key, "")))
                 _entries[key] = ee
-            _sch = ttk.Combobox(body, values=["http", "https"], width=26,
+            _sch = ttk.Combobox(px, values=["http", "https"], width=26,
                                 state="readonly")
             _sch.pack(anchor="w", pady=1)
             _sch.set("https" if int(_px.get("Scheme", 0)) else "http")
@@ -1852,13 +2125,25 @@ class OptionsDialog:
                       command=_apply_px).pack(anchor="w", pady=4)
 
         def show_exceptions():
-            # Exceptions.Disabled/Enabled ([exe, class] pairs) +
-            # DisabledMode; live: exclusions.foreground_excluded honors it.
+            # Native DLG 176 -- Options page 15 ("Exceptions").
+            #
+            #   1162  ComboBox   the MODE: "Disabled for these programs:"
+            #                       / "Enabled for these programs:"
+            #   1104  SysListView32  the rows for that mode
+            #   1101  Button     'Add'
+            #   1103  Button     'Modify'
+            #   1102  Button     'Delete'
+            #   1113  Button     'Enable smart detection'
+            #
+            # The port drew the combo's two states as TWO lists
+            # ("Blocked (Disabled)" and "Allowed (Enabled)"), which is
+            # why it needed a caption the native does not have.
             for c in body.winfo_children():
                 c.destroy()
             _ex = cfg.get("Exceptions", {})
             _dis_list = [list(p) for p in _ex.get("Disabled", [])]
             _en_list = [list(p) for p in _ex.get("Enabled", [])]
+            self.app._opt_vars = getattr(self, "_opt_vars", {})
 
             def _save_x():
                 try:
@@ -1875,89 +2160,110 @@ class OptionsDialog:
                 except Exception:
                     pass
 
-            vv = tk.BooleanVar(value=bool(_ex.get("DisabledMode", True)))
-            tk.Checkbutton(body, text="Disable capture in listed windows "
-                                      "(uncheck = enable only here)",
-                           variable=vv, bg=_COLORS["back"],
-                           fg=_COLORS["text"], selectcolor=_COLORS["back"],
-                           command=lambda: (
-                               _ex.__setitem__("DisabledMode", vv.get()),
-                               _save_x())).pack(anchor="w")
+            # 1162 is the MODE combo. The pack lists its items as
+            # [[0, 'Enabled for these programs:'],
+            #  [1, 'Disabled for these programs:']] -- index 0 is
+            # Enabled, index 1 is Disabled, and native's capture shows
+            # the Disabled one selected.
+            _modes = _combo_items(
+                15, 1162, ["Enabled for these programs:",
+                            "Disabled for these programs:"])
+            _MODE_E = _modes[0] if _modes else "Enabled for these programs:"
+            _MODE_D = _modes[1] if len(_modes) > 1 else _MODE_E
+            _mode = tk.StringVar(
+                value=_MODE_D if _ex.get("DisabledMode", True) else _MODE_E)
 
-            def _mk_xlist(parent, title, pairs):
-                tk.Label(parent, text=title, bg=_COLORS["back"],
-                         fg=_COLORS["text"],
-                         font=("Segoe UI", 10, "bold")).pack(anchor="w",
-                                                             pady=(6, 0))
-                lb = tk.Listbox(parent, height=5, bg="white", fg="black")
-                lb.pack(fill="x")
-                for exe, cls in pairs:
-                    lb.insert("end", f"{exe or '*'}  |  {cls or '*'}")
-                fr = tk.Frame(parent, bg=_COLORS["back"])
-                fr.pack(fill="x", pady=2)
-                er = tk.Entry(fr, width=16)
-                er.pack(side="left", padx=1)
-                er.insert(0, "exe or empty")
-                cr = tk.Entry(fr, width=16)
-                cr.pack(side="left", padx=1)
-                cr.insert(0, "class or empty")
+            def _pairs():
+                return _dis_list if _mode.get() == _MODE_D else _en_list
 
-                def _add():
-                    exe = er.get().strip()
-                    cls = cr.get().strip()
-                    if exe == "exe or empty":
-                        exe = ""
-                    if cls == "class or empty":
-                        cls = ""
-                    pairs.append([exe, cls])
-                    lb.insert("end", f"{exe or '*'}  |  {cls or '*'}")
-                    _save_x()
+            _r = tk.Frame(body, bg=_COLORS["back"])
+            _r.pack(fill="x")
+            _cb = ttk.Combobox(_r, values=list(_modes), width=48,
+                               state="readonly")
+            _cb.pack(side="left")
+            _cb.set(_mode.get())
+            _cb.bind("<<ComboboxSelected>>",
+                     lambda e: (_mode.set(_cb.get()),
+                                _ex.__setitem__("DisabledMode",
+                                                _mode.get() == _MODE_D),
+                                _save_x(), _refresh()))
 
-                def _dele():
-                    s = lb.curselection()
-                    if not s:
-                        return
-                    pairs.pop(s[0])
-                    lb.delete(s[0])
-                    _save_x()
+            _tbl = tk.Frame(body, bg="white", highlightthickness=1,
+                            highlightbackground="#7e7e7e")
+            _tbl.pack(fill="both", expand=True, pady=4)
+            tk.Label(_tbl, text="Program Name", bg="white", fg="black",
+                     anchor="w").place(x=6, y=4)
+            tk.Label(_tbl, text="Window Class Name", bg="white", fg="black",
+                     anchor="w").place(x=246, y=4)
+            _lb = tk.Listbox(_tbl, bg="white", fg="black", borderwidth=0,
+                             highlightthickness=0)
+            _lb.place(x=4, y=22, relwidth=0.98, relheight=0.92)
 
-                def _modify():
-                    # DLG 176 Modify: edit selected entry in place
-                    s = lb.curselection()
-                    if not s:
-                        return
-                    i = s[0]
-                    exe = er.get().strip()
-                    cls = cr.get().strip()
-                    if exe in ("", "exe or empty"):
-                        exe = pairs[i][0] if er.get().strip() in (
-                            "", "exe or empty") else ""
-                    if cls in ("", "class or empty"):
-                        cls = pairs[i][1] if cr.get().strip() in (
-                            "", "class or empty") else ""
-                    pairs[i] = [exe, cls]
-                    lb.delete(i)
-                    lb.insert(i, f"{exe or '*'}  |  {cls or '*'}")
-                    lb.selection_set(i)
-                    _save_x()
+            def _refresh():
+                _lb.delete(0, "end")
+                for _exe, _cls in _pairs():
+                    _lb.insert("end", "%-24s %s" % (_exe or "* All Programs *",
+                                                    _cls or "* All Windows *"))
+            _refresh()
 
-                tk.Button(fr, text=_Cw(15, 1101, "Add"),
-                          command=_add).pack(side="left", padx=2)
-                tk.Button(fr, text=_Cw(15, 1103, "Modify"),
-                          command=_modify).pack(side="left", padx=2)
-                tk.Button(fr, text=_Cw(15, 1102, "Remove"),
-                          command=_dele).pack(side="left", padx=2)
+            _fr = tk.Frame(body, bg=_COLORS["back"])
+            _fr.pack(fill="x")
+            _er = tk.Entry(_fr, width=16)
+            _er.pack(side="left", padx=1)
+            _er.insert(0, "exe or empty")
+            _cr = tk.Entry(_fr, width=16)
+            _cr.pack(side="left", padx=1)
+            _cr.insert(0, "class or empty")
 
-            _mk_xlist(body, _Cw(15, 1162, "Blocked (Disabled)"), _dis_list)
-            _mk_xlist(body, _Cw(15, 1162, "Allowed (Enabled)"), _en_list)
-            # DLG 176 "Enable smart detection" (General.UseSmartDetection)
+            def _add():
+                _exe = _er.get().strip()
+                _cls = _cr.get().strip()
+                if _exe == "exe or empty":
+                    _exe = ""
+                if _cls == "class or empty":
+                    _cls = ""
+                _pairs().append([_exe, _cls])
+                _refresh()
+                _save_x()
+
+            def _modify():
+                _s = _lb.curselection()
+                if not _s:
+                    return
+                _i = _s[0]
+                _exe = _er.get().strip()
+                _cls = _cr.get().strip()
+                if _exe in ("", "exe or empty"):
+                    _exe = _pairs()[_i][0]
+                if _cls in ("", "class or empty"):
+                    _cls = _pairs()[_i][1]
+                _pairs()[_i] = [_exe, _cls]
+                _refresh()
+                _lb.selection_set(_i)
+                _save_x()
+
+            def _dele():
+                _s = _lb.curselection()
+                if not _s:
+                    return
+                _pairs().pop(_s[0])
+                _refresh()
+                _save_x()
+
+            tk.Button(_fr, text=_Cw(15, 1101, "Add"),
+                      command=_add).pack(side="left", padx=2)
+            tk.Button(_fr, text=_Cw(15, 1103, "Modify"),
+                      command=_modify).pack(side="left", padx=2)
+            tk.Button(_fr, text=_Cw(15, 1102, "Delete"),
+                      command=_dele).pack(side="left", padx=2)
+
+            # 1113 'Enable smart detection' (General.UseSmartDetection)
             try:
                 _genx = cfg.get("General", {})
             except Exception:
                 _genx = {}
             _sv = tk.BooleanVar(
                 value=bool(_genx.get("UseSmartDetection", True)))
-            self.app._opt_vars = getattr(self, "_opt_vars", {})
             self.app._opt_vars["UseSmartDetection_x"] = _sv
 
             def _save_smart():
@@ -1982,10 +2288,38 @@ class OptionsDialog:
                                                      pady=(6, 0))
 
         def show_advanced():
-            # Full Advanced section, live where implemented.
+            # Native DLG 185 -- Options page 17 ("Advanced").
+            #
+            #   1146 'Advanced'   1151 'Open links with:'    1152 ComboBox
+            #                      1147 'Copy action:'       1148 ComboBox
+            #                      1149 'Keyboard layout indicator:' 1150
+            #                      1157 'Google domain:'     1153 ComboBox
+            #                      1154 'Enable GUI translation'
+            #                      1159 'Enable listening to the same text
+            #                            at a slower speed'
+            #                      1160 'Remove line breaks'
+            #   1186 'Mouse mode'  1155 'Enable mouse mode only when Ctrl
+            #                            is pressed'
+            #                      1156 'Click on system tray icon
+            #                            switches mouse mode'
+            #   1158 'API keys'    1195 'OCR API key:'  1196 Edit
+            #                      1197 SysLink
+            #
+            # The port drew a flat list of five checkboxes and ten text
+            # entries, with the same config key under two different
+            # labels ("Preferred domain:" and "Google domain:" both
+            # wrote PreferredDomain, "Default browser id:" and "Open
+            # links with:" both wrote DefaultBrowserId, and so on), and
+            # the page overflowed the window so the Apply button was
+            # pushed off the bottom.
             for c in body.winfo_children():
                 c.destroy()
-            _ad2 = cfg.get("Advanced", {})
+            try:
+                from qtranslate import config as _CAD
+                _ad2 = dict(_CAD.DEFAULT_ADVANCED)
+                _ad2.update(cfg.get("Advanced", {}))
+            except Exception:
+                _ad2 = dict(cfg.get("Advanced", {}))
             self.app._opt_vars = getattr(self, "_opt_vars", {})
 
             def _save_a():
@@ -2001,65 +2335,83 @@ class OptionsDialog:
                 except Exception:
                     pass
 
-            for lab, key in (
-                    (_Cw(17, 1159, "Slower (clearer) listening"),
-                     "EnableSlowerListening"),
-                    (_Cw(17, 1154, "GUI translation (XDXF hover)"),
-                     "EnableGuiTranslation"),
-                    (_Cw(17, 1155, "Mouse mode on Ctrl"),
-                     "EnableMouseModeOnCtrl"),
-                    (_Cw(17, 1160, "Remove line breaks"),
-                     "RemoveLineBreaks"),
-                    (_Cw(17, 1156, "Tray click toggles mouse mode"),
-                     "SwitchMouseModeOnTrayClick")):
-                vv = tk.BooleanVar(value=bool(_ad2.get(key, False)))
-                self.app._opt_vars[key] = vv
-                tk.Checkbutton(
-                    body, text=lab, variable=vv, bg=_COLORS["back"],
-                    fg=_COLORS["text"], selectcolor=_COLORS["back"],
-                    command=lambda k=key: (
-                        _ad2.__setitem__(k, self.app._opt_vars[k].get()),
-                        _save_a())).pack(anchor="w")
-            for lab, key in (
-                    (_Cw(17, 1195, "OCR API key:"), "OcrApiKey"),
-                    (_Cw(17, 1157, "Preferred domain:"),
-                     "PreferredDomain"),
-                    (_Cw(17, 1157, "Google domain:"), "GoogleDomain"),
-                    (_Cw(17, 1151, "Default browser id:"),
-                     "DefaultBrowserId"),
-                    (_Cw(17, 1151, "Open links with:"),
-                     "DefaultBrowserId"),
-                    (_Cw(17, 1149, "Layout indicator:"),
-                     "LayoutIndicator"),
-                    (_Cw(17, 1149, "Keyboard layout indicator:"),
-                     "LayoutIndicator"),
-                    (_Cw(17, 1147, "Copy action:"), "CopyAction"),
-                    (_Cw(17, 1186, "Mouse mode:"), "MouseMode")):
-                r = tk.Frame(body, bg=_COLORS["back"])
-                r.pack(fill="x", pady=1)
-                tk.Label(r, text=lab, width=22, anchor="w",
-                         bg=_COLORS["back"],
-                         fg=_COLORS["text"]).pack(side="left")
-                ee = tk.Entry(r, width=26)
-                ee.pack(side="left")
-                try:
-                    _cur = _ad2.get(key, "")
-                    if _cur is None:
-                        _cur = ""
-                except Exception:
-                    _cur = ""
-                ee.insert(0, str(_cur))
-                ee.bind("<FocusOut>", lambda e, k=key, w=ee: (
-                    _ad2.__setitem__(k, w.get()), _save_a()))
-            # DLG 185 API-keys SysLink -> ocr.space key docs
-            _api = tk.Label(body, text="Get OCR API keys at ocr.space",
-                            fg="blue", cursor="hand2", bg=_COLORS["back"],
-                            font=("Segoe UI", 9, "underline"))
-            _api.pack(anchor="w", pady=4)
-            _api.bind("<Button-1>",
-                      lambda e: _open_url("https://ocr.space/ocrapi"))
+            def _set(key, value):
+                _ad2[key] = value
+                _save_a()
+
+            adv = _group(body, 17, 1146, "Advanced")
+            # The four native ComboBoxes. Two of them store a STRING
+            # (DefaultBrowserId, PreferredDomain) and two store an INDEX
+            # (CopyAction, LayoutIndicator), so the two shapes are bound
+            # differently. Native's capture 2140 shows the values
+            # "Internet Explorer", "Ctrl + C", "None" and "com".
+            for cid, key, vals, indexed in (
+                    (1151, "DefaultBrowserId",
+                     ["Internet Explorer", "Firefox", "Chrome", "Opera",
+                      "Safari", "Edge"], False),
+                    (1147, "CopyAction",
+                     ["Ctrl + C", "Ctrl + Shift + C", "Ctrl + Insert"], True),
+                    (1149, "LayoutIndicator", ["None", "JCUKEN"], True),
+                    (1157, "PreferredDomain",
+                     ["com", "co.uk", "de", "fr", "co.jp"], False)):
+                _cur = _ad2.get(key, "")
+                if indexed:
+                    try:
+                        _shown = vals[int(_cur or 0)]
+                    except (ValueError, IndexError):
+                        _shown = vals[0]
+                else:
+                    _shown = _cur if _cur in vals else vals[0]
+                _w = _row(adv, 17, cid, "", value=_shown, width=18,
+                          values=vals, label_width=20)
+
+                def _pick(e=None, k=key, w=_w, v=vals, ix=indexed):
+                    if ix:
+                        try:
+                            _set(k, v.index(w.get()))
+                        except ValueError:
+                            pass
+                    else:
+                        _set(k, w.get())
+                _w.bind("<<ComboboxSelected>>", _pick)
+            for cid, key in ((1154, "EnableGuiTranslation"),
+                             (1159, "EnableSlowerListening"),
+                             (1160, "RemoveLineBreaks")):
+                _v = tk.BooleanVar(value=bool(_ad2.get(key, False)))
+                self.app._opt_vars[key] = _v
+                _check(adv, 17, cid, "", _v,
+                       lambda k=key, v=_v: _set(k, v.get()))
+
+            mm = _group(body, 17, 1186, "Mouse mode")
+            for cid, key in ((1155, "EnableMouseModeOnCtrl"),
+                             (1156, "SwitchMouseModeOnTrayClick")):
+                _v = tk.BooleanVar(value=bool(_ad2.get(key, False)))
+                self.app._opt_vars[key] = _v
+                _check(mm, 17, cid, "", _v,
+                       lambda k=key, v=_v: _set(k, v.get()))
+
+            api = _group(body, 17, 1158, "API keys")
+            _w = _row(api, 17, 1195, "OCR API key:",
+                      value=_ad2.get("OcrApiKey", ""), width=26,
+                      label_width=26)
+            _w.bind("<FocusOut>",
+                    lambda e: _set("OcrApiKey", _w.get()))
+            # 1197 SysLink
+            _link = tk.Label(api, text=_Cw(17, 1198,
+                                           "Register here for free OCR API key"),
+                             fg="blue", cursor="hand2", bg=_COLORS["back"],
+                             font=("Segoe UI", 9, "underline"))
+            _link.pack(anchor="w")
+            _link.bind("<Button-1>",
+                       lambda e: _open_url("https://ocr.space/ocrapi"))
 
         def show_updates():
+            # Native DLG 205 -- Options page 18 ("Updates").
+            #
+            #   1188  Button        'Automatically check for updates'
+            #   1189  RichEdit50W   the changelog
+            #   1190  Button        'Check now'
+            #   1191  Button        'Install'
             for c in body.winfo_children():
                 c.destroy()
             _up = cfg.get("Update", {})
@@ -2079,14 +2431,21 @@ class OptionsDialog:
 
             vv = tk.BooleanVar(value=bool(_up.get("CheckForUpdates",
                                                   False)))
+            self.app._opt_vars = getattr(self, "_opt_vars", {})
+            self.app._opt_vars["CheckForUpdates"] = vv
             tk.Checkbutton(body, text=_Cw(18, 1188,
-                                          "Check for updates on startup"),
+                                          "Automatically check for updates"),
                            variable=vv, bg=_COLORS["back"],
                            fg=_COLORS["text"], selectcolor=_COLORS["back"],
                            command=lambda: (
-                               _up.__setitem__("CheckForUpdates",
-                                               vv.get()),
+                               _up.__setitem__("CheckForUpdates", vv.get()),
                                _save_u())).pack(anchor="w")
+            # 1189 RichEdit50W -- native shows the changelog here.
+            _log = tk.Text(body, height=12, wrap="word", bg="white",
+                           fg="black", relief="solid", borderwidth=1)
+            _log.pack(fill="both", expand=True, pady=4)
+            _log.insert("1.0", "QTranslate 6.10.0")
+
             def _check_now():
                 # Native R1/R2: GET the update manifest and parse it.
                 # The host retired in 2022 -> normally BLOCKED; parse the
@@ -2095,30 +2454,28 @@ class OptionsDialog:
                 try:
                     import urllib.request as _ur
                     from qtranslate import updater as _UP
-                    _u = ("https://quest-app.appspot.com/update?v=6.10.0")
+                    _u = "https://quest-app.appspot.com/update?v=6.10.0"
                     _req = _ur.Request(_u, headers={"User-Agent": "QTranslate"})
                     with _ur.urlopen(_req, timeout=8) as _r:
                         _txt = _r.read().decode("utf-8", "replace")
                     _man = _UP.parse_manifest(_txt)
                     if _man.get("valid"):
-                        self.app.render(
-                            "Update manifest: v{0} ({1})\n{2}".format(
-                                _man["version"], _man["date"],
-                                _man["changelog"]))
+                        _log.delete("1.0", "end")
+                        _log.insert("1.0", _man.get("notes", "") or "")
                     else:
-                        self.app.render("update server returned no valid "
-                                    "manifest (offline/retired).")
-                except Exception as _e:
-                    self.app.render(
-                        "update check BLOCKED: server unreachable "
-                        f"(retired 2022) — {_e}")
-            tk.Button(body, text=_Cw(18, 1190, "Check now"),
-                      command=_check_now).pack(anchor="w", pady=2)
-            tk.Label(body, text="QTranslate 6.10.0 — 'Check now' tries the "
-                                "native update manifest endpoint; it is "
-                                "retired, so the check reports BLOCKED.",
-                     bg=_COLORS["back"], fg="gray", wraplength=380,
-                     justify="left").pack(anchor="w", pady=6)
+                        _log.delete("1.0", "end")
+                        _log.insert("1.0", "Update check: %s"
+                                    % (_man.get("reason", "BLOCKED")))
+                except Exception as _exc:
+                    _log.delete("1.0", "end")
+                    _log.insert("1.0", "Update check: BLOCKED (%s)" % _exc)
+
+            _br = tk.Frame(body, bg=_COLORS["back"])
+            _br.pack(fill="x")
+            tk.Button(_br, text=_Cw(18, 1190, "Check now"),
+                      command=_check_now).pack(side="right", padx=2)
+            tk.Button(_br, text=_Cw(18, 1191, "Install"),
+                      command=_check_now).pack(side="right", padx=2)
 
         def on_select(_e=None):
             if not left.curselection():
@@ -2150,24 +2507,6 @@ class OptionsDialog:
                          text=page + " (see Options.json sections)",
                          bg=_COLORS["back"],
                          fg=_COLORS["text"]).pack(anchor="w")
-
-        import copy as _copy
-        _snapshot = _copy.deepcopy(cfg)
-
-        def _cancel():
-            # Native Cancel discards: restore the snapshot since pages
-            # save live into cfg/Options.json as they edit.
-            try:
-                from qtranslate import config as _C
-                import json as _j
-                with open(_C.DEFAULT_PATH, "w",
-                          encoding="utf-8") as f:
-                    _j.dump(_snapshot, f, ensure_ascii=False, indent=1)
-                cfg.clear()
-                cfg.update(_copy.deepcopy(_snapshot))
-            except Exception:
-                pass
-            w.destroy()
 
         def _save_page_index():
             try:
@@ -2207,14 +2546,6 @@ class OptionsDialog:
         else:
             left.selection_set(0)
             show_basics()
-        frm = tk.Frame(w, bg=_COLORS["back"])
-        frm.pack(side="bottom", pady=(0, 8))
-        tk.Button(frm, text="OK",
-                  command=w.destroy).pack(side="left", padx=4)
-        tk.Button(frm, text="Cancel",
-                  command=_cancel).pack(side="left", padx=4)
-        tk.Button(frm, text="Apply",
-                  command=w.destroy).pack(side="left", padx=4)
         return w
 
 
@@ -3791,12 +4122,12 @@ class MainWindow:
         w = tk.Toplevel(self.app.root)
         w.title(_W(7, "Virtual keyboard"))
         w.configure(bg=_COLORS["back"])
-        _place_aux(w, "WindowKeyboardPlacement", "308x102")
+        _place_aux(w, "WindowKeyboardPlacement", _TEMPLATE_GEOMETRY("keyboard"))
         w.attributes("-topmost", True)
         try:
             from qtranslate import config as _C
-            _kb = _C.load().get("General", {}).get("LanguageKeyboard",
-                                                   17)
+            _kb = _C.load().get("General", {}).get(
+                "LanguageKeyboard", LANG_DEFAULTS["LanguageKeyboard"])
         except Exception:
             _kb = 17
         try:

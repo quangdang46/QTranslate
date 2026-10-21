@@ -79,15 +79,15 @@ Appearance, Advanced, Updates, Exceptions.
 | 164 | History | SysTreeView32 + Clear + Save as... | Treeview, no Open btn |
 | 171 | Basics page | startup/lang/font/history flags | real defaults |
 | 172 | Internet page | Timeout + proxy | net stack honors it |
-| 173 | Offline dicts | Add/Remove dictionary... | XDXF manager |
-| 174 | Services check | Check/Uncheck all | All button per list |
+| 173 | Services page | Translation + Dictionary list, Add/Remove dictionary... | both lists (2026-10-21: the page is the SERVICES page; its visible controls are the dictionary add/remove) |
+| 174 | Languages page | the language checklist + Check/Uncheck all | the 72-language checklist (2026-10-21: corrected -- 174 is the LANGUAGES page, not a second Services list) |
 | 175 | Appearance page | theme/auto-size/popup/colors | all real keys |
 | 176 | Exceptions page | Add/Modify/Delete + smart detect | full |
 | 178 | Exception add | single entry editor | inline add/modify |
 | 179 | Hotkeys page | Enable + action list | 17 actions + Change/Clear |
 | 184 | Dictionary | (custom window, strings only) | services pane + XDXF-first |
 | 185 | Advanced page | GUI/slow/breaks/mouse/tray/copy/domain/browser/OCR | all wired |
-| 190 | Languages edit | Add/Remove/Remove All/Up/Down | pairs full |
+| 190 | Languages edit | Add/Remove/Remove All/Up/Down | pairs full (a SEPARATE top-level dialog, not the Options "Languages" page, which is 174) |
 | 201 | Confirm | OK/Cancel | (standard) |
 | 204 | Info | RichEdit50W + OK | (standard) |
 | 205 | Updater | auto-check + Check now + Install | flag only (server 404) |

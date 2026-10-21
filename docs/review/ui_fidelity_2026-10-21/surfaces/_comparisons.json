@@ -1,0 +1,94 @@
+[
+ {
+  "page": "Advanced",
+  "native": "2140.png",
+  "native_size": [
+   646,
+   389
+  ],
+  "port_size": [
+   751,
+   445
+  ]
+ },
+ {
+  "page": "Appearance",
+  "native": "2138.png",
+  "native_size": [
+   646,
+   389
+  ],
+  "port_size": [
+   751,
+   445
+  ]
+ },
+ {
+  "page": "Basics",
+  "native": null
+ },
+ {
+  "page": "Exceptions",
+  "native": "2139.png",
+  "native_size": [
+   646,
+   389
+  ],
+  "port_size": [
+   751,
+   445
+  ]
+ },
+ {
+  "page": "Hotkeys",
+  "native": null
+ },
+ {
+  "page": "Internet",
+  "native": "2135.png",
+  "native_size": [
+   646,
+   389
+  ],
+  "port_size": [
+   753,
+   447
+  ]
+ },
+ {
+  "page": "Languages",
+  "native": "2137.png",
+  "native_size": [
+   646,
+   389
+  ],
+  "port_size": [
+   751,
+   445
+  ]
+ },
+ {
+  "page": "Services",
+  "native": "2136.png",
+  "native_size": [
+   646,
+   389
+  ],
+  "port_size": [
+   751,
+   445
+  ]
+ },
+ {
+  "page": "Updates",
+  "native": "2141.png",
+  "native_size": [
+   646,
+   389
+  ],
+  "port_size": [
+   751,
+   445
+  ]
+ }
+]

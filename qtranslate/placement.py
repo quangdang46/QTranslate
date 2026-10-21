@@ -69,6 +69,44 @@ def encode_placement(x: int, y: int, w: int, h: int,
 # the template (595x376) nor this machine's real blob (530x430).)
 TEMPLATE_GEOMETRY = "595x376"
 
+# The dialog templates in the EXE's .rsrc, in DIALOG UNITS, from
+# `tools/dlg_parse.py`:
+#
+#   DLG129 QTranslate       340 x 201
+#   DLG154 Options          429 x 223
+#   DLG162 Virtual keyboard 308 x 102
+#   DLG164 History          316 x 177
+#   DLG184 Dictionary       316 x 185
+#
+# The main window's own template fixes the conversion (340 DU -> 595 px
+# horizontally, 201 DU -> 376 px vertically), and every dialog template uses
+# the same dialog font, so the same factor applies to all of them. The
+# aux windows' first-run sizes were previously arbitrary pixel constants
+# (the keyboard's was even the raw DU numbers used as pixels: 308x102).
+#
+# This is the FIRST-RUN fallback only: once native saves a placement blob,
+# place_aux restores the saved rect instead.
+DLG_TEMPLATES_DU = {
+    "main": (340, 201),
+    "options": (429, 223),
+    "keyboard": (308, 102),
+    "history": (316, 177),
+    "dictionary": (316, 185),
+}
+
+
+def template_geometry(name: str) -> str:
+    """A dialog template's size in pixels, as a Tk geometry string.
+
+    Derived from the template's dialog units and the main window's own
+    template, so the two cannot drift apart.
+    """
+    du_w, du_h = DLG_TEMPLATES_DU[name]
+    main_w, main_h = (int(v) for v in TEMPLATE_GEOMETRY.split("x"))
+    du_main_w, du_main_h = DLG_TEMPLATES_DU["main"]
+    return "%dx%d" % (round(du_w * main_w / du_main_w),
+                      round(du_h * main_h / du_main_h))
+
 
 def place_main(root, template: str = TEMPLATE_GEOMETRY) -> None:
     """Restore main-window geometry from General.WindowMainPlacement;

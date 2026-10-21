@@ -9,7 +9,7 @@
 |---|---|---|
 | Reorder providers (ServicesOrder) | ▲/▼ `_move` swaps + `_refresh` | parity |
 | Enable/disable provider | On/Off `_toggle` on `DisabledServices` / `DisabledDictionaries` | parity |
-| Check/Uncheck all (DLG174) | All `_check_all`: clear-all if any disabled, else disable-all | parity (semantics match DLG174) |
+| Check/Uncheck all | (not on this page -- see below) | — | **2026-10-21: corrected.** DLG174's 'Check / Uncheck all' is on the **Languages** page (the language checklist), not on the Services page. The Services page is DLG173: one list with the Translation and Dictionary groups plus 'Add dictionary...' / 'Remove dictionary'. The port's Services page now matches DLG173, and the Languages page matches DLG174 (`docs/review/UI_FIDELITY_OPTIONS_2026-10-21.md`) |
 | Persist 4 keys | `_save()` writes `ServicesOrder`, `DisabledServices`, `DictionariesOrder`, `DisabledDictionaries` to Options.json **and** the live `cfg` dict | parity+ (native needs Apply; see §2) |
 | Disabled shown gray | `_paint` grays `itemconfig` for disabled ids | parity |
 

@@ -49,10 +49,16 @@ tree = ast.parse(APP)
 wtree = ast.parse(WIN)
 
 # --- 1. per-key language defaults -------------------------------------
-m = re.search(r"_defs = (\{[^}]*\})", BOTH)
-ck("per-key _defs table exists", m is not None)
+# 2026-10-21: the table was named `_defs` and lived in the Options
+# "Languages" page -- a page NATIVE DOES NOT HAVE (native's is DLG174,
+# the language checklist). The defaults are still real and still
+# per-slot, so the table moved to `LANG_DEFAULTS` in app.py, next to
+# the language tables it indexes into, and the four consumers read it.
+m = re.search(r"LANG_DEFAULTS = (\{[^}]*\})", BOTH)
+ck("the per-key language defaults table exists", m is not None)
 if m:
-    defs = eval(m.group(1))
+    import ast as _ast
+    defs = _ast.literal_eval(m.group(1))
     ck("From defaults to 1 (auto)", defs.get("LanguageFrom") == 1,
        repr(defs))
     ck("To defaults to 57 (vi)", defs.get("LanguageTo") == 57,
@@ -61,9 +67,11 @@ if m:
        defs.get("LanguageDictionary") == 17, repr(defs))
     ck("Keyboard defaults to 17 (en)",
        defs.get("LanguageKeyboard") == 17, repr(defs))
-    ck("combos use _defs, not a single 17",
-       "_gen.get(key, _defs[key])" in BOTH)
-    ck("no single-default-17 for the four combos",
+    for _key in ("LanguageFrom", "LanguageTo", "LanguageDictionary",
+                 "LanguageKeyboard"):
+        ck("the %s default is read from the table" % _key,
+           'LANG_DEFAULTS["%s"]' % _key in BOTH)
+    ck("no single-default-17 for the four slots",
        "_gen.get(key, 17) or 0" not in BOTH)
 
 # --- 2. history I6 five-entry menu -------------------------------------

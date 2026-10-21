@@ -29,6 +29,33 @@ SERVICE_DISPLAY = {
     30: "Papago", 31: "DeepL",
 }
 
+# Default dictionary order, measured from the native capture 2136: the
+# list shows Google Search, WordReference, Babylon Dictionary,
+# Wikipedia first.  The port had NO default, so a fresh config produced
+# an EMPTY dictionary list on the Services page.
+DEFAULT_DICTIONARIES_ORDER = [10, 19, 20, 14, 17, 18, 22, 24, 25, 26, 29]
+
+# Native's Options -> Languages page (DLG174) is a checklist of the
+# languages the app can translate, in native's own order, laid out in
+# four columns. The list was transcribed from the native capture 2137
+# and lived in `screens.py`; it lives HERE because the live Options
+# window needs it, and `screens.py` is a standalone reference module
+# that no production module is supposed to depend on.
+LANGUAGE_COLUMNS = [
+    "Afrikaans Albanian Arabic Armenian Azerbaijani Basque Belarusian "
+    "Bengali Bulgarian Catalan Chinese_(Simplified) "
+    "Chinese_(Traditional) Croatian Czech Danish Dutch English Esperanto",
+    "Estonian Filipino Finnish French Galician Georgian German Greek "
+    "Haitian_Creole Hebrew Hindi Hmong Hungarian Icelandic Indonesian "
+    "Irish Italian Japanese",
+    "Kannada Kazakh Khmer Korean Lao Latin Latvian Lithuanian Macedonian "
+    "Malay Maltese Marathi Mongolian Norwegian Persian Polish Portuguese "
+    "Romanian",
+    "Russian Serbian Sinhala Slovak Slovenian Spanish Swahili Swedish "
+    "Tajik Tamil Tatar Telugu Thai Turkish Ukrainian Urdu Uzbek "
+    "Vietnamese",
+]
+
 DICT_DISPLAY = {
     10: "Google Search", 14: "Wikipedia", 17: "Multitran",
     18: "ImTranslator", 19: "WordReference", 20: "Babylon Dictionary",

@@ -104,20 +104,11 @@ SERVICES_DICTIONARY = [
 ]
 
 # Options/Languages page: 4 columns x 18 rows, all ticked (measured)
-LANGUAGE_COLUMNS = [
-    "Afrikaans Albanian Arabic Armenian Azerbaijani Basque Belarusian "
-    "Bengali Bulgarian Catalan Chinese_(Simplified) "
-    "Chinese_(Traditional) Croatian Czech Danish Dutch English Esperanto",
-    "Estonian Filipino Finnish French Galician Georgian German Greek "
-    "Haitian_Creole Hebrew Hindi Hmong Hungarian Icelandic Indonesian "
-    "Irish Italian Japanese",
-    "Kannada Kazakh Khmer Korean Lao Latin Latvian Lithuanian Macedonian "
-    "Malay Maltese Marathi Mongolian Norwegian Persian Polish Portuguese "
-    "Romanian",
-    "Russian Serbian Sinhala Slovak Slovenian Spanish Swahili Swedish "
-    "Tajik Tamil Tatar Telugu Thai Turkish Ukrainian Urdu Uzbek "
-    "Vietnamese",
-]
+# Native's Options -> Languages checklist. The DATA lives in
+# `qtranslate/config.py` now, because the live Options window (DLG174)
+# needs it too; `screens.py` stays the standalone reference module and
+# must not be depended on by production code.
+from qtranslate.config import LANGUAGE_COLUMNS  # noqa: E402,F401
 
 # Options/Exceptions page rows (measured)
 EXCEPTIONS_ROWS = [

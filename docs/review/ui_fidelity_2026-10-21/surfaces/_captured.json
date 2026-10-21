@@ -1,0 +1,58 @@
+[
+ {
+  "surface": "main",
+  "port": "main.png"
+ },
+ {
+  "surface": "options:Basics",
+  "port": "options_Basics.png"
+ },
+ {
+  "surface": "options:Hotkeys",
+  "port": "options_Hotkeys.png"
+ },
+ {
+  "surface": "options:Internet",
+  "port": "options_Internet.png"
+ },
+ {
+  "surface": "options:Services",
+  "port": "options_Services.png"
+ },
+ {
+  "surface": "options:Languages",
+  "port": "options_Languages.png"
+ },
+ {
+  "surface": "options:Appearance",
+  "port": "options_Appearance.png"
+ },
+ {
+  "surface": "options:Exceptions",
+  "port": "options_Exceptions.png"
+ },
+ {
+  "surface": "options:Advanced",
+  "port": "options_Advanced.png"
+ },
+ {
+  "surface": "options:Updates",
+  "port": "options_Updates.png"
+ },
+ {
+  "surface": "popup",
+  "port": "popup.png"
+ },
+ {
+  "surface": "keyboard",
+  "port": "keyboard.png"
+ },
+ {
+  "surface": "history",
+  "port": "history.png"
+ },
+ {
+  "surface": "dict",
+  "port": "dict.png"
+ }
+]

@@ -194,6 +194,17 @@ def _lang_names(codes, include_auto=True):
                 if c != "auto" or include_auto]
 
 
+# Per-slot language defaults, as INDICES into the shared
+# SupportedLanguages table: From = 1 (auto), To = 57 (vi),
+# Dictionary = 17 (en), Keyboard = 17 (en).
+#
+# These were stated in the Options "Languages" page -- but native has
+# NO such page (native's is DLG174, the language checklist), so the
+# table moved to where its four consumers live: the main window's
+# from/to pair, the dictionary window and the virtual keyboard.
+LANG_DEFAULTS = {"LanguageFrom": 1, "LanguageTo": 57,
+                 "LanguageDictionary": 17, "LanguageKeyboard": 17}
+
 SRC_LANG_NAMES = [LANG_DISPLAY[c] for c in LANGS]
 TO_LANG_NAMES = [LANG_DISPLAY[c] for c in TO_LANGS]
 
@@ -328,7 +339,21 @@ _PACK_NAME = [None]
 
 def _pack():
     """Load the UI language pack per General.LocaleFoderName
-    (native FUN_0045B716 path; English = built-in strings)."""
+    (native FUN_0045B716 path).
+
+    **English is a pack like any other.** It used to be skipped -- the
+    comment claimed "English = built-in strings" -- and that was wrong in
+    a way that showed on screen: the hardcoded fallbacks are the
+    *design-time* strings from the DIALOG TEMPLATE, while the pack holds
+    the *runtime* strings the native actually draws. The two differ:
+    DLG175 control 1159 is "Always activate" in the template and
+    "Activate when opened" in the English pack; 1145 is
+    "Transparency (0-90):" in the template and "Transparency (0 - 90):"
+    in the pack; 1137 is "Icons:" in the pack but the port's fallback
+    said "Popup icons:". Skipping the pack therefore made EVERY label in
+    the English UI the template's text, and the mismatch was invisible
+    in the source because the fallbacks looked plausible.
+    """
     try:
         from qtranslate import config as _C
         name = _C.load().get("General", {}).get("LocaleFoderName",
@@ -339,12 +364,11 @@ def _pack():
         return _PACK
     _PACK.clear()
     _PACK_NAME[0] = name
-    if name != "English":
-        try:
-            from qtranslate import locale as _L
-            _PACK.update(_L.load_pack(name))
-        except Exception:
-            pass
+    try:
+        from qtranslate import locale as _L
+        _PACK.update(_L.load_pack(name))
+    except Exception:
+        pass
     return _PACK
 
 
@@ -392,7 +416,15 @@ def _W(wid: int, default: str = "") -> str:
 
 
 def _Cw(wid: int, cid: int, default: str = "") -> str:
-    """Control label by Windows Id + control id."""
+    """Control label by Windows Id + control id.
+
+    A COMBOBOX's "label" is its ITEM LIST, and the pack stores it that
+    way (`[1162, [[0, 'Enabled for these programs:'],
+    [1, 'Disabled for these programs:']]]`). Stringifying that put a
+    raw Python list in the Exceptions page's mode combo, so the raw
+    value is returned for a list/tuple and only a plain string is
+    stringified. No caller uses `_Cw` on a combo control as a caption.
+    """
     try:
         pack = _pack()
         for w in pack.get("Windows", []):
@@ -400,6 +432,8 @@ def _Cw(wid: int, cid: int, default: str = "") -> str:
                 for c in w.get("Controls", []):
                     if isinstance(c, (list, tuple)) and len(c) >= 2 \
                             and c[0] == cid:
+                        if isinstance(c[1], (list, tuple)):
+                            return c[1]
                         return str(c[1])
     except Exception:
         pass
@@ -497,10 +531,10 @@ class App:
             if _CLI_TARGET:
                 TARGET_EFF = TARGET
             else:
-                _lt = _ga.get("LanguageTo", 57)
+                _lt = _ga.get("LanguageTo", LANG_DEFAULTS["LanguageTo"])
                 TARGET_EFF = _table[_lt] if 0 <= _lt < len(_table) \
                     else TARGET
-            _lf = _ga.get("LanguageFrom", 1)
+            _lf = _ga.get("LanguageFrom", LANG_DEFAULTS["LanguageFrom"])
             self.source = _table[_lf] if 0 <= _lf < len(_table) \
                 else "auto"
         except Exception:
