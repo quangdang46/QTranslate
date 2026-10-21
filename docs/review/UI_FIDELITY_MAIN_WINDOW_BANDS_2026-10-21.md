@@ -116,6 +116,14 @@ the package directory*. The path is now `platforms.app_data_dir()`:
 `%APPDATA%\QTranslate` on Windows, `~/.config/QTranslate` everywhere else,
 which is the convention `reliability.py` already used for its log.
 
+And a third, found by testing the round trip on a fresh `HOME`: the
+settings **directory was never created**. The app persists a setting
+from ~38 places, each opening `DEFAULT_PATH` directly inside a `try`
+that swallows the error — so on a fresh install every one of those
+writes raised `FileNotFoundError` and the setting was silently lost.
+`config.ensure_dir()` creates the directory (once for the default path,
+and again inside `save()` for a path it is handed).
+
 That had two consequences, both fixed here:
 
 * `config.load()` and `config.save()` took `DEFAULT_PATH` as a **default

@@ -18,6 +18,31 @@ from qtranslate.platforms import app_data_dir
 # ``~/.config/QTranslate`` off Windows.
 DEFAULT_PATH = os.path.join(app_data_dir(), "Options.json")
 
+
+def ensure_dir(path: str = None) -> None:
+    """Create the directory the settings file lives in.
+
+    The app has ~38 places that persist a setting by opening
+    ``DEFAULT_PATH`` directly, and every one of them sits inside a
+    ``try`` that swallows the error. On a fresh install the directory
+    did not exist, so each write raised ``FileNotFoundError`` and the
+    setting was silently lost -- the app could not remember anything the
+    user changed.
+
+    The directory is created here, once, for the default path; `save()`
+    creates it again for a path it is handed.
+    """
+    d = os.path.dirname(path or DEFAULT_PATH)
+    if not d:
+        return
+    try:
+        os.makedirs(d, exist_ok=True)
+    except Exception:
+        pass
+
+
+ensure_dir()
+
 # SERVICE_ID order from Options.json ServicesOrder (default provider priority)
 DEFAULT_SERVICES_ORDER = [1, 5, 12, 13, 11, 26, 28, 30, 31]
 
@@ -198,6 +223,7 @@ def save(cfg: dict, path: str | None = None) -> None:
     """
     if path is None:
         path = DEFAULT_PATH
+    ensure_dir(path)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(cfg, f, ensure_ascii=False, indent=2)
         f.write("\n")

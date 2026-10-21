@@ -106,6 +106,29 @@ finally:
     except Exception:
         pass
 
+# --- the settings directory exists -----------------------------------------
+# The app persists a setting from ~38 places, each of them opening
+# DEFAULT_PATH directly inside a `try` that swallows the error. On a
+# fresh install the directory did not exist, so every one of those writes
+# raised FileNotFoundError and the setting was silently lost.
+ck("the settings directory exists",
+   os.path.isdir(os.path.dirname(C.DEFAULT_PATH)),
+   os.path.dirname(C.DEFAULT_PATH))
+_deep = tempfile.mkdtemp(prefix="qtranslate-cfg-")
+try:
+    _missing = os.path.join(_deep, "a", "b", "Options.json")
+    C.ensure_dir(_missing)
+    ck("ensure_dir creates a missing directory",
+       os.path.isdir(os.path.dirname(_missing)), _missing)
+    C.DEFAULT_PATH = _missing
+    C.save({"General": {"probe": 2}})
+    ck("save() works into a directory that did not exist",
+       C.load().get("General", {}).get("probe") == 2, _missing)
+finally:
+    C.DEFAULT_PATH = _saved
+    import shutil
+    shutil.rmtree(_deep, ignore_errors=True)
+
 print("regress_platforms: %d checks, %d failed" % (n[0], len(fails)))
 for f in fails:
     print("FAIL:", f)
