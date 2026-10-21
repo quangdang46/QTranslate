@@ -209,6 +209,40 @@ finally:
     except Exception:
         pass
 
+# --- the third pane (1018) shows only when it has a back-translation --------
+# Native's capture shows that pane COLLAPSED to zero height; the port's
+# third pane must therefore be packed only while it carries something.
+_main = app._main
+ck("the main window has a render() that fills the panes",
+   callable(getattr(_main, "render", None)))
+if callable(getattr(_main, "render", None)):
+    _main.render("result", "back-translation")
+    root.update_idletasks()
+    _aux = (getattr(app, "_panes", {}) or {}).get("aux")
+    ck("a back-translation SHOWS the third pane",
+       _aux is not None and _aux.winfo_manager() == "pack",
+       f"manager={_aux.winfo_manager() if _aux else None}")
+    _main.render("result only")
+    root.update_idletasks()
+    ck("without a back-translation the third pane is hidden again",
+       _aux is not None and _aux.winfo_manager() != "pack",
+       f"manager={_aux.winfo_manager() if _aux else None}")
+
+# --- the sash moves the source pane -----------------------------------------
+# The source pane's height is the FRAME's (the Text is gridded with a
+# weighted row), so the drag handler has to move the frame -- a sash that
+# only set the Text's `-height` would move nothing while still writing
+# the value to Options.json.
+if src is not None:
+    _h0 = src.winfo_height()
+    app._set_src_height(_h0 + 40)
+    root.update_idletasks()
+    ck("the source pane's height can be changed (the sash moves it)",
+       src.winfo_height() >= _h0 + 30,
+       f"{_h0} -> {src.winfo_height()}")
+    app._set_src_height(_h0)
+    root.update_idletasks()
+
 # --- the nav arrows and the menu are native's icon buttons -------------------
 # Native's back/forward, its ':' menu and its 'New' button are BS_ICON
 # buttons. As text they were 47px wide on macOS, where native's are 20.

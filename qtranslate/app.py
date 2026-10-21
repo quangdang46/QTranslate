@@ -796,15 +796,21 @@ class App:
         """
         return self._main.current()
 
-    @staticmethod
-    def tag_links(widget, text, on_click):
+    def tag_links(self, widget, text, on_click):
         """The main window (Phase 7 `MainWindow`).
 
         Body lives in ``qtranslate/windows.py``; this is the
         delegator. The signature and the reachable behavior are
         unchanged.
+
+        The WIDGET is forwarded: the main window tags its own result
+        pane, the dictionary window its own aux pane, and the tagger
+        works on whichever it is handed. This was a `@staticmethod` whose
+        body used `self` -- so every call raised `NameError: name
+        'self' is not defined` and `render()` could not fill the result
+        pane at all.
         """
-        return self._main.tag_links(text, on_click)
+        return self._main.tag_links(widget, text, on_click)
     def render(self, text, back=""):
         """The main window (Phase 7 `MainWindow`).
 

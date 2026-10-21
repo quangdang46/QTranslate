@@ -107,6 +107,17 @@ px wide (the fallback font's arrow glyph is that wide) where native's are
 20. The four icons are now bundled (`back`, `forward`, `menu`, `new` in
 `qtranslate/assets/ui_icons/`) and the buttons carry them.
 
+**And `render()` could not fill the result pane at all.** `App.tag_links`
+was a `@staticmethod` whose body read `self._main.tag_links(...)` — so
+every call raised `NameError: name 'self' is not defined`, `render()`
+propagated it, and the port could not show a translation. Nothing in the
+suite called `render()`, so it went unnoticed. The delegator forwards
+the widget now (`MainWindow.tag_links` is a staticmethod, because the
+body was a module-level function that took the widget to tag), and
+`tests/regress_delegators.py` walks every Phase 7 delegator and checks
+that it forwards its arguments, that no staticmethod body uses `self`,
+and that `render()` fills the result pane and the back-translation pane.
+
 **And the settings file was landing inside the package.** `config.py`
 built its path as `os.path.join(os.environ.get("APPDATA", ""), "QTranslate",
 "Options.json")`. Off Windows `APPDATA` is empty, so that join produced a

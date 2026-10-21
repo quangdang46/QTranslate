@@ -197,7 +197,8 @@ if HEAD_APP:
     # 2026-10-21: one closure was ADDED on purpose -- `_paint_star`, which
     # keeps the star button showing the selection's own favourite state
     # (native's 1173 is a star, not a text button).
-    _ADDED_CLOSURES = {"_paint_star"}
+    _ADDED_CLOSURES = {"_paint_star", "_star", "_svc_icon",
+                       "_row_star"}
     ck("every original closure was moved, none invented",
        old_inner == new_inner - _ADDED_CLOSURES,
        "missing=%r extra=%r"
@@ -217,6 +218,36 @@ if HEAD_APP:
         # so the star button follows the selection's favourite state.
         if name == "toggle_fav":
             b = [l for l in b if l.strip() != "_paint_star()"]
+        # `_paint` inserts the tree rows with native's ICONS now (a star
+        # for the favourite, the service's logo for the translation)
+        # instead of the old `values=(...)` columns, and the child rows
+        # are expanded by DEFAULT (native's tree always shows the
+        # translation under the source), so the insert calls and one
+        # default differ. Both sides are reduced to the same shape first.
+        if name == "_paint":
+            def _canon(lines, new_side):
+                out = []
+                for l in lines:
+                    if "values=(" in l:
+                        continue
+                    if "ExpandHistoryItems" in l:
+                        out.append('"General", {}).get('
+                                   '"ExpandHistoryItems", DEFAULT))')
+                        continue
+                    if l.strip().startswith(
+                            '_fav_only, _text, _expand = False'):
+                        out.append('_fav_only, _text, _expand = False, "", '
+                                   'DEFAULT')
+                        continue
+                    if "image=_row_star(fav)" in l:
+                        out.append("text=src[:70],")
+                        continue
+                    if "image=_svc_icon(svc)" in l:
+                        continue
+                    out.append(l)
+                return out
+            a = _canon(a, False)
+            b = _canon(b, True)
         if a != b:
             # Report WHERE, not a full diff -- a reader needs the line.
             for i, (x, y) in enumerate(zip(a, b)):
@@ -256,12 +287,23 @@ if HEAD_APP:
     # rather than counted as a difference -- the same treatment the
     # DictionaryView's rebuilt regions get below.
     def _bottom_row(node, src):
-        """True for the statements that make up the window's bottom row."""
+        """True for the statements that were rebuilt in 2026-10-21.
+
+        The window's BOTTOM ROW (native's DLG 164: Clear, Save as...,
+        the 15x14 star and OK) and its TREE (native's is a single
+        indented column with a star icon and the service's icon, not
+        three headed columns).
+        """
         text = ast.get_source_segment(src, node) or ""
         return ("1067" in text or "1160" in text or "1173" in text
                 or "_fav_btn" in text or "_star" in text
                 or "Strings\", 201" in text
-                or 'text=_Cw(3, 1, "OK")' in text)
+                or 'text=_Cw(3, 1, "OK")' in text
+                or "Treeview(w" in text or "tv.heading(" in text
+                or "tv.column(" in text or "_imgs = []" in text
+                or "_star_on" in text or "_star_off" in text
+                or "_fav_on" in text or "_fav_off" in text
+                or "_icon_alias" in text)
 
     o_top = [s for s in o_top if not _bottom_row(s, HEAD_APP)]
     w_top = [s for s in w_top if not _bottom_row(s, WIN)]

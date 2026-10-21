@@ -120,20 +120,26 @@ SRC_PANE_PX = 153
 _ICON_CACHE = {}
 
 
-def _bundle_icon(name):
-    """A bundled native icon (``qtranslate/assets/ui_icons/``) or None."""
-    if name in _ICON_CACHE:
-        return _ICON_CACHE[name]
+def _bundle_icon(name, folder="ui_icons"):
+    """A bundled native icon (``qtranslate/assets/<folder>/``) or None.
+
+    ``ui_icons`` holds the EXE's own RT_ICON groups (the microphone, the
+    headphone, the nav arrows, the stars); ``service_icons`` holds the
+    per-service logos recovered from the installer payload.
+    """
+    key = folder + "/" + name
+    if key in _ICON_CACHE:
+        return _ICON_CACHE[key]
     photo = None
     try:
         import os as _os
         _path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)),
-                              "assets", "ui_icons", name + ".png")
+                              "assets", folder, name + ".png")
         if _os.path.exists(_path):
             photo = tk.PhotoImage(file=_path)
     except Exception:
         photo = None
-    _ICON_CACHE[name] = photo
+    _ICON_CACHE[key] = photo
     return photo
 
 
@@ -204,14 +210,37 @@ class HistoryView:
         w.title(_W(3, "History"))
         w.configure(bg=_COLORS["back"])
         _place_aux(w, "WindowHistoryPlacement", _TEMPLATE_GEOMETRY("history"))
-        # Favorites: 4th tuple slot (native strings 201/202 +
-        # Application.HistoryFilterFavorites filter toggle).
-        tv = ttk.Treeview(w, columns=("fav", "svc"),
-                          show="tree headings", height=12)
-        tv.heading("#0", text="Translation")
-        tv.heading("fav", text="★")
-        tv.heading("svc", text="Service")
-        tv.column("fav", width=30, stretch=False)
+        # Native's tree (DLG 164's SysTreeView32) is a SINGLE indented
+        # column with NO headings: the parent row carries a STAR ICON and
+        # the source text, and the child row carries the SERVICE's icon
+        # and the translation (capture 2133). The port had three headed
+        # columns with the favourite as a ★ character and the service by
+        # NAME.
+        tv = ttk.Treeview(w, show="tree", height=12)
+        # The icons must be HELD: a PhotoImage that is only passed to
+        # `insert(image=...)` is garbage-collected and the image
+        # disappears from the tree.
+        _imgs = []
+        _star_on = _bundle_icon("star")
+        _star_off = _bundle_icon("star_off")
+        # The service icons are named after the service DIRECTORY
+        # (Papago is Naver's translator), as on the Services page.
+        _icon_alias = {"papago": "naver"}
+
+        def _row_star(fav):
+            img = _star_on if fav else _star_off
+            if img is not None and img not in _imgs:
+                _imgs.append(img)
+            return img or ""
+
+        def _svc_icon(svc):
+            img = _bundle_icon(_icon_alias.get(svc, str(svc)),
+                               "service_icons")
+            if img is None:
+                return ""
+            if img not in _imgs:
+                _imgs.append(img)
+            return img
         # Application.HistoryFilter: native substring filter on the history
         # list. An Entry persists it back to Options.json.
         _ff = tk.Frame(w, bg=_COLORS["back"])
@@ -252,10 +281,13 @@ class HistoryView:
                 _text = str(_ac.get("HistoryFilter", "")).lower()
                 # General.ExpandHistoryItems: show the translation inline
                 # as a child row instead of requiring a selection/click.
+                # Native's tree ALWAYS has the translation as the child
+                # row (the capture 2133 shows "person_record" with
+                # "nguồi_record" under it), so the default is ON.
                 _expand = bool(_C.load().get(
-                    "General", {}).get("ExpandHistoryItems", False))
+                    "General", {}).get("ExpandHistoryItems", True))
             except Exception:
-                _fav_only, _text, _expand = False, "", False
+                _fav_only, _text, _expand = False, "", True
             for idx, item in enumerate(self.history):
                 svc, src = item[0], item[1]
                 res = item[2] if len(item) > 2 else ""
@@ -265,11 +297,10 @@ class HistoryView:
                 if _text and _text not in src.lower():
                     continue
                 tv.insert("", "end", iid=str(idx),
-                          text=src[:70],
-                          values=("★" if fav else "", svc))
+                          text=src[:70], image=_row_star(fav))
                 if _expand and res:
                     tv.insert(str(idx), "end", iid=f"{idx}-tr",
-                              text="→ " + res[:120], values=("", ""))
+                              text=res[:120], image=_svc_icon(svc))
             if _expand:
                 for i in list(tv.get_children()):
                     tv.item(i, open=True)
@@ -376,10 +407,10 @@ class HistoryView:
                 sel = tv.selection()
                 on = False
                 if sel:
-                    idx = int(sel[0])
+                    idx = int(sel[0].split("-")[0])
                     on = bool(len(self.history[idx]) > 3
                               and self.history[idx][3])
-                _fav_btn.config(image=(_star if on else _star_off) or "")
+                _fav_btn.config(image=(_fav_on if on else _fav_off) or "")
             except Exception:
                 pass
 
@@ -400,16 +431,21 @@ class HistoryView:
         tk.Button(frm, text=_Cw(3, 1160, "Save as..."),
                   command=self.app.on_export_history).pack(side="left",
                                                            padx=4)
-        _star = _bundle_icon("star")
-        _star_off = _bundle_icon("star_off")
-        _fav_btn = tk.Button(frm, image=(_star or ""), width=15, height=15,
+        _fav_on = _bundle_icon("star")
+        _fav_off = _bundle_icon("star_off")
+        _fav_btn = tk.Button(frm, image=(_fav_on or ""), width=15, height=15,
                              relief="flat", bd=0, highlightthickness=0,
                              bg=_COLORS["back"], command=toggle_fav)
-        if _star is None:
+        if _fav_on is None:
             _fav_btn.config(text=_T("Strings", 201, "Favorite"), width=8)
         _fav_btn.pack(side="left", padx=4)
+        # OK closes the window the way the X does -- through the
+        # WM_DELETE_WINDOW handler, which is what saves the placement.
+        # `destroy()` would skip it and the window would snap back to
+        # the template next run.
         tk.Button(frm, text=_Cw(3, 1, "OK"),
-                  command=w.destroy).pack(side="right", padx=4)
+                  command=lambda: w.event_generate(
+                      "<WM_DELETE_WINDOW>")).pack(side="right", padx=4)
         tv.bind("<<TreeviewSelect>>", _paint_star)
         _paint_star()
         return w
@@ -658,6 +694,7 @@ class DictionaryView:
         outfrm = tk.Frame(mid, bg="white")
         outfrm.pack(side="left", fill="both", expand=True)
         outfrm.columnconfigure(0, weight=1)
+        outfrm.rowconfigure(0, weight=1)
         out = tk.Text(outfrm, wrap="word", bg="white", fg="black",
                       insertbackground="black", font=("Tahoma", _font))
         out.grid(row=0, column=0, sticky="nsew")
@@ -1687,7 +1724,7 @@ class OptionsDialog:
                      "ClearHistoryOnExit",
                      _gen.get("ClearHistoryOnExit", True)),
                     (_Cw(10, 1123, "Expand items"), "ExpandHistoryItems",
-                     _gen.get("ExpandHistoryItems", False))):
+                     _gen.get("ExpandHistoryItems", True))):
                 v = tk.BooleanVar(value=bool(default))
                 self.app._opt_vars[lab] = v  # keep ref: no GC-uncheck
                 tk.Checkbutton(
@@ -3066,7 +3103,28 @@ class MainWindow:
         # 153 is the value at the reference window size.
         srcfrm.pack_propagate(False)
         srcfrm.grid_propagate(False)
-        srcfrm.configure(height=SRC_PANE_PX)
+        # The frame's HEIGHT is the pane's height, and the Text's line
+        # count follows it: the Text is gridded with a weighted row, so
+        # its own `-height` no longer decides the visible size, and the
+        # scrollbar's viewport has to be the visible size for the bar
+        # to appear when the content does not fit.
+        try:
+            _pitch = max(1, tkfont.Font(font=_pane_font()).metrics(
+                "linespace"))
+        except Exception:
+            _pitch = 14
+
+        def _set_src_height(px):
+            px = max(60, int(px))
+            srcfrm.configure(height=px)
+            try:
+                self.app.src.config(height=max(3, int(px / _pitch)))
+            except Exception:
+                pass
+
+        # kept on the app so the sash and the tests can move the pane
+        self.app._set_src_height = _set_src_height
+        _set_src_height(SRC_PANE_PX)
         self.app._panes = getattr(self.app, "_panes", {})
         self.app._panes["src"] = srcfrm
         self.app.src = tk.Text(srcfrm, height=12, wrap="word", bg="white",
@@ -3101,8 +3159,10 @@ class MainWindow:
         except Exception:
             _mid_pos = 0
         if _mid_pos:
+            # General.MidSplitterPos is a PIXEL offset from native's
+            # measured pane height (the sash writes the same unit).
             try:
-                self.app.src.config(height=max(3, min(30, 12 + _mid_pos)))
+                _set_src_height(SRC_PANE_PX + _mid_pos)
             except Exception:
                 pass
         # Native OVERLAYS these buttons ON the source pane's bottom-right
@@ -3139,16 +3199,15 @@ class MainWindow:
 
         def _sash_drag(e):
             try:
-                delta_lines = int(e.y_root
-                                  - sash.winfo_rooty()) // 14
+                delta_px = e.y_root - sash.winfo_rooty()
             except Exception:
                 return
             try:
-                cur = self.app.src.cget("height")
-                new_h = max(3, min(30, cur + delta_lines))
-                if new_h != cur:
-                    self.app.src.config(height=new_h)
-                    self.app._mid_splitter_base[0] = new_h - 12
+                base = SRC_PANE_PX + self.app._mid_splitter_base[0]
+                new_h = max(60, min(400, base + delta_px))
+                if new_h != srcfrm.winfo_height():
+                    _set_src_height(new_h)
+                    self.app._mid_splitter_base[0] = new_h - SRC_PANE_PX
             except Exception:
                 pass
 
@@ -3324,6 +3383,10 @@ class MainWindow:
         _ebt0 = getattr(self.app, "_ebt_restore", "") or ""
         if _ebt0:
             self.app.aux.insert("1.0", _ebt0)
+            # ...and the pane has to be SHOWN: the third pane is packed
+            # only while it carries a back-translation, so a restored one
+            # that never unpacks it leaves the text invisible.
+            self._set_aux_visible(True)
         # service icon strip at the bottom (icons from Services/*/Service.ico,
         # click = switch + re-translate like FUN_0045CDBA; middle-click =
         # browser, right-click = multi-select per help.txt Actions).
@@ -3527,8 +3590,25 @@ class MainWindow:
             full = _C.load()
         except Exception:
             full = {}
-        cur = bool(full.setdefault("General", {}).get(key, True))
-        full["General"][key] = not cur
+        if not isinstance(full, dict):
+            full = {}
+        _gen = full.get("General")
+        if not isinstance(_gen, dict):
+            _gen = {}
+            full["General"] = _gen
+        # The CURRENT state is what the PANE shows, not what the file
+        # says: if the write fails, the next toggle would read the same
+        # value back and undo this one, leaving the pane stuck.
+        _state = getattr(self.app, "_pane_state", None)
+        if not isinstance(_state, dict):
+            _state = {}
+            self.app._pane_state = _state
+        cur = _state.get(key)
+        if cur is None:
+            cur = bool(_gen.get(key, True))
+        new = not cur
+        _state[key] = new
+        _gen[key] = new
         try:
             with open(_C.DEFAULT_PATH, "w", encoding="utf-8") as f:
                 _j.dump(full, f, ensure_ascii=False, indent=1)
@@ -4114,9 +4194,18 @@ class MainWindow:
                 self.app.src.get("1.0", "end").strip(),
                 LANG_CODES.get(self.app.tgt.get().strip(), "vi"),
                 LANG_CODES.get(self.app.src_lang.get().strip(), "auto"))
+    @staticmethod
     def tag_links(widget, text, on_click):
         """Shared auto-URL tagger (native EM_AUTOURLDETECT): qtdp: +
-        http links, blue/underline/hand-cursor."""
+        http links, blue/underline/hand-cursor.
+
+        A STATICMETHOD on purpose: the body was a module-level function
+        that took the widget to tag as its first argument, and the Phase
+        7 split moved it into the class without changing that. Left as a
+        plain method, `instance.tag_links(widget, ...)` would bind the
+        INSTANCE as the widget and tag the MainWindow instead of the
+        text pane.
+        """
         import re as _re
         try:
             widget.tag_delete("link")
@@ -4179,8 +4268,16 @@ class MainWindow:
                 return
             if visible:
                 if auxfrm.winfo_manager() != "pack":
-                    auxfrm.pack(fill="both", expand=False, padx=4,
-                                before=self.app._panes.get("svc"))
+                    # `before=` needs a reference that is MANAGED by the
+                    # same manager; the service strip can be hidden
+                    # (General.ShowServicesPane), and the TclError would
+                    # be swallowed -- leaving the pane packed nowhere.
+                    _ref = self.app._panes.get("svc")
+                    if _ref is not None and _ref.winfo_manager() == "pack":
+                        auxfrm.pack(fill="both", expand=False, padx=4,
+                                    before=_ref)
+                    else:
+                        auxfrm.pack(fill="both", expand=False, padx=4)
             elif auxfrm.winfo_manager() == "pack":
                 auxfrm.pack_forget()
         except Exception:
@@ -4201,7 +4298,8 @@ class MainWindow:
                 lbl.config(text=text)
                 if lbl.winfo_manager() != "pack":
                     _before = (self.app._panes or {}).get("mid")
-                    if _before is not None:
+                    if _before is not None \
+                            and _before.winfo_manager() == "pack":
                         lbl.pack(fill="x", padx=4, pady=0, before=_before)
                     else:
                         lbl.pack(fill="x", padx=4, pady=0)
@@ -4783,14 +4881,19 @@ class MainWindow:
              (">", 29, "right")),
         )
         _rows = []
+        _key_labels = []          # (label widget, the Latin character)
         for _row in _SPEC:
             frm = tk.Frame(w, bg=_COLORS["back"])
             frm.pack()
             _rows.append(frm)
             for _lbl, _wd, _kind in _row:
                 if _kind == "char":
+                    # The SHIFTED character goes through the layout map
+                    # too: `EN2RU` carries the uppercase mirrors, so a
+                    # Cyrillic layout types Cyrillic capitals.
                     _cmd = (lambda c=_lbl: _type(
-                        c.upper() if (_shift[0] or _caps[0]) else _label(c)))
+                        _label(c.upper()) if (_shift[0] or _caps[0])
+                        else _label(c)))
                 elif _kind == "space":
                     _cmd = lambda: _type(" ")
                 elif _kind == "back":
@@ -4830,6 +4933,8 @@ class MainWindow:
                               cursor="hand2")
                 lb.pack(side="left", padx=1, pady=1)
                 lb.bind("<Button-1>", lambda e, c=_cmd: c())
+                if _kind == "char":
+                    _key_labels.append((lb, _lbl))
 
         # 1064: the language combo, bottom-left, as in native's capture.
         _row = tk.Frame(w, bg=_COLORS["back"])
@@ -4848,8 +4953,26 @@ class MainWindow:
         except Exception:
             pass
         _combo.pack(side="left")
-        _combo.bind("<<ComboboxSelected>>",
-                     lambda e: self._keyboard_language(_combo.get(), _names))
+
+        def _relabel():
+            """Re-label the letter keys for the selected language."""
+            for _w, _c in _key_labels:
+                try:
+                    _w.config(text=_label(_c))
+                except Exception:
+                    pass
+
+        def _on_language(_e=None):
+            name = _combo.get()
+            try:
+                idx = _names.index(name)
+            except ValueError:
+                idx = 17
+            _ru[0] = (idx != 17)
+            _relabel()
+            self._keyboard_language(name, _names)
+
+        _combo.bind("<<ComboboxSelected>>", _on_language)
         # Native's keyboard window is sized to its runtime key grid, not to
         # the template (the capture is 464x198 where the template
         # converts to 539x191). A SAVED placement still wins.

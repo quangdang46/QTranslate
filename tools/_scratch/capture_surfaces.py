@@ -281,6 +281,10 @@ def main() -> int:
 
     # --- the other surfaces ------------------------------------------------
     # native: 2130 popup, 2133 keyboard, 2134 history, 2131 main.
+    def _open_history():
+        app.history.append(("google", "person_record", "nguồi_record", True))
+        app.open_history_window()
+
     for surface, opener, title in (
             # the source language is passed RESOLVED, as the app's own
             # call sites do (`res.source_language_code or src`), so the
@@ -289,7 +293,10 @@ def main() -> int:
                                           "người_record", "google", "vi",
                                           "en"), "QTranslate"),
             ("keyboard", app.open_keyboard, "keyboard"),
-            ("history", app.open_history_window, "History"),
+            # native's capture has one entry (a favourite "person_record"
+            # and its child "nguồi_record"), so the port needs one too
+            # for the trees to be comparable
+            ("history", _open_history, "History"),
             ("dict", app.open_dict_window, "Dictionary")):
         try:
             opener()
