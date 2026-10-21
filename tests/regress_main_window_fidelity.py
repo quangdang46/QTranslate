@@ -157,6 +157,20 @@ if aux is not None:
        aux.winfo_manager() != "pack",
        f"the third pane is packed ({aux.winfo_height()}px)")
 
+# --- the source pane scrolls, like native's RichEdit -----------------------
+# Native grows a scrollbar when the content overflows: the capture shows
+# one on the SOURCE pane (whose help text is clipped) and none on the
+# RESULT pane (whose single line fits).
+_sbar = getattr(app, "_src_scroll", None)
+ck("the source pane has a scrollbar", _sbar is not None)
+if _sbar is not None:
+    ck("the source pane's scrollbar is SHOWN (the help text overflows)",
+       bool(_sbar.grid_info()),
+       "the scrollbar is hidden although the content does not fit")
+    ck("the source pane's scrollbar scrolls the source",
+       _sbar.cget("command") != "",
+       repr(_sbar.cget("command")))
+
 # --- the pane toggles actually toggle ---------------------------------------
 # `toggle_pane` reads `_panes["src"]` / `_panes["mid"]`; the builder used
 # to REPLACE the whole dict, so both were None and Ctrl+F1/F2 did nothing.

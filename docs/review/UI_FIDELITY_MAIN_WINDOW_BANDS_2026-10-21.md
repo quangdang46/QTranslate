@@ -134,13 +134,18 @@ That had two consequences, both fixed here:
 ## 6. What is still different
 
 - **The result pane is empty on boot** where native shows
-  "No data returned (timeout while sending data)." Native has attempted a
-  translation by then; the port has not.
+  "No data returned (timeout while sending data)." That is **not** native
+  translating on boot: native RESTORES the result pane from
+  `Contents.EditTranslation` on boot
+  (`D10_SPOTCHECK_Contents_2026-10-10.md` §4), and on the capture machine
+  the saved value was the error message left by a timed-out translation.
+  The port restores the same key — it had nothing to restore, because off
+  Windows its settings file never persisted at all (see §5).
 - **The service strip is 19 px** where native's is 27, and the port's
   window is 516 px wide against native's 516 — the same width, a
   different strip height.
-- **The port has no vertical scrollbar on the source pane**; native's is
-  scrollable.
+- **The service strip is 19 px** where native's is 27 (the port's cells
+  are 16 px icons with 8 pt labels; native's strip is taller).
 - **The title bars differ**, because macOS draws different chrome.
 
 ---

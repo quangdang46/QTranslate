@@ -225,13 +225,17 @@ the port below, both at the same width:
   the third pane (1018) COLLAPSED to zero height and no suggestion band
   at all, so both are now shown only when they have content, and the
   source pane takes native's 153 px.
-- The port's result pane is empty on boot where native shows
-  "No data returned (timeout while sending data.)" — native has attempted a
-  translation by then; the port has not.
+- ~~The port's result pane is empty on boot where native shows
+  "No data returned (timeout while sending data.)"~~ **Closed 2026-10-21**:
+  that is native RESTORING `Contents.EditTranslation` on boot (its saved
+  value was the message left by a timed-out translation), not a
+  translation on boot. The port restores the same key; it had nothing to
+  restore because off Windows its settings file never persisted.
 - The port's window is 512 px wide where the native capture is 516 px, and
   the title bars are different because macOS draws different chrome.
-- The port has no vertical scrollbar on the source pane; native's is
-  scrollable.
+- ~~The port has no vertical scrollbar on the source pane.~~ **Closed
+  2026-10-21**: the pane grows a scrollbar when the content overflows,
+  as native's RichEdit does.
 
 ---
 
