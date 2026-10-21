@@ -138,7 +138,19 @@ The pack stores a combo's ITEMS as `[[index, text], ...]`, and `_Cw`
 stringified the list into the widget. `_Cw` now returns the raw value
 for a list, and the page resolves the two modes.
 
-### 3.7 Smaller ones
+### 3.7 The Exceptions page's entry fields were inline
+
+Native's Exceptions page (DLG176) has three buttons -- Add, Modify,
+Delete -- and they open **DLG178**, a separate "Exception" dialog with
+a Program name field plus a `...` browse button (1109), a Window class
+name field plus its own `...` (1110), and OK / Cancel. The port drew
+the two fields inline under the table, so the page had a row of inputs
+native does not have. They are now that dialog. Its Program name
+`...` opens a file chooser (native's 1112 is a ComboBoxEx32 over the
+running programs and the port has no window enumerator), and the Window
+class name `...` lists the classes already configured.
+
+### 3.8 Smaller ones
 
 * The Internet page's Timeout is native's **seconds** combo over a
   millisecond config value (native shows 10, the config holds 10000).
@@ -159,7 +171,6 @@ for a list, and the page resolves the two modes.
 | Checkbox colour | blue | blue (drawn on a canvas) | the Languages checklist is drawn, so it can be blue |
 | Popup | 265x115, header truncated with "…" | wider, header not truncated | the popup sizes itself to its header |
 | Transparency field | `15` | `217` | the *value* differs (different Options.json), the field is the same |
-| Exceptions "Add" | opens DLG178, a small entry dialog | inline fields under the table | the dialog was not ported |
 | Dictionary window (DLG184) | a language combo + a search field + a `:` menu button over a large result area, with a service icon strip along the bottom | a `Word:` field + `Exact` + `Look up`, a list of the eleven dictionary services, and a result area | the port's dictionary is the XDXF one -- a different design from native's; `docs/review/DICT_TEMPLATE_NATIVE_2026-10-10.md` |
 | Popup | 265x115, header truncated with "…" | wider, header not truncated | the popup sizes itself to its header |
 | Tray menu | 2126.png | not captured | the tray menu is a Tk menu, not a window, so the window capture cannot see it |
