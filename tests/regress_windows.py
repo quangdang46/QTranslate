@@ -314,24 +314,43 @@ if HEAD_APP:
     # drew "Word:" + an entry + an "Exact" checkbutton + a "Look up"
     # button. The rest of the body is still compared line for line.
     def _row_region(lines):
-        """The two regions that were rebuilt: the window's TOP ROW, and
-        the zero-result message in the render callback.
+        """The three regions that were rebuilt: the window's TOP ROW, the
+        zero-result message in the render callback, and the BOTTOM BAND.
 
         2026-10-21, the second one: native's zero-result state is a
         MESSAGE -- "No results found for '<query>'." -- and the port
         wrote the literal "[empty]" into the result pane.
+
+        2026-10-21, the third one: native's dictionary window ends with
+        a strip of the dictionary services -- one cell per service, each
+        with the service's own icon and its name clipped to the cell's
+        width -- and the port had no strip at all. The band was rebuilt
+        around the recovered icons, and the pack ORDER became the layout:
+        a slave packed with expand=True takes the whole cavity, so the
+        strip and the zoom row are packed before the result pane.
         """
         _a = next(i for i, l in enumerate(lines) if "frm = tk.Frame(w," in l)
         _b = next(i for i, l in enumerate(lines) if "mid = tk.Frame(w," in l)
         _c = next(i for i, l in enumerate(lines) if "def _show():" in l)
         _d = next(i for i, l in enumerate(lines)
                   if "after(0, _show)" in l)
-        return ((_a, _b), (_c, _d))
+        _e = next(i for i, l in enumerate(lines)
+                  if "zb = tk.Frame(w," in l)
+        return ((_a, _b), (_c, _d), (_e, len(lines)))
 
     def _keep(lines):
         _rs = _row_region(lines)
-        return [l for i, l in enumerate(lines)
-                if not any(a <= i <= b for a, b in _rs)]
+        out = []
+        for i, l in enumerate(lines):
+            if any(a <= i <= b for a, b in _rs):
+                continue
+            # The result pane's pack MOVED into the bottom band, where
+            # the band is packed ahead of it. It is not a change to the
+            # pane itself.
+            if l == 'mid.pack(fill="both", expand=True, padx=8, pady=(0, 4))':
+                continue
+            out.append(l)
+        return out
 
     o_keep = _keep(o_d)
     w_keep = _keep(w_d)
@@ -342,13 +361,11 @@ if HEAD_APP:
                 continue
             d_diffs.append("%d: HEAD=%r new=%r" % (i, x, y))
             break
-    # One extra line is allowed: the trailing `return self.win` the
-    # delegator needs (asserted separately below).
-    ck("the DictionaryView body outside the top row is identical after "
-       "the allowed substitution",
-       not d_diffs and len(w_keep) == len(o_keep) + 1,
+    ck("the DictionaryView body outside the rebuilt regions is identical "
+       "after the allowed substitution",
+       not d_diffs and len(w_keep) == len(o_keep),
        (d_diffs[0] if d_diffs else
-        "HEAD %d lines, windows.py %d" % (len(o_d), len(w_d))))
+        "HEAD %d lines, windows.py %d" % (len(o_keep), len(w_keep))))
     _row = "\n".join(w_d[_row_region(w_d)[0][0]:_row_region(w_d)[0][1]])
     ck("the dictionary row has native's language combo (1142)",
        "ttk.Combobox(frm" in _row, "no language combo")
@@ -357,6 +374,16 @@ if HEAD_APP:
        "no history arrows / menu button")
     ck("the dictionary row has native's magnifier (the lookup)",
        r"\u2315" in _row, "no magnifier")
+    _band = "\n".join(w_d[_row_region(w_d)[2][0]:_row_region(w_d)[2][1]])
+    ck("the bottom band carries native's service strip",
+       "_strip = tk.Frame(w," in _band and "dict_icons" in _band,
+       "no service strip")
+    ck("the bottom band holds the icons on the WINDOW, so they survive",
+       "w._dict_icon_images = _imgs" in _band,
+       "the PhotoImages are still a local and Tk will free them")
+    ck("the bottom band packs the strip before the result pane",
+       _band.index("_strip.pack(") < _band.index("mid.pack("),
+       "the strip is packed after an expand=True sibling")
     _msg = "\n".join(w_d[_row_region(w_d)[1][0]:_row_region(w_d)[1][1]])
     ck("the empty result shows native's message, not '[empty]'",
        "NO_RESULTS" in _msg and '"[empty]"' not in _msg,

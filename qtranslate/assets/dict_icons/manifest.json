@@ -1,0 +1,71 @@
+{
+ "note": "Dictionary-service icons recovered from the QTranslate 6.10.0 installer payload, matched by pixels against native's own dictionary strip (docs/review/native_screens/2132.png). 16x16, the size native draws them at.",
+ "provenance": {
+  "payload": "docs/review/artifacts/nsis_payload_unpacked.bin",
+  "extracted_by": "tools/_scratch/extract_dict_icons.py",
+  "matched_against": "docs/review/native_screens/2132.png",
+  "matcher": "tools/_scratch/match_dict_icons.py"
+ },
+ "size": [
+  16,
+  16
+ ],
+ "icons": {
+  "google-search": {
+   "file": "google-search.png",
+   "recovered_from": "icon_015.png",
+   "service": "Google Search"
+  },
+  "wordreference": {
+   "file": "wordreference.png",
+   "recovered_from": "icon_037.png",
+   "service": "WordReference"
+  },
+  "babylon": {
+   "file": "babylon.png",
+   "recovered_from": "icon_008.png",
+   "service": "Babylon Dictionary"
+  },
+  "multitran": {
+   "file": "multitran.png",
+   "recovered_from": "icon_023.png",
+   "service": "Multitran"
+  },
+  "imtranslator": {
+   "file": "imtranslator.png",
+   "recovered_from": "icon_019.png",
+   "service": "ImTranslator"
+  },
+  "reverso": {
+   "file": "reverso.png",
+   "recovered_from": "icon_031.png",
+   "service": "Reverso"
+  },
+  "urban": {
+   "file": "urban.png",
+   "recovered_from": "icon_033.png",
+   "service": "Urban Dictionary"
+  },
+  "lingvo": {
+   "file": "lingvo.png",
+   "recovered_from": "icon_006.png",
+   "service": "ABBYY Lingvo Live"
+  },
+  "youdao": {
+   "file": "youdao.png",
+   "recovered_from": "icon_041.png",
+   "service": "youdao"
+  },
+  "oxford": {
+   "file": "oxford.png",
+   "recovered_from": "icon_027.png",
+   "service": "Oxford Learner Dictionary"
+  },
+  "wikipedia": {
+   "file": "wikipedia.png",
+   "service": "Wikipedia",
+   "recovered_from": "not in the payload",
+   "note": "Wikipedia has NO .ico in the installer payload (19 services, 18 icons) and none in the EXE's RT_ICON resources either. Native draws a 16x16 white tile with a black serif W -- read off its own capture (2132.png, cell 4, x=134..148, y=309..324) and re-drawn from those measurements by tools/_scratch/make_wikipedia_tile.py."
+  }
+ }
+}

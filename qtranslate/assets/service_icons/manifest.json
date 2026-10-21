@@ -33,7 +33,8 @@
   },
   "youdao": {
    "file": "youdao.png",
-   "recovered_from": "icon_033.png"
+   "recovered_from": "icon_041.png",
+   "corrected_2026-10-21": "was icon_033.png -- the ORANGE 'ud', which is URBAN DICTIONARY's logo. Native's main-window strip shows the red 'y' in the youdao cell, and the block-average match puts icon_041 there. The port's strip was drawing Urban Dictionary's icon in the youdao slot."
   },
   "baidu": {
    "file": "baidu.png",

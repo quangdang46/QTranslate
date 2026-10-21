@@ -89,6 +89,22 @@ from qtranslate.placement import (  # noqa: E402
 # Options window does not have to depend on `screens.py`, the
 # standalone reference sheet.
 from qtranslate.config import LANGUAGE_COLUMNS as _LANGUAGE_COLUMNS  # noqa: E402
+# The dictionary-service icons, by service display name. Recovered from
+# the installer payload and matched against native's own dictionary strip
+# (docs/review/native_screens/2132.png) -- see
+# qtranslate/assets/dict_icons/manifest.json.
+_DICT_ICON_FILES = {
+    "Google Search": "google-search", "WordReference": "wordreference",
+    "Babylon Dictionary": "babylon", "Multitran": "multitran",
+    "ImTranslator": "imtranslator", "Reverso": "reverso",
+    "Urban Dictionary": "urban", "ABBYY Lingvo Live": "lingvo",
+    "youdao": "youdao", "Oxford Learner Dictionary": "oxford",
+    # Wikipedia has no `.ico` in the payload (19 services, 18 icons) and
+    # none in the EXE's RT_ICON either; native draws a 16x16 white tile
+    # with a black serif W, re-drawn from its own pixels by
+    # `tools/_scratch/make_wikipedia_tile.py`.
+    "Wikipedia": "wikipedia",
+}
 
 
 class HistoryView:
@@ -444,7 +460,6 @@ class DictionaryView:
         tk.Button(frm, text="\u25b6", width=2,
                   command=lambda: _hist_step(1)).pack(side="left")
         ent = tk.Entry(frm, width=28)
-        ent.pack(side="left", padx=4, fill="x", expand=True)
         ent.bind("<Return>", lambda e: go_all())
         _exact_v = tk.BooleanVar(
             value=bool(_dcfg.get("DictionaryExactSearch", True)))
@@ -464,8 +479,8 @@ class DictionaryView:
                 pass
 
         # The magnifier is the lookup; the clock opens the history.
-        tk.Button(frm, text="\u2315", width=2,
-                  command=lambda: go_all()).pack(side="left", padx=(2, 0))
+        _b_find = tk.Button(frm, text="\u2315", width=2,
+                            command=lambda: go_all())
 
         def _hist_pick():
             _h = _hist()
@@ -490,8 +505,8 @@ class DictionaryView:
                                                          padx=2)
             tk.Button(_b, text="Cancel",
                       command=_top.destroy).pack(side="right", padx=2)
-        tk.Button(frm, text="\u2317", width=2,
-                  command=_hist_pick).pack(side="left")
+        _b_hist = tk.Button(frm, text="\u2317", width=2,
+                            command=_hist_pick)
         # 1187: native's ':' menu.
         _menu = tk.Menu(w, tearoff=0)
         _menu.add_checkbutton(label="Exact search", variable=_exact_v,
@@ -499,12 +514,23 @@ class DictionaryView:
         _menu.add_separator()
         _menu.add_command(label="History", command=_hist_pick)
         _menu.add_command(label="Look up", command=lambda: go_all())
-        tk.Button(frm, text="\u22ee", width=2,
-                  command=lambda: _menu.post(
-                      frm.winfo_rootx() + frm.winfo_width() - 20,
-                      frm.winfo_rooty() + frm.winfo_height())).pack(side="left")
+        _b_menu = tk.Button(frm, text="\u22ee", width=2,
+                            command=lambda: _menu.post(
+                                frm.winfo_rootx() + frm.winfo_width() - 20,
+                                frm.winfo_rooty() + frm.winfo_height()))
+        # The three right-hand buttons are packed BEFORE the search
+        # field, and from the right edge. A slave packed with expand=True
+        # takes the whole cavity, so an entry packed first squeezed the
+        # magnifier, the clock and the ':' menu down to nothing at all --
+        # they measured 1x1 and never appeared.
+        _b_menu.pack(side="right")
+        _b_hist.pack(side="right")
+        _b_find.pack(side="right", padx=(2, 0))
+        ent.pack(side="left", padx=4, fill="x", expand=True)
         mid = tk.Frame(w, bg=_COLORS["back"])
-        mid.pack(fill="both", expand=True, padx=8, pady=(0, 4))
+        # `mid` is packed LAST (see below): a slave packed with
+        # expand=True takes the whole cavity, so anything packed after it
+        # lands off-screen. That is why the zoom row was invisible.
         pane = tk.Frame(mid, bg=_COLORS["back"])
         if _dcfg.get("ShowServicesPane", True):
             pane.pack(side="left", fill="y", padx=(0, 6))
@@ -674,12 +700,80 @@ class DictionaryView:
                 size = _font
             out.config(font=("Tahoma", max(6, size + d)))
 
+        # The bottom band: the zoom row and native's service strip. Both
+        # are packed at the very END of the builder (see below) -- the
+        # pack ORDER is the layout.
         zb = tk.Frame(w, bg=_COLORS["back"])
-        zb.pack(fill="x", padx=8, pady=(0, 8))
         tk.Button(zb, text="A-",
                   command=lambda: _zoom_by(-1)).pack(side="left")
         tk.Button(zb, text="A+",
                   command=lambda: _zoom_by(1)).pack(side="left", padx=4)
+
+        # Native's dictionary window ends with a strip of the dictionary
+        # services: one cell per service, each with the service's own
+        # icon and its name clipped to the cell's width ("G...", "W...",
+        # "B...", ...). The port had the services in a list on the left
+        # and no strip at all, so the strip is built here from the
+        # recovered icons (`qtranslate/assets/dict_icons/`) in native's
+        # order.
+        #
+        # Two things this has to get right:
+        # * The PhotoImages are held on the WINDOW, not on a local. Tk
+        #   frees an image when the last Python reference to it goes, and
+        #   a button whose image was freed draws an EMPTY BOX -- which is
+        #   exactly what the strip did before this was fixed.
+        # * The label is drawn on a fixed-width canvas, because native
+        #   clips the name at the cell edge and a Tk button would simply
+        #   grow instead of clipping.
+        import os as _os
+        _imgs = []
+        _strip = tk.Frame(w, bg=_COLORS["back"], highlightthickness=1,
+                          highlightbackground="#7e7e7e")
+        for _sid in _dorder:
+            _name = _disp.get(_sid, "id:%s" % _sid)
+            _cell = tk.Frame(_strip, bg=_COLORS["back"])
+            _cell.pack(side="left", padx=1)
+            _icon = None
+            _stem = _DICT_ICON_FILES.get(_name, "")
+            if _stem:
+                try:
+                    _p = _os.path.join(_os.path.dirname(
+                        _os.path.abspath(__file__)), "assets", "dict_icons",
+                        _stem + ".png")
+                    if _os.path.exists(_p):
+                        _ph = tk.PhotoImage(file=_p)
+                        _imgs.append(_ph)
+                        _icon = _ph
+                except Exception:
+                    _icon = None
+            if _icon is not None:
+                _b = tk.Button(_cell, image=_icon, width=16, height=16,
+                               relief="flat", bd=0,
+                               highlightthickness=0,
+                               bg=_COLORS["back"])
+            else:
+                _b = tk.Button(_cell, width=16, height=16, relief="flat",
+                               bd=0, highlightthickness=0,
+                               bg=_COLORS["back"])
+            _b.pack(side="left")
+            _cv = tk.Canvas(_cell, width=22, height=16, bg=_COLORS["back"],
+                            highlightthickness=0, bd=0)
+            _cv.create_text(1, 8, text=_name[:1] + "...", anchor="w",
+                            fill=_COLORS["text"], font=("Segoe UI", 8))
+            _cv.pack(side="left")
+
+            def _pick(_sid=_sid):
+                """Clicking a service shows that service's result."""
+                if _dlb is not None:
+                    for _i, _s in enumerate(_dorder):
+                        if _s == _sid:
+                            _dlb.selection_clear(0, "end")
+                            _dlb.selection_set(_i)
+                            break
+                go_all()
+            _b.configure(command=_pick)
+        # The images have to outlive this function.
+        w._dict_icon_images = _imgs
 
         def _manage_offline():
             # DLG 173: offline XDXF dictionary manager
@@ -747,6 +841,14 @@ class DictionaryView:
 
         tk.Button(zb, text="Dictionaries...",
                   command=_manage_offline).pack(side="left", padx=8)
+        # The pack ORDER is the layout. A slave packed with expand=True
+        # takes the whole cavity, so everything that has to stay visible
+        # is packed before `mid` -- and the service strip goes first of
+        # all, because a side="bottom" slave packed before its siblings
+        # lands on the bottom edge.
+        _strip.pack(side="bottom", fill="x", padx=4, pady=(0, 2))
+        zb.pack(side="bottom", fill="x", padx=8, pady=(0, 4))
+        mid.pack(fill="both", expand=True, padx=8, pady=(0, 4))
         return self.win
 
 
