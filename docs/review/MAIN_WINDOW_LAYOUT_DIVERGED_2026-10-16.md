@@ -56,16 +56,32 @@ size of an auxiliary/status strip rather than a body pane.
 | 2 | the pane ids | `app.py` and `win32app.py` now say `ID_SRC = 1000` / `ID_OUT = 1017`; the *old* wrong ids (`1000` = source was labelled 1017) are gone |
 | 3 | the overlay | the mic/headphone/listen buttons are `place()`d **over** the panes at their native offsets, not given a side column |
 
-**#4 (fluid vs absolute) is still open** and is the one that needs a decision
-rather than a fix: the port's bands are now *measured* against native's
-(`docs/review/UI_FIDELITY_MAIN_WINDOW_2026-10-21.md` §4). **The two extra
-16-17px bands and the source-pane height are closed 2026-10-21** by
-`UI_FIDELITY_MAIN_WINDOW_BANDS_2026-10-21.md` — native has no permanent
-suggestion band and its third pane is collapsed, and the source pane now
-takes native's measured 153px — so the residual difference is only that
-native positions its controls by absolute DU offsets while the port
-re-flows --
-which is a font-metric and layout-model question, not a mistake.
+**#4 (fluid vs absolute) is now MEASURED, and the two models agree.** The
+port's bands are measured against native's
+(`docs/review/UI_FIDELITY_MAIN_WINDOW_BANDS_2026-10-21.md` §1) and both
+have the same **seven** bands in the same order:
+
+| band | native | port (2026-10-21) |
+|---|---|---|
+| nav row | 25 | 21 |
+| source pane | 151 | 153 |
+| separator | 2 | 3 |
+| tool row | 26 | 28 |
+| result pane | 150 | 146 |
+| separator | 2 | 3 |
+| service strip | 27 | 19 |
+
+**The two extra 16-17px bands and the source-pane height are closed
+2026-10-21** by that document — native has no permanent suggestion band
+and its third pane is collapsed, and the source pane now takes native's
+measured 153px.
+
+What is left is that native positions its controls by **absolute dialog
+units** while the port re-flows, so the two agree at one window size
+and drift at another: native's source pane measures 153 px at a 423 px
+window, 145 px at 409 and 142 px at 402, while the port's is fixed at
+153 px. That is a font-metric and layout-model question, not a mistake,
+and it is the only part of #4 that is still open.
 
 The main window's own body also moved on 2026-10-21: Phase 7 (6/6) extracted
 it as `qtranslate.windows.MainWindow`, leaving thin delegators in `app.py`.
