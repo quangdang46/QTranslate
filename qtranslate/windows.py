@@ -647,7 +647,19 @@ class DictionaryView:
 
                 def _show():
                     out.delete("1.0", "end")
-                    out.insert("1.0", summary or "[empty]")
+                    # Native's zero-result state is a MESSAGE, not a
+                    # blank pane: "No results found for '<query>'."
+                    # (the string pool's own wording -- see
+                    # dict_render.NO_RESULTS). The port showed the
+                    # literal "[empty]" instead.
+                    _text = summary
+                    if not _text:
+                        try:
+                            from qtranslate import dict_render as _DR2
+                            _text = _DR2.NO_RESULTS % word_q
+                        except Exception:
+                            _text = "No results found for '%s'." % word_q
+                    out.insert("1.0", _text)
                     self.app.tag_links(
                         out, summary,
                         lambda e: self.app._click_link_dict(out, e))

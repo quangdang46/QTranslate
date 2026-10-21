@@ -314,20 +314,27 @@ if HEAD_APP:
     # drew "Word:" + an entry + an "Exact" checkbutton + a "Look up"
     # button. The rest of the body is still compared line for line.
     def _row_region(lines):
+        """The two regions that were rebuilt: the window's TOP ROW, and
+        the zero-result message in the render callback.
+
+        2026-10-21, the second one: native's zero-result state is a
+        MESSAGE -- "No results found for '<query>'." -- and the port
+        wrote the literal "[empty]" into the result pane.
+        """
         _a = next(i for i, l in enumerate(lines) if "frm = tk.Frame(w," in l)
         _b = next(i for i, l in enumerate(lines) if "mid = tk.Frame(w," in l)
-        return _a, _b
+        _c = next(i for i, l in enumerate(lines) if "def _show():" in l)
+        _d = next(i for i, l in enumerate(lines)
+                  if "after(0, _show)" in l)
+        return ((_a, _b), (_c, _d))
 
     def _keep(lines):
-        _a, _b = _row_region(lines)
+        _rs = _row_region(lines)
         return [l for i, l in enumerate(lines)
-                if not (_a <= i < _b)] + [l for i, l in enumerate(lines)
-                                          if _b <= i]
+                if not any(a <= i <= b for a, b in _rs)]
 
-    o_keep = [l for i, l in enumerate(o_d)
-              if not (_row_region(o_d)[0] <= i < _row_region(o_d)[1])]
-    w_keep = [l for i, l in enumerate(w_d)
-              if not (_row_region(w_d)[0] <= i < _row_region(w_d)[1])]
+    o_keep = _keep(o_d)
+    w_keep = _keep(w_d)
     d_diffs = []
     for i, (x, y) in enumerate(zip(o_keep, w_keep)):
         if x != y:
@@ -342,7 +349,7 @@ if HEAD_APP:
        not d_diffs and len(w_keep) == len(o_keep) + 1,
        (d_diffs[0] if d_diffs else
         "HEAD %d lines, windows.py %d" % (len(o_d), len(w_d))))
-    _row = "\n".join(w_d[_row_region(w_d)[0]:_row_region(w_d)[1]])
+    _row = "\n".join(w_d[_row_region(w_d)[0][0]:_row_region(w_d)[0][1]])
     ck("the dictionary row has native's language combo (1142)",
        "ttk.Combobox(frm" in _row, "no language combo")
     ck("the dictionary row has native's history arrows and menu",
@@ -350,6 +357,10 @@ if HEAD_APP:
        "no history arrows / menu button")
     ck("the dictionary row has native's magnifier (the lookup)",
        r"\u2315" in _row, "no magnifier")
+    _msg = "\n".join(w_d[_row_region(w_d)[1][0]:_row_region(w_d)[1][1]])
+    ck("the empty result shows native's message, not '[empty]'",
+       "NO_RESULTS" in _msg and '"[empty]"' not in _msg,
+       "the zero-result state was not changed")
     # The tail is the one allowed ADDITION: the delegator needs the window.
     ck("...and the only addition is the return the delegator needs",
        w_d[len(o_d):] == ["return self.win"]

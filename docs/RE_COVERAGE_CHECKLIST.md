@@ -98,8 +98,8 @@ grouped where only data values differ (themes, locales). This closes the P2
 
 | RE state (native) | Count | | Port state (Python) | Count |
 |---|---|---|---|---|
-| VERIFIED | 151 | | not-started | 4 |
-| INFERRED |  | | analysed |  |
+| VERIFIED | 151 | | not-started | 3 |
+| INFERRED |  | | analysed | 1 |
 | UNKNOWN | 1 | | ported | 125 |
 | UNRECOVERABLE |  | | behaviour-verified | 14 |
 |  |  | | dead:* | 9 |

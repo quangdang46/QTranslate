@@ -41,11 +41,22 @@ Consequences:
 3. This is a port-side geometry note, not an RE state change: A7 stays
    `VERIFIED`, G9 stays `UNKNOWN`.
 
-## 3. Proposed follow-up (needs a decision, not done here)
+## 3. Proposed follow-up — BOTH DONE (2026-10-21)
 
-- Replace the `"526x366"` fallback with a DU→px computation from the
+> Closed: the stale constant is gone and the harness carries the field.
+> Kept as the record of the two proposals.
+
+- ~~Replace the `"526x366"` fallback with a DU→px computation from the
   measured template (340×201 DU at MS Shell Dlg 8pt), documenting the
-  baseunit assumption.
-- Add the size-origin (`template` vs `placement (WxH at X,Y)`) to the G9
+  baseunit assumption.~~ **Done** — `qtranslate/placement.py:66` records
+  that the old constant was a stale pixel value from another template,
+  and the window sizes now come from the measured templates
+  (`placement.template_geometry()`). The DU→px factor itself is a
+  **range** (510×326 at Tahoma 8pt .. 595×376 at MS Sans Serif), so no
+  single factor is claimed.
+- ~~Add the size-origin (`template` vs `placement (WxH at X,Y)`) to the G9
   harness metadata so a future capture pair cannot silently compare a
-  fresh native window against a restored port window.
+  fresh native window against a restored port window.~~ **Done** — the
+  harness carries `size_origin`, and a mismatch is a **BLOCKED**, never a
+  FAIL. Two more protocol fields were added on 2026-07-21
+  (`capture_method`, `focus`) for the same reason.

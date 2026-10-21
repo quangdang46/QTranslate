@@ -1,5 +1,8 @@
 # Two unrecorded divergences in the dictionary card, measured from the format string
 
+> **BOTH ARE CLOSED** (2026-10-21) — see §4 below. The document is kept as the
+> record of the two gaps and of how they were settled; read §4 first.
+>
 > Read-only. Verification of `DICT_CARD_BUILDER_2026-10-10.md` (`7583a6b`)
 > against the bytes it cites. That document is correct on all four divergences
 > it lists, and the port's working-tree fix (`qtranslate/dict_render.py`)
@@ -117,3 +120,57 @@ assert "No results found for '%s'." in pool
 
 The 298/9 counts are the ones to assert; a NUL-scan gives 388/10 and is the
 mistake this section exists to prevent.
+
+---
+
+## 4. CLOSED 2026-10-21 — both divergences are settled, and the path is live
+
+Neither gap is open any more, and the third claim (that the code path is
+dead) is stale as well.
+
+**§1 — the second header slot.** Settled by reading `FUN_004253cc`'s own
+dataflow rather than by guessing between the two candidates this document
+left open. The function builds `local_8c` (the icon HTML) first and
+`local_78` (the link-or-title) second, and the card format takes them in
+that order; `ADD ESP,0x2c` after the call confirms **nine** varargs for the
+nine specifiers, so no argument is unaccounted for.
+
+| Slot | Native | Port |
+|---|---|---|
+| 1 | the service icon, `<img src="%s" style="vertical-align: middle"></img>&nbsp;` over `Services/<name>/Service.ico` | **empty** -- and that is faithful, not a gap |
+| 2 | `<a href="%s" class="qt-link-browser" title="Open in browser">%s</a>` when the service has a home page, else the bare title | **emitted** |
+
+The port emits the empty icon slot because native does: the function pushes
+the wide `"Service.ico"` at `0x0042546a`, builds the path, calls
+`GetFileAttributesW` at `0x004254c3`, and on `CMP EAX,-0x1 / JZ 0x004254e3`
+skips the `file:///` format (`PUSH 0x51e7d4`) entirely -- an absent `.ico`
+yields **no** `<img>` in slot 1, not a `Default.ico` reference (`0x522a78`
+is referenced from a different function and never appears on this path).
+Off Windows the file never exists, so the faithful port emits the same
+empty slot native would.
+
+Slot 2 is emitted, and its value is native's own `serviceLink()`: the
+per-service links table in `dict_render.py` is transcribed from each
+`services/*/Service.js`, and `""` means "native has no home page", in
+which case the bare title is emitted -- matching the `FUN_00401ec9`
+else-branch.
+
+**§2 — the empty-result message.** Emitted. `render_cards([], "hello world")`
+now yields native's `No results found for 'hello world'.` in the content
+area, with the query substituted in and escaped (it is user input reaching
+HTML). This was the more user-visible of the two, and it is closed.
+
+**§3 — "both are in the dead path today" is stale.** The card is no longer
+written to a file nothing reads: `qtranslate/windows.py:638` calls
+`DR.render_cards(cards, word_q)` and the **Dictionary window** renders it,
+so the empty-result message is user-visible today, on a lookup that matches
+every service and still yields nothing.
+
+Verified on 2026-10-21:
+
+```
+DR.render_cards([], "hello world")   ->  "No results found for 'hello world'."
+DR.render_cards([(10, "Google Search", "<p>body</p>")], "hello")
+    ->  qt-header carries <a href="https://www.google.com"
+        class="qt-link-browser" title="Open in browser">Google Search</a>
+```
