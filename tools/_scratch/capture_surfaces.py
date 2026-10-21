@@ -309,8 +309,11 @@ def main() -> int:
         print("  captured", _p.name, _b)
 
     # side-by-sides for the surfaces native captured
+    # native: 2130 popup, 2131 main, 2132 dictionary, 2133 HISTORY,
+    # 2134 KEYBOARD. (2133 and 2134 were swapped until 2026-10-21: the
+    # History window is 476x320 and the virtual keyboard is 464x198.)
     for surface, native in (("main", "2131.png"), ("popup", "2130.png"),
-                            ("keyboard", "2133.png"), ("history", "2134.png"),
+                            ("keyboard", "2134.png"), ("history", "2133.png"),
                             ("dict", "2132.png")):
         _pp = OUT / ("%s.png" % surface)
         _nn = NATIVE / native

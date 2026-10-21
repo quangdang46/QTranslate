@@ -194,10 +194,15 @@ if HEAD_APP:
 
     old_inner = nested(old)
     new_inner = nested(new_open)
+    # 2026-10-21: one closure was ADDED on purpose -- `_paint_star`, which
+    # keeps the star button showing the selection's own favourite state
+    # (native's 1173 is a star, not a text button).
+    _ADDED_CLOSURES = {"_paint_star"}
     ck("every original closure was moved, none invented",
-       old_inner == new_inner,
+       old_inner == new_inner - _ADDED_CLOSURES,
        "missing=%r extra=%r"
-       % (sorted(old_inner - new_inner), sorted(new_inner - old_inner)))
+       % (sorted(old_inner - new_inner),
+          sorted(new_inner - old_inner - _ADDED_CLOSURES)))
 
     # Bodies, compared on the normalized form so only real changes show.
     diffs = []
@@ -208,6 +213,10 @@ if HEAD_APP:
                  and c.name == name)
         a, b = normalize(ast.get_source_segment(HEAD_APP, o)), \
             normalize(ast.get_source_segment(WIN, w))
+        # `toggle_fav` gained one line: a call to the new `_paint_star`,
+        # so the star button follows the selection's favourite state.
+        if name == "toggle_fav":
+            b = [l for l in b if l.strip() != "_paint_star()"]
         if a != b:
             # Report WHERE, not a full diff -- a reader needs the line.
             for i, (x, y) in enumerate(zip(a, b)):
@@ -239,10 +248,27 @@ if HEAD_APP:
              if not isinstance(s, ast.FunctionDef)]
     w_top = [s for s in new_open.body
              if not isinstance(s, ast.FunctionDef) and not scaffolding(s)]
+    # 2026-10-21: the window's BOTTOM ROW was rebuilt against native's
+    # DLG 164, whose controls are 1067 'Clear', 1160 'Save as...', 1173
+    # (a radio with a star) and 1 'OK' (a DEFPUSHBUTTON). The port had a
+    # wide 'Favorite' TEXT button where native has a 15x14 star, and no
+    # OK button at all. The rebuilt region is excluded from the count
+    # rather than counted as a difference -- the same treatment the
+    # DictionaryView's rebuilt regions get below.
+    def _bottom_row(node, src):
+        """True for the statements that make up the window's bottom row."""
+        text = ast.get_source_segment(src, node) or ""
+        return ("1067" in text or "1160" in text or "1173" in text
+                or "_fav_btn" in text or "_star" in text
+                or "Strings\", 201" in text
+                or 'text=_Cw(3, 1, "OK")' in text)
+
+    o_top = [s for s in o_top if not _bottom_row(s, HEAD_APP)]
+    w_top = [s for s in w_top if not _bottom_row(s, WIN)]
     ck("the window's own top-level statements were moved too",
        len(o_top) == len(w_top),
        "HEAD has %d, windows.py has %d (excluding the extraction's own "
-       "scaffolding)" % (len(o_top), len(w_top)))
+       "scaffolding and the rebuilt bottom row)" % (len(o_top), len(w_top)))
     if len(o_top) == len(w_top):
         # And they are the same statements in the same order.
         same = all(type(a) is type(b) for a, b in zip(o_top, w_top))

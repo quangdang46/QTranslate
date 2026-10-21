@@ -128,20 +128,28 @@ def place_main(root, template: str = TEMPLATE_GEOMETRY) -> None:
     root.geometry(template)
 
 
-def place_aux(widget, key: str, default: str) -> None:
+def place_aux(widget, key: str, default: str) -> tuple | None:
     """Restore aux-window geometry from General.<key> blob (native
     WindowOptions/History/Dictionary/KeyboardPlacement); save on
-    close via WM_DELETE_WINDOW hook."""
+    close via WM_DELETE_WINDOW hook.
+
+    Returns the placement that was applied -- (x, y, w, h) -- or None
+    when there was no saved placement and the default was used. A window
+    that sizes itself to its content (the virtual keyboard does, like
+    native's) needs to know which of the two happened.
+    """
     try:
         from qtranslate import config as _C
         rc = decode_placement(
             _C.load().get("General", {}).get(key, ""))
     except Exception:
         rc = None
+    _applied = None
     if rc:
         x, y, w, h, _ = rc
         try:
             widget.geometry(f"{w}x{h}+{x}+{y}")
+            _applied = (x, y, w, h)
         except Exception:
             widget.geometry(default)
     else:
@@ -159,6 +167,7 @@ def place_aux(widget, key: str, default: str) -> None:
         widget.protocol("WM_DELETE_WINDOW", _close)
     except Exception:
         pass
+    return _applied
 
 
 def save_placement(key: str, widget) -> None:

@@ -39,7 +39,7 @@ from __future__ import annotations
 
 import threading
 import tkinter as tk
-from tkinter import filedialog, ttk
+from tkinter import filedialog, font as tkfont, ttk
 
 # `pyperclip` is optional (app.py imports it the same way): it is only
 # reachable under `_HAS_KEYS`, which is True only on Windows, where the
@@ -112,6 +112,29 @@ _DICT_ICON_FILES = {
 # half lines of the help text. The port's line pitch is the same
 # (14.2px against native's 14.6px), so the height transfers directly.
 SRC_PANE_PX = 153
+
+
+# The bundled native icons, cached for the life of the process. A
+# PhotoImage that goes out of scope is freed by Tk, and a button whose
+# image was freed draws NOTHING -- an empty box.
+_ICON_CACHE = {}
+
+
+def _bundle_icon(name):
+    """A bundled native icon (``qtranslate/assets/ui_icons/``) or None."""
+    if name in _ICON_CACHE:
+        return _ICON_CACHE[name]
+    photo = None
+    try:
+        import os as _os
+        _path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)),
+                              "assets", "ui_icons", name + ".png")
+        if _os.path.exists(_path):
+            photo = tk.PhotoImage(file=_path)
+    except Exception:
+        photo = None
+    _ICON_CACHE[name] = photo
+    return photo
 
 
 class HistoryView:
@@ -305,6 +328,20 @@ class HistoryView:
                 tv.selection_set(str(idx))
             except Exception:
                 pass
+            _paint_star()
+
+        def _paint_star(*_a):
+            """The star shows the selection's own favourite state."""
+            try:
+                sel = tv.selection()
+                on = False
+                if sel:
+                    idx = int(sel[0])
+                    on = bool(len(self.history[idx]) > 3
+                              and self.history[idx][3])
+                _fav_btn.config(image=(_star if on else _star_off) or "")
+            except Exception:
+                pass
 
         def clear():
             self.history.clear()
@@ -313,13 +350,28 @@ class HistoryView:
 
         frm = tk.Frame(w, bg=_COLORS["back"])
         frm.pack(pady=(0, 8))
-        tk.Button(frm, text=_T("Strings", 201, "Favorite"),
-                  command=toggle_fav).pack(side="left", padx=4)
+        # Native's DLG 164 bottom row, in the template's order:
+        # 1067 'Clear' (x=1), 1160 'Save as...' (x=54), 1173 (a radio with
+        # a star, x=130) and 1 'OK' (a DEFPUSHBUTTON, x=264). The port
+        # had a wide 'Favorite' text button where native has a 15x14 star
+        # and no OK button at all.
         tk.Button(frm, text=_Cw(3, 1067, "Clear"),
                   command=clear).pack(side="left", padx=4)
         tk.Button(frm, text=_Cw(3, 1160, "Save as..."),
                   command=self.app.on_export_history).pack(side="left",
                                                            padx=4)
+        _star = _bundle_icon("star")
+        _star_off = _bundle_icon("star_off")
+        _fav_btn = tk.Button(frm, image=(_star or ""), width=15, height=15,
+                             relief="flat", bd=0, highlightthickness=0,
+                             bg=_COLORS["back"], command=toggle_fav)
+        if _star is None:
+            _fav_btn.config(text=_T("Strings", 201, "Favorite"), width=8)
+        _fav_btn.pack(side="left", padx=4)
+        tk.Button(frm, text=_Cw(3, 1, "OK"),
+                  command=w.destroy).pack(side="right", padx=4)
+        tv.bind("<<TreeviewSelect>>", _paint_star)
+        _paint_star()
         return w
 
 
@@ -4619,11 +4671,34 @@ class MainWindow:
         Clicking a key types it into the source pane (like the native
         on-screen keyboard feeding the edit control). Key labels follow
         General.LanguageKeyboard via the JCUKEN map (17=en default).
+
+        Native's DLG 162 declares only the language combo (1064) and a
+        small static (1155) -- the KEY GRID is built at run time -- so the
+        layout is transcribed from native's own capture
+        (`docs/review/native_screens/2134.png`):
+
+            Esc | F1 F2 F3 F4 | F5 F6 F7 F8 | F9 F10 F11 F12
+            ` 1 2 3 4 5 6 7 8 9 0 - = | BkSp
+            Tab | q w e r t y u i o p [ ] \\
+            Caps | a s d f g h j k l ; ' | Enter
+            Shift | z x v b n m , . / | Shift
+            Ctrl Win Alt | (space) | AltGr Apps ^ v < >
+            [language combo]
+
+        The port had three rows of letters and a space bar: no digits, no
+        capitals, no punctuation, and nothing to type a URL with.
+
+        The keys are LABELS, not buttons: a Tk button carries a platform
+        minimum width (48 pixels for a two-character key on macOS, where
+        native's is 29), so the keys would not fit native's layout. A
+        label sizes to its text, and its padding is in pixels, so the
+        widths below are native's own.
         """
         w = tk.Toplevel(self.app.root)
         w.title(_W(7, "Virtual keyboard"))
         w.configure(bg=_COLORS["back"])
-        _place_aux(w, "WindowKeyboardPlacement", _TEMPLATE_GEOMETRY("keyboard"))
+        _applied = _place_aux(w, "WindowKeyboardPlacement",
+                              _TEMPLATE_GEOMETRY("keyboard"))
         w.attributes("-topmost", True)
         try:
             from qtranslate import config as _C
@@ -4633,24 +4708,153 @@ class MainWindow:
             _kb = 17
         try:
             from qtranslate.layout import EN2RU
-            _ru = (_kb != 17)
         except Exception:
-            EN2RU, _ru = {}, False
-        rows = ["qwertyuiop", "asdfghjkl", "zxcvbnm"]
-        for row in rows:
+            EN2RU = {}
+        _ru = [(_kb != 17)]
+        _shift = [False]
+        _caps = [False]
+        _kf = ("Tahoma", 8)
+        _font = tkfont.Font(family="Tahoma", size=8)
+
+        def _type(ch):
+            try:
+                self.app.src.insert("insert", ch)
+            except Exception:
+                pass
+
+        def _label(ch):
+            """The key's glyph in the selected language."""
+            if EN2RU and _ru[0] and len(ch) == 1:
+                return EN2RU.get(ch, ch)
+            return ch
+
+        def _edit(fn):
+            try:
+                fn(self.app.src)
+            except Exception:
+                pass
+
+        # (label, width in pixels, what it does)
+        _SPEC = (
+            (("Esc", 34, None), ("F1", 30, None), ("F2", 30, None),
+             ("F3", 30, None), ("F4", 30, None), ("", 14, None),
+             ("F5", 30, None), ("F6", 30, None), ("F7", 30, None),
+             ("F8", 30, None), ("", 14, None),
+             ("F9", 30, None), ("F10", 30, None), ("F11", 30, None),
+             ("F12", 30, None)),
+            (("`", 29, "char"), ("1", 29, "char"), ("2", 29, "char"),
+             ("3", 29, "char"), ("4", 29, "char"), ("5", 29, "char"),
+             ("6", 29, "char"), ("7", 29, "char"), ("8", 29, "char"),
+             ("9", 29, "char"), ("0", 29, "char"), ("-", 29, "char"),
+             ("=", 29, "char"), ("BkSp", 56, "back")),
+            (("Tab", 44, "tab"), ("q", 29, "char"), ("w", 29, "char"),
+             ("e", 29, "char"), ("r", 29, "char"), ("t", 29, "char"),
+             ("y", 29, "char"), ("u", 29, "char"), ("i", 29, "char"),
+             ("o", 29, "char"), ("p", 29, "char"), ("[", 29, "char"),
+             ("]", 29, "char"), ("\\", 29, "char")),
+            (("Caps", 52, "caps"), ("a", 29, "char"), ("s", 29, "char"),
+             ("d", 29, "char"), ("f", 29, "char"), ("g", 29, "char"),
+             ("h", 29, "char"), ("j", 29, "char"), ("k", 29, "char"),
+             ("l", 29, "char"), (";", 29, "char"), ("'", 29, "char"),
+             ("Enter", 64, "enter")),
+            (("Shift", 62, "shift"), ("z", 29, "char"), ("x", 29, "char"),
+             ("c", 29, "char"), ("v", 29, "char"), ("b", 29, "char"),
+             ("n", 29, "char"), ("m", 29, "char"), (",", 29, "char"),
+             (".", 29, "char"), ("/", 29, "char"), ("Shift", 68, "shift")),
+            (("Ctrl", 40, None), ("Win", 34, None), ("Alt", 34, None),
+             ("Space", 118, "space"), ("AltGr", 40, None), ("Apps", 40, None),
+             ("^", 29, "up"), ("v", 29, "down"), ("<", 29, "left"),
+             (">", 29, "right")),
+        )
+        _rows = []
+        for _row in _SPEC:
             frm = tk.Frame(w, bg=_COLORS["back"])
             frm.pack()
-            for ch in row:
-                label = EN2RU.get(ch, ch) if _ru else ch
-                tk.Button(frm, text=label, width=3,
-                          command=lambda c=label: self.app.src.insert(
-                              "insert", c)).pack(
-                    side="left", padx=1, pady=1)
-        frm = tk.Frame(w, bg=_COLORS["back"])
-        frm.pack(pady=2)
-        tk.Button(frm, text="Space", width=20,
-                  command=lambda: self.app.src.insert("insert", " ")).pack(
-            side="left", padx=2)
-        tk.Button(frm, text="⌫", width=5,
-                  command=lambda: self.app.src.delete(
-                      "insert-1c", "insert")).pack(side="left", padx=2)
+            _rows.append(frm)
+            for _lbl, _wd, _kind in _row:
+                if _kind == "char":
+                    _cmd = (lambda c=_lbl: _type(
+                        c.upper() if (_shift[0] or _caps[0]) else _label(c)))
+                elif _kind == "space":
+                    _cmd = lambda: _type(" ")
+                elif _kind == "back":
+                    _cmd = lambda: _edit(
+                        lambda t: t.delete("insert-1c", "insert"))
+                elif _kind == "enter":
+                    _cmd = lambda: _type("\n")
+                elif _kind == "tab":
+                    _cmd = lambda: _type("\t")
+                elif _kind == "caps":
+                    _cmd = lambda: _caps.__setitem__(0, not _caps[0])
+                elif _kind == "shift":
+                    _cmd = lambda: _shift.__setitem__(0, not _shift[0])
+                elif _kind == "up":
+                    _cmd = lambda: _edit(lambda t: t.mark_set(
+                        "insert", "insert lineup"))
+                elif _kind == "down":
+                    _cmd = lambda: _edit(lambda t: t.mark_set(
+                        "insert", "insert linedown"))
+                elif _kind == "left":
+                    _cmd = lambda: _edit(lambda t: t.mark_set(
+                        "insert", "insert -1 chars"))
+                elif _kind == "right":
+                    _cmd = lambda: _edit(lambda t: t.mark_set(
+                        "insert", "insert +1 chars"))
+                else:
+                    _cmd = lambda: None
+                if not _lbl:
+                    # a gap between the function-key groups, as in native
+                    tk.Frame(frm, bg=_COLORS["back"], width=_wd).pack(
+                        side="left", padx=1, pady=1)
+                    continue
+                _padx = max(1, (_wd - _font.measure(_lbl)) // 2)
+                lb = tk.Label(frm, text=_lbl, font=_kf, bg=_COLORS["back"],
+                              fg=_COLORS["text"], relief="raised",
+                              borderwidth=1, padx=_padx, pady=5,
+                              cursor="hand2")
+                lb.pack(side="left", padx=1, pady=1)
+                lb.bind("<Button-1>", lambda e, c=_cmd: c())
+
+        # 1064: the language combo, bottom-left, as in native's capture.
+        _row = tk.Frame(w, bg=_COLORS["back"])
+        _row.pack(anchor="w", padx=2, pady=2)
+        try:
+            from qtranslate.services.google_translate import SUPPORTED_LANGS \
+                as _SL
+            _names = [LANG_DISPLAY.get(c, c) for c in _SL]
+        except Exception:
+            _names = []
+        _combo = ttk.Combobox(_row, values=list(_names), width=24,
+                              state="readonly", font=_kf)
+        try:
+            _combo.set(_names[_kb] if 0 <= _kb < len(_names)
+                       else (_names[0] if _names else ""))
+        except Exception:
+            pass
+        _combo.pack(side="left")
+        _combo.bind("<<ComboboxSelected>>",
+                     lambda e: self._keyboard_language(_combo.get(), _names))
+        # Native's keyboard window is sized to its runtime key grid, not to
+        # the template (the capture is 464x198 where the template
+        # converts to 539x191). A SAVED placement still wins.
+        if not _applied:
+            try:
+                w.update_idletasks()
+                _gw = max(f.winfo_reqwidth() for f in _rows)
+                w.geometry("%dx%d" % (_gw, w.winfo_reqheight()))
+            except Exception:
+                pass
+        return w
+
+    def _keyboard_language(self, name, names):
+        """Persist the keyboard's language and switch the key labels."""
+        try:
+            from qtranslate import config as _C
+            import json as _j
+            full = _C.load()
+            idx = names.index(name) if name in names else 17
+            full.setdefault("General", {})["LanguageKeyboard"] = idx
+            with open(_C.DEFAULT_PATH, "w", encoding="utf-8") as f:
+                _j.dump(full, f, ensure_ascii=False, indent=1)
+        except Exception:
+            pass

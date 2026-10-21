@@ -33,6 +33,14 @@
   "new": {
    "file": "new.png",
    "recovered_from": "ui_06_0_16x16.png"
+  },
+  "star": {
+   "file": "star.png",
+   "recovered_from": "ui_21_0_16x16.png"
+  },
+  "star_off": {
+   "file": "star_off.png",
+   "recovered_from": "ui_20_0_16x16.png"
   }
  }
 }
