@@ -55,9 +55,14 @@ reason instead of stopping the app.
 | macOS | `~/Library/Application Support/QTranslate/extensions` |
 
 Copy a folder that carries a `manifest.json` into that directory and
-restart the app. `examples/extensions/hello_provider/` is a complete
-worked example: it registers one provider, `hello`, that needs no
-network.
+restart the app. `examples/extensions/` holds three complete worked
+examples, one per capability:
+
+| Example | Capability | What it does |
+|---|---|---|
+| `hello_provider/` | `provider` | registers a provider, `hello`, that needs no network |
+| `custom_theme/` | `theme` | registers a theme, `paper` |
+| `custom_ui/` | `ui` | contributes to the system-tray menu and the top panel |
 
 ```bash
 # Windows

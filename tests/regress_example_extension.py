@@ -117,6 +117,53 @@ try:
 finally:
     shutil.rmtree(tmp, ignore_errors=True)
 
+# --- the theme and UI examples load too -------------------------------------
+# Phase 6's "remaining demos" were a custom theme and a custom UI
+# contribution; both are shipped now, so both are exercised the same way
+# the provider example is.
+for _name, _caps in (("custom_theme", "theme"), ("custom_ui", "ui")):
+    _ex = os.path.join(ROOT, "examples", "extensions", _name)
+    ck("the %s example is shipped" % _caps, os.path.isdir(_ex), _ex)
+    if not os.path.isdir(_ex):
+        continue
+    with open(os.path.join(_ex, "manifest.json"), encoding="utf-8") as _fh:
+        _man = json.load(_fh)
+    ck("the %s example declares the %r capability" % (_caps, _caps),
+       _caps in _man.get("capabilities", []), str(_man.get("capabilities")))
+    ck("the %s example's sdk_version matches the SDK's" % _caps,
+       EX._sdk_major(_man.get("sdk_version", "")) == EX.SDK_MAJOR,
+       repr(_man.get("sdk_version")))
+    _tmp2 = tempfile.mkdtemp(prefix="qtx-example-")
+    try:
+        _exts2 = os.path.join(_tmp2, "extensions")
+        os.makedirs(_exts2)
+        shutil.copytree(_ex, os.path.join(_exts2, _name))
+        _mgr = EX.ExtensionManager()
+        _out = _mgr.load_dir(_exts2)
+        ck("the %s example loads" % _caps,
+           len(_out) == 1 and _out[0]["status"] == "loaded", str(_out))
+        if _caps == "theme":
+            ck("the theme example registers its theme",
+               "paper" in _mgr.themes(), str(sorted(_mgr.themes())))
+            _rec = _mgr.themes().get("paper")
+            ck("the theme record has the Common section",
+               isinstance(_rec, dict) and "Common" in _rec, repr(_rec)[:60])
+        else:
+            _reg = _mgr.ui_slots
+            ck("the UI example contributes to the tray menu",
+               not _reg.is_empty("menu", "tray"),
+               str(_reg.entries("menu", "tray")))
+            ck("...and to the top panel",
+               not _reg.is_empty("panel", "top"),
+               str(_reg.entries("panel", "top")))
+            _w = _reg.winner("menu", "tray")
+            ck("the tray contribution answers when called",
+               callable(_w["contribution"])
+               and "example extension" in _w["contribution"](),
+               repr(_w["contribution"]))
+    finally:
+        shutil.rmtree(_tmp2, ignore_errors=True)
+
 if fail:
     print("FAIL %d/%d" % (len(fail), n[0]))
     for f in fail:

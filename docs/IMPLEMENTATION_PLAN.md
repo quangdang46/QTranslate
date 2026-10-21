@@ -267,9 +267,14 @@ QTranslate.
 > `tests/regress_extension_vendored_dep.py` (11) and the override UI
 > from Phase 3 landed (see `EXTENSION_OVERRIDE_2026-10-15.md`).
 >
-> **What is still missing:** the remaining demos (a custom **theme** and
-> a custom **UI** contribution) are not shipped as example folders, and
-> the SDK is not published under its own package name.
+> **The remaining demos shipped 2026-10-21:** `examples/extensions/`
+> now holds one worked example per capability — `hello_provider/`
+> (provider), `custom_theme/` (theme) and `custom_ui/` (ui) — each with
+> its own README, and `tests/regress_example_extension.py` (27
+> assertions) runs all three the way a user would.
+>
+> **What is still missing:** the SDK is not published under its own
+> package name (`qtranslate-sdk`), and the demo is not a GUI walkthrough.
 
 ## Phase 7 — UI redesign & fidelity pass
 
