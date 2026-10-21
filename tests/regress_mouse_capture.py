@@ -78,13 +78,36 @@ try:
 except Exception as e:  # pragma: no cover - would be a defect
     ck("stop() never raises off Windows", False, repr(e))
 
-# --- the hook body must reference both the gate and the swap normalization ---
+# --- the hook must apply the real gates (behaviour, not source text) ---
+# These three used to be `inspect.getsource` greps.  A text assertion is not
+# a behaviour assertion: the greps were satisfied while the hook never fired
+# for a left-handed user and never consulted the exclusion list.  Drive the
+# hook's state machine instead.
 src = M.start.__doc__ or ""
 import inspect  # noqa: E402
-body = inspect.getsource(M.start)
-ck("hook consults should_capture", "should_capture" in body)
-ck("hook consults SM_SWAPBUTTON via _buttons_swapped",
-   "_buttons_swapped" in body)
+
+_state = {"down": None}
+_fired = []
+_probe_ok = lambda x, y: (0x1234, None, False, True)
+_probe_excluded = lambda x, y: (0x1234, None, True, True)
+for _w in (M.WM_LBUTTONDOWN, M.WM_LBUTTONUP):
+    M.process_mouse_event(_state, _w, 10, 20, _probe_ok,
+                          lambda x, y: _fired.append((x, y)))
+ck("hook applies the capture gate (allowed window -> capture fires)",
+   _fired == [(10, 20)], repr(_fired))
+
+_state2 = {"down": None}
+_fired2 = []
+for _w in (M.WM_LBUTTONDOWN, M.WM_LBUTTONUP):
+    M.process_mouse_event(_state2, _w, 10, 20, _probe_excluded,
+                          lambda x, y: _fired2.append((x, y)))
+ck("hook applies the exclusion gate (excluded window -> no capture)",
+   _fired2 == [], repr(_fired2))
+
+# The handedness normalization must not stop the primary button from firing
+# (the old grep only proved the symbol was mentioned somewhere).
+ck("hook fires for the primary button in both handedness settings",
+   M.primary_button_messages() == (M.WM_LBUTTONDOWN, M.WM_LBUTTONUP))
 ck("documented as a mechanism delta",
    "mechanism delta" in (inspect.getsource(M).split('"""')[1]))
 

@@ -43,6 +43,10 @@ WIN = io.open(os.path.join(_REPO, "qtranslate", "windows.py"),
              encoding="utf-8").read()
 BOTH = APP + "\n" + WIN
 tree = ast.parse(APP)
+# Phase 7 (6/6): the OCR overlay's handlers moved to windows.py with the
+# rest of the main window. Walk BOTH trees so the overlay pins still cover
+# the body rather than the delegator.
+wtree = ast.parse(WIN)
 
 # --- 1. per-key language defaults -------------------------------------
 m = re.search(r"_defs = (\{[^}]*\})", BOTH)
@@ -106,17 +110,18 @@ ck("the old body is gone from app.py (not duplicated)",
    "a leftover copy would silently diverge from windows.py")
 
 # --- 3. OCR overlay keys -----------------------------------------------
-ov = [x for x in ast.walk(tree) if isinstance(x, ast.FunctionDef)
-      and x.name == "_keys"]
+ov = [x for x in list(ast.walk(tree)) + list(ast.walk(wtree))
+      if isinstance(x, ast.FunctionDef) and x.name == "_keys"]
 ck("overlay defines _keys handler", len(ov) == 1)
-gp = [x for x in ast.walk(tree) if isinstance(x, ast.FunctionDef)
-      and x.name == "_grab_png"]
+gp = [x for x in list(ast.walk(tree)) + list(ast.walk(wtree))
+      if isinstance(x, ast.FunctionDef) and x.name == "_grab_png"]
 ck("overlay shares one _grab_png capture path", len(gp) == 1)
-ng = [x for x in ast.walk(tree) if isinstance(x, ast.FunctionDef)
-      and x.name == "_nudge"]
+ng = [x for x in list(ast.walk(tree)) + list(ast.walk(wtree))
+      if isinstance(x, ast.FunctionDef) and x.name == "_nudge"]
 ck("overlay defines _nudge for arrows", len(ng) == 1)
 if ov:
-    seg = ast.get_source_segment(APP, ov[0])
+    seg = ast.get_source_segment(APP if ov[0] in ast.walk(tree) else WIN,
+                                 ov[0])
     for k in ('"s"', '"c"', '"return"', '"delete"', '"escape"',
               "_grab_png", "_nudge", "SetClipboardData"):
         ck("overlay handles %s" % k, k in seg, k)

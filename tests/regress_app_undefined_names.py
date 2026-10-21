@@ -37,10 +37,19 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = io.open(os.path.join(ROOT, "qtranslate", "app.py"),
               encoding="utf-8").read()
 TREE = ast.parse(SRC)
+# Phase 7 (6/6): the bodies moved to `qtranslate/windows.py` as
+# `MainWindow`; app.py keeps delegators. The pins below follow the code.
+WIN = io.open(os.path.join(ROOT, "qtranslate", "windows.py"),
+              encoding="utf-8").read()
+WTREE = ast.parse(WIN)
+ALL_SRC = SRC + "\n" + WIN
 
 
 def _method(name):
-    for node in ast.walk(TREE):
+    # The moved bodies live in windows.py; app.py keeps the delegators, so
+    # windows.py is searched FIRST -- otherwise the pin would find a
+    # delegator and assert against its docstring.
+    for node in list(ast.walk(WTREE)) + list(ast.walk(TREE)):
         if isinstance(node, ast.FunctionDef) and node.name == name:
             return node
     return None
@@ -72,7 +81,7 @@ for node in ast.walk(TREE):
 ck("no deferred lambda reads the unbound except var 'e'",
    not _bad, str(_bad))
 ck("the speech error is captured in a local (_speech_err)",
-   "_speech_err" in SRC)
+   "_speech_err" in ALL_SRC)
 
 # --- 3. no show_popup call passes an unbound `src` ----------------------
 # `src` is a legitimate local at the hotkey/translate sites (bound from

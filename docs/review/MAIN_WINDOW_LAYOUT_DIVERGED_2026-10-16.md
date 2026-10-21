@@ -48,6 +48,25 @@ size of an auxiliary/status strip rather than a body pane.
 | **3** | Icon buttons **overlay** the panes (`Fav`/`Speech`/`Play` sit *inside* 1000 at y=64; `Play` inside 1017 at y=134) — no side column | The port puts mic/listen in a **side frame** (`srcside.pack(side="right")`, `outside.pack(side="right")`), i.e. a dedicated column beside each pane, plus a hardcoded `tk.Frame(outside, height=120)` spacer | The buttons take horizontal space out of the pane instead of floating over it, so the panes are narrower than native's and the widget order reads differently. |
 | **4** | Absolute placement — every control has explicit x/y/cx/cy | `_build_main` is **fluid** (`pack()` ×28, zero `place()`) | Native's controls are at fixed DU offsets; the port re-flows. With a saved placement of `530×430` (this machine) rather than the template's `595×376`, the port's fluid result and native's absolute layout diverge further. |
 
+**Status 2026-10-21.** Divergences **1**, **2** and **3** are closed:
+
+| # | Closed by | How |
+|---|---|---|
+| 1 | the third pane | `auxfrm` / `self.aux` (a 1-line RichEdit) is built, with its own separator — the port's band structure now matches native's: source, tool row, result, aux, service strip |
+| 2 | the pane ids | `app.py` and `win32app.py` now say `ID_SRC = 1000` / `ID_OUT = 1017`; the *old* wrong ids (`1000` = source was labelled 1017) are gone |
+| 3 | the overlay | the mic/headphone/listen buttons are `place()`d **over** the panes at their native offsets, not given a side column |
+
+**#4 (fluid vs absolute) is still open** and is the one that needs a decision
+rather than a fix: the port's bands are now *measured* against native's
+(`docs/review/UI_FIDELITY_MAIN_WINDOW_2026-10-21.md` §4), and the residual
+difference is two extra 16-17px bands and a different source-pane height --
+which is a font-metric and layout-model question, not a mistake.
+
+The main window's own body also moved on 2026-10-21: Phase 7 (6/6) extracted
+it as `qtranslate.windows.MainWindow`, leaving thin delegators in `app.py`.
+The split is verified behaviour-preserving: the widget geometry before and
+after is **identical**, band for band.
+
 ## 3. Why it looks "lệch" rather than "incomplete"
 
 The port is a plausible two-pane translator and every widget exists, so a

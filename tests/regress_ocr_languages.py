@@ -76,11 +76,18 @@ for anchor in ("ParsedResults", "ParsedText", "ErrorMessage"):
 # --- 2. the port's map covers all of them ------------------------------
 APP = io.open(os.path.join(REPO, "qtranslate", "app.py"),
               encoding="utf-8").read()
-start = APP.find("_lang = {")
-ck("app.py builds the OCR language map", start >= 0)
+# Phase 7 (6/6): the OCR language map moved to `qtranslate/windows.py`
+# with the rest of the main window; app.py keeps a delegator.
+WIN = io.open(os.path.join(REPO, "qtranslate", "windows.py"),
+              encoding="utf-8").read()
+# The map moved to windows.py with the rest of the main window; the pin
+# follows the code.
+_src = WIN if "_lang = {" in WIN else APP
+start = _src.find("_lang = {")
+ck("the port builds the OCR language map", start >= 0)
 if start >= 0:
-    end = APP.find(".get(", start)
-    block = APP[start:end if end > 0 else start + 2000]
+    end = _src.find(".get(", start)
+    block = _src[start:end if end > 0 else start + 2000]
     # Read the literal back as DATA, not with eval -- the point of this
     # suite is that the map is checked, so the checker must not be able to
     # execute whatever it finds. ast.literal_eval parses a plain dict.

@@ -1,8 +1,22 @@
 # Phase 7 — the `App` split, as a transcription with mechanical proof
 
-> Status: **5 of 6 classes landed 2026-10-16; `MainWindow` deliberately not
-> started.** No runtime behavior changed — every moved body is proven
-> identical, not reviewed as identical.
+> Status: **6 of 6 classes landed** — the five on 2026-10-16, and
+> `MainWindow` on 2026-10-21. No runtime behavior changed: every moved body
+> is proven identical, not reviewed as identical.
+>
+> **2026-10-21: the sixth class, `MainWindow`.** The main window is not a
+> window hanging off the app — it *is* the app's own window — so it is
+> handed the live `App` and reads and writes its state there, exactly as the
+> other five classes are handed `root` and `app`. 50 methods moved; `app.py`
+> keeps a thin delegator for each. The rewrite rules: `self.<attr>` ->
+> `self.app.<attr>`; an assignment target is always the App's; an internal
+> call to another moved method stays internal. Verified
+> behaviour-preserving: the widget geometry before and after the split is
+> **identical**, band for band, and the suite is green (128 suites, 0
+> failed). The deferral's stated reason — "with the screenshot ban there is
+> no fidelity signal to verify a restructure by" — no longer holds: the
+> port's own window can now be captured on this host
+> (`docs/review/UI_FIDELITY_MAIN_WINDOW_2026-10-21.md`).
 
 ## 1. Why this needed a discipline, not a go-ahead
 

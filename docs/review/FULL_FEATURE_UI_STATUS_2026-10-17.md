@@ -132,7 +132,7 @@ Doc: `docs/review/OFF_WINDOWS_SUITE_FAILURES_2026-10-17.md`.
 ## 6. What was deliberately NOT done (recorded, not claimed)
 
 - **G9 part (b):** not a code change, not a pixel diff. The G9 harness (`tools/g9_screenshot_diff.py`) exists and works mechanically (`selftest` 15/15), but `compare` needs genuine native+port captures under identical protocol (`ui_state`, `input`, `size_origin`).
-- **MainWindow (Phase 7, 6th class):** deliberately not started — it's a restructure of the code the UI is built from, not a window hanging off it.
+- ~~**MainWindow (Phase 7, 6th class):**~~ done 2026-10-21 — `qtranslate.windows.MainWindow` holds the 50 moved methods, `app.py` keeps a thin delegator each; the widget geometry before and after the split is identical band for band.
 - **macOS adapters (Phase 4):** scoped out — no macOS machine to wrap yet; `platforms.py` already reports `unavailable` honestly off-Windows.
 - **Override UI (Phase 3):** the policy lives in `extensions.py` (headless); the thin tkinter dialog (`override_ui.py`) exists but the winner-picking UI is scoped out.
 - **Vendored-dep isolation (D17):** loader puts the extensions folder on `sys.path`; collisions remain possible — a product decision, not RE work.

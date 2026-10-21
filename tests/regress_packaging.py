@@ -185,7 +185,7 @@ ck("the override dialog imports override_ui from its own module",
              r"                ExtensionManager, write_saved_overrides\)\n"
              r"(?:            #[^\n]*\n)+"
              r"            from qtranslate import override_ui\n",
-             appsrc) is not None,
+             appsrc + winsrc) is not None,
    "importing a submodule from a package that does not export it is "
    "invisible to PyInstaller's Analysis AND fails at runtime")
 

@@ -5,8 +5,9 @@ Faithful to DLG 129 in QTranslate.exe `.rsrc` (340x201, 17 controls):
     with service names; same function: click = switch + re-translate,
     cf. FUN_0045CDBA service switcher)
   - source RichEdit (id1000) / result RichEdit (id1017) with separator
-    (native also has a third small pane, id1018 -- not built here; see
-    docs/review/MAIN_WINDOW_LAYOUT_DIVERGED_2026-10-16.md)
+    (native's third small pane, id1018, is built too -- it is the `aux`
+    strip; the main window's own body lives in
+    `qtranslate.windows.MainWindow` since Phase 7 (6/6))
     statics (id1134/1135)
   - lang row: src ComboBox (id1001) + swap `<` (id1015) + tgt ComboBox
     (id1002) + Translate (id1004)
@@ -515,8 +516,13 @@ class App:
         # Restores General.WindowMainPlacement when saved, else the
         # DLG129 template size (TEMPLATE_GEOMETRY).
         _place_main(root)
+        # Phase 7 (6/6): the main window's body lives in
+        # ``qtranslate.windows.MainWindow``. It is handed the live App, so
+        # every widget and every piece of state stays where it was.
+        from qtranslate.windows import MainWindow
+        self._main = MainWindow(self)
         self._init_opt_flags()
-        self._build_main()
+        self._main._build_main()
 
     # -- main window body: mirrors the real QTranslate main window --
     # nav row (back/forward + service link + overflow menu),
@@ -524,1162 +530,279 @@ class App:
     # toolbar (paste, Auto-Detect, swap, target combo, Translate,
     # mic/headphone), result pane, service icon strip at the bottom.
     def _build_main(self):
-        bg = _COLORS["back"]
-        # nav row
-        nav = tk.Frame(self.root, bg=bg)
-        nav.pack(fill="x", padx=4, pady=(2, 0))
-        tk.Button(nav, text="◀", width=3,
-                  command=self.hist_back).pack(side="left", padx=1)
-        tk.Button(nav, text="▶", width=3,
-                  command=self.hist_forward).pack(side="left", padx=1)
-        self.svc_link = tk.Label(nav, text=self.service.title(),
-                                 fg="blue", cursor="hand2", bg=bg,
-                                 font=("Segoe UI", 9, "underline"))
-        self.svc_link.pack(side="left", padx=6)
-        self.svc_link.bind("<Button-1>",
-                           lambda e: self.open_service_page())
-        tk.Button(nav, text="⋮", width=3,
-                  command=self.show_nav_menu).pack(side="right", padx=1)
-        # source pane (id1000) + mic/headphone overlay at right edge.
-        # The id here used to read 1017; DLG129 has three RichEdits and the
-        # two Play buttons settle the mapping -- 1027 sits inside the top
-        # pane, so the top pane (1000) is the source.
-        # docs/review/MAIN_WINDOW_LAYOUT_DIVERGED_2026-10-16.md
-        srcfrm = tk.Frame(self.root, bg="white")
-        srcfrm.pack(fill="x", padx=4)
-        self._panes = getattr(self, "_panes", {})
-        self._panes["src"] = srcfrm
-        # taller source pane: native shows ~9 lines (through
-        # "Ctrl+N => Clear current translation")
-        self.src = tk.Text(srcfrm, height=12, wrap="word", bg="white",
-                           fg="black", insertbackground="black",
-                           font=_pane_font(), borderwidth=0,
-                           highlightthickness=0, undo=True,
-                           maxundo=100)
-        self.src.pack(side="left", fill="x", expand=True)
-        # Contents.EditSource cache wins over the default help text
-        # (native restores last session panes on boot).
-        try:
-            from qtranslate import config as _CC
-            _es = (_CC.load().get("Contents", {}).get("EditSource")
-                   or "").strip()
-        except Exception:
-            _es = ""
-        self.src.insert("1.0", _es if _es else self.default_source_text())
-        self.src.bind("<KeyRelease>", lambda e: self.on_type())
-        # General.MidSplitterPos: native drag-sash between the source and
-        # result panes, persisted as a pixel/line offset (was previously
-        # unconsumed -- no sash existed at all).
-        try:
-            from qtranslate import config as _CMS
-            _mid_pos = int(_CMS.load().get("General", {}).get(
-                "MidSplitterPos", 0) or 0)
-        except Exception:
-            _mid_pos = 0
-        if _mid_pos:
-            try:
-                self.src.config(height=max(3, min(30, 12 + _mid_pos)))
-            except Exception:
-                pass
-        # Native OVERLAYS these buttons ON the source pane's bottom-right
-        # corner rather than giving them a side column: DLG129 puts `Fav`
-        # 1029 / `Speech` 1030 / `Play` 1027 at y=64-77, which is INSIDE
-        # pane 1000 (y 16-82), 5 DU below its bottom edge and 13/28/43 DU
-        # left of its right edge. A side column steals width from the pane
-        # and changes the reading order, which is the visual "lệch" the user
-        # reported. `place()` with relx/rely reproduces the overlay.
-        # docs/review/MAIN_WINDOW_LAYOUT_DIVERGED_2026-10-16.md
-        # Native overlays a MICROPHONE and a HEADPHONE on the source pane's
-        # bottom-right (native glyph boxes x 453..464 and 474..487 in a pane
-        # whose right edge is at ~500, bottoms 9px above the pane's bottom).
-        # The icons are native's own, recovered from the EXE's RT_ICON
-        # resources and bundled under qtranslate/assets/ui_icons/.
-        _ovl = dict(borderwidth=0, bg="white", relief="flat",
-                    highlightthickness=0, takefocus=0)
-        for _i, (_key, _fn, _dx) in enumerate(
-                (("mic", self.on_mic, 36), ("headphone", self.on_listen, 13))):
-            _photo = self._ui_icon(_key)
-            b = tk.Button(srcfrm, command=_fn, **_ovl)
-            if _photo is not None:
-                b.config(image=_photo, width=SVC_ICON_PX, height=SVC_ICON_PX)
-            else:
-                b.config(text="Mic" if _key == "mic" else "Head",
-                         font=("Tahoma", 7), width=6)
-            b.place(relx=1.0, rely=1.0, anchor="se", x=-_dx, y=-9)
-        # Drag sash: resize the source pane, persisting the delta to
-        # General.MidSplitterPos (native mid-pane splitter).
-        sash = tk.Frame(self.root, bg="#c1c1c2", height=3,
-                        cursor="sb_v_double_arrow")
-        sash.pack(fill="x")
-        self._mid_splitter_base = [_mid_pos]
+        """The main window (Phase 7 `MainWindow`).
 
-        def _sash_drag(e):
-            try:
-                delta_lines = int(e.y_root
-                                  - sash.winfo_rooty()) // 14
-            except Exception:
-                return
-            try:
-                cur = self.src.cget("height")
-                new_h = max(3, min(30, cur + delta_lines))
-                if new_h != cur:
-                    self.src.config(height=new_h)
-                    self._mid_splitter_base[0] = new_h - 12
-            except Exception:
-                pass
-
-        def _sash_release(_e=None):
-            try:
-                from qtranslate import config as _CMS2
-                import json as _jms
-                full = _CMS2.load()
-                full.setdefault("General", {})["MidSplitterPos"] = \
-                    self._mid_splitter_base[0]
-                with open(_CMS2.DEFAULT_PATH, "w",
-                          encoding="utf-8") as fh:
-                    _jms.dump(full, fh, ensure_ascii=False, indent=1)
-            except Exception:
-                pass
-
-        sash.bind("<B1-Motion>", _sash_drag)
-        sash.bind("<ButtonRelease-1>", _sash_release)
-        # toolbar row: [paste] [kebab] [Auto-Detect] [swap] [target]
-        # [Translate] — no mic/headphone here (they live on the panes)
-        bar = tk.Frame(self.root, bg=bg)
-        bar.pack(fill="x", padx=4, pady=2)
-        # GRID, not pack: native's tool row always fits -- the Translate
-        # button sits at the right edge (native x 438..510 of 516). Packed
-        # left to right, the row overflowed a 516px window and the Translate
-        # button was cut off (the port drew it at x 481..497). The two
-        # combobox columns carry the weight, so they share whatever is left.
-        bar.columnconfigure(2, weight=1)
-        bar.columnconfigure(4, weight=1)
-        # id1021 "New": clears source for a fresh translation
-        tk.Button(bar, text="\U0001f4cb", width=3,
-                  command=self.on_new).grid(row=0, column=0, sticky="w", padx=1)
-        tk.Button(bar, text="⋮", width=3,
-                  command=self.show_nav_menu).grid(row=0, column=1, sticky="w",
-                                                   padx=1)
-        # width is in CHARACTERS for a ttk combobox; native's Auto-Detect
-        # combo is 150px wide and shows the whole label, so 13 characters
-        # clipped it to "Auto-Detec".
-        self.src_lang = ttk.Combobox(bar, values=_lang_names(LANGS),
-                                     width=16, state="readonly")
-        self.src_lang.set(LANG_DISPLAY.get(self.source, "Auto-Detect"))
-        self.src_lang.grid(row=0, column=2, sticky="ew", padx=2)
-        tk.Button(bar, text="⇄", width=3, font=("Segoe UI Symbol", 10),
-                  command=self.on_swap).grid(row=0, column=3, sticky="w",
-                                             padx=1)
-        self.tgt = ttk.Combobox(bar, values=_lang_names(TO_LANGS,
-                                                        False),
-                                width=18, state="readonly")
-        self.tgt.set(LANG_DISPLAY.get(self.target, self.target))
-        self.tgt.grid(row=0, column=4, sticky="ew", padx=2)
-        self.tgt.bind("<<ComboboxSelected>>",
-                      lambda e: self._persist_langs(
-                          LANG_CODES.get(self.src_lang.get().strip(),
-                                         "auto"),
-                          LANG_CODES.get(self.tgt.get().strip(), "vi")))
-        self.src_lang.bind("<<ComboboxSelected>>",
-                           lambda e: self._persist_langs(
-                               LANG_CODES.get(
-                                   self.src_lang.get().strip(), "auto"),
-                               LANG_CODES.get(self.tgt.get().strip(),
-                                              "vi")))
-        tk.Button(bar, text=_Cw(1, 1004, "Translate"),
-                  command=self.on_go).grid(row=0, column=5, sticky="e", padx=4)
-        self.suggest = tk.Label(self.root, text="", bg=bg, fg="gray",
-                                anchor="w", font=("Tahoma", 7),
-                                cursor="hand2")
-        self.suggest.pack(fill="x", padx=4, pady=0)
-        self.suggest.bind("<Button-1>",
-                          lambda e: self.accept_suggestion())
-        self._suggestions = []
-        # result pane (id1017) + headphone overlay bottom-right.
-        # Was labelled 1018; that is DLG129's small BOTTOM pane, which this
-        # port does not build. Native also has no side column for these
-        # buttons -- they overlay the pane.
-        # docs/review/MAIN_WINDOW_LAYOUT_DIVERGED_2026-10-16.md
-        outfrm = tk.Frame(self.root, bg="white")
-        outfrm.pack(fill="both", expand=True, padx=4)
-        self._panes["mid"] = outfrm
-        # ShowTopPane/Middle/Services (native 0x8071/0x8064/0x8065,
-        # Ctrl+F1/F2/F3): srcfrm=top, bar+outfrm=middle, strip=services.
-        # _gp must be bound here, before the first Show* test below reads it.
-        try:
-            from qtranslate import config as _CP
-            _gp = _CP.load().get("General", {})
-        except Exception:
-            _gp = {}
-        try:
-            if not _gp.get("ShowTopPane", True) and self._panes.get(
-                    "src") is not None:
-                self._panes["src"].pack_forget()
-            if not _gp.get("ShowMiddlePane", True):
-                outfrm.pack_forget()
-        except Exception:
-            pass
-        self.out = tk.Text(outfrm, height=6, wrap="word", bg="white",
-                           fg="black", insertbackground="black",
-                           font=_pane_font(), borderwidth=0,
-                           highlightthickness=0, undo=True,
-                           maxundo=100)
-        self.out.pack(side="left", fill="both", expand=True)
-        self.out.bind("<Button-3>", self.show_result_menu)
-        # Contents.EditTranslation / EditBackTranslation cache: restore the
-        # last result and back-translation content on boot. These are TWO
-        # SEPARATE native fields (+0x178 / +0x17c,
-        # D10_SPOTCHECK_Contents_2026-10-10.md §2) feeding TWO SEPARATE
-        # controls (1017 / 1018), so they are restored to their own panes
-        # instead of being concatenated with a separator the image does not
-        # contain.
-        try:
-            from qtranslate import config as _CET
-            _cc = _CET.load().get("Contents", {})
-            _et = (_cc.get("EditTranslation") or "").strip()
-            _ebt = (_cc.get("EditBackTranslation") or "").strip()
-            if _et:
-                self.out.insert("1.0", _et)
-            if _ebt:
-                # held for the aux pane, which is built just below
-                self._ebt_restore = _ebt
-        except Exception:
-            pass
-        # Same overlay as the source pane: native's `Play` 1028 sits INSIDE
-        # result pane 1017 (y 101-152) at y=134, 5 DU below its bottom and
-        # 13 DU left of its right edge.
-        # Native draws the same HEADPHONE icon on the result pane's
-        # bottom-right as on the source pane's (the glyph is native's own,
-        # recovered from the EXE's RT_ICON resources); the port used a music
-        # note, which is a different symbol entirely.
-        _b = tk.Button(outfrm, borderwidth=0, bg="white", relief="flat",
-                       highlightthickness=0, takefocus=0,
-                       command=self.on_listen)
-        _hp = self._ui_icon("headphone")
-        if _hp is not None:
-            _b.config(image=_hp, width=SVC_ICON_PX, height=SVC_ICON_PX)
-        else:
-            _b.config(text="♫", width=4, font=("Tahoma", 9))
-        _b.place(relx=1.0, rely=1.0, anchor="se", x=-13, y=-9)
-        # --- the THIRD pane: DLG129's RichEdit50W id 1018, cy=27 DU ---
-        # Native has three text panes, and the three Contents keys map onto
-        # them in order: EditSource->1000, EditTranslation->1017,
-        # EditBackTranslation->1018 (D10_SPOTCHECK_Contents_2026-10-10.md
-        # §2). This pane was missing from the port entirely, and the
-        # back-translation was instead concatenated into the result pane with
-        # a separator that is not in the image. Built here, below the result
-        # pane with its own Play button beside it, exactly like the template's
-        # [1017][separator 1135][1018] stack.
-        self._panes["aux_sep"] = tk.Frame(self.root, bg="#c1c1c2", height=3)
-        auxfrm = tk.Frame(self.root, bg="white")
-        self._panes["aux"] = auxfrm
-        auxfrm.pack(fill="both", expand=False, padx=4)
-        self.aux = tk.Text(auxfrm, height=1, wrap="word", bg="#fafafa",
-                           fg="#333333", insertbackground="#333333",
-                           font=_pane_font(), borderwidth=0,
-                           highlightthickness=0, undo=False)
-        self.aux.pack(side="left", fill="both", expand=True)
-        self.aux.bind("<Button-3>", self.show_result_menu)
-        auxside = tk.Frame(auxfrm, bg="white")
-        auxside.pack(side="right", fill="y", padx=2)
-        # Play 1028 sits beside the RESULT pane natively; the aux pane has no
-        # Play of its own, so this is a spacing frame, not a control.
-        tk.Frame(auxside, bg="white", height=4).pack()
-        # restore the cached back-translation into the new pane
-        _ebt0 = getattr(self, "_ebt_restore", "") or ""
-        if _ebt0:
-            self.aux.insert("1.0", _ebt0)
-        # service icon strip at the bottom (icons from Services/*/Service.ico,
-        # click = switch + re-translate like FUN_0045CDBA; middle-click =
-        # browser, right-click = multi-select per help.txt Actions).
-        # Native shows icon above a short name (Go.., Mi.., Pr.., ...).
-        strip = tk.Frame(self.root, bg=bg)
-        strip.pack(fill="x", padx=4, pady=(2, 4))
-        self._panes = {"src": None, "mid": None, "svc": strip,
-                       "bar": None}
-        if not _gp.get("ShowServicesPane", True):
-            strip.pack_forget()
-        self.svc_btns = {}
-        self.svc_icons = {}
-        # short names exactly like native: Go.. Mi.. Pr.. Ba.. Ya..
-        # yo.. Ba.. Pa.. De.. (icon folder names truncated to 2 chars)
-        _SHORT = {"google": "Go..", "microsoft": "Mi..", "promt": "Pr..",
-                  "babylon": "Ba..", "yandex": "Ya..", "youdao": "yo..",
-                  "baidu": "Ba..", "naver": "Pa..", "deepl": "DeepL",
-                  "reverso": "Re.."}
-        for name in self.ordered_services():
-            # native: small icon + short name side-by-side in one row
-            cell = tk.Frame(strip, bg=bg)
-            cell.pack(side="left", padx=2)
-            # width/height are PIXELS here because the button always ends up
-            # with an image (see _load_svc_icon). A text button would read
-            # them as characters and be 10x too wide.
-            b = tk.Button(cell, width=SVC_ICON_PX, height=SVC_ICON_PX,
-                          borderwidth=0, bg=bg, activebackground=bg,
-                          highlightthickness=0,
-                          command=lambda n=name: self.switch_service(n))
-            b.pack(side="left")
-            b.bind("<Button-2>",
-                   lambda e, n=name: self.open_service_page_n(n))
-            b.bind("<Button-3>",
-                   lambda e, n=name: self.toggle_multi_service(n))
-            tk.Label(cell, text=_SHORT.get(name, name[:2] + ".."), bg=bg,
-                     fg="black", font=("Tahoma", 8)).pack(side="left",
-                                                          padx=(1, 0))
-            self.svc_btns[name] = b
-            self._load_svc_icon(name, b)
-        self._mark_service()
-        # key bindings mirror help.txt Main window hotkeys
-        self.root.bind("<Control-Return>", lambda e: self.on_go())
-        self.root.bind("<Control-k>", lambda e: self.open_keyboard())
-        self.root.bind("<Control-n>", lambda e: self.on_clear())
-        self.root.bind("<Control-d>", lambda e: self.open_dict_window())
-        self.root.bind("<Control-h>", lambda e: self.open_history_window())
-        self.root.bind("<Control-i>", lambda e: self.on_swap())
-        self.root.bind("<F1>", lambda e: self.show_hotkeys())
-        # Shift+Esc = reset pair to auto-detected (native 0x8052 Reset)
-        self.root.bind("<Shift-Escape>", lambda e: self.reset_pair())
-        # Ctrl+1..9 = 1..9th service (accel 0x8042-0x804A),
-        # Ctrl+Shift+1..9 = select language pair (help.txt)
-        for _i in range(1, 10):
-            self.root.bind(f"<Control-Key-{_i}>",
-                           lambda e, i=_i: self.slot_service(i))
-            self.root.bind(f"<Control-Shift-Key-{_i}>",
-                           lambda e, i=_i: self.slot_pair(i))
-        # Ctrl+Tab / Ctrl+Shift+Tab = next/prev service (accel 170)
-        self.root.bind("<Control-Tab>", lambda e: self.cycle_service(1))
-        self.root.bind("<Control-Shift-Tab>",
-                       lambda e: self.cycle_service(-1))
-        self.root.bind("<Control-space>",
-                       lambda e: self.accept_suggestion())
-        # Alt+Left/Right = history back/forward, Ctrl+Up = copy
-        # translation to input (help.txt Main window hotkeys)
-        self.root.bind("<Alt-Left>", lambda e: self.hist_back())
-        self.root.bind("<Alt-Right>", lambda e: self.hist_forward())
-        self.root.bind("<Control-Up>", lambda e: self.copy_to_source())
-        # F11 = fullscreen toggle (help.txt Main window hotkeys)
-        self.root.bind("<F11>", lambda e: self.toggle_fullscreen())
-        # native pane toggles Ctrl+F1/F2/F3 (0x8071/0x8064/0x8065)
-        self.root.bind("<Control-F1>",
-                       lambda e: self.toggle_pane("ShowTopPane", "src"))
-        self.root.bind("<Control-F2>",
-                       lambda e: self.toggle_pane("ShowMiddlePane", "mid"))
-        self.root.bind("<Control-F3>",
-                       lambda e: self.toggle_pane("ShowServicesPane",
-                                                   "svc"))
-        # Ctrl+B = back-translation toggle+run (accel 0x8034);
-        # Ctrl+Alt+1..9 = dictionary with n-th service (help.txt)
-        self.root.bind("<Control-b>", lambda e: self.toggle_backtr())
-        for _i in range(1, 10):
-            self.root.bind(f"<Control-Alt-Key-{_i}>",
-                           lambda e, i=_i: self.dict_with_service(i))
-        # Shift+1..9 = dictionary with n-th service (accel 0x8082-0x808A)
-        for _i in range(1, 10):
-            self.root.bind(f"<Shift-Key-{_i}>",
-                           lambda e, i=_i: self.dict_with_service(i))
-        # Ctrl+Left/Right = prev/next service (accel 0x8069/0x806A)
-        self.root.bind("<Control-Left>",
-                       lambda e: self.cycle_service(-1))
-        self.root.bind("<Control-Right>",
-                       lambda e: self.cycle_service(1))
-
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main._build_main()
     def toggle_backtr(self):
-        try:
-            v = not self.opt_backtr.get()
-            self.opt_backtr.set(v)
-            from qtranslate import config as _C
-            import json as _j
-            full = _C.load()
-            full.setdefault("General", {})["BackTranslation"] = v
-            with open(_C.DEFAULT_PATH, "w",
-                      encoding="utf-8") as f:
-                _j.dump(full, f, ensure_ascii=False, indent=1)
-            if v:
-                self.on_go()
-        except Exception:
-            pass
+        """The main window (Phase 7 `MainWindow`).
 
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.toggle_backtr()
     def dict_with_service(self, n):
-        """Ctrl+Alt+1..9: dictionary lookup with the n-th service."""
-        try:
-            names = self.ordered_services()
-            if 1 <= n <= len(names):
-                self.switch_service(names[n - 1])
-            self.open_dict_window()
-        except Exception:
-            pass
+        """The main window (Phase 7 `MainWindow`).
 
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.dict_with_service(n)
     def toggle_fullscreen(self):
-        try:
-            cur = bool(self.root.attributes("-fullscreen"))
-            self.root.attributes("-fullscreen", not cur)
-        except Exception:
-            pass
+        """The main window (Phase 7 `MainWindow`).
 
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.toggle_fullscreen()
     def reset_pair(self):
-        """Shift+Esc: reset language pair to auto-detected (native
-        Reset 0x8052 + AutoDetection first/second)."""
-        try:
-            from qtranslate import config as _C
-            _ad = _C.load().get("AutoDetection", {})
-            _table = list(__import__(
-                "qtranslate.services.google_translate",
-                fromlist=["SUPPORTED_LANGS"]).SUPPORTED_LANGS)
-            _fi, _si = _ad.get("LanguageFirst", 57), _ad.get(
-                "LanguageSecond", 17)
-            _fn = {c: n for c, n in LANG_DISPLAY.items()}
-            _rev = {_table[i] if 0 <= i < len(_table) else "auto"
-                    for i in (_fi, _si)}
-            self.src_lang.set(_fn.get(_table[_fi]
-                                      if 0 <= _fi < len(_table) else "auto",
-                                      "Auto-Detect"))
-            self.tgt.set(_fn.get(_table[_si]
-                                 if 0 <= _si < len(_table) else "vi",
-                                 "Vietnamese"))
-        except Exception:
-            self.src_lang.set("Auto-Detect")
+        """The main window (Phase 7 `MainWindow`).
 
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.reset_pair()
     def slot_service(self, n):
-        """Ctrl+1..9: switch to the n-th service (accel 0x8042-0x804A;
-        native Ctrl+Alt+1..9 dictionary variant opens dict window)."""
-        try:
-            names = self.ordered_services()
-            if 1 <= n <= len(names):
-                self.switch_service(names[n - 1])
-        except Exception:
-            pass
+        """The main window (Phase 7 `MainWindow`).
 
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.slot_service(n)
     def slot_pair(self, n):
-        """Ctrl+Shift+1..9: select the n-th language pair."""
-        try:
-            from qtranslate import config as _C
-            pairs = _C.load().get("LanguagePairs", [])
-            if not (1 <= n <= len(pairs)):
-                return
-            a, b = pairs[n - 1]
-            _table = list(__import__(
-                "qtranslate.services.google_translate",
-                fromlist=["SUPPORTED_LANGS"]).SUPPORTED_LANGS)
-            ca = _table[a] if 0 <= a < len(_table) else "auto"
-            cb = _table[b] if 0 <= b < len(_table) else "vi"
-            self.src_lang.set(LANG_DISPLAY.get(ca, ca))
-            self.tgt.set(LANG_DISPLAY.get(cb, cb))
-        except Exception:
-            pass
+        """The main window (Phase 7 `MainWindow`).
 
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.slot_pair(n)
     def cycle_service(self, direction=1):
-        """Ctrl+Tab / Ctrl+Shift+Tab: next/previous service (accel 170
-        0x8069/0x806A + Ctrl+1..9 slots 0x8042-0x804A)."""
-        try:
-            names = self.ordered_services()
-            if not names:
-                return
-            i = names.index(self.service) if self.service in names else 0
-            self.switch_service(names[(i + direction) % len(names)])
-        except Exception:
-            pass
+        """The main window (Phase 7 `MainWindow`).
 
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.cycle_service(direction)
     def toggle_pane(self, key, pane):
-        """Show/hide a main-window pane, persisting General.<key>."""
-        try:
-            w = (self._panes or {}).get(pane)
-            if w is None:
-                return
-            from qtranslate import config as _C
-            import json as _j
-            full = _C.load()
-            cur = bool(full.setdefault("General", {}).get(key, True))
-            full["General"][key] = not cur
-            with open(_C.DEFAULT_PATH, "w",
-                      encoding="utf-8") as f:
-                _j.dump(full, f, ensure_ascii=False, indent=1)
-            if cur:
-                w.pack_forget()
-            else:
-                if pane == "mid":
-                    w.pack(fill="both", expand=True, padx=4)
-                else:
-                    w.pack(fill="x", padx=4, pady=(2, 4)
-                           if pane == "svc" else 0)
-        except Exception:
-            pass
+        """The main window (Phase 7 `MainWindow`).
 
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.toggle_pane(key, pane)
     def open_service_page_n(self, name):
-        import webbrowser
-        try:
-            _open_url(_dict_service_link(name))
-        except Exception as e:
-            self.render(f"[error] {e}")
+        """The main window (Phase 7 `MainWindow`).
 
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.open_service_page_n(name)
     def _ui_icon(self, name):
-        """The bundled native UI icon (``mic`` / ``headphone``), or None.
+        """The main window (Phase 7 `MainWindow`).
 
-        These are native's own icons, recovered from the QTranslate 6.10.0
-        EXE's RT_ICON resources and committed under
-        ``qtranslate/assets/ui_icons/`` — the same 16x16 bitmaps the native
-        main window draws. The result is cached on the app so the
-        PhotoImage is not rebuilt per button.
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
         """
-        cache = getattr(self, "_ui_icons", None)
-        if cache is None:
-            cache = {}
-            self._ui_icons = cache
-        if name in cache:
-            return cache[name]
-        photo = None
-        try:
-            import os
-            path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                "assets", "ui_icons", name + ".png")
-            if os.path.exists(path):
-                photo = tk.PhotoImage(file=path)
-                if (photo.width() != SVC_ICON_PX
-                        or photo.height() != SVC_ICON_PX):
-                    photo = photo.subsample(
-                        max(1, photo.width() // SVC_ICON_PX),
-                        max(1, photo.height() // SVC_ICON_PX))
-        except Exception:
-            photo = None
-        cache[name] = photo
-        return photo
-
+        return self._main._ui_icon(name)
     def _load_svc_icon(self, name, button):
-        """Give the strip button the service's own icon.
+        """The main window (Phase 7 `MainWindow`).
 
-        The icons are the native ones, recovered from the QTranslate 6.10.0
-        installer payload and committed under
-        ``qtranslate/assets/service_icons/`` — pixel-identical to the icons
-        the native main window draws in its bottom strip (see
-        ``docs/review/rea/service_icons/_pairs.png``). Bundling them is what
-        makes the strip render on every platform: the previous code only ever
-        looked at ``C:/Program Files (x86)/QTranslate/Services/<Name>/
-        Service.ico``, so off Windows no icon was loaded at all.
-
-        The button is always given an IMAGE, because Tk reads a button's
-        ``width``/``height`` as **characters** for a text button and as
-        **pixels** for an image button. Without an image, ``width=22`` became
-        a 230-pixel-wide text button and six of the nine services were pushed
-        off the end of the strip.
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
         """
-        import os
-        photo = None
-        bundled = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                "assets", "service_icons", name + ".png")
-        if name == "bing":
-            bundled = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                    "assets", "service_icons",
-                                    "microsoft.png")
-        try:
-            if os.path.exists(bundled):
-                photo = tk.PhotoImage(file=bundled)
-                if photo.width() != SVC_ICON_PX or photo.height() != SVC_ICON_PX:
-                    photo = photo.subsample(
-                        max(1, photo.width() // SVC_ICON_PX),
-                        max(1, photo.height() // SVC_ICON_PX))
-            else:
-                # Fall back to a real installed copy (Windows).
-                pats = {
-                    "google": "Google Translate", "deepl": "DeepL",
-                    "yandex": "Yandex", "baidu": "Baidu", "naver": "Naver",
-                    "youdao": "youdao", "bing": "Microsoft Translator",
-                    "microsoft": "Microsoft Translator", "promt": "Promt",
-                    "reverso": "Reverso", "babylon": "Babylon",
-                }
-                folder = pats.get(name, name)
-                ico = os.path.join(
-                    "C:/Program Files (x86)/QTranslate/Services",
-                    folder, "Service.ico")
-                if not os.path.exists(ico):
-                    button.config(text=name[:4])
-                    return
-                try:
-                    from PIL import Image, ImageTk
-                    im = Image.open(ico)
-                    im = im.convert("RGBA").resize((SVC_ICON_PX, SVC_ICON_PX),
-                                                    Image.LANCZOS)
-                    photo = ImageTk.PhotoImage(im)
-                except Exception:
-                    photo = tk.PhotoImage(file=ico)
-                    w, h = photo.width(), photo.height()
-                    if w > 24 or h > 24:
-                        photo = photo.subsample(max(1, w // SVC_ICON_PX),
-                                                max(1, h // SVC_ICON_PX))
-            self.svc_icons[name] = photo  # keep ref
-            button.config(image=photo, text="")
-        except Exception:
-            try:
-                button.config(text=name[:4])
-            except Exception:
-                pass
+        return self._main._load_svc_icon(name, button)
 
     # -- option flags live in the nav kebab menu (show_nav_menu); the
     # native main window has NO menubar (tray + context menus only),
     # so there is deliberately no _build_menu here. --
     def _init_opt_flags(self):
-        try:
-            from qtranslate import config as _C0
-            _g0 = _C0.load().get("General", {})
-        except Exception:
-            _g0 = {}
-        self.opt_detect = tk.BooleanVar(
-            value=bool(_g0.get("AlwaysDetectLanguage", False)))
-        self.opt_backtr = tk.BooleanVar(
-            value=bool(_g0.get("BackTranslation", False)))
+        """The main window (Phase 7 `MainWindow`).
 
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main._init_opt_flags()
     def show_result_menu(self, event=None):
-        """Result-pane context menu (native history-item menu Id 3:
-        Open/Copy-text/Copy-translation/Delete/Listen)."""
-        m = tk.Menu(self.root, tearoff=False)
-        m.add_command(label=_T("Menus", 20, "Copy translation", menu=3),
-                      command=self.on_copy)
-        m.add_command(label=_T("Menus", 40, "Listen to text", menu=3),
-                      command=self.on_listen)
-        m.add_separator()
-        m.add_command(label=_T("Menus", 30, "Clear", menu=3),
-                      command=self.on_clear)
-        try:
-            m.tk_popup(self.root.winfo_pointerx(),
-                       self.root.winfo_pointery())
-        finally:
-            m.grab_release()
+        """The main window (Phase 7 `MainWindow`).
+
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.show_result_menu(event)
 
     # -- main-window helpers (mirror native behavior) --
     def ordered_services(self):
-        """Exact native strip order: Go.. Mi.. Pr.. Ba.. Ya.. yo.. Ba..
-        Pa.. De.. = ServicesOrder [1,5,12,13,11,26,28,30,31] verified
-        against the real Options.json + screenshot (Pr before Ya)."""
-        try:
-            from qtranslate import config as C
-            ids = C.services_order(None)
-            try:
-                dis = set(C.load().get("DisabledServices", []))
-            except Exception:
-                dis = set()
-            names = [C.SERVICE_NAMES.get(i) for i in ids
-                     if i not in dis]
-            # exactly the native strip — no extras appended
-            return [n for n in names if n in TRANSLATORS]
-        except Exception:
-            return ["google", "microsoft", "promt", "babylon", "yandex",
-                    "youdao", "baidu", "naver", "deepl"]
+        """The main window (Phase 7 `MainWindow`).
 
-    def default_source_text(self):
-        """Default source-pane text: version line + full help.txt.
-
-        The header is native's ``%s %s %s`` format (`FUN_0042F2CC`) with its
-        three fields ``QTranslate`` / ``Version `` / ``6.10.0``. The middle
-        field is a **resource string that ends in a space** (recovered from
-        the image's UTF-16 string table, immediately after ``\\x08About``:
-        ``"Version "``), and the format joins with a space too -- so the
-        rendered line carries **two** spaces before the version number:
-        ``QTranslate Version  6.10.0``. Collapsing them to one (as this did
-        until 2026-10-16) reads better and is not what native shows.
-
-        Verified side-by-side vs the native window: it shows the whole
-        help.txt (Global hotkeys + Main window hotkeys + mouse modes +
-        Actions), not just 4 lines.
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
         """
-        lines = ["QTranslate Version  6.10.0", ""]
-        # The native's own help.txt, recovered from the installer payload and
-        # bundled under qtranslate/assets/locales/en/. Reading it from the
-        # Windows install only meant the port opened with a three-line stub
-        # everywhere else -- and the native opens with the WHOLE help text
-        # (Global hotkeys + Main window hotkeys + mouse modes + Actions).
-        import os
-        for _path in (
-                os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                             "assets", "locales", "English", "help.txt"),
-                "C:/Program Files (x86)/QTranslate/Locales/English/help.txt"):
-            try:
-                with open(_path, encoding="utf-8-sig") as f:
-                    lines.append(f.read().strip())
-                return "\n".join(lines)
-            except Exception:
-                continue
-        lines.append("Double Ctrl => Show main window\n"
-                     "Ctrl+Q => Translate selected text\n"
-                     "Ctrl+E => Listen to selected text")
-        return "\n".join(lines)
+        return self._main.ordered_services()
+    def default_source_text(self):
+        """The main window (Phase 7 `MainWindow`).
 
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.default_source_text()
     def hist_back(self):
-        """Alt+Left: previous translation in session history."""
-        try:
-            idx = getattr(self, "_hist_pos", len(self.history)) - 1
-            if 0 <= idx < len(self.history):
-                self._hist_pos = idx
-                _, src, res = self.history[idx][:3]
-                self.src.delete("1.0", "end")
-                self.src.insert("1.0", src)
-                self.render(res)
-        except Exception:
-            pass
+        """The main window (Phase 7 `MainWindow`).
 
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.hist_back()
     def hist_forward(self):
-        """Alt+Right: next translation in session history."""
-        try:
-            idx = getattr(self, "_hist_pos",
-                           len(self.history) - 1) + 1
-            if 0 <= idx < len(self.history):
-                self._hist_pos = idx
-                _, src, res = self.history[idx][:3]
-                self.src.delete("1.0", "end")
-                self.src.insert("1.0", src)
-                self.render(res)
-        except Exception:
-            pass
+        """The main window (Phase 7 `MainWindow`).
 
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.hist_forward()
     def copy_to_source(self):
-        """Ctrl+Up: copy translation to the text input box."""
-        try:
-            txt = self.out.get("1.0", "end").strip()
-            if txt:
-                self.src.delete("1.0", "end")
-                self.src.insert("1.0", txt)
-        except Exception:
-            pass
+        """The main window (Phase 7 `MainWindow`).
 
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.copy_to_source()
     def open_service_page(self):
-        import webbrowser
-        try:
-            _open_url(_dict_service_link(self.service))
-        except Exception as e:
-            self.render(f"[error] {e}")
+        """The main window (Phase 7 `MainWindow`).
 
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.open_service_page()
     def show_nav_menu(self):
-        # Main-window options menu (native FUN_0042DF28 IDs): toggles
-        # write back to General so hotkeys/popup honor them too.
-        def _set_general(key, value):
-            try:
-                from qtranslate import config as _C
-                import json as _j
-                full = _C.load()
-                full.setdefault("General", {})[key] = bool(value)
-                with open(_C.DEFAULT_PATH, "w",
-                          encoding="utf-8") as f:
-                    _j.dump(full, f, ensure_ascii=False, indent=1)
-            except Exception:
-                pass
+        """The main window (Phase 7 `MainWindow`).
 
-        def _toggle_detect():
-            v = not self.opt_detect.get()
-            self.opt_detect.set(v)
-            _set_general("AlwaysDetectLanguage", v)
-
-        def _toggle_backtr():
-            v = not self.opt_backtr.get()
-            self.opt_backtr.set(v)
-            _set_general("BackTranslation", v)
-
-        m = tk.Menu(self.root, tearoff=False)
-        m.add_command(label=_T("Menus", 10, "Show dictionary window",
-                               menu=5),
-                      command=self.open_dict_window)
-        m.add_command(label=_T("Menus", 20, "Show history window",
-                               menu=5),
-                      command=self.open_history_window)
-        m.add_separator()
-        m.add_checkbutton(label=_T("Menus", 30, "Always detect language",
-                                   menu=4),
-                          variable=self.opt_detect,
-                          command=_toggle_detect)
-        m.add_checkbutton(label=_T("Menus", 30, "Back translation",
-                                   menu=1),
-                          variable=self.opt_backtr,
-                          command=_toggle_backtr)
-
-        def _toggle_phonetic():
-            # ReadPhonetically (menu Id 1/50). FUN_0042ED3F consumes it to
-            # append "\r\r" + "Romanization: " + entry[5] to the RESULT
-            # PANE when the phonetics field is non-empty (J7) — the flag is
-            # not a TTS control, though the earlier "no-op for TTS" note
-            # implied that. do_translate applies the append for Google,
-            # whose `dt=rm` response fills the phonetics field; providers
-            # that return no romanization get no append, as natively.
-            try:
-                from qtranslate import config as _C
-                import json as _j
-                full = _C.load()
-                cur = not full.setdefault("General", {}).get(
-                    "ReadPhonetically", False)
-                full["General"]["ReadPhonetically"] = cur
-                with open(_C.DEFAULT_PATH, "w",
-                          encoding="utf-8") as f:
-                    _j.dump(full, f, ensure_ascii=False, indent=1)
-            except Exception:
-                pass
-
-        try:
-            from qtranslate import config as _CP
-            _ph = bool(_CP.load().get("General", {}).get(
-                "ReadPhonetically", False))
-        except Exception:
-            _ph = False
-        _ph_v = tk.BooleanVar(value=_ph)
-        m.add_checkbutton(label=_T("Menus", 50, "Read phonetically",
-                                   menu=1),
-                          variable=_ph_v, command=_toggle_phonetic)
-
-        def _toggle_instant():
-            try:
-                from qtranslate import config as _C
-                import json as _j
-                full = _C.load()
-                cur = not full.setdefault("General", {}).get(
-                    "InstantTranslation", False)
-                full["General"]["InstantTranslation"] = cur
-                with open(_C.DEFAULT_PATH, "w",
-                          encoding="utf-8") as f:
-                    _j.dump(full, f, ensure_ascii=False, indent=1)
-            except Exception:
-                pass
-
-        try:
-            from qtranslate import config as _CI
-            _inst = bool(_CI.load().get("General", {}).get(
-                "InstantTranslation", False))
-        except Exception:
-            _inst = False
-        _inst_v = tk.BooleanVar(value=_inst)
-        m.add_checkbutton(label=_T("Menus", 20, "Instant translation",
-                                   menu=1),
-                          variable=_inst_v, command=_toggle_instant)
-
-        # --- native Extended section + remaining menu commands -----------
-        # Each checkbutton flips and persists the same Options.json key the
-        # native menu item writes (ids from FUN_0042DF28).
-        def _persist_bool(section, key):
-            def _flip():
-                try:
-                    from qtranslate import config as _C
-                    import json as _j
-                    full = _C.load()
-                    sec = full.setdefault(section, {})
-                    sec[key] = not sec.get(key, False)
-                    with open(_C.DEFAULT_PATH, "w",
-                              encoding="utf-8") as f:
-                        _j.dump(full, f, ensure_ascii=False, indent=1)
-                except Exception:
-                    pass
-            return _flip
-
-        def _bool_var(section, key):
-            try:
-                from qtranslate import config as _C
-                return tk.BooleanVar(
-                    value=bool(_C.load().get(section, {}).get(key, False)))
-            except Exception:
-                return tk.BooleanVar(value=False)
-
-        # Spell checking (0x802b)
-        _spell_v = _bool_var("General", "SpellChecking")
-        m.add_checkbutton(label=_T("Menus", 25, "Spell checking", menu=1),
-                          variable=_spell_v,
-                          command=lambda: (_spell_v.set(not _spell_v.get()),
-                                           _persist_bool("General",
-                                                         "SpellChecking")()))
-        # Clear input on Drag && Drop (0x8063)
-        _drag_v = _bool_var("General", "ClearOnDragDrop")
-        m.add_checkbutton(label=_T("Menus", 60, "Clear input on Drag & Drop",
-                                   menu=1),
-                          variable=_drag_v,
-                          command=lambda: (_drag_v.set(not _drag_v.get()),
-                                           _persist_bool("General",
-                                                         "ClearOnDragDrop")()))
-        # Auto-cleanup of translation (0x8077)
-        _ac_v = _bool_var("General", "AutoCleanupOfTranslation")
-        m.add_checkbutton(label=_T("Menus", 61, "Auto-cleanup of translation",
-                                   menu=1),
-                          variable=_ac_v,
-                          command=lambda: (_ac_v.set(not _ac_v.get()),
-                                           _persist_bool(
-                                               "General",
-                                               "AutoCleanupOfTranslation")()))
-        # Save contents on exit (0x8075) — native key under "Contents"
-        _se_v = _bool_var("Contents", "SaveOnExit")
-        m.add_checkbutton(label=_T("Menus", 62, "Save contents on exit",
-                                   menu=1),
-                          variable=_se_v,
-                          command=lambda: (_se_v.set(not _se_v.get()),
-                                           _persist_bool("Contents",
-                                                         "SaveOnExit")()))
-        m.add_separator()
-        # Show panes (0x8071 top / 0x8064 middle / 0x8065 services)
-        m.add_command(label=_T("Menus", 70, "Show top pane", menu=1),
-                      command=lambda: self.toggle_pane("ShowTopPane", "src"))
-        m.add_command(label=_T("Menus", 71, "Show middle pane", menu=1),
-                      command=lambda: self.toggle_pane("ShowMiddlePane",
-                                                       "mid"))
-        m.add_command(label=_T("Menus", 72, "Show services pane", menu=1),
-                      command=lambda: self.toggle_pane("ShowServicesPane",
-                                                       "svc"))
-        m.add_separator()
-        # Minimize to tray (0x806f on minimize / 0x8070 on close)
-        _mm_v = _bool_var("General", "MinimizeToTrayOnMinimize")
-        m.add_checkbutton(label=_T("Menus", 75, "Minimize to tray on "
-                                                 "minimize", menu=1),
-                          variable=_mm_v,
-                          command=lambda: (_mm_v.set(not _mm_v.get()),
-                                           _persist_bool(
-                                               "General",
-                                               "MinimizeToTrayOnMinimize")()))
-        _mc_v = _bool_var("General", "MinimizeToTrayOnClose")
-        m.add_checkbutton(label=_T("Menus", 76, "Minimize to tray on close",
-                                   menu=1),
-                          variable=_mc_v,
-                          command=lambda: (_mc_v.set(not _mc_v.get()),
-                                           _persist_bool(
-                                               "General",
-                                               "MinimizeToTrayOnClose")()))
-        m.add_separator()
-        # Keyboard (0x802f) + Help (0x8030)
-        m.add_command(label=_T("Menus", 85, "Keyboard", menu=1),
-                      command=self.open_keyboard)
-        m.add_command(label=_T("Menus", 86, "Help", menu=1),
-                      command=self.show_hotkeys)
-        m.add_separator()
-        m.add_command(label=_T("Menus", 80, "Options...", menu=5),
-                      command=self.open_options)
-        m.add_command(label=_T("Menus", 90, "About", menu=5),
-                      command=self.show_about)
-        try:
-            m.tk_popup(self.root.winfo_pointerx(),
-                       self.root.winfo_pointery())
-        finally:
-            m.grab_release()
-
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.show_nav_menu()
     def on_new(self):
-        """id1021 New: clear source + result for a fresh translation."""
-        self.src.delete("1.0", "end")
-        self.render("")
+        """The main window (Phase 7 `MainWindow`).
 
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.on_new()
     def on_paste(self):
-        if _HAS_KEYS:
-            try:
-                self.src.delete("1.0", "end")
-                self.src.insert("1.0", pyperclip.paste())
-            except Exception as e:
-                self.render(f"[clipboard error] {e}")
+        """The main window (Phase 7 `MainWindow`).
 
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.on_paste()
     def on_mic(self):
-        # Speech input chain (docs/NATIVE_ARCH.md): mic -> FLAC ->
-        # Google full-duplex (needs dead API key). Offline fallback:
-        # Windows SAPI shared recognizer when comtypes is installed
-        # (pip install comtypes); otherwise explain.
-        try:
-            import comtypes.client  # type: ignore
-        except ImportError:
-            self.render("[speech input — needs: pip install comtypes "
-                        "(offline SAPI) — Google voice API key retired]")
-            return
+        """The main window (Phase 7 `MainWindow`).
 
-        def _work():
-            try:
-                reco = comtypes.client.CreateObject(
-                    "SAPI.SpSharedRecognizer")
-                ctx = reco.CreateRecoContext()
-                grammar = ctx.CreateGrammar()
-                grammar.DictationLoad()
-                grammar.DictationSetState(1)
-                heard = []
-
-                class _Events:
-                    def OnRecognition(self, *a):
-                        try:
-                            heard.append(str(a[-1]))
-                        except Exception:
-                            pass
-
-                import comtypes.client as _cc
-                _cc.GetEvents(ctx, _Events())
-                import time as _t
-                self.root.after(0, lambda: self.render(
-                    "[listening... speak now (10s)]"))
-                _t.sleep(10)
-                grammar.DictationSetState(0)
-                txt = " ".join(heard).strip()
-                self.root.after(0, lambda: (
-                    self.src.delete("1.0", "end"),
-                    self.src.insert("1.0", txt)
-                    if txt else self.render(
-                        "[speech input — nothing recognized]")))
-            except Exception as e:
-                _speech_err = f"[speech error] {e}"
-                self.root.after(
-                    0, lambda: self.render(_speech_err))
-
-        import threading as _th
-        _th.Thread(target=_work, daemon=True).start()
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.on_mic()
 
     # -- actions --
     def _mark_service(self):
-        # current = sunken; multi-selected = groove highlight.
-        for name, b in self.svc_btns.items():
-            if name == self.service:
-                b.config(relief="sunken")
-            elif name in getattr(self, "multi_services", set()):
-                b.config(relief="groove")
-            else:
-                b.config(relief="raised")
+        """The main window (Phase 7 `MainWindow`).
 
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main._mark_service()
     def switch_service(self, name):
-        """FUN_0045CDBA + FUN_0043A121: switch provider, re-run."""
-        self.service = name
-        self._mark_service()
-        try:
-            from qtranslate import config as _C
-            _disp = _C.SERVICE_DISPLAY.get(
-                {v: k for k, v in _C.SERVICE_NAMES.items()}.get(name),
-                name.title())
-            self.svc_link.config(text=_disp)
-        except Exception:
-            pass
-        # persist ActiveServices (native keeps last service)
-        try:
-            from qtranslate import config as _C
-            import json as _j
-            _inv = {v: k for k, v in _C.SERVICE_NAMES.items()}
-            full = _C.load()
-            full.setdefault("General", {})["ActiveServices"] = [
-                _inv.get(name, 1)]
-            with open(_C.DEFAULT_PATH, "w",
-                      encoding="utf-8") as f:
-                _j.dump(full, f, ensure_ascii=False, indent=1)
-        except Exception:
-            pass
-        text = self.src.get("1.0", "end").strip()
-        if text:
-            self.on_go()
+        """The main window (Phase 7 `MainWindow`).
 
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.switch_service(name)
     def apply_theme(self, name):
-        # ThemeName persists to Appearance (native popup theming);
-        # main-window bg follows for preview (native needs
-        # EnableWindowStyle for full chrome theming).
-        try:
-            from qtranslate import config as _C
-            import json as _j
-            full = _C.load()
-            full.setdefault("Appearance", {})["ThemeName"] = name
-            with open(_C.DEFAULT_PATH, "w",
-                      encoding="utf-8") as f:
-                _j.dump(full, f, ensure_ascii=False, indent=1)
-        except Exception:
-            pass
-        try:
-            from qtranslate.theme import load_theme, tk_colors, window_colors
-            global _COLORS
-            _COLORS = tk_colors(window_colors(load_theme(name)))
-            self.root.configure(bg=_COLORS["back"])
-        except Exception:
-            pass
+        """The main window (Phase 7 `MainWindow`).
 
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.apply_theme(name)
     def current(self):
-        return (self.service,
-                self.src.get("1.0", "end").strip(),
-                LANG_CODES.get(self.tgt.get().strip(), "vi"),
-                LANG_CODES.get(self.src_lang.get().strip(), "auto"))
+        """The main window (Phase 7 `MainWindow`).
+
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.current()
 
     @staticmethod
     def tag_links(widget, text, on_click):
-        """Shared auto-URL tagger (native EM_AUTOURLDETECT): qtdp: +
-        http links, blue/underline/hand-cursor."""
-        import re as _re
-        try:
-            widget.tag_delete("link")
-        except Exception:
-            pass
-        try:
-            widget.tag_config("link", foreground="blue",
-                              underline=True)
-            widget.tag_bind("link", "<Button-1>", on_click)
-            widget.tag_bind("link", "<Enter>",
-                            lambda e: widget.config(cursor="hand2"))
-            widget.tag_bind("link", "<Leave>",
-                            lambda e: widget.config(cursor=""))
-            for m in _re.finditer(
-                    r"(qtdp:\S+|https?://\S+|www\.\S+)", text):
-                s, e = m.span()
-                widget.tag_add("link", f"1.0+{s}c", f"1.0+{e}c")
-        except Exception:
-            pass
+        """The main window (Phase 7 `MainWindow`).
 
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.tag_links(text, on_click)
     def render(self, text, back=""):
-        """Fill the result pane (1017) and the back-translation pane (1018).
+        """The main window (Phase 7 `MainWindow`).
 
-        DLG129 has THREE RichEdits, and the three `Contents` keys map 1:1 onto
-        them in order: `EditSource`->1000, `EditTranslation`->1017,
-        `EditBackTranslation`->1018
-        (`D10_SPOTCHECK_Contents_2026-10-10.md` §2: three adjacent string
-        fields at `+0x174`/`+0x178`/`+0x17c`). So the back-translation is its
-        own CONTROL, not a section concatenated into the result pane.
-
-        ``back`` is the back-translation segment. A single-argument call
-        still splits a combined string on the port's old separator, so
-        existing callers keep working -- but new code should pass the two
-        segments separately, and the separator is no longer needed.
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
         """
-        if back == "" and BACKTR_MARKER in (text or ""):
-            text, back = text.split(BACKTR_MARKER, 1)
-        self.out.delete("1.0", "end")
-        self.out.insert("1.0", text or "")
-        self.tag_links(self.out, text or "", self._click_link)
-        # The aux pane exists only where native's does; on a port build
-        # without it the segment is dropped rather than concatenated back in.
-        if getattr(self, "aux", None) is not None:
-            self.aux.delete("1.0", "end")
-            self.aux.insert("1.0", (back or "").strip())
-            self.tag_links(self.aux, (back or "").strip(), self._click_link)
-
+        return self._main.render(text, back)
     def _apply_backtr_split(self, text):
-        """DEPRECATED -- kept only so an old caller does not crash.
+        """The main window (Phase 7 `MainWindow`).
 
-        This method used to simulate a splitter *inside* the result pane,
-        because its comment asserted "DLG129 has 17 ctls total, only one
-        result pane". That is false: DLG129 has THREE RichEdits (1000, 1017,
-        1018) and the back-translation has its own control, so the splitter
-        widget this built was solving a problem native does not have.
-
-        `render()` now writes the two segments to their own panes. The
-        `General.BackTranslationSplitterPos` option is still read and
-        written, because native stores the key and D10 spot-check §1/§3 shows
-        it round-trips -- it scrolls the AUX pane rather than the result one.
-
-        No behavior depends on this method any more; it returns without
-        touching anything.
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
         """
-        return
-
+        return self._main._apply_backtr_split(text)
     def _click_link_dict(self, widget, event=None):
-        try:
-            idx = widget.index(f"@{event.x},{event.y}")
-            ranges = widget.tag_ranges("link")
-            for i in range(0, len(ranges), 2):
-                if widget.compare(ranges[i], "<=", idx) and \
-                        widget.compare(idx, "<=", ranges[i + 1]):
-                    url = widget.get(ranges[i], ranges[i + 1])
-                    if not url.startswith("qtdp:"):
-                        _open_url(url)
-                    break
-        except Exception:
-            pass
+        """The main window (Phase 7 `MainWindow`).
 
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main._click_link_dict(widget, event)
     def _click_link(self, event=None):
-        try:
-            idx = self.out.index(f"@{event.x},{event.y}")
-            ranges = self.out.tag_ranges("link")
-            for i in range(0, len(ranges), 2):
-                if self.out.compare(ranges[i], "<=", idx) and \
-                        self.out.compare(idx, "<=", ranges[i + 1]):
-                    url = self.out.get(ranges[i], ranges[i + 1])
-                    if url.startswith("qtdp:"):
-                        word = url[5:]
-                        self.src.delete("1.0", "end")
-                        self.src.insert("1.0", word)
-                        self.open_dict_window()
-                    else:
-                        _open_url(url)
-                    break
-        except Exception:
-            pass
+        """The main window (Phase 7 `MainWindow`).
+
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main._click_link(event)
 
     @staticmethod
     def _history_path():
@@ -1835,224 +958,102 @@ class App:
                 _j.dump(full, f, ensure_ascii=False, indent=1)
         except Exception:
             pass
-
     def on_swap(self):
-        a, b = self.src_lang.get(), self.tgt.get()
-        if LANG_CODES.get(a, "auto") != "auto":
-            self.tgt.set(a)
-        self.src_lang.set(b if b else LANG_DISPLAY.get("auto", "auto"))
-        self._persist_langs(
-            LANG_CODES.get(self.src_lang.get().strip(), "auto"),
-            LANG_CODES.get(self.tgt.get().strip(), "vi"))
+        """The main window (Phase 7 `MainWindow`).
 
-    def toggle_multi_service(self, name):
-        """Right-click: add/remove service from the multi-select set."""
-        if name in self.multi_services:
-            self.multi_services.discard(name)
-        else:
-            self.multi_services.add(name)
-        self._mark_service()
-
-    def on_go(self):
-        svc, text, tgt, src = self.current()
-        targets = [s for s in self.ordered_services()
-                   if s in self.multi_services] or [svc]
-        if len(targets) == 1:
-            res = do_translate(targets[0], text, tgt, src,
-                               self.opt_detect.get(),
-                               self.opt_backtr.get())
-            self.render(res.text)
-            self.push_hist(targets[0], text[:120], res.text[:200])
-        else:
-            import threading as _th
-
-            def _work():
-                parts = []
-                for s in targets:
-                    try:
-                        r = do_translate(s, text, tgt, src,
-                                         self.opt_detect.get(),
-                                         self.opt_backtr.get())
-                    except Exception as e:
-                        # do_translate returns core.Result since 5f18daa, so
-                        # the failure branch must build one too — assigning a
-                        # bare str here made the very next line (`r.text`)
-                        # raise AttributeError on the multi-service path.
-                        from qtranslate.core import Result
-                        r = Result(s, f"[error] {e}", s,
-                                   note="exception before translate")
-                    parts.append(f"===== {s} =====\n{r.text}")
-                    try:
-                        self.push_hist(s, text[:120], r.text[:200])
-                    except Exception:
-                        pass
-                combined = "\n\n".join(parts)
-                try:
-                    self.root.after(
-                        0, lambda: self.render(combined))
-                except Exception:
-                    pass
-
-            self.render(f"translating via {len(targets)} services...")
-            _th.Thread(target=_work, daemon=True).start()
-            return
-        # AutoCleanupOfTranslation: clear the source pane after a
-        # successful translate (native 0x8077).
-        try:
-            from qtranslate import config as _C
-            if _C.load().get("General", {}).get(
-                    "AutoCleanupOfTranslation", False) and res \
-                    and not res.text.startswith("No data"):
-                self.src.delete("1.0", "end")
-        except Exception:
-            pass
-
-    def on_clear(self):
-        """Ctrl+N => Clear current translation (per help.txt)."""
-        self.render("")
-
-    def on_listen(self):
-        txt = self.out.get("1.0", "end").strip()
-        if not txt:
-            return
-        _, _, tgt, _ = self.current()
-        threading.Thread(target=speak, args=(txt[:500], tgt),
-                         daemon=True).start()
-
-    def on_copy(self):
-        if _HAS_KEYS:
-            pyperclip.copy(self.out.get("1.0", "end").strip())
-
-    def on_layout(self):
-        from qtranslate.layout import convert_layout
-        txt = self.src.get("1.0", "end").strip()
-        if not txt and _HAS_KEYS:
-            txt = pyperclip.paste()
-        fixed = convert_layout(txt)
-        self.src.delete("1.0", "end")
-        self.src.insert("1.0", fixed)
-        if _HAS_KEYS:
-            pyperclip.copy(fixed)
-
-    def on_type(self):
-        # Suggest menu (Ctrl+Space shows it; auto-fill honors
-        # General.SpellChecking like the native edit control) +
-        # Instant translation (General.InstantTranslation, native
-        # 0x802C): debounced re-translate on every keystroke.
-        try:
-            from qtranslate import config as _C
-            _g = _C.load().get("General", {})
-            _spell_on = _g.get("SpellChecking", True)
-            _instant = _g.get("InstantTranslation", False)
-        except Exception:
-            _spell_on, _instant = True, False
-        cur = self.src.get("1.0", "end").strip()
-        if _instant and len(cur) >= 2:
-            try:
-                if getattr(self, "_instant_after", None):
-                    self.root.after_cancel(self._instant_after)
-            except Exception:
-                pass
-            try:
-                self._instant_after = self.root.after(
-                    600, self.on_go)
-            except Exception:
-                pass
-        if not _spell_on:
-            return
-        if len(cur) < 3 or len(cur) > 60:
-            return
-        try:
-            from qtranslate import registry as _RG
-            sug = _RG.google_suggest(cur)
-            self._suggestions = list(sug[:5])
-            self.suggest.config(text=" | ".join(self._suggestions))
-        except Exception:
-            pass
-
-    def accept_suggestion(self):
-        """Ctrl+Space: accept the first suggestion into the source pane
-        (native suggestion/autocomplete menu, help.txt)."""
-        try:
-            sug = getattr(self, "_suggestions", [])
-            if sug:
-                self.src.delete("1.0", "end")
-                self.src.insert("1.0", sug[0])
-                self.suggest.config(text="")
-                self._suggestions = []
-        except Exception:
-            pass
-
-    def show_hotkeys(self):
-        try:
-            from qtranslate import config as C
-            doc = C.DEFAULT_HOTKEY_DOC
-        except Exception:
-            doc = ("Double Ctrl => Show main window; Ctrl+Q => popup; "
-                   "Ctrl+Shift+Q => dictionary; Ctrl+E => listen; "
-                   "Ctrl+Enter => translate; Ctrl+N => clear")
-        self.render("Hotkeys (from Locales/English/help.txt):\n" + doc)
-
-    def show_about(self):
-        # DLG 133: About + OK + 2 SysLinks (homepage, services credit).
-        w = tk.Toplevel(self.root)
-        w.title(_W(4, "About"))
-        w.configure(bg=_COLORS["back"])
-        w.geometry("360x200")
-        tk.Label(w, text="QTranslate Version 6.10.0",
-                 bg=_COLORS["back"], fg=_COLORS["text"],
-                 font=("Segoe UI", 11, "bold")).pack(pady=(12, 2))
-        tk.Label(w, text="qtranslate-re — clean-room RE\n"
-                         f"{len(TRANSLATORS)} translate + {len(DICTS)} "
-                         "dictionary providers",
-                 bg=_COLORS["back"], fg=_COLORS["text"],
-                 justify="center").pack(pady=2)
-
-        def _link(url, text):
-            lb = tk.Label(w, text=text, fg="blue", cursor="hand2",
-                          bg=_COLORS["back"],
-                          font=("Segoe UI", 9, "underline"))
-            lb.pack()
-            lb.bind("<Button-1>", lambda e: _open_url(url))
-
-        _link("https://quest-app.appspot.com/",
-              "QTranslate homepage")
-        _link("https://quest-app.appspot.com/services",
-              "Translation services")
-        tk.Button(w, text="OK",
-                  command=w.destroy).pack(pady=10)
-
-    def show_override_conflicts(self):
-        """D18: pick the winner when extensions collide (override UI).
-
-        Loads the per-user extensions into a throwaway manager (isolated from
-        the live registry), presents the conflicts, and saves the user's
-        choice to Options.json. The saved winners pre-empt discovery-order
-        resolution at the next startup.
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
         """
-        try:
-            from qtranslate.extensions import (
-                ExtensionManager, write_saved_overrides)
-            # `override_ui` is a MODULE (`qtranslate/override_ui.py`), not a
-            # name in extensions.py -- importing it from there raised
-            # ImportError, which the surrounding `except Exception: return`
-            # swallowed, so this dialog silently never opened. Importing it
-            # from its own module also lets PyInstaller's Analysis see the
-            # dependency (a `from X import Y` where Y is a submodule is
-            # invisible to a static import walk).
-            from qtranslate import override_ui
-            from qtranslate import platforms as _P
-            ext_dir = _P.current().extensions_dir()
-        except Exception:
-            return
-        manager = ExtensionManager()
-        manager.load_dir(ext_dir)
-        conflicts = manager.override_conflicts()
-        if not conflicts:
-            return
-        winners = override_ui.pick_override_winners(self.root, conflicts)
-        if winners:
-            write_saved_overrides(winners)
+        return self._main.on_swap()
+    def toggle_multi_service(self, name):
+        """The main window (Phase 7 `MainWindow`).
+
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.toggle_multi_service(name)
+    def on_go(self):
+        """The main window (Phase 7 `MainWindow`).
+
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.on_go()
+    def on_clear(self):
+        """The main window (Phase 7 `MainWindow`).
+
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.on_clear()
+    def on_listen(self):
+        """The main window (Phase 7 `MainWindow`).
+
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.on_listen()
+    def on_copy(self):
+        """The main window (Phase 7 `MainWindow`).
+
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.on_copy()
+    def on_layout(self):
+        """The main window (Phase 7 `MainWindow`).
+
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.on_layout()
+    def on_type(self):
+        """The main window (Phase 7 `MainWindow`).
+
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.on_type()
+    def accept_suggestion(self):
+        """The main window (Phase 7 `MainWindow`).
+
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.accept_suggestion()
+    def show_hotkeys(self):
+        """The main window (Phase 7 `MainWindow`).
+
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.show_hotkeys()
+    def show_about(self):
+        """The main window (Phase 7 `MainWindow`).
+
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.show_about()
+    def show_override_conflicts(self):
+        """The main window (Phase 7 `MainWindow`).
+
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.show_override_conflicts()
 
     # -- Options dialog (DLG 154 + pages; Basics page mirrors screenshot) --
     def open_options(self):
@@ -2147,268 +1148,46 @@ class App:
         """
         from qtranslate.windows import DictionaryView
         return DictionaryView(self.root, self).open()
-
-
     def on_ocr(self):
-        # Default = ScreenCaptureWindow region select (native flow).
-        self._ocr_region()
+        """The main window (Phase 7 `MainWindow`).
 
-    def on_ocr_file(self):
-        path = filedialog.askopenfilename(title="Image for OCR")
-        if not path:
-            return
-        try:
-            with open(path, "rb") as f:
-                self._ocr_bytes(f.read())
-        except Exception as e:
-            self.render(f"[ocr error] {e}")
-
-    def _ocr_bytes(self, data: bytes):
-        from qtranslate.services.ocr import ocr_text
-        try:
-            from qtranslate import config as _C
-            _cfg = _C.load()
-            _key = _cfg.get("Advanced",
-                            {}).get("OcrApiKey", "") or "helloworld"
-            # Ocr.OcrLanguage = Google index (17=en default) -> ocr.space
-            # code; Ocr.SaveImagePath archives the capture.
-            _oi = _cfg.get("Ocr", {}).get("OcrLanguage", 17)
-            try:
-                _table = list(__import__(
-                    "qtranslate.services.google_translate",
-                    fromlist=["SUPPORTED_LANGS"]).SUPPORTED_LANGS)
-            except Exception:
-                _table = []
-            _code = _table[_oi] if 0 <= _oi < len(_table) else "eng"
-            # ocr.space's own 3-letter language codes, which the image
-            # carries as one wide string: ara bul chs cht hrv cze dan dut
-            # eng fin fre ger gre hun ita jpn kor nor pol por rus spa swe
-            # tur (22 values, verified by tests/regress_ocr_languages.py).
-            # Mapped from Google's 2-letter codes; an unmapped language
-            # falls back to eng as native does for a language it lacks.
-            _lang = {"en": "eng", "vi": "vie", "fr": "fre",
-                     "de": "ger", "es": "spa", "ru": "rus",
-                     "ja": "jpn", "ko": "kor",
-                     "zh-CN": "chs", "zh-TW": "cht", "ar": "ara",
-                     "bg": "bul", "hr": "hrv", "cs": "cze",
-                     "da": "dan", "nl": "dut", "fi": "fin",
-                     "el": "gre", "hu": "hun", "it": "ita",
-                     "no": "nor", "pl": "pol", "pt": "por",
-                     "sv": "swe", "tr": "tur",
-                     "zh": "chs"}.get(_code, "eng")
-            _savep = _cfg.get("Ocr", {}).get("SaveImagePath", "")
-            if _savep:
-                try:
-                    import datetime as _dt
-                    import os as _o
-                    _fn = "ocr_%s.png" % _dt.datetime.now().strftime(
-                        "%Y%m%d_%H%M%S")
-                    open(_o.path.join(_savep, _fn), "wb").write(data)
-                except Exception:
-                    pass
-        except Exception:
-            _key, _lang = "helloworld", "eng"
-        try:
-            txt = ocr_text(data, api_key=_key, lang=_lang)
-            self.src.delete("1.0", "end")
-            self.src.insert("1.0", txt)
-        except Exception as e:
-            self.render(f"[ocr error] {e}")
-
-    def _ocr_region(self):
-        """Rubber-band screen region -> ImageGrab -> OCR (native
-        ScreenCaptureWindow selection flow). Esc cancels."""
-        try:
-            from PIL import ImageGrab
-        except ImportError:
-            self.render("[ocr needs Pillow: pip install Pillow]")
-            return
-        ov = tk.Toplevel(self.root)
-        ov.attributes("-fullscreen", True)
-        ov.attributes("-alpha", 0.3)
-        ov.configure(bg="gray")
-        ov.attributes("-topmost", True)
-        cv = tk.Canvas(ov, highlightthickness=0)
-        cv.pack(fill="both", expand=True)
-        _start = [None]
-        _rect = [None]
-
-        def _down(e):
-            _start[0] = (e.x, e.y)
-            _rect[0] = cv.create_rectangle(e.x, e.y, e.x, e.y,
-                                           outline="red", width=2)
-
-        def _drag(e):
-            if _start[0] and _rect[0]:
-                x0, y0 = _start[0]
-                cv.coords(_rect[0], x0, y0, e.x, e.y)
-
-        def _up(e):
-            try:
-                x0, y0 = _start[0]
-                x1, y1 = e.x, e.y
-                x, y = min(x0, x1), min(y0, y1)
-                w, h = abs(x1 - x0), abs(y1 - y0)
-                ov.destroy()
-                if w < 5 or h < 5:
-                    return
-                sx, sy = ov.winfo_rootx() + x, ov.winfo_rooty() + y
-                img = ImageGrab.grab(bbox=(sx, sy, sx + w, sy + h))
-                import io as _io
-                buf = _io.BytesIO()
-                img.save(buf, format="PNG")
-                import threading as _th
-                _th.Thread(target=self._ocr_bytes,
-                           args=(buf.getvalue(),),
-                           daemon=True).start()
-            except Exception as ex:
-                self.render(f"[ocr error] {ex}")
-
-        def _grab_png():
-            # Current rubber-band rect -> PNG bytes (shared by OCR-send,
-            # S-save, and C-copy so all three consume one capture path).
-            try:
-                x0, y0 = _start[0]
-                x1, y1 = cv.coords(_rect[0])[:2], cv.coords(_rect[0])[2:]
-                x, y = min(x0, x1), min(y0, y1)
-                w, h = abs(x1 - x0), abs(y1 - y0)
-                if w < 5 or h < 5:
-                    return None
-                sx, sy = ov.winfo_rootx() + x, ov.winfo_rooty() + y
-                img = ImageGrab.grab(bbox=(sx, sy, sx + w, sy + h))
-                import io as _io2
-                buf = _io2.BytesIO()
-                img.save(buf, format="PNG")
-                return buf.getvalue()
-            except Exception:
-                return None
-
-        def _keys(e):
-            # Native overlay keys (FUN_004377CB): S = save-as
-            # (FUN_0043845C), C = copy (FUN_004383A2), arrows adjust the
-            # selection, Esc/Del close. Enter sends to OCR like release.
-            ks = (e.keysym or "").lower()
-            if ks == "escape":
-                ov.destroy()
-            elif ks == "delete":
-                ov.destroy()
-            elif ks in ("s", "c", "return"):
-                data = _grab_png()
-                ov.destroy()
-                if not data:
-                    return
-                if ks == "s":
-                    try:
-                        import datetime as _dt
-                        import os as _o
-                        _dir = _o.path.expanduser("~")
-                        try:
-                            from qtranslate import config as _Cs
-                            _dir = _Cs.load().get(
-                                "Ocr", {}).get("SaveImagePath", "") or _dir
-                        except Exception:
-                            pass
-                        _fn = "ocr_%s.png" % _dt.datetime.now().strftime(
-                            "%Y%m%d_%H%M%S")
-                        open(_o.path.join(_dir, _fn), "wb").write(data)
-                    except Exception as ex:
-                        self.render(f"[ocr error] {ex}")
-                elif ks == "c":
-                    # Native FUN_004383A2 copies the bitmap to the
-                    # CLIPBOARD (not to a viewer): PNG bytes -> BMP/DIB
-                    # via the clipboard. Pillow-only, no new dependency.
-                    try:
-                        import io as _io3
-                        from PIL import Image as _Im
-                        _im = _Im.open(_io3.BytesIO(data)).convert("RGB")
-                        _out = _io3.BytesIO()
-                        _im.save(_out, "BMP")
-                        _dib = _out.getvalue()[14:]  # strip BMP header
-                        import ctypes as _ct
-                        _u = _ct.windll.user32
-                        _u.OpenClipboard(None)
-                        try:
-                            _u.EmptyClipboard()
-                            _h = _ct.windll.kernel32.GlobalAlloc(
-                                0x0042, len(_dib))
-                            _p = _ct.windll.kernel32.GlobalLock(_h)
-                            _ct.memmove(_p, _dib, len(_dib))
-                            _ct.windll.kernel32.GlobalUnlock(_h)
-                            _u.SetClipboardData(8, _h)  # CF_DIB
-                        finally:
-                            _u.CloseClipboard()
-                    except Exception as ex:
-                        self.render(f"[ocr error] {ex}")
-                else:
-                    import threading as _th2
-                    _th2.Thread(target=self._ocr_bytes, args=(data,),
-                               daemon=True).start()
-            elif ks.startswith("left"):
-                _nudge(-1, 0)
-            elif ks.startswith("right"):
-                _nudge(1, 0)
-            elif ks.startswith("up"):
-                _nudge(0, -1)
-            elif ks.startswith("down"):
-                _nudge(0, 1)
-
-        def _nudge(dx, dy):
-            try:
-                if _start[0] and _rect[0]:
-                    x0, y0, x1, y1 = cv.coords(_rect[0])
-                    cv.coords(_rect[0], x0 + dx, y0 + dy, x1 + dx, y1 + dy)
-                    _start[0] = (x0 + dx, y0 + dy)
-            except Exception:
-                pass
-
-        cv.bind("<Button-1>", _down)
-        cv.bind("<B1-Motion>", _drag)
-        cv.bind("<ButtonRelease-1>", _up)
-        ov.bind("<Key>", _keys)
-        ov.bind("<Escape>", lambda e: ov.destroy())
-        ov.focus_force()
-
-    def open_keyboard(self):
-        """Virtual keyboard window (DLG 162: 308x102).
-
-        Clicking a key types it into the source pane (like the native
-        on-screen keyboard feeding the edit control). Key labels follow
-        General.LanguageKeyboard via the JCUKEN map (17=en default).
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
         """
-        w = tk.Toplevel(self.root)
-        w.title(_W(7, "Virtual keyboard"))
-        w.configure(bg=_COLORS["back"])
-        _place_aux(w, "WindowKeyboardPlacement", "308x102")
-        w.attributes("-topmost", True)
-        try:
-            from qtranslate import config as _C
-            _kb = _C.load().get("General", {}).get("LanguageKeyboard",
-                                                   17)
-        except Exception:
-            _kb = 17
-        try:
-            from qtranslate.layout import EN2RU
-            _ru = (_kb != 17)
-        except Exception:
-            EN2RU, _ru = {}, False
-        rows = ["qwertyuiop", "asdfghjkl", "zxcvbnm"]
-        for row in rows:
-            frm = tk.Frame(w, bg=_COLORS["back"])
-            frm.pack()
-            for ch in row:
-                label = EN2RU.get(ch, ch) if _ru else ch
-                tk.Button(frm, text=label, width=3,
-                          command=lambda c=label: self.src.insert(
-                              "insert", c)).pack(
-                    side="left", padx=1, pady=1)
-        frm = tk.Frame(w, bg=_COLORS["back"])
-        frm.pack(pady=2)
-        tk.Button(frm, text="Space", width=20,
-                  command=lambda: self.src.insert("insert", " ")).pack(
-            side="left", padx=2)
-        tk.Button(frm, text="⌫", width=5,
-                  command=lambda: self.src.delete(
-                      "insert-1c", "insert")).pack(side="left", padx=2)
+        return self._main.on_ocr()
+    def on_ocr_file(self):
+        """The main window (Phase 7 `MainWindow`).
+
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.on_ocr_file()
+    def _ocr_bytes(self, data: bytes):
+        """The main window (Phase 7 `MainWindow`).
+
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main._ocr_bytes(data)
+    def _ocr_region(self):
+        """The main window (Phase 7 `MainWindow`).
+
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main._ocr_region()
+    def open_keyboard(self):
+        """The main window (Phase 7 `MainWindow`).
+
+        Body lives in ``qtranslate/windows.py``; this is the
+        delegator. The signature and the reachable behavior are
+        unchanged.
+        """
+        return self._main.open_keyboard()
 
 
 def on_hotkey(app):
