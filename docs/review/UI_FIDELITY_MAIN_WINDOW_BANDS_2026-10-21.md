@@ -85,10 +85,14 @@ here), so the port was showing **a line and a half more** of the help text
 than native, and a result pane 21 px shorter for it.
 
 Native's own value moves a little with the window height — 153 px at a
-423 px window, 145 px at 409, 142 px at 402 — so the port now takes
-native's value at the reference window size (`SRC_PANE_PX = 153`) and
-stops propagating the `Text`'s request. The eleventh line is clipped
-exactly as native's is.
+423 px window, 145 px at 409, 142 px at 402 — so the port now takes the
+**line count** rather than the pixels: native's pane holds ten and a half
+lines of the same help text, so the port's holds `SRC_PANE_LINES = 10.5`
+lines of the app's own font (`_src_pane_px()`). The pixel height follows
+the font, and the font follows the display's scaling — a fixed 153 px
+would show a different number of lines on a Windows machine at 150 %
+scaling, where native's own pane is 66 DU again. The eleventh line is
+clipped exactly as native's is.
 
 ## 5. Two more real defects, found on the way
 
