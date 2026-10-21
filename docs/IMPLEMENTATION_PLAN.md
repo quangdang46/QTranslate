@@ -343,11 +343,19 @@ compatibility + platform docs.
 restarts, and it works with Python **not** separately installed — the app
 bundles the runtime and the extension vendors its own deps (D17).
 
-> **Not started.** Needs Phases 3–7 settled first, plus a packaging
-> decision (bundler choice) the user has not been asked for yet. The
-> extension **loader + startup wiring** landed ahead of it (Slices 7–8),
-> so a bundle only has to ship the Core runtime; the bundler itself and
-> macOS packaging remain open.
+> **Landed 2026-10-16 (the packaging decision was taken and actioned).**
+> PyInstaller, **onedir, Windows-only** — the only choice that can be
+> verified on this host. `tools/build_bundle.py` writes the committed
+> spec, builds, then runs the frozen exe's `--selftest` (18/18): a
+> `sys.path` probe against `_internal` is not equivalent to running the
+> bundle. The extension **loader + startup wiring** had already landed
+> (Slices 7–8), so the bundle ships the Core runtime and the recovered
+> native assets (`qtranslate/assets/`: the service icons, the UI icons,
+> the 35 locale packs, the themes).
+>
+> **Still open:** the **macOS** bundle (the bundle is Windows-only — the
+> decision table's reason) and the SDK's own package name (D19, still
+> provisional).
 
 ## Cross-cutting
 

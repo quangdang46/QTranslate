@@ -12,7 +12,7 @@ restart QTranslate:
 | Platform | Extensions directory |
 |---|---|
 | Windows | `%APPDATA%\QTranslate\extensions` |
-| macOS | `~/Library/Application Support/QTranslate/extensions` |
+| macOS | `~/.config/QTranslate/extensions` |
 
 The theme then appears in the Options page's **Appearance** list.
 Enabling it is your decision, not the extension's.

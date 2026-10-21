@@ -60,7 +60,10 @@ An extension only imports the API groups it uses.
 `<extensions_dir>` is resolved per OS by the `Paths` adapter
 (`ARCHITECTURE.md` §4) to the **per-user app-data directory** (decision D16):
 e.g. `%APPDATA%/QTranslate/extensions` on Windows,
-`~/Library/Application Support/QTranslate/extensions` on macOS. Extensions are
+`~/.config/QTranslate/extensions` on macOS — the same per-user data
+directory the port's `Options.json` and its reliability log live in
+(`qtranslate/platforms.py`'s `app_data_dir()`), so an extension sits
+next to the settings that reference it. Extensions are
 **never** auto-loaded from the install directory. This avoids admin rights and
 prevents losing extensions when the app updates.
 

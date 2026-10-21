@@ -12,7 +12,7 @@ restart QTranslate:
 | Platform | Extensions directory |
 |---|---|
 | Windows | `%APPDATA%\QTranslate\extensions` |
-| macOS | `~/Library/Application Support/QTranslate/extensions` |
+| macOS | `~/.config/QTranslate/extensions` |
 
 Nothing is rebuilt and nothing is installed system-wide: the folder is
 read at startup, and the app keeps running if the extension is broken.

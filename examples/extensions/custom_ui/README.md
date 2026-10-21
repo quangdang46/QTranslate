@@ -16,7 +16,7 @@ restart QTranslate:
 | Platform | Extensions directory |
 |---|---|
 | Windows | `%APPDATA%\QTranslate\extensions` |
-| macOS | `~/Library/Application Support/QTranslate/extensions` |
+| macOS | `~/.config/QTranslate/extensions` |
 
 ## The contract
 

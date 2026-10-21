@@ -52,7 +52,7 @@ reason instead of stopping the app.
 | Platform | Extensions directory |
 |---|---|
 | Windows | `%APPDATA%\QTranslate\extensions` |
-| macOS | `~/Library/Application Support/QTranslate/extensions` |
+| macOS | `~/.config/QTranslate/extensions` |
 
 Copy a folder that carries a `manifest.json` into that directory and
 restart the app. `examples/extensions/` holds three complete worked
@@ -68,8 +68,8 @@ examples, one per capability:
 # Windows
 cp -r examples/extensions/hello_provider "%APPDATA%/QTranslate/extensions/"
 # macOS
-mkdir -p ~/Library/Application\ Support/QTranslate/extensions
-cp -r examples/extensions/hello_provider ~/Library/Application\ Support/QTranslate/extensions/
+mkdir -p ~/.config/QTranslate/extensions
+cp -r examples/extensions/hello_provider ~/.config/QTranslate/extensions/
 python -I start_app.py          # restart: the provider is live
 ```
 
