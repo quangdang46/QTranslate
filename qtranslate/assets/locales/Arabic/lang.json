@@ -1,0 +1,341 @@
+﻿{
+  "Author": "بحث",
+  "LanguageName": "Arabic",
+  "LanguageNativeName": "محمد الشاعر",
+  "LanguageCode": "ar",
+  "Strings": [
+    [171, "(Ctrl+N)تنظيف الترجمة الحالية"],
+    [172, "(Ctrl+Enter)ترجمة"],
+    [173, "(Ctrl+I)عكس اتجاه الترجمة "],
+    [174, "الاستماع الى النص"],
+    [175, "Go back (Alt+Left Arrow)"],
+    [184, "Go forward (Alt+Right Arrow)"],
+    [176, " لايمكن كشف اللغة. الرجاء الإختيار يدويا."],
+    [177, "الخدمة لا تستطيع دعم المصدر."],
+    [178, "حول"],
+    [179, "الإصدار "],
+    [180, "تحديث الملقم غير متوفر"],
+    [181, " اصدار جديد (%s) متاح"],
+    [182, "%s حديث"],
+    [183, "فحص التحديث..."],
+    [185, "Update failed"],
+    [186, "الكتابة بالحروف اللاتينية: "],
+    [187, "دوماً في المقدمة"],
+    [188, "لوحة المفاتيح"],
+    [189, "لايستطيع انشاء موقع ."],
+    [190, "إرجاع البيانات(يأخذ وقت لارسال البيانات)."],
+    [191, "إرجاع البيانات."],
+    [192, "لايوجد بيانات للترجمة."],
+    [193, "الخدمة لا تدعم القدرة المطلوبة."],
+    [194, "لا يمكن تشغيل تدفق الصوت."],
+    [195, "الخدمة لا تدعم الصوت للحصول على هذه اللغة أو النص طويل جدا."],
+    [196, "خطأ خدمة البرنامج النصي (سكربت)."],
+    [197, "خطأ غير متوقع."],
+    [198, "خدمة الترجمة لاتدعم اللغة المحددة ."],
+    [199, "لايمكن ايجاد الملف: "],
+    [200, "Installing update..."],
+    [201, "Add to favorites"],
+    [202, "Remove from favorites"],
+    [203, "تأكد من أن الميكروفون متصل بالكمبيوتر."],
+    [204, "غير قادر على التوصيل للانترنت"],
+    [205, "تشغيل إدخال الحديث (%s)"],
+    [206, "إيقاف تشغيل إدخال الحديث"]
+  ],
+  "Windows": [{
+    "Controls": [
+      [1004, "الترجمة"]
+    ],
+    "Id": 1,
+    "Caption": "QTranslate"
+  }, {
+    "Controls": [
+      [10, [
+        [20, "Dictionary search for"],
+        [30, "Listen to selected text"],
+        [40, "Copy translation to clipboard"],
+        [50, "Replace selected text"]
+      ]]
+    ],
+    "Id": 6
+  }, {
+    "Controls": [],
+    "Strings": [
+      [10, "No results found for '%s'."]
+    ],
+    "Id": 5,
+    "Caption": "قاموس"
+  }, {
+    "Controls": [
+      [1, "موافق"],
+      [1160, "حفظ بإسم..."],
+      [1067, "تنظيف"]
+    ],
+    "Id": 3,
+    "Caption": "تأريخ"
+  }, {
+    "Controls": [
+      [1, "موافق"],
+      [2, "الغاء"],
+      [1049, "تطبيق"]
+    ],
+    "Id": 2,
+    "Caption": "خيارات"
+  }, {
+    "Controls": [
+      [1045, "البدء مع النظام"],
+      [1070, "لغة الواجهة:"],
+      [1075, "Font name:"],
+      [1074, "حجم النص:"],
+      [1068, "اللغةالاولى:"],
+      [1069, "اللغةالثانية:"],
+      [1071, "Speech input:"],
+      [1063, "الكشف عن لغات -تلقائيا"],
+      [1046, "عام"],
+      [1064, "تأريخ"],
+      [1122, "تمكين التأريخ"],
+      [1124, "Clear history on exit"],
+      [1123, "Expand items"]
+    ],
+    "Id": 10,
+    "Caption": "أساسيات"
+  }, {
+    "Controls": [
+      [1049, "توصيل"],
+      [1084, "المهلة, ثانية:"],
+      [1033, "كشف الوكيل تلقائيا"],
+      [1034, "مضيف"],
+      [1036, "اسم المستخدم"],
+      [1037, "كلمة السر"],
+      [1048, "الوكيل"],
+      [1035, "منفذ"],
+      [1135, [
+        [0, "Use system proxy settings"],
+        [1, "No proxy"],
+        [2, "Manual proxy configuration"],
+        [3, "Auto-detect proxy settings"]
+      ]]
+    ],
+    "Id": 11,
+    "Caption": "انترنت"
+  }, {
+    "Controls": [
+      [1177, "Add dictionary..."],
+      [1180, "Remove dictionary"]
+    ],
+    "Id": 12,
+    "Caption": "خدمات"
+  }, {
+    "Controls": [
+      [1099, "تحديد / عدم تحديد للجميع"]
+    ],
+    "Id": 13,
+    "Caption": "اللغة"
+  }, {
+    "Controls": [
+      [1076, "عام"],
+      [1123, "تمكين نمط الإطار"],
+      [1169, "Theme:"],
+      [1158, "تمكين الحجم تلقائياً"],
+      [1160, "Enable auto position"],
+      [1159, "Activate when opened"],
+      [1161, "Pin when dragging"],
+      [1124, "نافذة منبثقة"],
+      [1092, "لون الخلفية:"],
+      [1091, "لون النص:"],
+      [1090, "لون الاطار:"],
+      [1145, "(شفافية (0 - 90:"],
+      [1146, "Frame thickness:"],
+      [1147, "Auto-hide delay:"],
+      [1194, "seconds"],
+      [1137, "ايقونات:"],
+      [1138, "Show open dictionary icon"],
+      [1139, "Show listen to selected text icon"],
+      [1140, "Show copy text to clipboard icon"],
+      [1141, "Show replace selected text icon"]
+    ],
+    "Id": 14,
+    "Caption": "المظهر"
+  }, {
+    "Controls": [
+      [1162, [
+        [0, "Enabled for these programs:"],
+        [1, "تعطيل في البرامج التالية:"]
+      ]],
+      [1101, "اضافة"],
+      [1103, "تعديل"],
+      [1102, "حذف"],
+      [1113, "الكشف عن الأدوات الذكية"]
+    ],
+    "Id": 15,
+    "Caption": "الاستثناءات"
+  }, {
+    "Controls": [
+      [1118, "تمكين المفاتيح الساخنة"],
+      [1165, [
+        [0, "اظهارالاطار الرئيسي"],
+        [1, "اظهار نافذة منبثقة"],
+        [2, "اظهار نافدة القاموس"],
+        [3, "Show history window"],
+        [4, "Show keyboard window"],
+        [5, "الاستماع الى النص المحدد"],
+        [6, "ترجمة النص المنسوخ الى الحافظة"],
+        [7, "استبدال النص المحدد"],
+        [8, "Switch mouse mode"],
+        [9, "Translate clipboard content"],
+        [10, "Translate clipboard in main window"],
+        [11, "Translate clipboard in popup window"],
+        [12, "Dictionary from clipboard"],
+        [13, "Change keyboard layout and selected text"],
+        [14, "Listen to selected text translation"],
+        [15, "Text recognition"],
+        [16, "Speech input"]
+      ]]
+    ],
+    "Id": 16,
+    "Caption": "المفاتيح الساخنة"
+  }, {
+    "Controls": [
+      [1146, "تقدم"],
+      [1151, "Default browser:"],
+      [1147, "عمل نسخة:"],
+      [1149, "مؤشر تخطيط لوحة المفاتيح:"],
+      [1157, "النطاق المفضل"],
+      [1154, "تمكين ترجمة واجهة المستخدم الرسومية"],
+      [1159, "Enable listening to the same text at a slower speed"],
+      [1160, "Remove line breaks"],
+      [1186, "Mouse mode"],
+      [1155, "Enable mouse mode only when Ctrl is pressed"],
+      [1156, "Click on system tray icon switches mouse mode"],
+      [1158, "API keys"],
+      [1195, "OCR API key:"]
+    ],
+    "Id": 17,
+    "Caption": "متقدم"
+  }, {
+    "Controls": [
+      [1188, "Automatically check for updates"],
+      [1190, "Check now"],
+      [1191, "Install"]
+    ],
+    "Id": 18,
+    "Caption": "Updates"
+  }],
+  "Menus": [{
+    "Items": [
+      [10, "توضيح الاختيارات"],
+      [20, "لحظة الترجمة"],
+      [30, "الرجوع للترجمة"],
+      [40, "Extended"],
+      [50, "قراءة صوتية"],
+      [60, "Clear input on Drag && Drop"],
+      [61, "Auto-cleanup of translation"],
+      [62, "Save contents on exit"],
+      [65, "Show top pane"],
+      [70, "Show middle pane"],
+      [80, "Show services pane"],
+      [81, "Minimize to system tray on minimize"],
+      [82, "Minimize to system tray on close"],
+      [85, "On startup"],
+      [86, "Show window"],
+      [87, "Minimize to tray"],
+      [88, "Restore previous state"],
+      [90, "المترجم"],
+      [100, "تأريخ\t"],
+      [110, "لوحة المفاتيح"],
+      [120, "خيارات"],
+      [125, "حول"],
+      [130, "مساعدة"],
+      [140, "خروج"]
+    ],
+    "Id": 1
+  }, {
+    "Items": [
+      [10, "Undo"],
+      [20, "Cut"],
+      [30, "Cut all"],
+      [40, "Copy"],
+      [50, "Copy all"],
+      [60, "Paste"],
+      [70, "Select all"],
+      [75, "Translate"],
+      [80, "Search Dictionary for"],
+      [90, "Listen"]
+    ],
+    "Id": 2
+  }, {
+    "Items": [
+      [10, "Open"],
+      [15, "Copy text"],
+      [20, "Copy translation"],
+      [30, "Delete"],
+      [40, "Listen"]
+    ],
+    "Id": 3
+  }, {
+    "Items": [
+      [10, "Reset"],
+      [20, "Edit..."],
+      [30, "Always detect language"]
+    ],
+    "Id": 4
+  }, {
+    "Items": [
+      [5, "Text recognition"],
+      [10, "المترجم"],
+      [20, "تأريخ"],
+      [30, "لوحة المفاتيح"],
+      [36, "تمكين المفاتيح الساخنة"],
+      [40, "وضع الفأرة"],
+      [50, "تمكين"],
+      [60, "اظهار الأيقونة"],
+      [70, "اظهار الترجمة"],
+      [71, "Show translation and read"],
+      [80, "خيارات"],
+      [90, "حول"],
+      [100, "خروج"]
+    ],
+    "Id": 5
+  }, {
+    "Items": [
+      [10, "Select All"],
+      [20, "Copy"],
+      [30, "Print..."],
+      [40, "Translate"],
+      [50, "Search"],
+      [60, "Listen"]
+    ],
+    "Id": 6
+  }, {
+    "Items": [
+      [10, "Show Full History"]
+    ],
+    "Id": 7
+  }, {
+    "Items": [
+      [10, "Show info"],
+      [20, "Remove dictionary"]
+    ],
+    "Id": 8
+  }, {
+    "Items": [
+      [10, "Clear history"],
+      [20, "Show services pane"],
+      [30, "Exact search"],
+      [40, "Options"]
+    ],
+    "Id": 9
+  }, {
+    "Items": [
+      [110, "OCR language"],
+      [120, "Translate"],
+      [130, "Copy image"],
+      [140, "Copy text"],
+      [150, "Save image"],
+      [160, "Edit image"],
+      [170, "Select all"],
+      [180, "Clear selection"],
+      [190, "Close"]
+    ],
+    "Id": 10
+  }]
+}

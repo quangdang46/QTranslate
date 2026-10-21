@@ -1,0 +1,341 @@
+﻿{
+  "Author": "Anh (tuananh88c25@gmail.com)",
+  "LanguageName": "Vietnamese",
+  "LanguageNativeName": "Tiếng Việt",
+  "LanguageCode": "vi",
+  "Strings": [
+    [171, "Xóa bản dịch hiện tại (Ctrl+N)"],
+    [172, "Dịch (Ctrl+Enter)"],
+    [173, "Chuyển đổi hướng dịch (Ctrl+I)"],
+    [174, "Nghe văn bản"],
+    [175, "Quay lại (Alt+Mũi tên trái)"],
+    [184, "Tiếp tục (Alt+Mũi tên phải)"],
+    [176, "Không thể phát hiện ngôn ngữ. Vui lòng chọn nó bằng tay."],
+    [177, "Dịch vụ không hỗ trợ ngôn ngữ nguồn."],
+    [178, "Thông tin QTranslate: qtranslate@gmail.com"],
+    [179, "Phiên bản "],
+    [180, "Cập nhật máy chủ không sẵn"],
+    [181, "Phiên bản mới (%s) sẵn sàng"],
+    [182, "%s là bản mới nhất"],
+    [183, "Kiểm tra để Cập nhật..."],
+    [185, "Cập nhật thất bại"],
+    [186, "La tinh hóa: "],
+    [187, "Luôn luôn trên đầu"],
+    [188, "Bàn phím"],
+    [189, "Không thể thiết lập kết nối Internet."],
+    [190, "Không có dữ liệu trả về (quá thời gian chờ khi gửi dữ liệu)."],
+    [191, "Không có dữ liệu nào được trả lại."],
+    [192, "Không có dữ liệu để Dịch."],
+    [193, "Dịch vụ không hỗ trợ khả năng yêu cầu."],
+    [194, "Không thể phát luồng âm thanh."],
+    [195, "Dịch vụ không hỗ trợ âm thanh cho ngôn ngữ này, hoặc văn bản quá dài."],
+    [196, "Lỗi dịch vụ tập lệnh."],
+    [197, "Lỗi không mong đợi."],
+    [198, "Dịch vụ không hỗ trợ ngôn ngữ đích."],
+    [199, "Không tìm thấy tài liệu: "],
+    [200, "Đang cài đặt cập nhật..."],
+    [201, "Thêm vào mục yêu thích"],
+    [202, "Xóa khỏi yêu thích"],
+    [203, "Đảm bảo micrô được kết nối với máy tính của bạn."],
+    [204, "Không thể thiết lập kết nối Internet"],
+    [205, "Bật đầu vào lời nói (%s)"],
+    [206, "Tắt đầu vào lời nói"]   
+  ],
+  "Windows": [{
+    "Controls": [
+      [1004, "Dịch"]
+    ],
+    "Id": 1,
+    "Caption": "QTranslate"
+  }, {
+    "Controls": [
+      [10, [
+        [20, "Từ điển tìm kiếm"],
+        [30, "Nghe văn bản đã chọn"],
+        [40, "Chép bản dịch vào bảng tạm"],
+        [50, "Thay thế văn bản đã chọn"]
+      ]]
+    ],
+    "Id": 6
+  }, {
+    "Controls": [],
+    "Strings": [
+      [10, "Không tìm thấy kết quả cho '%s'."]
+    ],
+    "Id": 5,
+    "Caption": "Từ điển"
+  }, {
+    "Controls": [
+      [1, "Đồng ý"],
+      [1160, "Lưu như..."],
+      [1067, "Xóa"]
+    ],
+    "Id": 3,
+    "Caption": "Lịch sử tra cứu"
+  }, {
+    "Controls": [
+      [1, "Đồng ý"],
+      [2, "Hủy"],
+      [1049, "Áp dụng"]
+    ],
+    "Id": 2,
+    "Caption": "Tùy chọn"
+  }, {
+    "Controls": [
+      [1045, "Tự động mở mỗi lần bật máy"],
+      [1070, "Ngôn ngữ giao diện:"],
+      [1075, "Tên phông chữ:"],
+      [1074, "Cỡ chữ:"],
+      [1068, "Ngôn ngữ đầu tiên:"],
+      [1069, "Ngôn ngữ thứ hai:"],
+      [1071, "Nhập liệu nói:"],
+      [1063, "Tự phát hiện ngôn ngữ"],
+      [1046, "Chung"],
+      [1064, "Lịch sử"],
+      [1122, "Kích hoạt Lịch sử tra cứu"],
+      [1124, "Xóa Lịch sử lúc thoát"],
+      [1123, "Mở rộng các mục"]
+    ],
+    "Id": 10,
+    "Caption": "Cơ bản"
+  }, {
+    "Controls": [
+      [1049, "Kết nối"],
+      [1084, "Thời gian chờ, giây:"],
+      [1033, "Automatic proxy detection"],
+      [1034, "Host"],
+      [1036, "Username"],
+      [1037, "Password"],
+      [1048, "Proxy"],
+      [1035, "Port"],
+      [1135, [
+        [0, "Use system proxy settings"],
+        [1, "No proxy"],
+        [2, "Manual proxy configuration"],
+        [3, "Auto-detect proxy settings"]
+      ]]
+    ],
+    "Id": 11,
+    "Caption": "Internet"
+  }, {
+    "Controls": [
+      [1177, "Thêm từ điển..."],
+      [1180, "Xóa từ điển"]
+    ],
+    "Id": 12,
+    "Caption": "Dịch vụ"
+  }, {
+    "Controls": [
+      [1099, "Chọn / bỏ chọn tất cả"]
+    ],
+    "Id": 13,
+    "Caption": "Ngôn ngữ"
+  }, {
+    "Controls": [
+      [1076, "Chung"],
+      [1123, "Kích hoạt kiểu dáng của cửa sổ"],
+      [1169, "Chủ đề:"],
+      [1158, "Tự động co giãn"],
+      [1160, "Tự động đưa vị trí"],
+      [1159, "Kích hoạt khi được mở"],
+      [1161, "Ghim khi kéo"],
+      [1124, "Cửa sổ bật lên"],
+      [1092, "Màu nền:"],
+      [1091, "Mầu văn bản:"],
+      [1090, "Màu khung:"],
+      [1145, "Độ trong suốt (0 - 90):"],
+      [1146, "Độ dày của khung:"],
+      [1147, "Tự ẩn trễ:"],
+      [1194, "Giây"],
+      [1137, "Biểu tượng:"],
+      [1138, "Hiển thị biểu tượng từ điển"],
+      [1139, "Hiển thị biểu tượng nghe văn bản đã chọn"],
+      [1140, "Hiển thị biểu tượng sao chép văn bản vào bảng tạm"],
+      [1141, "Hiển thị biểu tượng thay thế văn bản đã chọn"]
+    ],
+    "Id": 14,
+    "Caption": "Xuất hiện"
+  }, {
+    "Controls": [
+      [1162, [
+        [0, "Kích hoạt cho các chương trình này:"],
+        [1, "Tắt cho các chương trình này:"]
+      ]],
+      [1101, "Thêm vào"],
+      [1103, "Chỉnh sửa"],
+      [1102, "Xóa"],
+      [1113, "Kích hoạt Phát hiện thông minh"]
+    ],
+    "Id": 15,
+    "Caption": "Ngoại lệ"
+  }, {
+    "Controls": [
+      [1118, "Kích hoạt Phím tắt"],
+      [1165, [
+        [0, "Hiện cửa sổ chính"],
+        [1, "Hiện cửa sổ nổi"],
+        [2, "Hiện Từ điển window"],
+        [3, "Hiện Lịch sử window"],
+        [4, "Hiện Bàn phím window"],
+        [5, "Nghe văn bản đã chọn"],
+        [6, "Chép bản dịch vào bảng tạm"],
+        [7, "Thay thế văn bản đã chọn"],
+        [8, "Chuyển đổi chế độ chuột"],
+        [9, "Dịch nội dụng bảng tạm"],
+        [10, "Dịch bảng tạm trong cửa sổ chính"],
+        [11, "Dịch bảng tạm trong cửa sổ nổi"],
+        [12, "Từ điển từ bảng tạm"],
+        [13, "Thay đổi bố cục bàn phím và văn bản đã chọn"],
+        [14, "Nghe bản dịch đã chọn"],
+        [15, "Phát hiện văn bản từ màn hình"],
+        [16, "Đọc để nhập liệu"]
+      ]]
+    ],
+    "Id": 16,
+    "Caption": "Phím tắt"
+  }, {
+    "Controls": [
+      [1146, "Nâng cao"],
+      [1151, "Trình duyệt mặc định:"],
+      [1147, "Nút sao chép:"],
+      [1149, "Bố cục bàn phím"],
+      [1157, "Tên miền ưa thích:"],
+      [1154, "Kích hoạt dịch giao diện"],
+      [1159, "Cho phép nghe lại ở tốc độ chậm hơn"],
+      [1160, "Bỏ qua ngắt dòng"],
+      [1186, "Chế độ chuột"],
+      [1155, "Kích hoạt chế độ chuột khi ấn nút Ctrl"],
+      [1156, "Ấn vào biểu tượng ở khay hệ thống để chuyển đổi chế độ chuột"],
+      [1158, "API keys"],
+      [1195, "OCR API key:"]
+    ],
+    "Id": 17,
+    "Caption": "Nâng cao"
+  }, {
+    "Controls": [
+      [1188, "Tự kiểm tra cập nhật"],
+      [1190, "Kiểm tra ngay"],
+      [1191, "Cài đặt"]
+    ],
+    "Id": 18,
+    "Caption": "Cập nhật"
+  }],
+  "Menus": [{
+    "Items": [
+      [10, "Kiểm tra chính tả"],
+      [20, "Dịch luôn"],
+      [30, "Dịch ngược lại"],
+      [40, "Mở rộng"],
+      [50, "Đọc phiên âm"],
+      [60, "Xóa Nhập vào Kéo && thả"],
+      [61, "Tự động dọn dẹp bản dịch"],
+      [62, "Lưu Nội dung lúc thoát"],
+      [65, "Hiện Ngăn trên cùng"],
+      [70, "Hiện Ngăn giữa"],
+      [80, "Hiện Bảng dịch vụ"],
+      [81, "Thu nhỏ xuống khay khi ấn thu nhỏ"],
+      [82, "Thu nhỏ xuống khay khi ấn Đóng"],
+      [85, "On startup"],
+      [86, "Hiện cửa sổ"],
+      [87, "Thu nhỏ vào khay"],
+      [88, "Phục hồi trạng thái trước"],
+      [90, "Từ điển"],
+      [100, "Lịch sử"],
+      [110, "Bàn phím"],
+      [120, "Tùy chọn"],
+      [125, "Thông tin QTranslate"],
+      [130, "Trợ giúp"],
+      [140, "Thoát"]
+    ],
+    "Id": 1
+  }, {
+    "Items": [
+      [10, "Quay lại"],
+      [20, "Cắt"],
+      [30, "Cắt tất cả"],
+      [40, "Chép"],
+      [50, "Chép tất cả"],
+      [60, "Dán"],
+      [70, "Chọn tất cả"],
+      [75, "Dịch"],
+      [80, "Từ điển tìm kiếm"],
+      [90, "Nghe"]
+    ],
+    "Id": 2
+  }, {
+    "Items": [
+      [10, "Mở"],
+      [15, "Chép văn bản"],
+      [20, "Chép bản dịch"],
+      [30, "Xóa"],
+      [40, "Nghe"]
+    ],
+    "Id": 3
+  }, {
+    "Items": [
+      [10, "Đặt lại"],
+      [20, "Chỉnh sửa..."],
+      [30, "Luôn phát hiện ngôn ngữ"]
+    ],
+    "Id": 4
+  }, {
+    "Items": [
+      [5, "Phát hiện văn bản từ màn hình"],
+      [10, "Từ điển"],
+      [20, "Lịch sử đã tra cứu"],
+      [30, "Bàn phím ảo"],
+      [36, "Kích hoạt Phím tắt"],
+      [40, "Chế độ chuột"],
+      [50, "Kích hoạt"],
+      [60, "Hiện icon"],
+      [70, "Hiện bản dịch"],
+      [71, "Hiện bản dịch và đọc"],
+      [80, "Tùy chọn"],
+      [90, "Thông tin QTranslate"],
+      [100, "Thoát"]
+    ],
+    "Id": 5
+  }, {
+    "Items": [
+      [10, "Chọn tất cả"],
+      [20, "Chép"],
+      [30, "In..."],
+      [40, "Dịch"],
+      [50, "Tìm"],
+      [60, "Nghe"]
+    ],
+    "Id": 6
+  }, {
+    "Items": [
+      [10, "Hiện Toàn bộ Lịch sử"]
+    ],
+    "Id": 7
+  }, {
+    "Items": [
+      [10, "Hiện thông tin"],
+      [20, "Xóa từ điển"]
+    ],
+    "Id": 8
+  }, {
+    "Items": [
+      [10, "Xóa Lịch sử đã tra cứu"],
+      [20, "Hiện khung dịch vụ"],
+      [30, "Tìm chính xác"],
+      [40, "Tùy chọn"]
+    ],
+    "Id": 9
+  }, {
+    "Items": [
+      [110, "Ngôn ngữ OCR"],
+      [120, "Dịch"],
+      [130, "Chép hình ảnh"],
+      [140, "Chép văn bản"],
+      [150, "Lưu hình ảnh"],
+      [160, "Chỉnh sửa hình ảnh"],
+      [170, "Chọn tất cả"],
+      [180, "Xóa lựa chọn"],
+      [190, "Đóng"]
+    ],
+    "Id": 10
+  }]
+}

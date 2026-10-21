@@ -1,0 +1,341 @@
+{
+  "Author": "-vpa, kolicek15",
+  "LanguageName": "Czech",
+  "LanguageNativeName": "Česky",
+  "LanguageCode": "cs",
+  "Strings": [
+    [171, "Vymazat současný překlad (Ctrl+N)"],
+    [172, "Přeložit (Ctrl+Enter)"],
+    [173, "Zaměnit směr překladu (Ctrl+I)"],
+    [174, "Poslechnout si text"],
+    [175, "Jít zpět (Alt+Šipka vlevo)"],
+    [184, "Jít vpřed (Alt+Šipka vpravo)"],
+    [176, "Nelze rozpoznat jazyk. Prosím vyberte jej ručně."],
+    [177, "Služba nepodporuje zdrojový jazyk."],
+    [178, "O programu"],
+    [179, "Verze "],
+    [180, "Aktualizační server není dostupný"],
+    [181, "Je dostupná nová verze (%s)"],
+    [182, "%s je aktuální"],
+    [183, "Kontrola aktualizací..."],
+    [185, "Aktualizace se nezdařila."],
+    [186, "Romanizace: "],
+    [187, "Vždy nahoře"],
+    [188, "Klávesnice"],
+    [189, "Žádné internetové připojení."],
+    [190, "Nebyla vrácena žádná data (během odesílání dat vypršel čas)."],
+    [191, "Nebyla vrácena žádná data."],
+    [192, "Žádná data k překladu."],
+    [193, "Služba nepodporuje požadované schopnosti."],
+    [194, "Nelze přehrát audio."],
+    [195, "Služba nepodporuje audio pro tento jazyk nebo je text příliš dlouhý."],
+    [196, "Chyba služby skriptu."],
+    [197, "Neočekávaná chyba."],
+    [198, "Služba nepodporuje cílový jazyk."],
+    [199, "Nelze nalézt soubor: "],
+    [200, "Stahování aktualizace..."],
+    [201, "Přidat k oblíbeným"],
+    [202, "Odstranit z oblíbených"],
+    [203, "Ujistěte se, že je mikrofon připojen k počítači."],
+    [204, "Nelze se připojit k internetu"],
+    [205, "Zapnout hlasový vstup (%s)"],
+    [206, "Vypnout hlasový vstup"]
+  ],
+  "Windows": [{
+    "Controls": [
+      [1004, "Přeložit"]
+    ],
+    "Id": 1,
+    "Caption": "QTranslate"
+  }, {
+    "Controls": [
+      [10, [
+        [20, "Hledání slovníku pro"],
+        [30, "Poslech vybraného textu"],
+        [40, "Kopírovat překlad do schránky"],
+        [50, "Nahradit vybraný text"]
+      ]]
+    ],
+    "Id": 6
+  }, {
+    "Controls": [],
+    "Strings": [
+      [10, "Nebyly nalezeny žádné výsledky pro '%s'."]
+    ],
+    "Id": 5,
+    "Caption": "Slovník"
+  }, {
+    "Controls": [
+      [1, "OK"],
+      [1160, "Uložit jako..."],
+      [1067, "Vymazat"]
+    ],
+    "Id": 3,
+    "Caption": "Historie"
+  }, {
+    "Controls": [
+      [1, "OK"],
+      [2, "Zrušit"],
+      [1049, "Použít"]
+    ],
+    "Id": 2,
+    "Caption": "Možnosti"
+  }, {
+    "Controls": [
+      [1045, "Spustit s Windows"],
+      [1070, "Jazyk rozhraní:"],
+      [1075, "Název písma:"],
+      [1074, "Velikost textu:"],
+      [1068, "První jazyk:"],
+      [1069, "Druhý jazyk:"],
+      [1071, "Hlasový vstup:"],
+      [1063, "Automaticky detekované jazyky"],
+      [1046, "Obecné"],
+      [1064, "Historie"],
+      [1122, "Povolit historii"],
+      [1124, "Smazat historii při ukončení"],
+      [1123, "Rozbalit položky"]
+    ],
+    "Id": 10,
+    "Caption": "Základní"
+  }, {
+    "Controls": [
+      [1049, "Připojení"],
+      [1084, "Časový limit, sek:"],
+      [1033, "Automatická detekce proxy"],
+      [1034, "Host"],
+      [1036, "Uživatelské jméno"],
+      [1037, "Heslo"],
+      [1048, "Proxy"],
+      [1035, "Port"],
+      [1135, [
+        [0, "Použít systémové nastavení proxy"],
+        [1, "Žádné proxy"],
+        [2, "Ruční konfigurace proxy"],
+        [3, "Autodetekce nastavení proxy"]
+      ]]
+    ],
+    "Id": 11,
+    "Caption": "Internet"
+  }, {
+    "Controls": [
+      [1177, "Přidat slovník..."],
+      [1180, "Odebrat slovník"]
+    ],
+    "Id": 12,
+    "Caption": "Služby"
+  }, {
+    "Controls": [
+      [1099, "Označit/Odznačit vše"]
+    ],
+    "Id": 13,
+    "Caption": "Jazyky"
+  }, {
+    "Controls": [
+      [1076, "Obecné"],
+      [1123, "Povolit styl Windows"],
+      [1169, "Motiv:"],
+      [1158, "Povolit automatickou velikost"],
+      [1160, "Povolit automatickou polohu"],
+      [1159, "Aktivovat při otevření"],
+      [1161, "Připnout při přetažení"],
+      [1124, "Vyskakovací okno"],
+      [1092, "Barva pozadí:"],
+      [1091, "Barva textu:"],
+      [1090, "Barva rámu:"],
+      [1145, "Průhlednost (0 - 90):"],
+      [1146, "Tloušťka rámu:"],
+      [1147, "Zpoždění automatického skrytí:"],
+      [1194, "sekund"],
+      [1137, "Ikony:"],
+      [1138, "Zobrazit ikonu otevření slovníku"],
+      [1139, "Zobrazit ikonu poslechu vybraného textu"],
+      [1140, "Zobrazit ikonu kopírování textu do schránky"],
+      [1141, "Zobrazit ikonu nahradit vybraný text"]
+    ],
+    "Id": 14,
+    "Caption": "Zobrazení"
+  }, {
+    "Controls": [
+      [1162, [
+        [0, "Povoleno pro tyto programy:"],
+        [1, "Zakázáno pro tyto programy:"]
+      ]],
+      [1101, "Přidat"],
+      [1103, "Upravit"],
+      [1102, "Odstranit"],
+      [1113, "Povolit chytrou detekci"]
+    ],
+    "Id": 15,
+    "Caption": "Výjimky"
+  }, {
+    "Controls": [
+      [1118, "Povolit klávesové zkratky"],
+      [1165, [
+        [0, "Zobrazit hlavní okno"],
+        [1, "Zobrazit vyskakovací okno"],
+        [2, "Zobrazit okno Slovníku"],
+        [3, "Zobrazit okno historie"],
+        [4, "Zobrazit okno klávesnice"],
+        [5, "Poslechnout si vybraný text"],
+        [6, "Kopírovat překlad do schránky"],
+        [7, "Nahradit vybraný text"],
+        [8, "Přepnout režim myši"],
+        [9, "Přeložit obsah schránky"],
+        [10, "Přeložit schránku v hlavním okně"],
+        [11, "Přeložit schránku ve vyskakovacím okně"],
+        [12, "Slovník ze schránky"],
+        [13, "Změnit rozložení klávesnice a vybraný text"],
+        [14, "Poslechnout si vybraný překlad textu"],
+        [15, "Rozpoznávání textu"],
+        [16, "Hlasový vstup"]
+      ]]
+    ],
+    "Id": 16,
+    "Caption": "Klávesové zkratky"
+  }, {
+    "Controls": [
+      [1146, "Rozšířené"],
+      [1151, "Výchozí prohlížeč:"],
+      [1147, "Klávesová zkratka pro kopírování:"],
+      [1149, "Indikátor rozložení klávesnice:"],
+      [1157, "Preferovaná doména:"],
+      [1154, "Povolit překlad uživatelského prostředí programů"],
+      [1159, "Povolit poslech stejného textu pomalejší rychlostí"],
+      [1160, "Odstranit konce řádků"],
+      [1186, "Režim myši"],
+      [1155, "Povolit režim myši pouze při stisknutí klávesy Ctrl"],
+      [1156, "Kliknutím na ikonu na hlavním panelu přepnete režim myši"],
+      [1158, "Klíče API"],
+      [1195, "Klíč OCR API:"]
+    ],
+    "Id": 17,
+    "Caption": "Rozšířené"
+  }, {
+    "Controls": [
+      [1188, "Automaticky zkontrolovat aktualizace"],
+      [1190, "Zkontrolovat nyní"],
+      [1191, "Nainstalovat"]
+    ],
+    "Id": 18,
+    "Caption": "Aktualizace"
+  }],
+  "Menus": [{
+    "Items": [
+      [10, "Kontrola pravopisu"],
+      [20, "Okamžitý překlad"],
+      [30, "Zpětný překlad"],
+      [40, "Rozšířené"],
+      [50, "Číst foneticky"],
+      [60, "Vymazat vstup při přetažení"],
+      [61, "Automatické vyčištění překladu"],
+      [62, "Uložit obsah při ukončení"],
+      [65, "Zobrazit horní panel"],
+      [70, "Zobrazit střední panel"],
+      [80, "Zobrazit panel služeb"],
+      [81, "Minimalizovat do systémové lišty při minimalizaci"],
+      [82, "Minimalizovat do systémové lišty při uzavření"],
+      [85, "Při spuštění"],
+      [86, "Zobrazit okno"],
+      [87, "Minimalizovat na lištu"],
+      [88, "Obnovit předchozí stav"],
+      [90, "Slovník"],
+      [100, "Historie"],
+      [110, "Klávesnice"],
+      [120, "Možnosti"],
+      [125, "O programu"],
+      [130, "Nápověda"],
+      [140, "Konec"]
+    ],
+    "Id": 1
+  }, {
+    "Items": [
+      [10, "Vrátit"],
+      [20, "Vyjmout"],
+      [30, "Vyjmout vše"],
+      [40, "Kopírovat"],
+      [50, "Kopírovat vše"],
+      [60, "Vložit"],
+      [70, "Vybrat vše"],
+      [75, "Přeložit"],
+      [80, "Hledat slovník pro"],
+      [90, "Poslouchat"]
+    ],
+    "Id": 2
+  }, {
+    "Items": [
+      [10, "Otevřít"],
+      [15, "Kopírovat text"],
+      [20, "Kopírovat překlad"],
+      [30, "Odstranit"],
+      [40, "Poslouchat"]
+    ],
+    "Id": 3
+  }, {
+    "Items": [
+      [10, "Reset"],
+      [20, "Upravit..."],
+      [30, "Vždy detekovat jazyk"]
+    ],
+    "Id": 4
+  }, {
+    "Items": [
+      [5, "Rozpoznávání textu"],
+      [10, "Slovník"],
+      [20, "Historie"],
+      [30, "Klávesnice"],
+      [36, "Povolit klávesové zkratky"],
+      [40, "Režim myši"],
+      [50, "Povolit"],
+      [60, "Zobrazit ikonu"],
+      [70, "Zobrazit překlad"],
+      [71, "Zobrazit překlad a číst"],
+      [80, "Možnosti"],
+      [90, "O programu"],
+      [100, "Konec"]
+    ],
+    "Id": 5
+  }, {
+    "Items": [
+      [10, "Vybrat vše"],
+      [20, "Kopírovat"],
+      [30, "Tisknout..."],
+      [40, "Přeložit"],
+      [50, "Hledat"],
+      [60, "Poslouchat"]
+    ],
+    "Id": 6
+  }, {
+    "Items": [
+      [10, "Zobrazit úplnou historii"]
+    ],
+    "Id": 7
+  }, {
+    "Items": [
+      [10, "Zobrazit informace"],
+      [20, "Odebrat slovník"]
+    ],
+    "Id": 8
+  }, {
+    "Items": [
+      [10, "Vymazat historii"],
+      [20, "Zobrazit panel služeb"],
+      [30, "Přesné vyhledávání"],
+      [40, "Možnosti"]
+    ],
+    "Id": 9
+  }, {
+    "Items": [
+      [110, "Jazyk OCR"],
+      [120, "Přeložit"],
+      [130, "Kopírovat obrázek"],
+      [140, "Kopírovat text"],
+      [150, "Uložit obrázek"],
+      [160, "Upravit obrázek"],
+      [170, "Vybrat vše"],
+      [180, "Vymazat výběr"],
+      [190, "Zavřít"]
+    ],
+    "Id": 10
+  }]
+}

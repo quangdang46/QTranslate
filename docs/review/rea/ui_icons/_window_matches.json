@@ -1,0 +1,62 @@
+[
+ {
+  "region": "tool row left (new | kebab)",
+  "x": [
+   0,
+   34
+  ],
+  "file": "ui_21_0_16x16.png",
+  "group": 21,
+  "ssd": 468724
+ },
+ {
+  "region": "tool row left (new | kebab)",
+  "x": [
+   48,
+   51
+  ],
+  "file": "ui_21_0_16x16.png",
+  "group": 21,
+  "ssd": 390917
+ },
+ {
+  "region": "tool row swap button",
+  "x": [
+   223,
+   253
+  ],
+  "file": "ui_21_0_16x16.png",
+  "group": 21,
+  "ssd": 444671
+ },
+ {
+  "region": "source pane bottom-right",
+  "x": [
+   453,
+   464
+  ],
+  "file": "ui_23_0_16x16.png",
+  "group": 23,
+  "ssd": 35560
+ },
+ {
+  "region": "source pane bottom-right",
+  "x": [
+   474,
+   487
+  ],
+  "file": "ui_08_0_16x16.png",
+  "group": 8,
+  "ssd": 38931
+ },
+ {
+  "region": "result pane bottom-right",
+  "x": [
+   435,
+   504
+  ],
+  "file": "ui_21_0_16x16.png",
+  "group": 21,
+  "ssd": 377925
+ }
+]

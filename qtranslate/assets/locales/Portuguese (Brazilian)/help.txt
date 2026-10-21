@@ -1,0 +1,28 @@
+﻿Atalhos globais (valores padrão):
+Duplo Ctrl => Exibir a janela principal (com a tradução do texto selecionado, se houver)
+Ctrl+Q => Traduzir o texto selecionado e mostrá-lo na janela pop-up
+Ctrl+Shift+Q => Exibir a janela dicionário
+Ctrl+E => Ouvir o texto selecionado
+
+Atalhos da janela principal:
+Ctrl+Enter => Traduzir o texto
+Ctrl+N => Limpar a tradução atual
+Ctrl+H => Exibir o histórico de tradução
+Ctrl+K => Exibir o teclado virtual
+Ctrl+Tab/Ctrl+Shift+Tab/Ctrl+1..9 => Alternar para a próxima/anterior/1..9º serviço de tradução
+Shift+Esc => Redefinir par de idiomas para detectado automaticamente
+Ctrl+I => Alterar a direção da tradução
+Ctrl+Espaço => Exibir as sugestões/menu autocompletar
+F1 => Exibir a ajuda
+Alt+Seta Esquerda => Ir para a tradução anterior
+Alt+ Seta Diretita => Ir para a próxima tradução
+
+Existem dois modos de traduzir selecionando com o mouse:
+  1) Exibir o ícone (selecionar o texto em um programa - o ícone do programa aparecerá próximo ao cursor. Clique no ícone - uma janela pop-up com a tradução do texto selecionado será exibida);
+  2) Exibir a tradução (selecionar o texto em um programa - uma janela pop-up com a tradução do texto selecionado aparecerá imediatamente).
+
+Ações:
+  - Fazer um clique com o botão esquerdo do mouse no ícone do programa na bandeja do sistema ativa/desativa o modo de seleção com o mouse (veja acima);
+  - Fazer duplo clique no ícone do programa na bandeja do sistema exibe a janela principal;
+  - Fazer duplo clique no cabeçalho da janela pop-up abre a janela principal com a tradução atual;
+  - Fazer um clique com o botão esquerdo do mouse no nome do serviço na janela pop-up altera o serviço atual e traduz novamente o texto.

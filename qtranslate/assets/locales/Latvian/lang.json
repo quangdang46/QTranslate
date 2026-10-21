@@ -1,0 +1,341 @@
+﻿{
+  "Author": "Aldis Tutins (alibaba@inbox.lv)",
+  "LanguageName": "Latvian",
+  "LanguageNativeName": "Latviešu",
+  "LanguageCode": "lv",
+  "Strings": [
+    [171, "Notīrīt (Ctrl+N)"],
+    [172, "Tulkot (Ctrl+Enter)"],
+    [173, "Mainīt tulkojuma virzienu (Ctrl+I)"],
+    [174, "Noklausīties tekstu"],
+    [175, "Atpakaļ (Alt+Bultiņa pa kreisi)"],
+    [184, "Uz priekšu (Alt+Bultiņa pa labi)"],
+    [176, "Neizdevās noteikt valodu. Izvēlieties valodu manuāli."],
+    [177, "Tulkojamā teksta valoda netiek atbalstīta."],
+    [178, "Par programmu"],
+    [179, "Versija "],
+    [180, "Jauninājumu serveris nav pieejams"],
+    [181, "Lejuplādēt jaunāko (%s) versiju"],
+    [182, "Jūs izmantojat jaunāko %s versiju"],
+    [183, "Jauninājumu meklēšana..."],
+    [185, "Jauninājuma kļūda"],
+    [186, "Latīņu burtiem: "],
+    [187, "Virs pārējiem logiem"],
+    [188, "Tastatūra"],
+    [189, "Neizdevās savienoties ar serveri."],
+    [190, "Nav datu (pārsniegts datu gaidīšanas laiks)."],
+    [191, "Nav datu."],
+    [192, "Nav datu tulkošanai."],
+    [193, "Pieprasījums netiek atbalstīts."],
+    [194, "Nevar atskaņot audioplūsmu."],
+    [195, "Šīs valodas teksta atskaņošana netiek atbalstīta, vai teksts pārāk garš."],
+    [196, "Skripta-servisa kļūda."],
+    [197, "Nezināma kļūda."],
+    [198, "Tulkojuma valoda netiek atbalstīta."],
+    [199, "Fails nav atrasts: "],
+    [200, "Jauninājumu ielāde..."],
+    [201, "Pievienot izvēlētajos"],
+    [202, "Dzēst no izvēlētajiem"],
+    [203, "Pārliecinieties, ka mikrofons pieslēgts datoram."],
+    [204, "Naizdevās pieslēgties Internetam"],
+    [205, "Ieslēgt balss ievadi (%s)"],
+    [206, "Atslēgt balss ievadi"]
+  ],
+  "Windows": [{
+    "Controls": [
+      [1004, "Tulkot"]
+    ],
+    "Id": 1,
+    "Caption": "QTranslate"
+  }, {
+    "Controls": [
+      [10, [
+        [20, "Meklēt vārdnīcā"],
+        [30, "Noklausīties izdalīto tekstu"],
+        [40, "Kopēt tulkojumu apmaiņas buferī"],
+        [50, "Samainīt izdalīto tekstu ar tulkojumu"]
+      ]]
+    ],
+    "Id": 6
+  }, {
+    "Controls": [],
+    "Strings": [
+      [10, "Priekš '%s' nav rezultātu."]
+    ],
+    "Id": 5,
+    "Caption": "Vārdnīca"
+  }, {
+    "Controls": [
+      [1, "Labi"],
+      [1160, "Saglabāt kā..."],
+      [1067, "Notīrīt"]
+    ],
+    "Id": 3,
+    "Caption": "Vēsture"
+  }, {
+    "Controls": [
+      [1, "Labi"],
+      [2, "Atcelt"],
+      [1049, "Pielietot"]
+    ],
+    "Id": 2,
+    "Caption": "Uzstādījumi"
+  }, {
+    "Controls": [
+      [1045, "Startēt kopā ar Windows"],
+      [1070, "Intefeisa valoda:"],
+      [1075, "Šrifts:"],
+      [1074, "Teksta izmērs:"],
+      [1068, "Dzimtā valoda:"],
+      [1069, "Otrā valoda:"],
+      [1071, "Balss ievade:"],
+      [1063, "Automātiskā valodu noteikšana"],
+      [1046, "Vispārēji"],
+      [1064, "Vēsture"],
+      [1122, "Saglabāt tulkojumu vēsturi"],
+      [1124, "Aizverot programmu dzēst vēsturi"],
+      [1123, "Atvērt tulkojumu"]
+    ],
+    "Id": 10,
+    "Caption": "Galvenie"
+  }, {
+    "Controls": [
+      [1049, "Savienojums"],
+      [1084, "Gaidīšanas laiks, sek.:"],
+      [1033, "Proksi servera automātiskā noteikšana"],
+      [1034, "Serveris"],
+      [1036, "Lietotājs"],
+      [1037, "Parole"],
+      [1048, "Proksi"],
+      [1035, "Ports"],
+      [1135, [
+        [0, "Izmantot proksi servera sistēmuzstādījumus"],
+        [1, "Bez proksi"],
+        [2, "Proksi servisa manuālā uzstādīšana"],
+        [3, "Automātiski noteikt proksi servera uzstādījumus"]
+      ]]
+    ],
+    "Id": 11,
+    "Caption": "Internets"
+  }, {
+    "Controls": [
+      [1177, "Pievienot vārdnīcu..."],
+      [1180, "Dzēst vārdnīcu"]
+    ],
+    "Id": 12,
+    "Caption": "Servisi"
+  }, {
+    "Controls": [
+      [1099, "Izvēlēties / Atcelt visas"]
+    ],
+    "Id": 13,
+    "Caption": "Tulkojuma valodas"
+  }, {
+    "Controls": [
+      [1076, "Vispārējs"],
+      [1123, "Izmantot loga stilu"],
+      [1169, "Tēma:"],
+      [1158, "Uzstādīt izmēru automātiski"],
+      [1160, "Izvēlieties atrašanos automātiski"],
+      [1159, "Aktivizēt atverot"],
+      [1161, "Pārvelkot piestiprināt"],
+      [1124, "Uzpeldošie logi"],
+      [1092, "Fona krāsa:"],
+      [1091, "Teksta krāsa:"],
+      [1090, "Rāmīša krāsa:"],
+      [1145, "Caurspīdīgums (0 - 90):"],
+      [1146, "Rāmīša platums:"],
+      [1147, "Automātiskās glabāšanas aizkavēšana:"],
+      [1194, "sek."],
+      [1137, "Ikonas:"],
+      [1138, "Rādīt vārdnīcas ikonu"],
+      [1139, "Rādīt izdalītā teksta klausīšanās ikonu"],
+      [1140, "Rādīt teksta kopēšanas ikonu"],
+      [1141, "Rādīt izdalītā teksta maiņas uz tulkojumu ikonu"]
+    ],
+    "Id": 14,
+    "Caption": "Skats"
+  }, {
+    "Controls": [
+      [1162, [
+        [0, "Izmantot programmās:"],
+        [1, "Atslēgt programmās:"]
+      ]],
+      [1101, "Pievienot"],
+      [1103, "Mainīt"],
+      [1102, "Dzēst"],
+      [1113, "Izmantot autoatslēgšanu"]
+    ],
+    "Id": 15,
+    "Caption": "Izņēmumi"
+  }, {
+    "Controls": [
+      [1118, "Izmantot taustiņu kombinācijas"],
+      [1165, [
+        [0, "Rādīt galveno logu"],
+        [1, "Rādīt uzpeldošo logu"],
+        [2, "Rādīt vārdnīcu"],
+        [3, "Rādīt tulkojumu vēsturi"],
+        [4, "Rādīt tastatūru"],
+        [5, "Noklausīties izdalīto tekstu"],
+        [6, "Kopēt tulkojumu apmaiņas buferī"],
+        [7, "Samainīt izdalīto tekstu ar tulkojumu"],
+        [8, "Pārslēgt peles režīmu"],
+        [9, "Tulkot apmaiņas bufera saturu"],
+        [10, "Tulkot apmaiņas buferi galvenajā logā"],
+        [11, "Tulkot apmaiņas buferi uzpeldošajā logā"],
+        [12, "Vārdnīca no apmaiņas bufera"],
+        [13, "Pārslēgt tastatūras izkārtojumu un izdalīto tekstu"],
+        [14, "Klausīties izdalītā teksta tulkojumu"],
+        [15, "Teksta atpazīšana"],
+        [16, "Balss ievade"]
+      ]]
+    ],
+    "Id": 16,
+    "Caption": "Taustiņu kombinācijas"
+  }, {
+    "Controls": [
+      [1146, "Paplašinātie"],
+      [1151, "Noklusējuma pārlūkprogramma:"],
+      [1147, "Kopēšanas darbība:"],
+      [1149, "Tastatūras izkārtojuma indikators:"],
+      [1157, "Galvenais domēns:"],
+      [1154, "Tulkot grafiskās saskarnes elementus"],
+      [1159, "Ieslēgt atkārtoto teksta noklausīšanos ar mazāku ātrumu"],
+      [1160, "Dzēst rindu tulkojumu"],
+      [1186, "Peles režīms"],
+      [1155, "Peles režīmu izmantot tikai ar pispiestu Ctrl taustiņu"],
+      [1156, "Klikšķis uz programmas ikonas paziņojumu rindā pārslēdz peles režīmu"],
+      [1158, "API atslēgas"],
+      [1195, "OCR API atslēga:"]
+    ],
+    "Id": 17,
+    "Caption": "Paplašinātie"
+  }, {
+    "Controls": [
+      [1188, "Automātiska jauninājumu pārbaude"],
+      [1190, "Pārbaudīt tūlīt"],
+      [1191, "Uzstādīt"]
+    ],
+    "Id": 18,
+    "Caption": "Jauninājumi"
+  }],
+  "Menus": [{
+    "Items": [
+      [10, "Pareizrakstības pārbaude"],
+      [20, "Momentālā tulkošana"],
+      [30, "Apgrieztā tulkošana"],
+      [40, "Papildus"],
+      [50, "Latīņu burtiem"],
+      [60, "Notīrīt pārvelkot tekstu"],
+      [61, "Automātiskā tulkojuma dzēšana"],
+      [62, "Aizverot saglabāt tekošos tekstus"],
+      [65, "Rādīt augšējo rīku joslu"],
+      [70, "Rādīt vidējo rīku joslu"],
+      [80, "Rādīt servisu joslu"],
+      [81, "Ikona 'Samazināt' pārvieto programmu paziņojumu joslā"],
+      [82, "Ikona 'Aizvērt' pārvieto programmu paziņojumu joslā"],
+      [85, "Startējot"],
+      [86, "Rādīt logu"],
+      [87, "Pārvietot paziņojumu joslā"],
+      [88, "Atgriezt iepriekšējo stāvokli"],
+      [90, "Vārdnīca"],
+      [100, "Vēsture"],
+      [110, "Tastatūra"],
+      [120, "Uzstādījumi"],
+      [125, "Par programmu"],
+      [130, "Palīdzība"],
+      [140, "Beigt darbu"]
+    ],
+    "Id": 1
+  }, {
+    "Items": [
+      [10, "Atcelt"],
+      [20, "Izgriezt"],
+      [30, "Izgriezt visu"],
+      [40, "Kopēt"],
+      [50, "Kopēt visu"],
+      [60, "Ievietot"],
+      [70, "Ievietot visu"],
+      [75, "Tulkot"],
+      [80, "Meklēt vārdnīcā"],
+      [90, "Noklausīties"]
+    ],
+    "Id": 2
+  }, {
+    "Items": [
+      [10, "Atvērt"],
+      [15, "Kopēt tekstu"],
+      [20, "Kopēt tulkojumu"],
+      [30, "Dzēst"],
+      [40, "Noklausīties"]
+    ],
+    "Id": 3
+  }, {
+    "Items": [
+      [10, "Nodzēst"],
+      [20, "Mainīt..."],
+      [30, "Vienmēr noteikt valodu"]
+    ],
+    "Id": 4
+  }, {
+    "Items": [
+      [5, "Teksta atpazīšana"],
+      [10, "Vārdnīca"],
+      [20, "Vēsture"],
+      [30, "Tastatūra"],
+      [36, "Izmantot taustiņu kombinācijas"],
+      [40, "Peles režīms"],
+      [50, "Aktivizēt"],
+      [60, "Rādīt ikonu"],
+      [70, "Rādīt tulkojumu"],
+      [71, "Rādīt un norunāt tulkojumu"],
+      [80, "Uzstādījumi"],
+      [90, "Par programmu"],
+      [100, "Beigt darbu"]
+    ],
+    "Id": 5
+  }, {
+    "Items": [
+      [10, "Izdalīt visu"],
+      [20, "Kopēt"],
+      [30, "Drukāt..."],
+      [40, "Tulkot"],
+      [50, "Meklēt vārdnīcā"],
+      [60, "Noklausīties"]
+    ],
+    "Id": 6
+  }, {
+    "Items": [
+      [10, "Rādīt visu vēsturi"]
+    ],
+    "Id": 7
+  }, {
+    "Items": [
+      [10, "Rādīt informāciju"],
+      [20, "Nodzēst vārdnīcu"]
+    ],
+    "Id": 8
+  }, {
+    "Items": [
+      [10, "Nodzēst vēsturi"],
+      [20, "Rādīt servisu joslu"],
+      [30, "Precīzā meklēšana"],
+      [40, "Uzstādījumi"]
+    ],
+    "Id": 9
+  }, {
+    "Items": [
+      [110, "Atpazīšanas valoda"],
+      [120, "Tulkot"],
+      [130, "Kopēt attēlu"],
+      [140, "Kopēt tekstu"],
+      [150, "Saglabāt attēlu"],
+      [160, "Rediģēt attēlu"],
+      [170, "Izvēlēties visu"],
+      [180, "Atcelt izvēli"],
+      [190, "Aizvērt"]
+    ],
+    "Id": 10
+  }]
+}

@@ -1,0 +1,34 @@
+﻿Globale genvejstaster (standard):
+Dobbelt Ctrl => Vis hovedvindue (med oversættelse af evt. valgt tekst)
+Ctrl + Q => Oversæt markeret tekst og vis i pop op vindue
+Ctrl + Shift + Q => Vis ordbogsvindue
+Ctrl + E => Lyt til valgt tekst
+
+Hovedvinduetaster:
+Ctrl + Enter => Oversæt tekst
+Ctrl + N => Ryd aktuel oversættelse
+Ctrl + D => Vis ordbog
+Ctrl + Alt + 1 - 9 => Vis ordbog med valgte 1. - 9. tjeneste
+Ctrl + H => Vis oversættelseshistorik
+Ctrl + K => Vis skærmtastatur
+Ctrl + Tab / Ctrl + Skift + Tab / Ctrl + 1 - 9 => Skift til næste / forrige / 1. - 9. tjeneste
+Shift + Esc => Nulstil til genkendt sprogpar
+Ctrl + Shift + 1 - 9 => Vælg sprogpar
+Ctrl + I => Skift oversættelsesretning
+Ctrl + Space => Vis forslag/autofuldførelse
+F1 => Vis hjælp
+F11 => Fuldskærm til/fra
+Alt + Venstrepil => Gå til forrige oversættelse
+Alt + Højre pil => Gå til næste oversættelse
+Ctrl + Up => Kopier oversættelse til tekstinputboksen
+
+Muligheder ved tekstmarkering:
+  1) Vis ikon (markér tekst -> QTranslate ikonet vises. Klik på ikonet -> pop op vindue med oversættelse af ​​valgt tekst);
+  2) Vis oversættelse (vælg tekst -> pop op vindue med oversættelse af valgt tekst vises straks);
+  3) Vis oversættelse og læs (pop op vindue og oplæsning).
+
+Handlinger:
+  - Klik på ikonet ved uret tænder/slukker for tekstmarkering (se ovenfor);
+  - Dobbeltklik på ikonet ved uret åbner hovedvinduet;
+  - Dobbeltklik på pop op vinduets overskrift åbner hovedvinduet med aktuel oversættelse;
+  - Klik på på tjenestenavn i pop op vinduet skifter aktuel tjeneste og oversætter igen.

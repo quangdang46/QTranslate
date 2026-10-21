@@ -1,0 +1,341 @@
+﻿{
+  "Author": "Regmos",
+  "LanguageName": "Danish",
+  "LanguageNativeName": "Dansk",
+  "LanguageCode": "da",
+  "Strings": [
+    [171, "Ryd aktuel oversættelse (Ctrl+N)"],
+    [172, "Oversæt (Ctrl+Enter)"],
+    [173, "Byt retning (Ctrl+I)"],
+    [174, "Oplæsning"],
+    [175, "Tlbage (alt+venstre pil)"],
+    [184, "Frem (alt+højre pil)"],
+    [176, "Kan ikke genkende sproget. Vælg manuelt"],
+    [177, "Tjenesten understøtter ikke kildesproget."],
+    [178, "Om QTranslate"],
+    [179, "Version "],
+    [180, "Opdateringsserver ikke tilgængelig"],
+    [181, "Version (%s) er udkommet"],
+    [182, "%s er opdateret"],
+    [183, "Søger efter opdatering..."],
+    [185, "Opdatering fejlede"],
+    [186, "Romanisering: "],
+    [187, "Altid øverst"],
+    [188, "Tastatur"],
+    [189, "Ingen internetforbindelse."],
+    [190, "Intet svar (timeout)."],
+    [191, "Intet svar."],
+    [192, "Intet at oversætte."],
+    [193, "Tjenesten understøtter ikke forespørgslen."],
+    [194, "Kan ikke spille lydstream."],
+    [195, "Tjenesten støtter ikke oplæsning af sproget, eller teksten er for lang."],
+    [196, "Scriptfejl."],
+    [197, "Uventet fejl."],
+    [198, "Tjenesten støtter ikke målsproget."],
+    [199, "Kan ikke finde filen: "],
+    [200, "Henter opdatering..."],
+    [201, "Føj til favoritter"],
+    [202, "Fjern fra favoritter"],
+    [203, "Kontrollér mikrofonens tilslutning."],
+    [204, "Kan ikke kontakte internettet"],
+    [205, "Aktivér taleinput (%s)"],
+    [206, "Deaktivér taleinput"]
+  ],
+  "Windows": [{
+    "Controls": [
+      [1004, "Oversæt"]
+    ],
+    "Id": 1,
+    "Caption": "QTranslate"
+  }, {
+    "Controls": [
+      [10, [
+        [20, "Ordbogssøgning for"],
+        [30, "Lyt til valgt tekst"],
+        [40, "Kopiér oversættelse"],
+        [50, "Erstat valgt tekst"]
+      ]]
+    ],
+    "Id": 6
+  }, {
+    "Controls": [],
+    "Strings": [
+      [10, "Ingen resultater for '%s'."]
+    ],
+    "Id": 5,
+    "Caption": "Ordbog"
+  }, {
+    "Controls": [
+      [1, "OK"],
+      [1160, "Gem som..."],
+      [1067, "Ryd"]
+    ],
+    "Id": 3,
+    "Caption": "Historik"
+  }, {
+    "Controls": [
+      [1, "OK"],
+      [2, "Annuller"],
+      [1049, "Anvend"]
+    ],
+    "Id": 2,
+    "Caption": "Indstillinger"
+  }, {
+    "Controls": [
+      [1045, "Start med Windows"],
+      [1070, "Sprog:"],
+      [1075, "Skrift:"],
+      [1074, "Størrelse:"],
+      [1068, "Første sprog:"],
+      [1069, "Andet sprog:"],
+      [1071, "Taleinput:"],
+      [1063, "Genkend sprog"],
+      [1046, "Generelt"],
+      [1064, "Historik"],
+      [1122, "Aktivér historik"],
+      [1124, "Ryd historik ved lukning"],
+      [1123, "Udvid emner"]
+    ],
+    "Id": 10,
+    "Caption": "Grundlæggende"
+  }, {
+    "Controls": [
+      [1049, "Forbindelse"],
+      [1084, "Timeout (sekunder):"],
+      [1033, "Automatisk proxy"],
+      [1034, "Vært"],
+      [1036, "Brugernavn"],
+      [1037, "Kodeord"],
+      [1048, "Proxy"],
+      [1035, "Port"],
+      [1135, [
+        [0, "Brug systemets proxy"],
+        [1, "Ingen proxy"],
+        [2, "Manuel proxy"],
+        [3, "Genkend proxy"]
+      ]]
+    ],
+    "Id": 11,
+    "Caption": "Internet"
+  }, {
+    "Controls": [
+      [1177, "Tilføj ordbog..."],
+      [1180, "Fjern ordbog"]
+    ],
+    "Id": 12,
+    "Caption": "Tjenester"
+  }, {
+    "Controls": [
+      [1099, "Vælg / fravælg alle"]
+    ],
+    "Id": 13,
+    "Caption": "Sprog"
+  }, {
+    "Controls": [
+      [1076, "Generelt"],
+      [1123, "Aktivér vinduesstil"],
+      [1169, "Tema:"],
+      [1158, "Automatisk størrelse"],
+      [1160, "Automatisk placering"],
+      [1159, "Aktivér ved åbning"],
+      [1161, "Fastgør ved trækning"],
+      [1124, "Pop op vindue"],
+      [1092, "Baggrundsfarve:"],
+      [1091, "Tekstfarve:"],
+      [1090, "Rammefarve:"],
+      [1145, "Transparens (0 - 90):"],
+      [1146, "Rammetykkelse:"],
+      [1147, "Skjul efter:"],
+      [1194, "sekunder"],
+      [1137, "Ikoner:"],
+      [1138, "Ordbogsikon til/fra"],
+      [1139, "Oplæsningsikon til/fra"],
+      [1140, "Kopiikon til/fra"],
+      [1141, "Erstatningsikon til/fra"],
+    ],
+    "Id": 14,
+    "Caption": "Udseende"
+  }, {
+    "Controls": [
+      [1162, [
+        [0, "Aktiveret for disse programmer:"],
+        [1, "Deaktiveret for disse programmer:"]
+      ]],
+      [1101, "Tilføj"],
+      [1103, "Tilpas"],
+      [1102, "Slet"],
+      [1113, "Aktivér smart genkendelse"]
+    ],
+    "Id": 15,
+    "Caption": "Undtagelser"
+  }, {
+    "Controls": [
+      [1118, "Aktivér genveje"],
+      [1165, [
+        [0, "Vis hovedvindue"],
+        [1, "Vis pop op vindue"],
+        [2, "Vis ordbogsvindue"],
+        [3, "Vis historik"],
+        [4, "Vis skærmtastatur"],
+        [5, "Oplæs valgt tekst"],
+        [6, "Kopiér oversættelse"],
+        [7, "Erstat valgt tekst"],
+        [8, "Markeringstilstand til/fra"],
+        [9, "Oversæt kopieret"],
+        [10, "Oversæt kopieret i hovedvindue"],
+        [11, "Oversæt kopieret i pop op vindue"],
+        [12, "Ordbog fra kopieret"],
+        [13, "Skift tastaturstil og valgt tekst"],
+        [14, "Lyt til oversættelse af valgt tekst"],
+        [15, "Tekstgenkendelse"],
+        [16, "Taleinput"]
+      ]]
+    ],
+    "Id": 16,
+    "Caption": "Genveje"
+  }, {
+    "Controls": [
+      [1146, "Avanceret"],
+      [1151, "Standardbrowser:"],
+      [1147, "Kopiering:"],
+      [1149, "Vis tastaturstil:"],
+      [1157, "Foretrukket domæne:"],
+      [1154, "Aktivér brugerfladeoversættelse"],
+      [1159, "Aktivér langsom oplæsning"],
+      [1160, "Fjern linieskift"],
+      [1186, "Tekstmarkering"],
+      [1155, "Kun når CTRL holdes nede"],
+      [1156, "Til/fra ved klik på ikonet ved uret"],
+      [1158, "API nøgler"],
+      [1195, "OCR API nøgle:"]
+    ],
+    "Id": 17,
+    "Caption": "Avanceret"
+  }, {
+    "Controls": [
+      [1188, "Søg automatisk efter opdatering"],
+      [1190, "Søg nu"],
+      [1191, "Installér"]
+    ],
+    "Id": 18,
+    "Caption": "Opdateringer"
+  }],
+  "Menus": [{
+    "Items": [
+      [10, "Stavekontrol"],
+      [20, "Oversæt straks"],
+      [30, "Baglæns oversættelse"],
+      [40, "Udvidet"],
+      [50, "Oplæs fonetisk"],
+      [60, "Ryd input ved træk og slip"],
+      [61, "Ryd oversættelse automatisk"],
+      [62, "Gem indhold ved lukning"],
+      [65, "Vis toppanel"],
+      [70, "Vis midterpanel"],
+      [80, "Vis tjenestepanel"],
+      [81, "Minimér til ikon ved uret"],
+      [82, "Luk til ikon ved uret"],
+      [85, "Ved start"],
+      [86, "Vis vindue"],
+      [87, "Minimér til ikon"],
+      [88, "Brug seneste"],
+      [90, "Ordbog"],
+      [100, "Historik"],
+      [110, "Tastatur"],
+      [120, "Indstillinger"],
+      [125, "Om QTranslate"],
+      [130, "Hjælp"],
+      [140, "Luk"]
+    ],
+    "Id": 1
+  }, {
+    "Items": [
+      [10, "Fortryd"],
+      [20, "Klip"],
+      [30, "Klip alt"],
+      [40, "Kopiér"],
+      [50, "Kopiér alt"],
+      [60, "Sæt ind"],
+      [70, "Vælg alt"],
+      [75, "Oversæt"],
+      [80, "Ordbogssøgning for"],
+      [90, "Lyt"]
+    ],
+    "Id": 2
+  }, {
+    "Items": [
+      [10, "Åben"],
+      [15, "Kopiér tekst"],
+      [20, "Kopiér oversættelse"],
+      [30, "Slet"],
+      [40, "Lyt"]
+    ],
+    "Id": 3
+  }, {
+    "Items": [
+      [10, "Nulstil"],
+      [20, "Redigér..."],
+      [30, "Genkend altid sprog"]
+    ],
+    "Id": 4
+  }, {
+    "Items": [
+      [5, "Tekstgenkendelse"],
+      [10, "Ordbog"],
+      [20, "Historik"],
+      [30, "Tastatur"],
+      [36, "Brug globale genveje"],
+      [40, "Tekstmarkering"],
+      [50, "Aktiveret"],
+      [60, "Vis ikon"],
+      [70, "Vis oversættelse"],
+      [71, "Vis oversættelse og læs op"],
+      [80, "Indstillinger"],
+      [90, "Om QTranslate"],
+      [100, "Luk"]
+    ],
+    "Id": 5
+  }, {
+    "Items": [
+      [10, "Vælg alt"],
+      [20, "Kopiér"],
+      [30, "Udskriv..."],
+      [40, "Oversæt"],
+      [50, "Søg"],
+      [60, "Lyt"]
+    ],
+    "Id": 6
+  }, {
+    "Items": [
+      [10, "Vis fuld historik"]
+    ],
+    "Id": 7
+  }, {
+    "Items": [
+      [10, "Vis info"],
+      [20, "Fjern ordbog"]
+    ],
+    "Id": 8
+  }, {
+    "Items": [
+      [10, "Ryd historik"],
+      [20, "Vis tjenestepanel"],
+      [30, "Præcis søgning"],
+      [40, "Indstillinger"]
+    ],
+    "Id": 9
+  }, {
+    "Items": [
+      [110, "OCR sprog"],
+      [120, "Oversæt"],
+      [130, "Kopiér billede"],
+      [140, "Kopiér tekst"],
+      [150, "Gem billede"],
+      [160, "Redigér billede"],
+      [170, "Vælg alt"],
+      [180, "Ryd markering"],
+      [190, "Luk"]
+    ],
+    "Id": 10
+  }]
+}

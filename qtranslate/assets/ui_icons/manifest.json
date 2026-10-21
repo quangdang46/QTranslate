@@ -1,0 +1,22 @@
+{
+ "note": "Main-window UI icons recovered from the QTranslate 6.10.0 EXE's RT_ICON resources (via `rea inspect-pe-resources`). Each is 16x16 and matches the glyph the native main window draws.",
+ "provenance": {
+  "binary": "docs/review/artifacts/QTranslate.6.10.0.exe",
+  "extracted_by": "tools/_scratch/extract_ui_icons.py",
+  "matched_against": "docs/review/native_screens/2131.png"
+ },
+ "size": [
+  16,
+  16
+ ],
+ "icons": {
+  "mic": {
+   "file": "mic.png",
+   "recovered_from": "ui_23_0_16x16.png"
+  },
+  "headphone": {
+   "file": "headphone.png",
+   "recovered_from": "ui_08_0_16x16.png"
+  }
+ }
+}

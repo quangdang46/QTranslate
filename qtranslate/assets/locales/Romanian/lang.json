@@ -1,0 +1,341 @@
+﻿{
+  "Author": "Bandi Levente (tashoonga@yahoo.com)",
+  "LanguageName": "Romanian",
+  "LanguageNativeName": "Romana",
+  "LanguageCode": "ro",
+  "Strings": [
+    [171, "Sterge traducerea curenta (Ctrl+N)"],
+    [172, "Traduce (Ctrl+Enter)"],
+    [173, "Comuta directia traducerii (Ctrl+I)"],
+    [174, "Asculta textul"],
+    [175, "Du-te inapoi (Alt+Left Arrow)"],
+    [184, "Du-te inainte (Alt+Right Arrow)"],
+    [176, "Nu se poate detecta limba. Va rugam sa alegeti manual."],
+    [177, "Serviciul nu suporta limba sursa."],
+    [178, "Despre QTranslate"],
+    [179, "Versiunea "],
+    [180, "Servitorul de actualizare nu este disponibil"],
+    [181, "O versiune noua (%s) este disponibila"],
+    [182, "%s este actualizata"],
+    [183, "Se cauta actualizari..."],
+    [185, "Actualizare esuata"],
+    [186, "Romanizare: "],
+    [187, "Mereu deasupra"],
+    [188, "Tastatura"],
+    [189, "Nu se poate stabili o conexiune la Internet."],
+    [190, "Nu s-au primit date (s-a produs o intrerupere la trimiterea datelor)."],
+    [191, "Nu s-au primit date."],
+    [192, "Nu sunt date de tradus."],
+    [193, "Serviciul nu suporta capacitatea solicitata."],
+    [194, "Nu poate rula fluxul audio."],
+    [195, "Serviciul nu suporta redarea audio pentru aceasta limba sau textul este prea lung."],
+    [196, "Eroare de serviciu inscriere."],
+    [197, "Eroare neprevazuta."],
+    [198, "Serviciul nu suporta limba destinatara."],
+    [199, "Nu se gaseste fisierul: "],
+    [200, "Instalare actualizare..."],
+    [201, "Adauga la favorite"],
+    [202, "Inlatura din favorite"],
+    [203, "Asigură-te că microfonul este conectat la computer."],
+    [204, "Nu se poate stabili o conexiune la Internet"],
+    [205, "Activați introducerea vorbirii (%s)"],
+    [206, "Dezactivați introducerea vorbirii"]
+  ],
+  "Windows": [{
+    "Controls": [
+      [1004, "Traduce"]
+    ],
+    "Id": 1,
+    "Caption": "QTranslate"
+  }, {
+    "Controls": [
+      [10, [
+        [20, "Cautare in dictionar pentru"],
+        [30, "Asculta textul selectat"],
+        [40, "Copiaza traducerea in memorator"],
+        [50, "Inlocuieste textul selectat"]
+      ]]
+    ],
+    "Id": 6
+  }, {
+    "Controls": [],
+    "Strings": [
+      [10, "Nu s-au gasit rezultate pentru '%s'."]
+    ],
+    "Id": 5,
+    "Caption": "Dictionar"
+  }, {
+    "Controls": [
+      [1, "Bine"],
+      [1160, "Salveaza ca..."],
+      [1067, "Sterge"]
+    ],
+    "Id": 3,
+    "Caption": "Istoric"
+  }, {
+    "Controls": [
+      [1, "Bine"],
+      [2, "Revocare"],
+      [1049, "Aplica"]
+    ],
+    "Id": 2,
+    "Caption": "Optiuni"
+  }, {
+    "Controls": [
+      [1045, "Porneste cu Windows"],
+      [1070, "Limba interfata:"],
+      [1075, "Nume caracter:"],
+      [1074, "Marime text:"],
+      [1068, "Prima limba:"],
+      [1069, "A doua limba:"],
+      [1071, "Speech input:"],
+      [1063, "Detectare automata limbi"],
+      [1046, "General"],
+      [1064, "Istoric"],
+      [1122, "Activare istoric"],
+      [1124, "Sterge istoricul la iesire"],
+      [1123, "Extinde elementele"]
+    ],
+    "Id": 10,
+    "Caption": "Elemente de baza"
+ }, {
+    "Controls": [
+      [1049, "Conexiune"],
+      [1084, "Timp expirat, sec:"],
+      [1033, "Detectare automata proxima"],
+      [1034, "Gazda"],
+      [1036, "Nume utilizator"],
+      [1037, "Parola"],
+      [1048, "Proxima"],
+      [1035, "Canal"],
+      [1135, [
+        [0, "Utilizare setari proxima sistem"],
+        [1, "Fara proxima"],
+        [2, "Configurare proxima manuala"],
+        [3, "Detectare automata setari proxima"]
+      ]]
+    ],
+    "Id": 11,
+    "Caption": "Internet"
+  }, {
+    "Controls": [
+      [1177, "Adauga dictionar..."],
+      [1180, "Inlatura dictionar"]
+    ],
+    "Id": 12,
+    "Caption": "Servicii"
+  }, {
+    "Controls": [
+      [1099, "Bifeaza / debifeaza toate"]
+    ],
+    "Id": 13,
+    "Caption": "Limbi"
+  }, {
+    "Controls": [
+      [1076, "General"],
+      [1123, "Activare stil fereastra"],
+      [1169, "Tema:"],
+      [1158, "Activare dimensiuni automate"],
+      [1160, "Activare pozitionare automata"],
+      [1159, "Activare la deschidere"],
+      [1161, "Pin when dragging"],
+      [1124, "Fereastra automata"],
+      [1092, "Culoare de fundal:"],
+      [1091, "Culoare text:"],
+      [1090, "Culoare cadru:"],
+      [1145, "Transparenta (0 - 90):"],
+      [1146, "Grosime cadru:"],
+      [1147, "Auto-hide delay:"],
+      [1194, "seconds"],
+      [1137, "Icoane:"],
+      [1138, "Show open dictionary icon"],
+      [1139, "Show listen to selected text icon"],
+      [1140, "Show copy text to clipboard icon"],
+      [1141, "Show replace selected text icon"]
+    ],
+    "Id": 14,
+    "Caption": "Aspect"
+  }, {
+    "Controls": [
+      [1162, [
+        [0, "Activat pentru aceste programe:"],
+        [1, "Dezactivat pentru aceste programe:"]
+      ]],
+      [1101, "Adauga"],
+      [1103, "Modifica"],
+      [1102, "Sterge"],
+      [1113, "Activare detectare inteligenta"]
+    ],
+    "Id": 15,
+    "Caption": "Exceptii"
+  }, {
+    "Controls": [
+      [1118, "Activare comenzi rapide"],
+      [1165, [
+        [0, "Arata fereastra principala"],
+        [1, "Arata fereastra automata"],
+        [2, "Arata fereastra dictionarului"],
+        [3, "Arata fereastra istoricului"],
+        [4, "Arata fereastra tastaturii"],
+        [5, "Asculta textul selectat"],
+        [6, "Copiaza traducerea in memorator"],
+        [7, "Inlocuieste textul selectat"],
+        [8, "Comutare mod mouse"],
+        [9, "Traduce continutul memoratorului"],
+        [10, "Traduce continutul din memorator in fereastra principala"],
+        [11, "Traduce continutul din memorator in fereastra automata"],
+        [12, "Dictionar din continutul memoratorului"],
+        [13, "Modifica amplasamentul tastaturii si textul selectat"],
+        [14, "Asculta traducerea textului selectat"],
+        [15, "Identificare text"],
+        [16, "Speech input"]
+      ]]
+    ],
+    "Id": 16,
+    "Caption": "Comenzi rapide"
+  }, {
+    "Controls": [
+      [1146, "Avansat"],
+      [1151, "Cautator web implicit:"],
+      [1147, "Actiune de copiere:"],
+      [1149, "Indicator de amplasare tastatura:"],
+      [1157, "Domeniul preferat:"],
+      [1154, "Activare traducere cu Interfata Grafica"],
+      [1159, "Enable listening to the same text at a slower speed"],
+      [1160, "Remove line breaks"],
+      [1186, "Mod mouse"],
+      [1155, "Activeaza modul mouse doar la apasarea butonului Ctrl"],
+      [1156, "Clic pe iconana din tavita sistemului comuta modul mouse"],
+      [1158, "API keys"],
+      [1195, "OCR API key:"]
+    ],
+    "Id": 17,
+    "Caption": "Avansat"
+  }, {
+    "Controls": [
+      [1188, "Cauta automat actualizari"],
+      [1190, "Cauta acum"],
+      [1191, "Instalare"]
+    ],
+    "Id": 18,
+    "Caption": "Actualizari"
+  }],
+  "Menus": [{
+    "Items": [
+      [10, "Verificare ortografica"],
+      [20, "Traducere instantanee"],
+      [30, "Traducere inversa"],
+      [40, "Extins"],
+      [50, "Citire fonetica"],
+      [60, "Sterge intrarea la Trage si Arunca"],
+      [61, "Stergere automata a traducerii"],
+      [62, "Salvare continut la iesire"],
+      [65, "Arata panoul superior"],
+      [70, "Arata panoul de mijloc"],
+      [80, "Arata panoul de servicii"],
+      [81, "Reduce in tavita de sistem la diminuare"],
+      [82, "Reduce in tavita de sistem la inchidere"],
+      [85, "La pornire"],
+      [86, "Arata fereastra"],
+      [87, "Reduce in tavita"],
+      [88, "Restabilire stare anterioara"],
+      [90, "Dictionar"],
+      [100, "Istoric"],
+      [110, "Tastatura"],
+      [120, "Optiuni"],
+      [125, "Despre QTranslate"],
+      [130, "Ajutor"],
+      [140, "Iesire"]
+    ],
+    "Id": 1
+  }, {
+    "Items": [
+      [10, "Reface"],
+      [20, "Taie"],
+      [30, "Taie tot"],
+      [40, "Copiaza"],
+      [50, "Copiaza tot"],
+      [60, "Lipire"],
+      [70, "Alege tot"],
+      [75, "Traduce"],
+      [80, "Cautare in dictionar pentru"],
+      [90, "Asculta"]
+    ],
+    "Id": 2
+  }, {
+    "Items": [
+      [10, "Deschide"],
+      [15, "Copiaza textul"],
+      [20, "Copiaza traducerea"],
+      [30, "Sterge"],
+      [40, "Asculta"]
+    ],
+    "Id": 3
+  }, {
+    "Items": [
+      [10, "Resetare"],
+      [20, "Editare..."],
+      [30, "Identifica intotdeauna limba"]
+    ],
+    "Id": 4
+  }, {
+    "Items": [
+      [5, "Identificare text"],
+      [10, "Dictionar"],
+      [20, "Istoric"],
+      [30, "Tastatura"],
+      [36, "Activare comenzi rapide"],
+      [40, "Mod mouse"],
+      [50, "Activat"],
+      [60, "Arata icoana"],
+      [70, "Arata traducerea"],
+      [71, "Arata traducerea si citeste"],
+      [80, "Optiuni"],
+      [90, "Despre QTranslate"],
+      [100, "Iesire"]
+    ],
+    "Id": 5
+  }, {
+    "Items": [
+      [10, "Alege tot"],
+      [20, "Copiere"],
+      [30, "Imprima..."],
+      [40, "Traduce"],
+      [50, "Cauta"],
+      [60, "Asculta"]
+    ],
+    "Id": 6
+  }, {
+    "Items": [
+      [10, "Arata Istoricul Complet"]
+    ],
+    "Id": 7
+  }, {
+    "Items": [
+      [10, "Arata informatia"],
+      [20, "Inlatura dictionarul"]
+    ],
+    "Id": 8
+  }, {
+    "Items": [
+      [10, "Sterge istoricul"],
+      [20, "Arata panoul de servicii"],
+      [30, "Cautare exacta"],
+      [40, "Optiuni"]
+    ],
+    "Id": 9
+  }, {
+    "Items": [
+      [110, "Limba OCR"],
+      [120, "Traduce"],
+      [130, "Copiere imagine"],
+      [140, "Copiere text"],
+      [150, "Salvare imagine"],
+      [160, "Editare imagine"],
+      [170, "Alege tot"],
+      [180, "Sterge selectia"],
+      [190, "Inchide"]
+    ],
+    "Id": 10
+  }]
+}

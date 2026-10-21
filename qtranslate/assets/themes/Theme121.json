@@ -1,0 +1,107 @@
+{
+    "Common": {
+        "ButtonRadius": 1,
+        "ClientBackColor": "1",
+        "GroupBoxColor": "59",
+        "PaintClassicFocus": true
+    },
+    "Window": {
+        "Normal": {
+            "Back": "1",
+            "Text": "33b5e5",
+            "Border": "0",
+            "BorderInner": "33b5e5",
+            "Caption": "1"
+        },
+        "Disabled": {
+            "Back": "1",
+            "Text": "59",
+            "Border": "1",
+            "BorderInner": "59",
+            "Caption": "1"
+        }
+    },
+    "WindowButton": {
+        "Normal": {
+            "Main": "33b5e5",
+            "Shadow": "33b5e5"
+        },
+        "Pressed": {
+            "Main": "7e",
+            "Shadow": "7e"
+        },
+        "Disabled": {
+            "Main": "59",
+            "Shadow": "59"
+        }
+    },
+    "Button": {
+        "Normal": {
+            "ShadowTop": "85",
+            "Border": "47",
+            "GleamTop": "",
+            "BackTop": "47",
+            "BackBottom": "47",
+            "GleamBottom": "",
+            "ShadowBottom": "34",
+            "Text": "b2"
+        },
+        "Pressed": {
+            "ShadowTop": "47",
+            "Border": "7e",
+            "GleamTop": "",
+            "BackTop": "7e",
+            "BackBottom": "7e",
+            "GleamBottom": "",
+            "ShadowBottom": "62",
+            "Text": "b2"
+        },
+        "Disabled": {
+            "ShadowTop": "27",
+            "Border": "21",
+            "GleamTop": "",
+            "BackTop": "21",
+            "BackBottom": "21",
+            "GleamBottom": "",
+            "ShadowBottom": "0e",
+            "Text": "7e"
+        }
+    },
+    "Edit": {
+        "Normal": {
+            "ShadowTop": "",
+            "Border": "1",
+            "Back": "1",
+            "ShadowBottom": "59",
+            "Text": "b2"
+        },
+        "Disabled": {
+            "ShadowTop": "",
+            "Border": "1",
+            "Back": "1",
+            "ShadowBottom": "34",
+            "Text": "64"
+        },
+        "Focused": {
+            "ShadowTop": "",
+            "Border": "1",
+            "Back": "1",
+            "ShadowBottom": "33b5e5",
+            "Text": "b2"
+        }
+    },
+    "Icon": {
+        "Normal": {
+            "Gleam": "33b5e5",
+            "Main": "33b5e5"
+        },
+        "Pressed": {
+            "Gleam": "f",
+            "Main": "f"
+        },
+        "Disabled": {
+            "Gleam": "34",
+            "Main": "34"
+        }
+    }
+}

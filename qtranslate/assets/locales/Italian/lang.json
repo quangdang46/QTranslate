@@ -1,0 +1,341 @@
+﻿{
+  "Author": "Massimo Castiglia (massimocastiglia@alice.it)",
+  "LanguageName": "Italian",
+  "LanguageNativeName": "Italiano",
+  "LanguageCode": "it",
+  "Strings": [
+    [171, "Cancella la traduzione corrente (Ctrl+N)"],
+    [172, "Traduci (Ctrl+Invio)"],
+    [173, "Scambia la direzione della traduzione (Ctrl+I)"],
+    [174, "Ascolta il testo"],
+    [175, "Indietro (Alt+Freccia sinistra)"],
+    [184, "Avanti (Alt+Freccia destra)"],
+    [176, "Impossibile rilevare la lingua. Si prega sceglierla manualmente."],
+    [177, "Il servizio non supporta la lingua di origine."],
+    [178, "Informazioni su QTranslate"],
+    [179, "Versione "],
+    [180, "Il server di aggiornamento non è disponibile"],
+    [181, "E' disponibile una nuova versione di (%s)"],
+    [182, "%s è aggiornato"],
+    [183, "Controllo aggiornamento in corso..."],
+    [185, "Aggiornamento non riuscito"],
+    [186, "Romanizzazione: "],
+    [187, "Sempre in primo piano"],
+    [188, "Tastiera"],
+    [189, "Impossibile stabilire una connessione ad internet."],
+    [190, "Nessun dato restituito (Timeout durante l'invio dei dati)."],
+    [191, "Nessun dato restituito."],
+    [192, "Nessun dato da tradurre."],
+    [193, "Il servizio non supporta la funzionalità richiesta."],
+    [194, "Impossibile riprodurre il flusso audio."],
+    [195, "Il servizio non supporta la riproduzione audio per questa lingua od il testo è troppo lungo."],
+    [196, "Errore servizio Script."],
+    [197, "Errore imprevisto."],
+    [198, "Il servizio non supporta la lingua di destinazione."],
+    [199, "Impossibile trovare il file: "],
+    [200, "Download dell'aggiornamento in corso..."],
+    [201, "Aggiungi ai preferiti"],
+    [202, "Rimuovi dai preferiti"],
+    [203, "Assicurati che il microfono sia collegato al computer."],
+    [204, "Impossibile connettersi ad Internet"],
+    [205, "Attiva input vocale (%s)"],
+    [206, "Disattiva input vocale"]
+  ],
+  "Windows": [{
+    "Controls": [
+      [1004, "Traduci"]
+    ],
+    "Id": 1,
+    "Caption": "QTranslate"
+  }, {
+    "Controls": [
+      [10, [
+        [20, "Cerca nel Dizionario"],
+        [30, "Ascolta il testo selezionato"],
+        [40, "Copia la traduzione negli Appunti"],
+        [50, "Sostituisci il testo selezionato"]
+      ]]
+    ],
+    "Id": 6
+  }, {
+    "Controls": [],
+    "Strings": [
+      [10, "Nessun risultato trovato per '%s'."]
+    ],
+    "Id": 5,
+    "Caption": "Dizionario"
+  }, {
+    "Controls": [
+      [1, "OK"],
+      [1160, "Salva come..."],
+      [1067, "Cancella"]
+    ],
+    "Id": 3,
+    "Caption": "Cronologia"
+  }, {
+    "Controls": [
+      [1, "OK"],
+      [2, "Annulla"],
+      [1049, "Applica"]
+    ],
+    "Id": 2,
+    "Caption": "Opzioni"
+  }, {
+    "Controls": [
+      [1045, "Avvia con Windows"],
+      [1070, "Lingua interfaccia:"],
+      [1075, "Nome del Font:"],
+      [1074, "Dimensione del Testo:"],
+      [1068, "Prima lingua:"],
+      [1069, "Seconda lingua:"],
+      [1071, "Input vocale:"],
+      [1063, "Rilevamento automatico delle Lingue"],
+      [1046, "Generale"],
+      [1064, "Cronologia"],
+      [1122, "Abilita la Cronologia"],
+      [1124, "Cancella la Cronologia in uscita"],
+      [1123, "Espandi voci"]
+    ],
+    "Id": 10,
+    "Caption": "Informazioni di base"
+  }, {
+    "Controls": [
+      [1049, "Connessione"],
+      [1084, "Timeout, sec:"],
+      [1033, "Rilevamento automatico proxy"],
+      [1034, "Host"],
+      [1036, "Nome Utente"],
+      [1037, "Password"],
+      [1048, "Proxy"],
+      [1035, "Porta"],
+      [1135, [
+        [0, "Utilizza le impostazioni proxy di sistema"],
+        [1, "Nessun proxy"],
+        [2, "Configurazione manuale proxy"],
+        [3, "Rilevamento automatico Impostazioni proxy"]
+      ]]
+    ],
+    "Id": 11,
+    "Caption": "Internet"
+  }, {
+    "Controls": [
+      [1177, "Aggiungi dizionario..."],
+      [1180, "Rimuovi dizionario"]
+    ],
+    "Id": 12,
+    "Caption": "Servizi"
+  }, {
+    "Controls": [
+      [1099, "Seleziona / Deseleziona tutto"]
+    ],
+    "Id": 13,
+    "Caption": "Lingue"
+  }, {
+    "Controls": [
+      [1076, "Generali"],
+      [1123, "Abilita lo stile della finestra"],
+      [1169, "Tema:"],
+      [1158, "Abilita il dimensionamento automatico"],
+      [1160, "Abilita il posizionamento automatico"],
+      [1159, "Mantienila attiva quando è aperta"],
+      [1161, "Bloccala al trascinamento"],
+      [1124, "Finestra Popup"],
+      [1092, "Colore dello Sfondo:"],
+      [1091, "Colore del Testo:"],
+      [1090, "Colore della Cornice:"],
+      [1145, "Trasparenza (0 - 90):"],
+      [1146, "Spessore della Cornice:"],
+      [1147, "Ritarda Nascondi automaticamente:"],
+      [1194, "secondi"],
+      [1137, "Icone:"],
+      [1138, "Mostra l'icona del dizionario aperto"],
+      [1139, "Mostra l'icona Ascolta il testo selezionato"],
+      [1140, "Mostra l'icona copia testo negli Appunti"],
+      [1141, "Mostra l'icona Sostituisci il testo selezionato"]
+    ],
+    "Id": 14,
+    "Caption": "Interfaccia grafica"
+  }, {
+    "Controls": [
+      [1162, [
+        [0, "Abilitato per questi programmi:"],
+        [1, "Disabilitato per questi programmi:"]
+      ]],
+      [1101, "Aggiungi"],
+      [1103, "Modifica"],
+      [1102, "Elimina"],
+      [1113, "Abilita il rilevamento intelligente"]
+    ],
+    "Id": 15,
+    "Caption": "Eccezioni"
+  }, {
+    "Controls": [
+      [1118, "Abilita i tasti di scelta rapida"],
+      [1165, [
+        [0, "Mostra la finestra principale"],
+        [1, "Mostra la finestra popup"],
+        [2, "Mostra la finestra del dizionario"],
+        [3, "Mostra la finestra della cronologia"],
+        [4, "Mostra la finestra della tastiera"],
+        [5, "Ascolta il testo selezionato"],
+        [6, "Copia la traduzione negli Appunti"],
+        [7, "Sostituisci il testo selezionato"],
+        [8, "Passa alla modalità mouse"],
+        [9, "Traduci il contenuto degli Appunti"],
+        [10, "Traduci gli Appunti nella finestra principale"],
+        [11, "Traduci gli Appunti nella finestra popup"],
+        [12, "Dizionario dagli Appunti"],
+        [13, "Modifica il layout tastiera ed il testo selezionato"],
+        [14, "Ascolta la traduzione del testo selezionato"],
+        [15, "Riconoscimento del testo"],
+        [16, "Input vocale"]
+      ]]
+    ],
+    "Id": 16,
+    "Caption": "Tasti di scelta rapida"
+  }, {
+    "Controls": [
+      [1146, "Avanzate"],
+      [1151, "Browser predefinito:"],
+      [1147, "Azione per la Copia :"],
+      [1149, "Indicatore layout tastiera:"],
+      [1157, "Dominio preferito:"],
+      [1154, "Abilita la traduzione GUI"],
+      [1159, "Abilita l'ascolto dello stesso testo ad una velocità minore"],
+      [1160, "Rimuovi le interruzioni di riga"],
+      [1186, "Modalità mouse"],
+      [1155, "Abilita la modalità mouse alla pressione di Ctrl"],
+      [1156, "Clicca sull'icona di sistema per passare alla modalità mouse"],
+      [1158, "Chiavi API"],
+      [1195, "Chiave API per OCR:"],
+    ],
+    "Id": 17,
+    "Caption": "Avanzate"
+  }, {
+    "Controls": [
+      [1188, "Controlla automaticamente gli aggiornamenti"],
+      [1190, "Controllali ora"],
+      [1191, "Installa"]
+    ],
+    "Id": 18,
+    "Caption": "Aggiornamenti"
+  }],
+  "Menus": [{
+    "Items": [
+      [10, "Controllo ortografico"],
+      [20, "Traduzione istantanea"],
+      [30, "Traduzione invertita"],
+      [40, "Estendi il menù"],
+      [50, "Leggi foneticamente"],
+      [60, "Cancella l'input al Drag && Drop"],
+      [61, "Pulisci automaticamente la traduzione"],
+      [62, "Salva il contenuto in uscita"],
+      [65, "Mostra il pannello superiore"],
+      [70, "Visualizza il pannello centrale"],
+      [80, "Visualizza il pannello servizi"],
+      [81, "Minimizza nel tray quando riduco"],
+      [82, "Minimizza nel tray quando chiudo"],
+      [85, "All'avvio"],
+      [86, "Mostra la finestra"],
+      [87, "Minimizza nel tray"],
+      [88, "Ripristina lo stato precedente"],
+      [90, "Dizionario"],
+      [100, "Cronologia"],
+      [110, "Tastiera"],
+      [120, "Opzioni"],
+      [125, "Informazioni su QTranslate"],
+      [130, "Guida"],
+      [140, "Esci"]
+    ],
+    "Id": 1
+  }, {
+    "Items": [
+      [10, "Annulla"],
+      [20, "Taglia"],
+      [30, "Taglia tutto"],
+      [40, "Copia"],
+      [50, "Copia tutto"],
+      [60, "Incolla"],
+      [70, "Seleziona tutto"],
+      [75, "Traduci"],
+      [80, "Cerca nel Dizionario"],
+      [90, "Ascolta"]
+    ],
+    "Id": 2
+  }, {
+    "Items": [
+      [10, "Apri"],
+      [15, "Copia testo"],
+      [20, "Copia traduzione"],
+      [30, "Elimina"],
+      [40, "Ascolta"]
+    ],
+    "Id": 3
+  }, {
+    "Items": [
+      [10, "Reset"],
+      [20, "Modifica..."],
+      [30, "Rileva sempre la lingua"]
+    ],
+    "Id": 4
+  }, {
+    "Items": [
+      [5, "Riconoscimento del testo"],
+      [10, "Dizionario"],
+      [20, "Cronologia"],
+      [30, "Tastiera"],
+      [36, "Abilita i tasti di scelta rapida globali"],
+      [40, "Modalità mouse"],
+      [50, "Abilitata"],
+      [60, "Mostra l'icona"],
+      [70, "Mostra la traduzione"],
+      [71, "Mostra la traduzione e leggi"],
+      [80, "Opzioni"],
+      [90, "Informazioni su QTranslate"],
+      [100, "Esci"]
+    ],
+    "Id": 5
+  }, {
+    "Items": [
+      [10, "Seleziona tutto"],
+      [20, "Copia"],
+      [30, "Stampa..."],
+      [40, "Traduci"],
+      [50, "Cerca"],
+      [60, "Ascolta"]
+    ],
+    "Id": 6
+  }, {
+    "Items": [
+      [10, "Visualizza la Cronologia Completa"]
+    ],
+    "Id": 7
+  }, {
+    "Items": [
+      [10, "Mostra informazioni"],
+      [20, "Rimuovi dizionario"]
+    ],
+    "Id": 8
+  }, {
+    "Items": [
+      [10, "Cancella la cronologia"],
+      [20, "Mostra il pannello servizi"],
+      [30, "Ricerca esatta"],
+      [40, "Opzioni"]
+    ],
+    "Id": 9
+  }, {
+    "Items": [
+      [110, "Lingua OCR"],
+      [120, "Traduci"],
+      [130, "Copia l'immagine"],
+      [140, "Copia il testo"],
+      [150, "Salva l'immagine"],
+      [160, "Modifica l'immagine"],
+      [170, "Seleziona tutto"],
+      [180, "Cancella la selezione"],
+      [190, "Chiudi"]
+    ],
+    "Id": 10
+  }]
+}

@@ -1,0 +1,34 @@
+﻿Sistēmas taustiņu kombinācijas (noklusējums):
+Double Ctrl => Rādīt programmas glaveno logu (ja ir izdalīts teksts, ar tulkojumu)
+Ctrl+Q => Tulkot izdalīto tekstu un parādīt upeldošajā logā
+Ctrl+Shift+Q => Rādīt vārdnīcas logu
+Ctrl+E => Noklausīties izdalīto tekstu
+
+Taustiņu kombinācijas galvenajā logā:
+Ctrl+Enter => Tulkot tekstu
+Ctrl+N => Nodzēst tekošo tulkojumu
+Ctrl+D => Rādīt vārdnīcu
+Ctrl+Alt+1..9 => Rādīt vārdnīcu ar izvēlēto (1..9) servisu
+Ctrl+H => Rādīt tulkojumu vēsturi
+Ctrl+K => Rādīt virtuālo tastatūru
+Ctrl+Tab/Ctrl+Shift+Tab/Ctrl+1..9 => Pārslēgties uz nākošo/iepriekšējo/1..9-to servisu
+Shift+Esc => Noklusējuma valodu izvēle
+Ctrl+Shift+1..9 => Valodu pāra izvēle
+Ctrl+I => Mainīt tulkojuma virzienu
+Ctrl+Space => Rādīt ievadāmā vārda (autoaizpildīšana) variantu sarakstu
+F1 => Rādīt palīdzību
+F11 => Ieslēgt/izslēgt pilnekrāna režīmu
+Alt+Стрелка влево => Pāriet uz iepriekšējo tulkojumu
+Alt+Стрелка вправо => Pāriet uz nākošo tulkojumu
+Ctrl+Up => Kopēt tulkojumu teksta ievades logā
+
+Ir trīs tulkošanas režīmi izdalot tekstu ar peli:
+  1) Rādīt ikonu (jebkurā programmā izdaliet tekstu -> pie kursora parādās QTranslate ikona; piespiežot uz ikonas -> parādās uzpeldošais logs ar tulkojumu);
+  2) Rādīt tulkojumu (jebkurā programmā izdaliet tekstu -> parādās uzpeldošais logs ar izdalītā teksta tulkojumu);
+  3) Rādīt uz izrunāt tulkojumu (jebkurā programmā izdaliet tekstu -> parādās uzpeldošais logs ar izdalītā teksta tulkojumu un tulkojums tiek izrunāts).
+
+Darbības:
+  - Parasts klikšķis uz programmas ikonas paziņojumu joslā ieslēdz vai atslēdz tulkojuma režīmu izdalot tekstu ar peli (iepriekš aprakstīti);
+  - Dubultklikšķis uz programmas ikonas paziņojumu joslā atver programmas galveno logu;
+  - Dubultklikšķis uz uzpeldošā loga visrsraksta atver programmas galveno logu ar tekošo tulkojumu;
+  - Parasts klikšķis uzpeldošajā logā uz servisa nosaukuma maina servisu un tekstu iztulko no jauna.

@@ -1,0 +1,104 @@
+{
+ "native_strip": "docs/review/g9_evidence/out/native.png",
+ "matches": [
+  {
+   "native_index": 0,
+   "x": 14,
+   "icon": "icon_017.png",
+   "chunk": 17,
+   "ssd": 207134,
+   "patch_at": [
+    14,
+    379
+   ]
+  },
+  {
+   "native_index": 1,
+   "x": 70,
+   "icon": "icon_021.png",
+   "chunk": 21,
+   "ssd": 0,
+   "patch_at": [
+    70,
+    379
+   ]
+  },
+  {
+   "native_index": 2,
+   "x": 126,
+   "icon": "icon_029.png",
+   "chunk": 29,
+   "ssd": 44163,
+   "patch_at": [
+    126,
+    379
+   ]
+  },
+  {
+   "native_index": 3,
+   "x": 183,
+   "icon": "icon_008.png",
+   "chunk": 8,
+   "ssd": 29154,
+   "patch_at": [
+    182,
+    379
+   ]
+  },
+  {
+   "native_index": 4,
+   "x": 238,
+   "icon": "icon_039.png",
+   "chunk": 39,
+   "ssd": 48883,
+   "patch_at": [
+    238,
+    379
+   ]
+  },
+  {
+   "native_index": 5,
+   "x": 297,
+   "icon": "icon_033.png",
+   "chunk": 33,
+   "ssd": 60924,
+   "patch_at": [
+    293,
+    378
+   ]
+  },
+  {
+   "native_index": 6,
+   "x": 353,
+   "icon": "icon_011.png",
+   "chunk": 11,
+   "ssd": 0,
+   "patch_at": [
+    350,
+    379
+   ]
+  },
+  {
+   "native_index": 7,
+   "x": 409,
+   "icon": "icon_025.png",
+   "chunk": 25,
+   "ssd": 63068,
+   "patch_at": [
+    406,
+    379
+   ]
+  },
+  {
+   "native_index": 8,
+   "x": 462,
+   "icon": "icon_013.png",
+   "chunk": 13,
+   "ssd": 0,
+   "patch_at": [
+    462,
+    379
+   ]
+  }
+ ]
+}

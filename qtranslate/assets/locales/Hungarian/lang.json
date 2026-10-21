@@ -1,0 +1,341 @@
+﻿{
+  "Author": "Zityi's Translator Team (zityisoft@gmail.com)",
+  "LanguageName": "Hungarian",
+  "LanguageNativeName": "Magyar",
+  "LanguageCode": "hu",
+  "Strings": [
+    [171, "Jelenlegi fordítás törlése (Ctrl+N)"],
+    [172, "Fordítás (Ctrl+Enter)"],
+    [173, "Nyelvek felcserélése (Ctrl+I)"],
+    [174, "Szövegfelolvasás"],
+    [175, "Vissza (Alt+Left Arrow)"],
+    [184, "Előre (Alt+Right Arrow)"],
+    [176, "A nyelv nem észlelhető. Kérjük, válassza ki manuálisan."],
+    [177, "A szolgáltatás nem támogatja a forrásnyelvet."],
+    [178, "QTranslate névjegy"],
+    [179, "Verzió "],
+    [180, "A frissítési szerver nem érhető el"],
+    [181, "Egy új (%s) verzió érhető el"],
+    [182, "Ez a legfrissebb %s verzió"],
+    [183, "Frissítés ellenőrzése..."],
+    [185, "Sikertelen frissítés"],
+    [186, "Közreműködők: "],
+    [187, "Mindig látható"],
+    [188, "Billentyűzet"],
+    [189, "Nincs internetkapcsolat."],
+    [190, "Nincs visszaküldött adat (időtúllépés történt adatküldés közben)."],
+    [191, "Nincs visszaküldött adat."],
+    [192, "Nincs lefordítható adat"],
+    [193, "A szolgáltatás nem támogatja a kívánt funkciót."],
+    [194, "Nem lehet lejátszani a hangsávot."],
+    [195, "A szolgáltatás ezen a nyelven nem támogatja a hanglejátszást, vagy a szöveg túl hosszú."],
+    [196, "Parancsfájl szolgáltatási hiba."],
+    [197, "Váratlan hiba."],
+    [198, "A szolgáltatás nem támogatja a célnyelvet."],
+    [199, "A fájl nem található: "],
+    [200, "Frissítés telepítése..."],
+    [201, "Hozzáadás a kedvencekhez"],
+    [202, "Eltávolítás a kedvencekből"],
+    [203, "Győződjön meg róla, hogy a mikrofon csatlakoztatva van."],
+    [204, "Nem lehet internetkapcsolatot létesíteni"],
+    [205, "Hangos szövegbevitel bekapcsolása (%s)"],
+    [206, "Hangos szövegbevitel kikapcsolása"]
+  ],
+  "Windows": [{
+    "Controls": [
+      [1004, "Fordítás"]
+    ],
+    "Id": 1,
+    "Caption": "QTranslate"
+  }, {
+    "Controls": [
+      [10, [
+        [20, "Szótár keresése"],
+        [30, "Kijelölt szöveg felolvasása"],
+        [40, "Fordítás másolása a vágólapra"],
+        [50, "Kijelölt szöveg cseréje"]
+      ]]
+    ],
+    "Id": 6
+  }, {
+    "Controls": [],
+    "Strings": [
+      [10, "Nincs '%s' találat."]
+    ],
+    "Id": 5,
+    "Caption": "Szótár"
+  }, {
+    "Controls": [
+      [1, "OK"],
+      [1160, "Mentés másként..."],
+      [1067, "Ürítés"]
+    ],
+    "Id": 3,
+    "Caption": "Előzmények"
+  }, {
+    "Controls": [
+      [1, "OK"],
+      [2, "Mégse"],
+      [1049, "Alkalmaz"]
+    ],
+    "Id": 2,
+    "Caption": "Opciók"
+  }, {
+    "Controls": [
+      [1045, "Indítás a Windows rendszerrel"],
+      [1070, "Felhasználói felület nyelve:"],
+      [1075, "Betűtípus neve:"],
+      [1074, "Szöveg mérete:"],
+      [1068, "Első nyelv:"],
+      [1069, "Második nyelv:"],
+      [1071, "Beszédbemenet:"],
+      [1063, "Automatikus nyelvfelismerés"],
+      [1046, "Általános"],
+      [1064, "Előzmények"],
+      [1122, "Előzmények engedélyezése"],
+      [1124, "Előzmények törlése kilépéskor"],
+      [1123, "Elemek kibontása"]
+    ],
+    "Id": 10,
+    "Caption": "Általános"
+  }, {
+    "Controls": [
+      [1049, "Csatlakozás"],
+      [1084, "Időtúllépés (mp):"],
+      [1033, "Automatikus proxy felismerés"],
+      [1034, "Állomás"],
+      [1036, "Felhasználónév"],
+      [1037, "Jelszó"],
+      [1048, "Proxy"],
+      [1035, "Port"],
+      [1135, [
+        [0, "A rendszer proxy-beállításainak használata"],
+        [1, "Nincs proxy"],
+        [2, "Kézi proxy-beállítás"],
+        [3, "Proxy-beállítások automatikus észlelése"]
+      ]]
+    ],
+    "Id": 11,
+    "Caption": "Internet"
+  }, {
+    "Controls": [
+      [1177, "Szótár hozzáadása..."],
+      [1180, "Szótár eltávolítása"]
+    ],
+    "Id": 12,
+    "Caption": "Szolgáltatások"
+  }, {
+    "Controls": [
+      [1099, "Kijelölés / Kijelölés visszavonása"]
+    ],
+    "Id": 13,
+    "Caption": "Nyelvek"
+  }, {
+    "Controls": [
+      [1076, "Általános"],
+      [1123, "Ablakstílus engedélyezése"],
+      [1169, "Téma:"],
+      [1158, "Automatikus méretezés engedélyezése"],
+      [1160, "Automatikus elhelyezés engedélyezése"],
+      [1159, "Aktiválás megnyitáskor"],
+      [1161, "Kitűzés húzás közben"],
+      [1124, "Felugró ablak"],
+      [1092, "Háttér színe:"],
+      [1091, "Szöveg színe:"],
+      [1090, "Keret színe:"],
+      [1145, "Áttetszőség (0 - 90):"],
+      [1146, "Keret vastagsága:"],
+      [1147, "Automatikus elrejtés késleltetése:"],
+      [1194, "másodperc"],
+      [1137, "Ikonok:"],
+      [1138, "Szótár megnyitása ikon megjelenítése"],
+      [1139, "Kijelölt szöveg felolvasása ikon megjelenítése"],
+      [1140, "Szöveg vágólapra másolása ikon megjelenítése"],
+      [1141, "Kijelölt szöveg cseréje ikon megjelenítése"]
+    ],
+    "Id": 14,
+    "Caption": "Megjelenés"
+  }, {
+    "Controls": [
+      [1162, [
+        [0, "Engedélyezve a következő programoknál:"],
+        [1, "Letiltva a következő programoknál:"]
+      ]],
+      [1101, "Hozzáadás"],
+      [1103, "Módosítás"],
+      [1102, "Törlés"],
+      [1113, "Intelligens észlelés engedélyezése"]
+    ],
+    "Id": 15,
+    "Caption": "Kivételek"
+  }, {
+    "Controls": [
+      [1118, "Gyorsbillentyűk engedélyezése"],
+      [1165, [
+        [0, "Fő ablak megjelenítése"],
+        [1, "Felugró ablak megjelenítése"],
+        [2, "Szótár ablak megjelenítése"],
+        [3, "Előzmények ablak megjelenítése"],
+        [4, "Billentyűzet ablak megjelenítése"],
+        [5, "Kijelölt szöveg felolvasása"],
+        [6, "Fordítás másolása a vágólapra"],
+        [7, "Kijelölt szöveg cseréje"],
+        [8, "Egér mód váltása"],
+        [9, "Vágólap tartalom lefordítása"],
+        [10, "Vágólap tartalom lefordítása a fő ablakban"],
+        [11, "Vágólap tartalom lefordítása a felugró ablakban"],
+        [12, "Szótár a vágólapról"],
+        [13, "Billentyűkiosztás és a kijelölt szöveg módosítása"],
+        [14, "Kijelölt szöveg fordításának felolvasása"],
+        [15, "Szövegfelismerés"],
+        [16, "Beszédbemenet"]
+      ]]
+    ],
+    "Id": 16,
+    "Caption": "Gyorsbillentyűk"
+  }, {
+    "Controls": [
+      [1146, "Speciális"],
+      [1151, "Alapértelmezett böngésző:"],
+      [1147, "Másolási művelet:"],
+      [1149, "Billentyűkiosztás jelző:"],
+      [1157, "Kedvelt domain:"],
+      [1154, "GUI-fordítás engedélyezése"],
+      [1159, "Lehetővé teszi ugyanaz a szöveg felolvasását lassabb sebességgel"],
+      [1160, "Sortörések eltávolítása"],
+      [1186, "Egér mód"],
+      [1155, "Egér mód engedélyezése, csak a Ctrl lenyomott állapotában"],
+      [1156, "Kattintson a tálcaikonra az egér mód váltásához"],
+      [1158, "API-kulcsok"],
+      [1195, "OCR API-kulcs:"]
+    ],
+    "Id": 17,
+    "Caption": "Speciális"
+  }, {
+    "Controls": [
+      [1188, "Frissítések automatikus ellenőrzése"],
+      [1190, "Ellenőrzés"],
+      [1191, "Telepítés"]
+    ],
+    "Id": 18,
+    "Caption": "Frissítések"
+  }],
+  "Menus": [{
+    "Items": [
+      [10, "Helyesírás-ellenőrzés"],
+      [20, "Azonnali fordítás"],
+      [30, "Fordítás visszafelé"],
+      [40, "Bővített opciók"],
+      [50, "Olvasás kiejtés szerint"],
+      [60, "Beviteli panel ürítése a Húzd és Ejtsd módnál"],
+      [61, "Fordítások automatikus karbantartása"],
+      [62, "Tartalom mentése kilépéskor"],
+      [65, "Felső panel megjelenítése"],
+      [70, "Középső panel megjelenítése"],
+      [80, "Szolgáltatások panel megjelenítése"],
+      [81, "Küldés a tálcára"],
+      [82, "Tálcára helyezés bezáráskor"],
+      [85, "Indításkor"],
+      [86, "Ablak megjelenítése"],
+      [87, "Küldés a tálcára"],
+      [88, "Előző állapot visszaállítása"],
+      [90, "Szótár"],
+      [100, "Előzmények"],
+      [110, "Billentyűzet"],
+      [120, "Opciók"],
+      [125, "QTranslate névjegy"],
+      [130, "Súgó"],
+      [140, "Kilépés"]
+    ],
+    "Id": 1
+  }, {
+    "Items": [
+      [10, "Visszavonás"],
+      [20, "Kivágás"],
+      [30, "Összes kivágása"],
+      [40, "Másolás"],
+      [50, "Összes másolása"],
+      [60, "Beillesztés"],
+      [70, "Összes kijelölése"],
+      [75, "Fordítás"],
+      [80, "Szótár keresése"],
+      [90, "Felolvasás"]
+    ],
+    "Id": 2
+  }, {
+    "Items": [
+      [10, "Megnyitás"],
+      [15, "Szöveg másolása"],
+      [20, "Fordítás másolása"],
+      [30, "Törlés"],
+      [40, "Felolvasás"]
+    ],
+    "Id": 3
+  }, {
+    "Items": [
+      [10, "Visszaállítás"],
+      [20, "Szerkesztés..."],
+      [30, "Mindig ismerje fel a nyelvet"]	  
+    ],
+    "Id": 4
+  }, {
+    "Items": [
+      [5, "Szövegfelismerés"],
+      [10, "Szótár"],
+      [20, "Előzmények"],
+      [30, "Billentyűzet"],
+      [36, "Globális gyorsbillentyűk engedélyezése"],
+      [40, "Egér mód"],
+      [50, "Engedélyezve"],
+      [60, "Ikon megjelenítése"],
+      [70, "Fordítás megjelenítése"],
+      [71, "Fordítás megjelenítése és felolvasása"],
+      [80, "Opciók"],
+      [90, "QTranslate névjegy"],
+      [100, "Kilépés"]
+    ],
+    "Id": 5
+  }, {
+    "Items": [
+      [10, "Összes kijelölése"],
+      [20, "Másolás"],
+      [30, "Nyomtatás..."],
+      [40, "Fordítás"],
+      [50, "Keresés"],
+      [60, "Felolvasás"]
+    ],
+    "Id": 6
+  }, {
+    "Items": [
+      [10, "Összes előzmény megjelenítése"]
+    ],
+    "Id": 7
+  }, {
+    "Items": [
+      [10, "Információ megjelenítése"],
+      [20, "Szótár eltávolítása"]
+    ],
+    "Id": 8
+  }, {
+    "Items": [
+      [10, "Előzmények törlése"],
+      [20, "Szolgáltatások panel megjelenítése"],
+      [30, "Pontos keresés"],
+      [40, "Opciók"]
+    ],
+    "Id": 9
+  }, {
+    "Items": [
+      [110, "OCR nyelv"],
+      [120, "Fordítás"],
+      [130, "Kép másolása"],
+      [140, "Szöveg másolása"],
+      [150, "Kép mentése"],
+      [160, "Kép szerkesztése"],
+      [170, "Összes kijelölése"],
+      [180, "Kijelölés törlése"],
+      [190, "Bezárás"]
+    ],
+    "Id": 10
+  }]
+}

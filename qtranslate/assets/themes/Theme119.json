@@ -1,0 +1,138 @@
+{
+	"Common": {
+		"ButtonRadius": 2,
+		"WindowBorderRadius": 0, // 0 - None, 1 - Top, 2 - Both
+		"ClientBackColor": "dfe2e2",
+		"GroupBoxColor": "c3c6c5", // Required
+		"GroupBoxHighlightColor": "",
+		"PaintClassicFocus": false
+	},
+	"Window": {
+		"Normal": {
+			"Back": "dfe2e2",
+			"Text": "d7d8d9",
+			"Border": "3c3f41",
+			"BorderInner": "",
+			"Caption": "3c3f41"
+		},
+		"Disabled": {
+			"Back": "dfe2e2",
+			"Text": "a7a8a9",
+			"Border": "3c3f41",
+			"BorderInner": "",
+			"Caption": "3c3f41"
+		}
+	},
+	"WindowButton": {
+		"Normal": {
+			"Gleam": "",
+			"Main": "d7d8d9",
+			"Shadow": "d7d8d9",
+			"Back": "3c3f41",
+			"Border": ""
+		},
+		"Hover": {
+			"Gleam": "",
+			"Main": "d7d8d9",
+			"Shadow": "d7d8d9",
+			"Back": "2d2e30",
+			"Border": ""
+		},
+		"Pressed": {
+			"Gleam": "",
+			"Main": "7f8081",
+			"Shadow": "7f8081",
+			"Back": "161718",
+			"Border": ""
+		},
+		"Disabled": {
+			"Gleam": "",
+			"Main": "a7a8a9",
+			"Shadow": "a7a8a9",
+			"Back": "3c3f41",
+			"Border": ""
+		}
+	},
+	"Button": {
+		"Normal": {
+			"ShadowTop": "",
+			"Border": "9c9e9e",
+			"GleamTop": "f",
+			"BackTop": "e5e9e9", // Required
+			"BackBottom": "e5e9e9", // Required
+			"GleamBottom": "",
+			"ShadowBottom": "",
+			"Text": "45"
+		},
+		"Pressed": {
+			"ShadowTop": "",
+			"Border": "0055ad",
+			"GleamTop": "0270cb",
+			"BackTop": "0380e8", // Required
+			"BackBottom": "0380e8", // Required
+			"GleamBottom": "",
+			"ShadowBottom": "",
+			"Text": "f"
+		},
+		"Disabled": {
+			"ShadowTop": "",
+			"Border": "c8",
+			"GleamTop": "f8",
+			"BackTop": "e6", // Required
+			"BackBottom": "e6", // Required
+			"GleamBottom": "",
+			"ShadowBottom": "",
+			"Text": "a"
+		},
+		"Focused": {
+			"ShadowTop": "6fb5f1",
+			"Border": "0940fd",
+			"GleamTop": "75b6e9",
+			"BackTop": "288edf", // Required
+			"BackBottom": "288edf", // Required
+			"GleamBottom": "",
+			"ShadowBottom": "6fb5f1",
+			"Text": "f"
+		}
+	},
+	"Edit": {
+		"Normal": {
+			"ShadowTop": "",
+			"Border": "9c9e9e",
+			"Back": "f8", // Required
+			"ShadowBottom": "",
+			"Text": "53"
+		},
+		"Disabled": {
+			"ShadowTop": "",
+			"Border": "9c9e9e",
+			"Back": "dfe2e2", // Required
+			"ShadowBottom": "",
+			"Text": "53"
+		},
+		"Focused": {
+			"ShadowTop": "",
+			"Border": "0940fd",
+			"Back": "f8", // Required
+			"ShadowBottom": "",
+			"Text": "53"
+		}
+	},
+	"Icon": {
+		"Normal": {
+			"Gleam": "45",
+			"Main": "45",
+			"Shadow": "f"
+		},
+		"Pressed": {
+			"Gleam": "f",
+			"Main": "f",
+			"Shadow": ""
+		},
+		"Disabled": {
+			"Gleam": "a",
+			"Main": "a",
+			"Shadow": "f"
+		}
+	}
+}

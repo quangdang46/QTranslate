@@ -1,0 +1,36 @@
+Systémové klávesové zkratky (výchozí hodnoty):
+2x Ctrl => Zobrazit hlavní okno (s překladem textu, pokud byl nějaký vybrán)
+Ctrl+Q => Přeložit vybraný text a zobrazit ho ve vyskakovacím okně
+Ctrl+Shift+Q => Zobrazit vybraný text ve Slovníku
+Ctrl+E => Poslechnout si vybraný text
+
+Klávesové zkratky:
+Ctrl+Enter => Přeložit text v hlavním okně
+Ctrl+N => Vymazat současný překlad
+Ctrl+D => Zobrazit slovník
+Ctrl+Alt+1..9 => Zobrazit slovník s vybranou překladatelskou službou 1..9
+Ctrl+H => Zobrazit okno s historií překladů
+Ctrl+K => Zobrazit virtuální klávesnici
+Ctrl+Tab/Ctrl+Shift+Tab/Ctrl+1..9 => Přepnout se na další/předchozí/1.-9. překladačovou službu
+Shift+Esc => Změnit jazykový pár na autodetekci
+Ctrl+Shift+1..9 => Vybrat dvojici jazyků
+Ctrl+I => Obrátit směr překladu
+Ctrl+Space => Zobrazit rozbalovací nabídku s návrhy/automatickým dokončením
+F1 => Zobrazit nápovědu
+F11 => Zapnutí/vypnutí režimu celé obrazovky
+Alt+Šipka vlevo => Přejít na předchozí překlad
+Alt+Šipka vpravo => Přejít na další překlad
+Ctrl+Šipka nahoru => Kopírovat překlad do textového vstupního pole
+
+Existují tři režimy překladu pomocí výběru myší (jak je zapnout, viz níže):
+  1) Zobrazit ikonu (vyberte text v programu a v blízkosti kurzoru se zobrazí Ikona QTranslate. Klikněte na ikonu a objeví se vyskakovací okno s překladem vybraného textu.);
+  2) Zobrazit překlad (Vyberte text v nějakém programu a okamžitě se objeví vyskakovací okno s překladem vybraného textu);
+  3) Zobrazit překlad a číst (stejně jako předchozí plus přečte vybraný text). 
+
+Akce:
+  - Kliknutím levým tlačítkem myši na ikoně programu QTranslate v oznamovací oblasti přepnete režimu výběru pomocí myši (viz výše);
+  - Dvojitým kliknutím levým tlačítkem myši na ikoně programu QTranslate v oznamovací oblasti zobrazíte hlavní okno;
+  - Dvojitým kliknutím levým tlačítkem myši na záhlaví vyskakovacího okna otevřete hlavní okno se současným překladem;
+  - Kliknutím levým tlačítkem myši na názvu služby ve vyskakovacím okně změníte aktuální službu a přeložíte v ní text;
+  - Kliknutím prostředním tlačítkem myši na název služby otevře službu v prohlížeči;
+  - Kliknutím pravým tlačítkem myši na název služby přidá/odebere službu ve vícenásobném překladu.

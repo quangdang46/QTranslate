@@ -1,0 +1,36 @@
+﻿Genel kısayol tuşları (varsayılan değerler):
+Çift Ctrl => Ana pencereyi göster (seçilen metnin herhangi bir çevirisi ile)
+Ctrl+Q => Seçilen metni çevir ve açılır pencerede göster
+Ctrl+Shift+Q => Sözlük penceresini göster
+Ctrl+E => Seçilen metni dinle
+
+Ana pencere kısayol tuşları:
+Ctrl+Enter => Metni çevir
+Ctrl+N => Şu anki çeviriyi temizle
+Ctrl+D => Sözlüğü göster
+Ctrl+Alt+1..9 => 1ile 9 arasında seçilen çeviri hizmeti ile sözlüğü göster
+Ctrl+H => Çeviri geçmişini göster
+Ctrl+K => Sanal klavyeyi göster
+Ctrl+Tab/Ctrl+Shift+Tab/Ctrl+1..9 => Önceki/sonraki/1 ile 9 arası çeviri hizmetine geç
+Shift+Esc => Otomatik algılama için dil çiftini sıfırla
+Ctrl+Shift+1..9 => Dil çiftini seç
+Ctrl+I => Çeviri yönünü ters çevir
+Ctrl+Space => Öneri/otomatik tamamlama menüsünü göster
+F1 => Yardımı göster
+F11 => Tam ekran kipini aç/kapat
+Alt+Left Arrow => Önceki çeviriye git
+Alt+Right Arrow => Sonraki çeviriye git
+Ctrl+Up => Çeviriyi metin giriş kutusuna kopyala
+
+Fare seçimine göre çevirinin iki kipi vardır:
+  1) Simgeyi göster (bir programda metni seçin -> imlecin yanında QTranslate simgesi görünecek. Simgeye tıklayın -> seçilen metnin çevirisi ile açılır pencere görünecek);
+  2) Çeviriyi göster (bir programda metni seçin -> seçilen metnin çevirisi ile açılır pencere anında görünecek).
+  3) Çeviriyi göster ve oku (önceki ile aynı artı seçilen metin yüksek sesle söylenir). 
+
+Eylemler:
+  - Sistem tepsisindeki QTranslate simgesine sol tuşla tıklamak fare seçim kipini açar/kapatır (yukarıya bakınız);
+  - Sistem tepsisindeki QTranslate simgesine çift tıklamak ana pencereyi gösterir;
+  - Açılır pencerenin başlığına çift tıklatmak şu anki çeviriyle birlikte ana pencereyi açar;
+  - Bir hizmetin adına sol fare tuşuyla tıklamak şu anki hizmeti değiştirir ve metni çevirir;
+  - Bir hizmetin adına orta fare tuşuyla tıklamak tarayıcıda hizmeti açar;
+  - Bir hizmetin adına sağ fare tuşuyla tıklamak çok seçimli hizmetlere hizmet ekler.

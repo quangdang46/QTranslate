@@ -1,0 +1,341 @@
+﻿{
+  "Author": "VeikkoM",
+  "LanguageName": "Finnish",
+  "LanguageNativeName": "Suomi",
+  "LanguageCode": "fi",
+  "Strings": [
+    [171, "Tyhjennä nykyinen käännös (Ctrl+N)"],
+    [172, "Käännä (Ctrl+Enter)"],
+    [173, "Vaihda käännössuunta"],
+    [174, "Kuuntele tekstiä"],
+    [175, "Takaisin (Alt+vasen nuoli)"],
+    [184, "Eteenpäin (Alt+oikea nuoli)"],
+    [176, "Kieltä ei tunnistettu. Valitse manuaalisesti."],
+    [177, "Palvelu ei tue lähdekieltä."],
+    [178, "Tietoja QTranslate'sta"],
+    [179, "Versio "],
+    [180, "Päivityspalvelin ei ole käytettävissä"],
+    [181, "Uusi versio (%s) saatavilla"],
+    [182, "%s on ajan tasalla"],
+    [183, "Päivityksen tarkistaminen..."],
+    [185, "Päivitys epäonnistui"],
+    [186, "Romanisaatio: "],
+    [187, "Aina päällimmäisenä"],
+    [188, "Näppäimistö"],
+    [189, "Internet-yhteyttä ei voi muodostaa."],
+    [190, "Tietoja ei saatu (aikakatkaisu tietojen lähetyksessä)."],
+    [191, "Tietoja ei saatu."],
+    [192, "Käännettäviä tietoja ei ole."],
+    [193, "Palvelu ei tue pyydettyä ominaisuutta."],
+    [194, "Äänivirtaa ei voi toistaa."],
+    [195, "Palvelu ei tue ääntä tällä kielellä tai teksti on liian pitkä."],
+    [196, "Palvelun komentosarjavirhe."],
+    [197, "Odottamaton virhe."],
+    [198, "Palvelu ei tue kohdekieltä."],
+    [199, "Tiedostoa ei löydy: "],
+    [200, "Asennetaan päivitystä..."],
+    [201, "Lisää suosikkeihin"],
+    [202, "Poista suosikeista"],
+    [203, "Varmista, että mikrofoni on liitetty tietokoneeseen."],
+    [204, "Internetiin ei saatu yhteyttä"],
+    [205, "Ota puheensyöttö käyttöön (%s)"],
+    [206, "Poista puheensyöttö käytöstä"]
+  ],
+  "Windows": [{
+    "Controls": [
+      [1004, "Käännä"]
+    ],
+    "Id": 1,
+    "Caption": "QTranslate"
+  }, {
+    "Controls": [
+      [10, [
+        [20, "Etsi sanakirjasta kohdetta "],
+        [30, "Kuuntele valittua tekstiä"],
+        [40, "Kopioi käännös leikepöydälle"],
+        [50, "Korvaa valittu teksti"]
+      ]]
+    ],
+    "Id": 6
+  }, {
+    "Controls": [],
+    "Strings": [
+      [10, "Ei tuloksia haulle %s."]
+    ],
+    "Id": 5,
+    "Caption": "Sanasto"
+  }, {  
+    "Controls": [
+      [1, "OK"],
+      [1160, "Tallenna nimellä..."],
+      [1067, "Tyhjennä"]
+    ],
+    "Id": 3,
+    "Caption": "Historia"
+  }, {
+    "Controls": [
+      [1, "OK"],
+      [2, "Peruuta"],
+      [1049, "Käytä"]
+    ],
+    "Id": 2,
+    "Caption": "Asetukset"
+  }, {
+    "Controls": [
+      [1045, "Käynnistä Windowsin kanssa"],
+      [1070, "Käyttöliittymän kieli:"],
+      [1075, "Fontti:"],
+      [1074, "Tekstin koko:"],
+      [1068, "Ensimmäinen kieli:"],
+      [1069, "Toinen kieli:"],
+      [1071, "Puheen syöttö:"],
+      [1063, "Automaattinen kielen tunnistus"],
+      [1046, "Yleiset"],
+      [1064, "Historia"],
+      [1122, "Ota historia käyttöön"],
+      [1124, "Tyhjennä historia lopetuksessa"],	  
+      [1123, "Laajenna kohteet"]
+    ],
+    "Id": 10,
+    "Caption": "Perusasiat"
+  }, {
+    "Controls": [
+      [1049, "Yhteys"],
+      [1084, "Aikakatkaisu, sek:"],
+      [1033, "Välityspalvelimen automaattinen tunnistus"],
+      [1034, "Isäntä"],
+      [1036, "Käyttäjänimi"],
+      [1037, "Salasana"],
+      [1048, "Välityspalvelin"],
+      [1035, "Portti"],
+      [1135, [
+        [0, "Käytä järjestelmän välityspalvelinasetuksia"],
+        [1, "Ei välityspalvelinta"],
+        [2, "Määritä välityspalvelin manuaalisesti"],
+        [3, "Automaattiset välityspalvelimen asetukset"]
+      ]]
+    ],
+    "Id": 11,
+    "Caption": "Internet"
+  }, {
+    "Controls": [
+      [1177, "Lisää sanasto..."],
+      [1180, "Poista sanasto"]
+    ],
+    "Id": 12,
+    "Caption": "Palvelut"
+  }, {
+    "Controls": [
+      [1099, " Valitse/poista valinnat"]
+    ],
+    "Id": 13,
+    "Caption": "Kielet"
+  }, {
+    "Controls": [
+      [1076, "Yleiset"],
+      [1123, "Käytä ikkunatyyliä"],
+      [1169, "Teema:"],
+      [1158, "Automaattinen koko"],
+      [1160, "Automaattinen paikka"],
+      [1159, "Aktivoi avattaessa"],
+      [1161, "Pin when dragging"],
+      [1124, "Ponnahdusikkuna"],
+      [1092, "Taustaväri:"],
+      [1091, "Tekstiväri:"],
+      [1090, "Kehyksen väri:"],
+      [1145, "Läpinäkyvyys (0 - 90):"],
+      [1146, "Kehyksen paksuus:"],
+      [1147, "Automaattinen viiveen piilotus:"],
+      [1194, "sekuntia"],
+      [1137, "Kuvakkeet:"],
+      [1138, "Show open dictionary icon"],
+      [1139, "Show listen to selected text icon"],
+      [1140, "Show copy text to clipboard icon"],
+      [1141, "Show replace selected text icon"]
+    ],
+    "Id": 14,
+    "Caption": "Ulkoasu"
+  }, {
+    "Controls": [
+      [1162, [
+        [0, "Käytä seuraavissa ohjelmissa:"],
+        [1, "Poista käytöstä seuraavissa ohjelmissa:"]
+      ]],
+      [1101, "Lisää"],
+      [1103, "Muokkaa"],
+      [1102, "Poista"],
+      [1113, "Ota älykäs tunnistus käyttöön"]
+    ],
+    "Id": 15,
+    "Caption": "Poikkeukset"
+  }, {
+    "Controls": [
+      [1118, "Ota pikanäppäimet käyttöön"],
+      [1165, [
+        [0, "Näytä pääikkuna"],
+        [1, "Näytä ponnahdusikkuna"],
+        [2, "Näytä sanakirjaikkuna"],
+        [3, "Näytä historiaikkuna"],
+        [4, "Näytä näppäimistöikkuna"],
+        [5, "Kuuntele valittu teksti"],
+        [6, "Kopioi käännös leikepöydälle"],
+        [7, "Korvaa valittu teksti"],
+        [8, "Vaihda hiirikäyttö"],
+        [9, "Käännä leikepöytäsisältö"],
+        [10, "Käännä leikepöytä pääikkunassa"],
+        [11, "Käännä leikepöytä ponnahdusikkunassa"],
+        [12, "Sanakirja leikepöydältä"],
+        [13, "Muuta näppäimistöasettelua ja valittua tekstiä"],
+        [14, "Kuuntele valitun tekstin käännöstä"],
+        [15, "Tekstintunnistus"],
+        [16, "Puheen syöttö"]
+      ]]
+    ],
+    "Id": 16,
+    "Caption": "Pikanäppäimet"
+  }, {
+    "Controls": [
+      [1146, "Lisäasetukset"],
+      [1151, "Oletusselain:"],
+      [1147, "Kopiointi:"],
+      [1149, "Näppäimistöasettelun ilmaisin:"],
+      [1157, "Haluttu verkkotunnus:"],
+      [1154, "Ota GUI-käännös käyttöön"],
+      [1159, "Kuuntele samaa tekstiä hitaammalla nopeudella"],
+      [1160, "Remove line breaks"],
+      [1186, "Hiiritila"],
+      [1155, "Käytä hiiritilaa vain painettaessa Ctrl"],
+      [1156, "Napsauta ilmaisinalueen kuvaketta vaihtaaksesi hiiritilaa"],
+      [1158, "API avaimet"],
+      [1195, "OCR API avain:"]
+    ],
+    "Id": 17,
+    "Caption": "Lisäasetukset"
+  }, {
+    "Controls": [
+      [1188, "Tarkista päivitykset automaattisesti"],
+      [1190, "Tarkista nyt"],
+      [1191, "Asenna"]
+    ],
+    "Id": 18,
+    "Caption": "Päivitykset"
+  }],
+  "Menus": [{
+    "Items": [
+      [10, "Oikeinkirjoitus"],
+      [20, "Pikakäännös"],
+      [30, "Takaisinkäännös"],
+      [40, "Lisäasetukset"],
+      [50, "Lue foneettisesti"],
+      [60, "Tyhjennä syöttö veto/pudotuksessa"],
+      [61, "Käännöksen automaattinen siivous"],
+      [62, "Tallenna sisältö lopetettaessa"],
+      [65, "Näytä yläruutu"],
+      [70, "Näytä keskiruutu"],
+      [80, "Näytä palvelut"],
+      [81, "Minimoi ilmoitusalueelle pienennettäessä"],
+      [82, "Minimoi ilmoitusalueelle suljettaessa"],
+      [85, "Käynnistettäessä"],
+      [86, "Näytä ikkuna"],
+      [87, "Minimoi ilmoitusalueelle"],
+      [88, "Palauta aiempaan tilaan"],
+      [90, "Sanasto"],
+      [100, "Historia"],
+      [110, "Näppäimistö"],
+      [120, "Asetukset"],
+      [125, "Tietoja QTranslate'sta"],
+      [130, "Ohje"],
+      [140, "Lopeta"]
+    ],
+    "Id": 1
+  }, {
+    "Items": [
+      [10, "Kumoa"],
+      [20, "Leikkaa"],
+      [30, "Leikkaa kaikki"],
+      [40, "Kopioi"],
+      [50, "Kopioi kaikki"],
+      [60, "Liitä"],
+      [70, "Valitse kaikki"],
+      [75, "Käännä"],
+      [80, "Sanakirjahaku..."],
+      [90, "Kuuntele"]
+    ],
+    "Id": 2
+  }, {
+    "Items": [
+      [10, "Avaa"],
+      [15, "Kopioi teksti"],
+      [20, "Kopioi käännös"],
+      [30, "Poista"],
+      [40, "Kuuntele"]
+    ],
+    "Id": 3
+  }, {
+    "Items": [
+      [10, "Tyhjennä"],
+      [20, "Muokkaa..."],
+      [30, "Tunnista aina kieli"]
+    ],
+    "Id": 4
+  }, {
+    "Items": [
+      [5, "Tekstintunnistus"],
+      [10, "Sanasto"],
+      [20, "Historia"],
+      [30, "Näppäimistö"],
+      [36, "Ota pikanäppäimet käyttöön"],
+      [40, "Hiirikäyttö"],
+      [50, "Käytössä"],
+      [60, "Näytä kuvake"],
+      [70, "Näytä käännös"],
+      [71, "Näytä käännös ja lue"],	  
+      [80, "Asetukset"],
+      [90, "Tietoja QTranslate'sta"],
+      [100, "Lopeta"]
+    ],
+    "Id": 5
+  }, {
+    "Items": [
+      [10, "Valitse kaikki"],
+      [20, "Kopioi"],
+      [30, "Tulosta..."],
+      [40, "Käännä"],
+      [50, "Etsi"],
+      [60, "Kuuntele"]
+    ],
+    "Id": 6
+  }, {
+    "Items": [
+      [10, "Näytä koko historia"]
+    ],
+    "Id": 7
+  }, {
+    "Items": [
+      [10, "Näytä tiedot"],
+      [20, "Poista sanakirja"]
+    ],
+    "Id": 8
+  }, {
+    "Items": [
+      [10, "Tyhjennä historia"],
+      [20, "Näytä palvelut-ruutu"],
+      [30, "Tarkka haku"],
+      [40, "Asetukset"]
+    ],
+    "Id": 9
+  }, {
+    "Items": [
+      [110, "OCR kieli"],
+      [120, "Käännä"],
+      [130, "Kopioi kuva"],
+      [140, "Kopioi teksti"],
+      [150, "Tallenna kuva"],
+      [160, "Muokkaa kuvaa"],
+      [170, "Valitse kaikki"],
+      [180, "Poista valinta"],
+      [190, "Sulje"]
+    ],
+    "Id": 10
+  }]
+}

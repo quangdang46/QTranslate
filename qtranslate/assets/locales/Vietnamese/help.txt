@@ -1,0 +1,33 @@
+﻿Phím tắt chung (giá trị mặc định):
+Ấn 2 lần Ctrl => Hiển thị cửa sổ chính (dịch văn bản đã chọn, nếu có)
+Ctrl+Q => Dịch văn bản đã chọn và hiển thị nó trong cửa sổ bật lên
+Ctrl+Shift+Q => Hiển thị từ điển
+Ctrl+E => Nghe văn bản đã chọn
+
+Phím tắt ở cửa sổ chính:
+Ctrl+Enter => Dịch văn bản
+Ctrl+N => Xóa bản dịch hiện tại
+Ctrl+D => Hiển thị từ điển
+Ctrl+Alt+1..9 => Hiển thị từ điển với lựa chọn 1..9 dịch vụ dịch
+Ctrl+H => Hiển thị lịch sử dịch
+Ctrl+K => Hiển thị bàn phím ảo
+Ctrl+Tab/Ctrl+Shift+Tab/Ctrl+1..9 => Chuyển sang tiếp theo/ hoặc trước/ hoặc 1..9 dịch vụ dịch
+Shift+Esc => Đặt lại cặp ngôn ngữ để tự động phát hiện
+Ctrl+Shift+1..9 => Chọn cặp ngôn ngữ
+Ctrl+I => Hoán đổi hướng dịch
+Ctrl+Space => Hiển thị menu gợi ý / tự động hoàn thành
+F1 => Hiển thị trợ giúp
+Alt+Nút sang trái => Chuyển đến bản dịch trước
+Alt+Nút sang phải => Chuyển đến bản dịch tiếp theo
+Ctrl+Up => Sao chép bản dịch vào hộp nhập văn bản
+
+Có ba chế độ dịch theo lựa chọn chuột:
+  1) Hiển thị biểu tượng (chọn văn bản trong chương trình -> biểu tượng QTranslate xuất hiện cạnh chuột. Ấn vào biểu tượng -> cửa sổ hiện lên với bản dịch của văn bản đã chọn sẽ xuất hiện);
+  2) Hiển thị bản dịch (chọn văn bản trong chương trình -> cửa sổ hiện lên với bản dịch của văn bản đã chọn sẽ xuất hiện ngay lập tức);
+  3) Hiển thị bản dịch và đọc (giống như trên cộng với việc nói to văn bản đã chọn). 
+
+Hành động:
+  - Nhấp chuột trái vào biểu tượng QTranslate trong khay hệ thống bật / tắt chế độ chọn chuột (xem bên trên);
+  - Nhấp đúp chuột vào biểu tượng QTranslate trong khay hệ thống hiển thị cửa sổ chính;
+  - Nhấp đúp chuột vào tiêu đề của cửa sổ hiện lên mở ra cửa sổ chính với bản dịch hiện tại;
+  - Nhấp chuột trái vào tên dịch vụ trong cửa sổ hiện lên thay đổi dịch vụ hiện tại và dịch lại văn bản.

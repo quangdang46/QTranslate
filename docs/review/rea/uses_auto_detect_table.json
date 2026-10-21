@@ -1,0 +1,121 @@
+{
+ "hook_in_common_js": true,
+ "auto_detect_language_index": 1,
+ "unknown_language_code": -1,
+ "services": [
+  {
+   "service": "ABBYY Lingvo Live",
+   "slot": -1,
+   "uses_auto": false,
+   "table_len": 76
+  },
+  {
+   "service": "Babylon",
+   "slot": -1,
+   "uses_auto": false,
+   "table_len": 76
+  },
+  {
+   "service": "Babylon Dictionary",
+   "slot": -1,
+   "uses_auto": false,
+   "table_len": 76
+  },
+  {
+   "service": "Baidu",
+   "slot": -1,
+   "uses_auto": false,
+   "table_len": 76
+  },
+  {
+   "service": "DeepL",
+   "slot": "\"auto\"",
+   "uses_auto": true,
+   "table_len": 76
+  },
+  {
+   "service": "Google",
+   "slot": "\"auto\"",
+   "uses_auto": true,
+   "table_len": 76
+  },
+  {
+   "service": "Google Search",
+   "slot": "\"\"",
+   "uses_auto": true,
+   "table_len": 76
+  },
+  {
+   "service": "ImTranslator",
+   "slot": "\"\"",
+   "uses_auto": true,
+   "table_len": 76
+  },
+  {
+   "service": "Microsoft",
+   "slot": "\"auto-detect\"",
+   "uses_auto": true,
+   "table_len": 76
+  },
+  {
+   "service": "Multitran",
+   "slot": -1,
+   "uses_auto": false,
+   "table_len": 76
+  },
+  {
+   "service": "Oxford Learner Dictionary",
+   "slot": 1,
+   "uses_auto": true,
+   "table_len": 76
+  },
+  {
+   "service": "Papago",
+   "slot": "\"auto\"",
+   "uses_auto": true,
+   "table_len": 76
+  },
+  {
+   "service": "Promt",
+   "slot": "\"au\"",
+   "uses_auto": true,
+   "table_len": 76
+  },
+  {
+   "service": "Reverso",
+   "slot": -1,
+   "uses_auto": false,
+   "table_len": 76
+  },
+  {
+   "service": "Urban Dictionary",
+   "slot": 1,
+   "uses_auto": true,
+   "table_len": 76
+  },
+  {
+   "service": "Wikipedia",
+   "slot": "\"\"",
+   "uses_auto": true,
+   "table_len": 76
+  },
+  {
+   "service": "WordReference",
+   "slot": "\"\"",
+   "uses_auto": true,
+   "table_len": 76
+  },
+  {
+   "service": "Yandex",
+   "slot": -1,
+   "uses_auto": false,
+   "table_len": 76
+  },
+  {
+   "service": "youdao",
+   "slot": "\"AUTO\"",
+   "uses_auto": true,
+   "table_len": 76
+  }
+ ]
+}

@@ -18,10 +18,12 @@ a = Analysis(
     [os.path.join(REPO, 'start_app.py')],
     pathex=[REPO],
     binaries=[],
-    # No committed data files: Locales/ live beside the install and are
-    # read at runtime (D16 never loads extensions from the install dir, and
-    # user data is not bundled).
-    datas=[],
+    # The recovered native assets ARE committed and bundled: the 35 UI
+    # locale packs, the service strip icons and the main window's
+    # microphone/headphone icons, all recovered from the QTranslate 6.10.0
+    # installer payload / EXE resources. User data is still not bundled
+    # (D16 never loads extensions from the install dir).
+    datas=[('qtranslate/assets', 'qtranslate/assets')],
     hiddenimports=[
         # tkinter submodules imported lazily inside widgets/filedialog use.
         'tkinter',
@@ -107,7 +109,7 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     version='/Users/tranquangdang21/Projects/QTranslate/build/assets/version_info.txt',
-    icon=['QTranslate.ico'],
+    icon=['/Users/tranquangdang21/Projects/QTranslate/build/assets/QTranslate.ico'],
 )
 
 coll = COLLECT(

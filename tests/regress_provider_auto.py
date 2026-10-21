@@ -47,20 +47,19 @@ finally:
     app._bing_tr = _orig
 
 # microsoft/bing are in the native-auto set (no detect round-trip expected).
-# Since 2026-10-15 the table lives in qtranslate/registry.py as
-# USES_AUTO_DETECT (Phase 2 slice); read the canonical source so this suite
-# stays tkinter-free like the rest of the file.
-import io as _io
-import os as _os
-import re as _re
-_reg_src = _io.open(_os.path.join(_os.path.dirname(_os.path.dirname(
-    _os.path.abspath(__file__))), "qtranslate", "registry.py"),
-    encoding="utf-8").read()
-_m = _re.search(r"USES_AUTO_DETECT\s*=\s*(\{.*?\})", _reg_src, _re.S)
-_cap = eval(_m.group(1)) if _m else {}
+# The table lives in qtranslate/registry.py and is DERIVED from the provider
+# language tables by native's own rule (Common.js's usesAutoDetectCode), so
+# ask the registry for the answer rather than reading a literal out of the
+# source text -- a source-text assertion pins the *shape* of the code, not
+# the behaviour, and it broke the moment the table stopped being a literal.
+import io as _io  # noqa: E402
+import os as _os  # noqa: E402
+import re as _re  # noqa: E402
+from qtranslate import registry as _RG  # noqa: E402
 check("microsoft/bing are native-auto services",
-      _cap.get("bing") is True and _cap.get("microsoft") is True,
-      repr(_cap))
+      _RG.uses_auto_detect("bing") is True
+      and _RG.uses_auto_detect("microsoft") is True,
+      repr(_RG.USES_AUTO_DETECT))
 
 
 # yandex / youdao / babylon must ALSO forward "auto" verbatim: native sends

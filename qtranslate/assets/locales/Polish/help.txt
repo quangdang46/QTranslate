@@ -1,0 +1,34 @@
+﻿Systemowe skróty klawiszowe (wartości domyślne):
+Podwójne naciśnięcie na Ctrl => Pokaże główne okno (z tłumaczeniem zaznaczonego tekstu, jeśli istnieje)
+Ctrl+Q => Przetłumaczy zaznaczony tekst i pokaże w wyskakującym oknie
+Ctrl+Shift+Q => Pokaże okno słownika
+Ctrl+E => Czyta zaznaczony tekst
+
+Skróty klawiszowe:
+Ctrl+Enter => Tłumaczy tekst w oknie głównym
+Ctrl+N => Wyczyści bieżące tłumaczenie
+Ctrl+D => Pokaże słownik
+Ctrl+Alt+1..9 => Pokaż słownik wybrany z 1..9 serwisów tłumaczeń
+Ctrl+H => Pokaż historię tłumaczeń
+Ctrl+K => Pokaże wirtualną klawiaturę
+Ctrl+Tab/Ctrl+Shift+Tab/Ctrl+1..9 => Przełącza do następnego/poprzedniego/1..9 serwisu tłumaczeń 
+Shift+Esc => Resetuje parę językową do autowykrywania
+Ctrl+Shift+1..9 => Wybierz parę językową
+Ctrl+I => Odwraca kierunek tłumaczenia
+Ctrl+Space => Pokaże w rozwijanym menu sugestie/autouzupełnianie słów 
+F1 => Pokaże pomoc
+F11 => Włączanie/wyłączanie trybu pełnoekranowego
+Alt+Left Arrow => Przejdź do poprzedniego tłumaczenia
+Alt+Right Arrow => Przejdź do następnego tłumaczenia
+Ctrl+Up => Kopiuj tłumaczenie do pola wprowadzania tekstu
+
+Dostępne są trzy tryby tłumaczenia wybierane myszą:
+  1) Pokaż ikonę (Zaznacz tekst w dowolnym programie, obok kursora pojawi się ikona programu. Kliknij na ikonę, pokaże się okno z tłumaczeniem zaznaczonego tekstu);
+  2) Pokaż tłumaczenie (Zaznacz tekst w dowolnym programie i natychmiast pokaże się okno z tłumaczeniem zaznaczonego tekstu).
+  3) Pokaż tłumaczenie i czytaj (tak samo jak poprzednio plus czytanie na głos zaznaczonego tekstu). 
+    
+Działania:
+  - Lewy klik na ikonę programu w zasobniku, włącza lub wyłącza tryb myszy (czytaj o tym wyżej);
+  - Dwuklik na ikonę programu w zasobniku, otwiera główne okno;
+  - Dwuklik na nagłówek wyskakującego okna otwiera główne okno z bieżącym tłumaczeniem;
+  - Klik lewym przyciskiem myszy na nazwę serwisu, zmienia bieżący serwis i ponownie tłumaczy tekst.

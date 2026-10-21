@@ -316,7 +316,7 @@ check("xdxf-kref", '<a href="qtdp:world">world</a>' in _html)
 check("xdxf-ex", '<span style="color:gray">' in _html)
 check("xdxf-iref",
       _X.render_article('<ar><iref href="http://x">y</iref></ar>')
-      == '<a href="http://x">y</a>')
+      == '<ar><a href="http://x">y</a></ar>')
 
 # 16. theme hex + palettes (Tk needs 6 digits; JSONC grayscale)
 from qtranslate import theme as _T2

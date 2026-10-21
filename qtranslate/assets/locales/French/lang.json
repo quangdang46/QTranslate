@@ -1,0 +1,341 @@
+﻿{
+  "Author": "JPDag",
+  "LanguageName": "French",
+  "LanguageNativeName": "Français",
+  "LanguageCode": "fr",
+  "Strings": [
+    [171, "Effacer la traduction actuelle (Ctrl+N)"],
+    [172, "Traduire (Ctrl+Enter)"],
+    [173, "Permuter les langues (Ctrl+I)"],
+    [174, "Écouter la lecture du texte"],
+    [175, "Traduction précédente (Alt+Flèche gauche)"],
+    [184, "Traduction suivante (Alt+Flèche droite)"],
+    [176, "Ne peut pas détecter la langue. Veuillez la choisir manuellement."],
+    [177, "Le service ne prend pas en charge la langue source ."],
+    [178, "A propos"],
+    [179, "Version "],
+    [180, "Serveur de mise à jour indisponible"],
+    [181, "Une nouvelle version (%s) est disponible"],
+    [182, "%s est à jour"],
+    [183, "Vérification de la mise à jour..."],
+    [185, "La mise à jour a échoué"],
+    [186, "Romanisation: "],
+    [187, "Toujours au-dessus"],
+    [188, "Clavier"],
+    [189, "Aucune connexion internet."],
+    [190, "Aucune donnée renvoyée (Dépassement du temps imparti)."],
+    [191, "Aucune donnée renvoyée."],
+    [192, "Aucune donnée à traduire."],
+    [193, "Le service ne prend en charge la fonction demandée."],
+    [194, "Impossible de lire le flux audio."],
+    [195, "Le service ne prend pas en charge la lecture audio pour cette langue ou le texte est trop long."],
+    [196, "Erreur de service de script."],
+    [197, "Erreur de code inconnue."],
+    [198, "Le service ne supporte pas la langue de destination."],
+    [199, "Ne trouve pas le fichier : "],
+    [200, "Téléchargement de la mise à jour..."],
+    [201, "Ajouter aux Favoris"],
+    [202, "Retirer des favoris"],
+    [203, "Assurez-vous que le micro est branché sur votre ordinateur."],
+    [204, "Impossible de se connecter à Internet"],
+    [205, "Activer la saisie vocale (%s)"],
+    [206, "Désactiver la saisie vocale"]
+  ],
+  "Windows": [{
+    "Controls": [
+      [1004, "Traduire"]
+    ],
+    "Id": 1,
+    "Caption": "QTranslate"
+  }, {
+    "Controls": [
+      [10, [
+        [20, "Recherche dans le dictionnaire pour"],
+        [30, "Ecouter la lecture du texte sélectionné"],
+        [40, "Copier la traduction dans le presse-papier"],
+        [50, "Remplacer le texte sélectionné"]
+      ]]
+    ],
+    "Id": 6
+  }, {
+    "Controls": [],
+    "Strings": [
+      [10, "Aucun résultat trouvé pour '%s'."]
+    ],
+    "Id": 5,
+    "Caption": "Dictionnaire"
+  }, {
+    "Controls": [
+      [1, "OK"],
+      [1160, "Enregistrer sous..."],
+      [1067, "Effacer"]
+    ],
+    "Id": 3,
+    "Caption": "Historique"
+  }, {
+    "Controls": [
+      [1, "OK"],
+      [2, "Annuler"],
+      [1049, "Appliquer"]
+    ],
+    "Id": 2,
+    "Caption": "Options"
+  }, {
+    "Controls": [
+      [1045, "Démarrer avec Windows"],
+      [1070, "Langue d'interface:"],
+      [1075, "Nom de la police:"],
+      [1074, "Taille du texte:"],
+      [1068, "Langue native:"],
+      [1069, "Seconde langue:"],
+      [1071, "Saisie vocale:"],
+      [1063, "Détection automatique des langues"],
+      [1046, "Général"],
+      [1064, "Historique"],
+      [1122, "Activer l'historique"],
+      [1124, "Effacer l'historique en quittant"],
+      [1123, "Déployer l'arborescence"]
+    ],
+    "Id": 10,
+    "Caption": "Basiques"
+  }, {
+    "Controls": [
+      [1049, "Connexion"],
+      [1084, "Délai, sec:"],
+      [1033, "Détection automatique de proxy"],
+      [1034, "Hôte"],
+      [1036, "Nom d'utilisateur"],
+      [1037, "Mot de passe"],
+      [1048, "Proxy"],
+      [1035, "Port"],
+      [1135, [
+        [0, "Utiliser les paramètres proxy du système"],
+        [1, "Aucun proxy"],
+        [2, "Configuration manuelle du proxy"],
+        [3, "Détection automatique des paramètres proxy"]
+      ]]
+    ],
+    "Id": 11,
+    "Caption": "Internet"
+  }, {
+    "Controls": [
+      [1177, "Ajouter dictionnaire..."],
+      [1180, "Supprimer dictionnaire"]
+    ],
+    "Id": 12,
+    "Caption": "Services"
+  }, {
+    "Controls": [
+      [1099, "Sélectionner tout / Ne rien sélectionner"]
+    ],
+    "Id": 13,
+    "Caption": "Langues"
+  }, {
+    "Controls": [
+      [1076, "Général"],
+      [1123, "Activer le style de fenêtre"],
+      [1169, "Thème:"],
+      [1158, "Activer la taille automatique"],
+      [1160, "Activer la position automatique"],
+      [1159, "Garder active après l'ouverture"],
+      [1161, "Epingler durant le déplacement"],
+      [1124, "Fenêtre contextuelle"],
+      [1092, "Couleur d'arrière-plan:"],
+      [1091, "Couleur du texte :"],
+      [1090, "Couleur du cadre:"],
+      [1145, "Transparence (0 - 90):"],
+      [1146, "Épaisseur du cadre:"],
+      [1147, "Cacher automatiquement après:"],
+      [1194, "seconde(s)"],
+      [1137, "Icônes:"],
+      [1138, "Afficher l'icône du dictionnaire ouvert"],
+      [1139, "Afficher l'icône pour l'écoute de la lecture du texte sélectionné"],
+      [1140, "Afficher l'icône pour la copie du texte dans le presse-papiers"],
+      [1141, "Afficher l'icône pour le remplacement du texte sélectionné"]
+    ],
+    "Id": 14,
+    "Caption": "Apparence"
+  }, {
+    "Controls": [
+      [1162, [
+        [0, "Activer pour ces programmes:"],
+        [1, "Désactiver dans les programmes suivants:"]
+      ]],
+      [1101, "Ajouter"],
+      [1103, "Modifier"],
+      [1102, "Effacer"],
+      [1113, "Activer la détection intelligente"]
+    ],
+    "Id": 15,
+    "Caption": "Exceptions"
+  }, {
+    "Controls": [
+      [1118, "Activer les touches de raccourci"],
+      [1165, [
+        [0, "Afficher la fenêtre principale"],
+        [1, "Afficher la fenêtre contextuelle"],
+        [2, "Afficher la fenêtre du dictionnaire"],
+        [3, "Afficher la fenêtre d'historique"],
+        [4, "Afficher la fenêtre du clavier"],
+        [5, "Écouter la lecture du texte sélectionné"],
+        [6, "Copier la traduction dans le presse papier"],
+        [7, "Remplacer le texte sélectionné"],
+        [8, "Changer le mode souris"],
+        [9, "Traduire le contenu du presse-papier"],
+        [10, "Traduire le contenu du presse-papier dans la fenêtre principale"],
+        [11, "Traduire le contenu du presse-papier dans la fenêtre contextuelle"],
+        [12, "Dictionnaire à partir du presse-papier"],
+        [13, "Changer la disposition du clavier et le texte sélectionné"],
+        [14, "Écouter la traduction du texte sélectionné"],
+        [15, "Reconnaissance de texte"],
+        [16, "Saisie vocale"]
+      ]]
+    ],
+    "Id": 16,
+    "Caption": "Touches de raccourci"
+  }, {
+    "Controls": [
+      [1146, "Avancé"],
+      [1151, "Navigateur par défaut:"],
+      [1147, "Raccourci \"copier\":"],
+      [1149, "Indicateur de disposition du clavier:"],
+      [1157, "Domaine favori:"],
+      [1154, "Activer la fenêtre de traduction"],
+      [1159, "Activer l’écoute du même texte à une vitesse plus lente"],
+      [1160, "Supprimer les sauts de ligne"],
+      [1186, "Mode souris"],
+      [1155, "Activer le mode souris uniquement lorsque Ctrl est pressé"],
+      [1156, "Cliquer sur  l'icône dans la zone de notification pour activer/désactiver le mode souris"],
+      [1158, "Clés de l’API"],
+      [1195, "Clé de l'API OCR:"]
+    ],
+    "Id": 17,
+    "Caption": "Avancé"
+  }, {
+    "Controls": [
+      [1188, "Vérifier automatiquement les mises à jour"],
+      [1190, "Vérifier maintenant"],
+      [1191, "Installer"]
+    ],
+    "Id": 18,
+    "Caption": "Mises à jour"
+  }],
+  "Menus": [{
+    "Items": [
+      [10, "Vérification orthographique"],
+      [20, "Traduction instantanée"],
+      [30, "Retraduction"],
+      [40, "Plus..."],
+      [50, "Ecouter la lecture du texte"],
+      [60, "Effacer des entrées en Glissant-Déplaçant"],
+      [61, "Auto-nettoyage de la traduction"],
+      [62, "Sauvegarder le contenu en quittant"],
+      [65, "Afficher le volet supérieur"],
+      [70, "Afficher le volet central"],
+      [80, "Afficher le volet des services"],
+      [81, "Réduire dans la zone de notification en minimisant"],
+      [82, "Réduire dans la zone de notification en quittant"],
+      [85, "Au démarrage"],
+      [86, "Afficher la fenêtre"],
+      [87, "Réduire en icône"],
+      [88, "Restaurer l'état antérieur"],
+      [90, "Dictionnaire"],
+      [100, "Historique"],
+      [110, "Clavier"],
+      [120, "Options"],
+      [125, "A propos"],
+      [130, "Aide"],
+      [140, "Quitter"]
+    ],
+    "Id": 1
+  }, {
+    "Items": [
+      [10, "Annuler"],
+      [20, "Couper"],
+      [30, "Couper tout"],
+      [40, "Copier"],
+      [50, "Copier tout"],
+      [60, "Coller"],
+      [70, "Sélectionner tout"],
+      [75, "Traduire"],
+      [80, "Recherche dictionnaire pour"],
+      [90, "Ecouter"]
+    ],
+    "Id": 2
+  }, {
+    "Items": [
+      [10, "Ouvrir"],
+      [15, "Copier le texte"],
+      [20, "Copier la traduction"],
+      [30, "Effacer"],
+      [40, "Ecouter"]
+    ],
+    "Id": 3
+  }, {
+    "Items": [
+      [10, "Réinitialisation"],
+      [20, "Editer..."],
+      [30, "Toujours détecter la langue"]
+    ],
+    "Id": 4
+  }, {
+    "Items": [
+      [5, "Reconnaissance de texte"],
+      [10, "Dictionnaire"],
+      [20, "Historique"],
+      [30, "Clavier"],
+      [36, "Activer les touches de raccourci"],
+      [40, "Mode Souris"],
+      [50, "Activé"],
+      [60, "Afficher l'icône"],
+      [70, "Afficher la traduction"],
+      [71, "Afficher et lire la traduction"],
+      [80, "Options"],
+      [90, "A propos"],
+      [100, "Quitter"]
+    ],
+    "Id": 5
+  }, {
+    "Items": [
+      [10, "Sélectionner tout"],
+      [20, "Copier"],
+      [30, "Imprimer..."],
+      [40, "Traduire"],
+      [50, "Rechercher"],
+      [60, "Ecouter"]
+    ],
+    "Id": 6
+  }, {
+    "Items": [
+      [10, "Afficher l'historique complet"]
+    ],
+    "Id": 7
+  }, {
+    "Items": [
+      [10, "Afficher les infos"],
+      [20, "Supprimer le dictionnaire"]
+    ],
+    "Id": 8
+  }, {
+    "Items": [
+      [10, "Effacer l'historique"],
+      [20, "Afficher le volet des services"],
+      [30, "Recherche exacte"],
+      [40, "Options"]
+    ],
+    "Id": 9
+  }, {
+    "Items": [
+      [110, "Langue de l'OCR"],
+      [120, "Traduire"],
+      [130, "Copier l'image"],
+      [140, "Copier le texte"],
+      [150, "Sauvegarder l'image"],
+      [160, "Editer l'image"],
+      [170, "Sélectionner tout"],
+      [180, "Effacer la sélection"],
+      [190, "Fermer"]
+    ],
+    "Id": 10
+  }]
+}

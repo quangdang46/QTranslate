@@ -14,7 +14,10 @@ Design source: docs/RELIABILITY.md.
   §6 health    -> HealthTracker (healthy/degraded/unavailable/unsupported)
   §7 logs      -> Failure.log_line() + the on_event callbacks. `fell_back` is
                   set by FallbackRouter, which is the only part that knows
-                  whether the route actually continued.
+                  whether the route actually continued. The composed line is
+                  written by the process-wide log sink (`set_log_sink`), so
+                  the "which layer failed, which provider, what Core did"
+                  report is answerable from a file.
 
 No network I/O happens here: the call, the sleep and the clock are injected,
 so tests run offline and deterministically.
@@ -26,6 +29,7 @@ import datetime
 import email.utils
 import enum
 import errno
+import os
 import re
 import socket
 import time
@@ -309,6 +313,187 @@ class Success:
     elapsed: float = 0.0
 
 
+# --------------------------------------------------------------------------
+# §7 diagnostics — where the log lines actually GO.
+#
+# `Failure.log_line()` composes the line §7 asks for (provider / kind /
+# status / elapsed / attempts / fell-back), but composing it is not logging
+# it: until now nothing wrote those lines anywhere, so the "mất kết nối"
+# report §7 requires ("which layer failed, which provider, what Core did")
+# was not answerable from the app.
+#
+# The sink is a process-wide callable the app installs. It is deliberately
+# tiny and deliberately total: `log_line()` never raises, because a log that
+# cannot be written must never break a translation.
+# --------------------------------------------------------------------------
+
+_LOG_SINK = None
+
+#: Environment override for the log file's whole path (tests point it at a
+#: temp file; a user can point it anywhere).
+LOG_PATH_ENV = "QTRANSLATE_RELIABILITY_LOG"
+
+
+def set_log_sink(sink):
+    """Install the process-wide log sink. Returns the previous one.
+
+    Pass ``None`` to remove the sink. The app installs one at startup; a
+    test installs a capture callable and restores the previous sink after.
+    """
+    global _LOG_SINK
+    previous = _LOG_SINK
+    _LOG_SINK = sink
+    return previous
+
+
+def get_log_sink():
+    """The installed sink, or None."""
+    return _LOG_SINK
+
+
+def log_line(line):
+    """Write one line to the sink. True when it was written.
+
+    Never raises: a broken sink is a logging problem, not a translation
+    problem.
+    """
+    sink = _LOG_SINK
+    if sink is None:
+        return False
+    try:
+        sink(line)
+    except Exception:
+        return False
+    return True
+
+
+def log_failure(failure):
+    """Write a classified failure's §7 log line to the sink."""
+    try:
+        line = failure.log_line()
+    except Exception:
+        return False
+    return log_line(line)
+
+
+def default_log_path() -> str:
+    """Where the reliability log lives: the user's data dir (D16).
+
+    Windows: ``%APPDATA%\\QTranslate\\reliability.log`` — next to
+    ``Options.json``, which is where the native app keeps its settings.
+    Elsewhere: ``~/.config/QTranslate/reliability.log``.
+    ``QTRANSLATE_RELIABILITY_LOG`` overrides the whole path.
+    """
+    override = os.environ.get(LOG_PATH_ENV)
+    if override:
+        return override
+    base = os.environ.get("APPDATA", "")
+    if not base:
+        base = os.path.join(os.path.expanduser("~"), ".config")
+    return os.path.join(base, "QTranslate", "reliability.log")
+
+
+class FileLogSink:
+    """Append log lines to a file, rotating once it outgrows ``max_bytes``.
+
+    The file is created on the first write, not on construction, so an app
+    that never fails leaves no file behind. One previous generation is kept
+    (``<path>.1``) so a runaway loop cannot fill the disk.
+    """
+
+    def __init__(self, path: str, max_bytes: int = 1 << 20):
+        self.path = path
+        self.max_bytes = int(max_bytes)
+
+    def __call__(self, line) -> bool:
+        try:
+            directory = os.path.dirname(self.path)
+            if directory:
+                os.makedirs(directory, exist_ok=True)
+            self._rotate()
+            with open(self.path, "a", encoding="utf-8") as handle:
+                handle.write(str(line).rstrip("\n") + "\n")
+        except Exception:
+            return False
+        return True
+
+    def _rotate(self) -> None:
+        try:
+            if self.max_bytes <= 0 or not os.path.exists(self.path):
+                return
+            if os.path.getsize(self.path) < self.max_bytes:
+                return
+            os.replace(self.path, self.path + ".1")
+        except Exception:
+            pass
+
+
+def ensure_log_sink(path: str | None = None):
+    """Install the default file sink once per process; returns the sink.
+
+    A sink already installed (by the app, or by a test) is never replaced.
+    """
+    global _LOG_SINK
+    if _LOG_SINK is not None:
+        return _LOG_SINK
+    sink = FileLogSink(path or default_log_path())
+    _LOG_SINK = sink
+    return sink
+
+
+#: The provider name a detection failure is recorded under.
+DETECT_PROVIDER = "detect"
+
+
+def detect_failure(detail: str = "", *, provider: str = DETECT_PROVIDER) -> Failure:
+    """The failure for a detection that produced no source language.
+
+    ``registry.detect_language`` returns the ``"auto"`` sentinel when it
+    cannot name the source: either every detector failed, or a detector
+    answered ``"auto"`` (it could not tell either). The port cannot tell
+    those two apart — the per-detector exceptions are swallowed upstream —
+    so this is a **chain-level** classification, not a per-provider one.
+
+    The kind is ``USER_NETWORK_DOWN`` because that is what RELIABILITY.md
+    §2 defines it as: "all providers failed at once". The router applies
+    the same inference one level down — a run of network-level failures
+    across providers is relabelled ``USER_NETWORK_DOWN`` (see
+    ``FallbackRouter.route``) — and the detect chain is exactly such a run.
+
+    The *stop* semantics of that kind (``NO_FALLBACK``) belong to the
+    translate route and are enforced by the router, not here: a detection
+    failure degrades the request to ``src="auto"`` and the service
+    resolves the source itself where it can. See ``qtranslate/engine.py``.
+    """
+    if not detail:
+        detail = ("no concrete source language: the detect chain returned "
+                  "the auto sentinel")
+    return Failure(provider=provider, kind=ErrorKind.USER_NETWORK_DOWN,
+                   detail=detail)
+
+
+def tts_failure_plan(exc: BaseException, *, provider: str = "tts"):
+    """What the TTS fallback chain should do with this failure.
+
+    Returns ``(action, failure)`` where *action* is ``"fallback"`` (try the
+    offline engine) or ``"surface"`` (report it; do not run the other
+    engine).
+
+    RELIABILITY.md §5: ``CONFIG_ERROR`` must not fall back — the same
+    broken configuration would fail again, and two failures are not one
+    diagnosis. ``USER_NETWORK_DOWN`` still falls back *here*, because the
+    fallback target is the **offline** engine: a dead link is precisely
+    what the local voice is for. That is the one place where the TTS chain
+    legitimately differs from the provider chain, whose fallback targets
+    are all network-bound.
+    """
+    kind = classify(exc)
+    failure = Failure(provider=provider, kind=kind, detail=str(exc)[:200])
+    if kind is ErrorKind.CONFIG_ERROR:
+        return "surface", failure
+    return "fallback", failure
+
+
 class _HttpLike(Exception):
     """Test double shaped like urllib.error.HTTPError (code + headers)."""
 
@@ -569,6 +754,7 @@ class FallbackRouter:
                 note = ""
                 if requested is not None and name != requested:
                     note = f"{name} answered (fallback from {requested})"
+                _log_failures(failures)
                 return RouteResult(True, _as_text(outcome.value), name,
                                    requested or name, tuple(failures), attempts,
                                    note)
@@ -607,8 +793,23 @@ class FallbackRouter:
             else:
                 network_streak = 0
 
+        _log_failures(failures)
         return RouteResult(False, "", None, requested or "",
                            tuple(failures), attempts, _failure_note(failures))
+
+
+def _log_failures(failures) -> None:
+    """Write one §7 log line per failure, after the route has judged it.
+
+    The log is written at the END of the route, not when each failure
+    happens, because the route revises two things afterwards: whether a
+    failure "fell back" (only the route knows whether another provider
+    was actually tried) and whether a run of network-level failures is the
+    user's link being down. A line written at failure time would say
+    ``fell_back=0`` for a failure that did fall back.
+    """
+    for failure in failures:
+        log_failure(failure)
 
 
 def _as_text(value) -> str:
@@ -756,6 +957,10 @@ class ProviderRouter:
                             + back)
                 return dataclasses.replace(primary, text=combined)
         except Exception as exc:
+            failure = Failure(provider=primary.provider_used or "back-translation",
+                              kind=classify(exc),
+                              detail="back-translation failed: %s" % (exc,))
+            log_failure(failure)
             if self.logger is not None:
                 self.logger("back-translation failed: %r" % (exc,))
         return primary

@@ -9,14 +9,17 @@ This compares the port against the XSLT template-by-template for the five
 element types the stylesheet actually handles, and pins the two rules that
 are easiest to get wrong:
 
-* ``<k>`` renders only its **direct text** (``xsl:value-of`` ignores
-  children), so ``<k>a<b>c</b></k>`` loses the ``<b>c</b>``.
+* ``<k>`` renders the element's **string value** -- ``xsl:value-of
+  select="."`` is the text of the whole subtree, not just the direct text,
+  so ``<k>a<b>c</b></k>`` renders ``<b>ac</b>`` and the child's markup
+  never reaches the output.
 * ``<kref>`` emits ``href="qtdp:{text}"`` -- the ``qtdp:`` scheme is the
   port's own cross-reference marker, matching the stylesheet's literal.
 
-The XSLT's own identity template is NOT compared: it copies unknown nodes
-verbatim, and the port's approximation for those is documented and pinned
-by `regress_xdxf_render.py`.
+The XSLT's own identity template is NOT compared here: it copies unknown
+nodes verbatim, and the port's rendering of those -- including the
+``<ar>``/``<xdxf>`` wrappers it keeps -- is documented and pinned by
+`regress_xdxf_passthrough.py`.
 
 Headless: the XSLT is READ from the payload, never executed.
 """
@@ -114,10 +117,10 @@ ck("<iref> -> <a href=\"<@href>\">text</a>",
    in xdxf.render_article('<ar><iref href="https://x.t">ext</iref></ar>'),
    "iref not rendered from its href attribute")
 
-# --- the value-of rule: <k> drops its children ------------------------
-ck("<k> renders ONLY its direct text (xsl:value-of ignores children)",
+# --- the value-of rule: <k> renders its subtree's text ----------------
+ck("<k> renders its subtree's text (xsl:value-of select=\".\")",
    xdxf.render_article("<ar><k>a<i>b</i></k></ar>")
-   == "<div><b>a</b></div>",
+   == "<ar><div><b>ab</b></div></ar>",
    repr(xdxf.render_article("<ar><k>a<i>b</i></k></ar>")))
 ck("...while <ex> DOES recurse (it uses apply-templates)",
    "<i>b</i>" in xdxf.render_article("<ar><ex>a<i>b</i></ex></ar>"),

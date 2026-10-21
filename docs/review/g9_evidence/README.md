@@ -18,8 +18,42 @@ docs/review/g9_evidence/
   out/         report.json  report.md  diff.png  native.png  port.png
 ```
 
-Status: **BLOCKED — awaiting a runnable native + port capture pair.**
+Status: **BLOCKED — awaiting a capture pair taken under a MATCHED
+protocol.** A pair exists (2026-10-16, see below), but it was taken with two
+different capture methods and two different window activation states, so
+the comparison it produced measured the capture, not the UI.
 Non-synthetic PASS/FAIL may only be recorded once such a pair exists.
+
+## 2026-10-21 — the pair exists; the protocol did not
+
+Re-read on 2026-10-21: `native.png` + `port.png` + `out/report.{json,md}`
+have been here since 2026-10-16, and the report says `FAIL, diff_ratio
+0.053508`. That FAIL was **not** a fidelity failure.
+
+Decomposed by pixel (`docs/review/G9_DIFF_DECOMPOSITION_2026-10-21.md`):
+
+| region | pixels | differing | ratio |
+|---|---:|---:|---:|
+| whole image | 216,770 | 11,599 | 5.3508 % |
+| window frame (edge bands L8 R8 T1 B8) | 11,170 | **11,170** | **100 %** |
+| **client area** (the app's own pixels) | 205,600 | 429 | **0.2087 %** |
+
+The native's frame pixels are `(0,0,0)` — `PrintWindow` rendering the
+window's own border — and the port's are the desktop's `(26,26,26)`, because
+the port was captured by cropping the desktop. The native was also captured
+**inactive** (dimmed caption glyphs, mean luminance 131/150) while the port
+was **active** (78/53), so the caption text differs too.
+
+Three changes followed:
+
+1. `capture_method` and `focus` became declared metadata; a mismatch across
+   the two sides is a protocol mismatch and the comparison is `BLOCKED`,
+   never a `FAIL`.
+2. The harness now measures the frame band and reports the **client-area**
+   ratio, and a difference confined to the frame is `BLOCKED` rather than a
+   misleading `FAIL`.
+3. The re-run is at `g9_evidence/out_2026-10-21/`; the 2026-10-16 `out/`
+   is left untouched as the original evidence.
 
 ## Attempt 2026-10-09 — BLOCKED (both sides, different reasons)
 
@@ -56,6 +90,9 @@ defect, and it does not become evidence of anything by being retried.
 
 **This directory still received no files.** The G9 row stays `UNKNOWN` and
 the Gate stays `BLOCKED (1)`.
+
+*(Superseded 2026-10-21 — the directory DOES hold the acceptance pair now;
+see the section above.)*
 
 ## 2026-10-16 — re-verified on a different host: the reason changed
 

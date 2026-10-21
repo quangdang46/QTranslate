@@ -52,6 +52,12 @@ REPO = os.environ.get("QTRANSLATE_REPO") or os.path.dirname(
 INSTALLED = os.environ.get(
     "QTRANSLATE_DIR", r"C:\Program Files (x86)\QTranslate")
 INSTALLED_LOCALES = os.path.join(INSTALLED, "Locales")
+# The recovered native copies committed in this repository. A citation to
+# one of these resolves to a file that really exists, on any host.
+RECOVERED_ROOTS = (
+    os.path.join(REPO, "docs", "review", "rea", "js_root"),
+    os.path.join(REPO, "qtranslate", "assets"),
+)
 
 RE_STATES = ("VERIFIED", "INFERRED", "UNKNOWN", "UNRECOVERABLE")
 
@@ -72,7 +78,8 @@ STRUCTURAL_RE = re.compile(r"decompil|disassembl|read out|recovered|parsed"
 # copy or be one of the known-recovered payload chunks).
 ASSET_PATH_RE = re.compile(
     r"(?:\b(?:Services|Plugins|Themes|Locales|Resources)"
-    r"/[^\s`|,()]+|\b[\w.-]+\.(?:js|json|jsonc|xslt|lang))\b")
+    r"/(?:[\w.* -]+/)*[\w.* -]+\.(?:js|json|jsonc|xslt|txt|ico|png)"
+    r"|\b[\w.-]+\.(?:js|json|jsonc|xslt|lang))\b")
 JS_MARK_RE = re.compile(r"new ServiceHeader\(|Common\.js")
 # asset provenance
 HASH_RE = re.compile(r"(sha256|md5)\s*[:=]?\s*[0-9a-fA-F]{8,}",
@@ -107,17 +114,26 @@ def asset_exists(path: str) -> bool:
     # so both shapes resolve with one rule.
     if "*" in path:
         stem = path.split("*", 1)[0].rstrip("/")
-        folder = os.path.join(INSTALLED, stem)
-        if not os.path.isdir(folder):
-            return False
-        pattern = os.path.join(folder, path[len(stem):].lstrip("/"))
-        pat_norm = pattern.replace("\\", "/")
-        for root, _dirs, files in os.walk(folder):
-            for f in files:
-                cand = os.path.join(root, f).replace("\\", "/")
-                if fnmatch.fnmatch(cand, pat_norm) or \
-                        fnmatch.fnmatch(cand, pat_norm.replace("/**", "/*")):
-                    return True
+        tail = path[len(stem):].lstrip("/")
+        folders = [os.path.join(INSTALLED, stem)]
+        for root in RECOVERED_ROOTS:
+            folders.append(os.path.join(root, stem))
+            # the recovered tree uses a lower-case themes/ folder
+            folders.append(os.path.join(root, stem.lower()))
+        for folder in folders:
+            if not os.path.isdir(folder):
+                continue
+            # The pattern and the candidates must be measured from the same
+            # root: the pattern is relative to the folder, the candidates
+            # are absolute.
+            pat_norm = os.path.join(folder, tail).replace("\\", "/")
+            for root, _dirs, files in os.walk(folder):
+                for f in files:
+                    cand = os.path.join(root, f).replace("\\", "/")
+                    if fnmatch.fnmatch(cand, pat_norm) or \
+                            fnmatch.fnmatch(cand,
+                                            pat_norm.replace("/**", "/*")):
+                        return True
         return False
     name = os.path.basename(path)
     if "/" in path:
@@ -127,18 +143,31 @@ def asset_exists(path: str) -> bool:
         # the path may name a service FOLDER rather than a file
         if os.path.isdir(folder):
             return True
-    # inside the installed copy, by name
-    for sub in ("Services", "Plugins", "Themes", "Locales", "Resources", ""):
-        if not sub:
+    # inside the installed copy, by name -- and inside the recovered copies
+    bases = [os.path.join(INSTALLED, sub)
+             for sub in ("Services", "Plugins", "Themes", "Locales",
+                         "Resources", "")] + list(RECOVERED_ROOTS)
+    for base in bases:
+        if not base or not os.path.isdir(base):
             continue
-        base = os.path.join(INSTALLED, sub)
-        if os.path.isdir(base):
-            for root, _dirs, files in os.walk(base):
-                if name in files or name.rstrip(".*") in files:
-                    return True
+        for root, _dirs, files in os.walk(base):
+            if name in files or name.rstrip(".*") in files:
+                return True
     # a locale/resource bundle name is a directory in Locales/
     if os.path.isdir(INSTALLED_LOCALES):
         if name.rstrip(".*") in os.listdir(INSTALLED_LOCALES):
+            return True
+    # The recovered native copies, committed in this repository: the
+    # installer payload's JS and assets (docs/review/rea/js_root/) and the
+    # locale packs and icons (qtranslate/assets/). A citation to one of
+    # those resolves to a file that really exists, on any host -- which is
+    # what a citation has to do.
+    for root in RECOVERED_ROOTS:
+        cand = os.path.join(root, path)
+        if os.path.isfile(cand) or os.path.isdir(cand):
+            return True
+        by_name = os.path.join(root, name)
+        if os.path.isfile(by_name):
             return True
     return False
 

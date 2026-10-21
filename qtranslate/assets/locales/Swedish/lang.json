@@ -1,0 +1,341 @@
+﻿{
+  "Author": "Åke Engelbrektson (https://svenskasprakfiler.se)",
+  "LanguageName": "Swedish",
+  "LanguageNativeName": "Svenska",
+  "LanguageCode": "sv",
+  "Strings": [
+    [171, "Ta bort aktuell översättning (Ctrl+N)"],
+    [172, "Översätt (Ctrl+Enter)"],
+    [173, "Växla översättningsriktning (Ctrl+I)"],
+    [174, "Lyssna på texten"],
+    [175, "Gå bakåt (Alt+Left Arrow)"],
+    [184, "Då framåt (Alt+Right Arrow)"],
+    [176, "Kan inte avgöra språket. Välj manuellt, tack!"],
+    [177, "Tjänsten stöder inte källspråket."],
+    [178, "Om QTranslate"],
+    [179, "Version "],
+    [180, "Uppdateringsservern är inte tillgänglig"],
+    [181, "Version (%s) finns tillgänglig"],
+    [182, "%s är uppdaterad"],
+    [183, "Söker upprdateringar..."],
+    [185, "Uppdatering misslyckades"],
+    [186, "Romanisering: "],
+    [187, "Alltid överst"],
+    [188, "Tangentbord"],
+    [189, "Kan inte etablera någon Internet-anslutning."],
+    [190, "Ingen data returnerades (timeout vid dataöverföring)."],
+    [191, "Ingen data returnerades."],
+    [192, "Ingen data att översätta."],
+    [193, ">Tjänsten saknar stöd för begärd kapacitet."],
+    [194, "Kan inte spela upp ljudström."],
+    [195, "Tjänsten saknar ljudstöd för det här språket, eller texten är för lång."],
+    [196, "Skriptfel."],
+    [197, "Oväntat fel."],
+    [198, "Tjänsten stöder inte målspråket."],
+    [199, "Kan inte hitta filen: "],
+    [200, "Installerar uppdatering..."],
+    [201, "Lägg till i Favoriter"],
+    [202, "Ta bort från Favoriter"],
+    [203, "Kontrollera att mikrofonen är ansluten till datorn."],
+    [204, "Kan inte ansluta till Internet"],
+    [205, "Aktivera talinmatning (%s)"],
+    [206, "Inaktivera talinmatning"]
+  ],
+  "Windows": [{
+    "Controls": [
+      [1004, "Översätt"]
+    ],
+    "Id": 1,
+    "Caption": "QTranslate"
+  }, {
+    "Controls": [
+      [10, [
+        [20, "Sök i ordbok efter"],
+        [30, "Lyssna till markerad text"],
+        [40, "Kopiera översättning till Urklipp"],
+        [50, "Ersätt markerad text"]
+      ]]
+    ],
+    "Id": 6
+  }, {
+    "Controls": [],
+    "Strings": [
+      [10, "Inga sökresultat hittades för '%s'."]
+    ],
+    "Id": 5,
+    "Caption": "Ordbok"
+  }, {
+    "Controls": [
+      [1, "OK"],
+      [1160, "Spara som..."],
+      [1067, "Rensa"]
+    ],
+    "Id": 3,
+    "Caption": "Historik"
+  }, {
+    "Controls": [
+      [1, "OK"],
+      [2, "Avbryt"],
+      [1049, "Verkställ"]
+    ],
+    "Id": 2,
+    "Caption": "Alternativ"
+  }, {
+    "Controls": [
+      [1045, "Starta vid systemstart"],
+      [1070, "Användarspråk:"],
+      [1075, "Teckensnitt:"],
+      [1074, "Textstorlek:"],
+      [1068, "Första språket:"],
+      [1069, "Andra språket:"],
+      [1071, "Speech input:"],
+      [1063, "Automatisk språkidentifiering"],
+      [1046, "Allmänt"],
+      [1064, "Historik"],
+      [1122, "Aktivera historik"],
+      [1124, "Rensa historiken vid avslut"],
+      [1123, "Expandera objekt"]
+    ],
+    "Id": 10,
+    "Caption": "Allmänt"
+  }, {
+    "Controls": [
+      [1049, "Anslutning"],
+      [1084, "Timeout, sek:"],
+      [1033, "Automatisk proxy-identifiering"],
+      [1034, "Värd"],
+      [1036, "Användarnamn"],
+      [1037, "Lösenord"],
+      [1048, "Proxy"],
+      [1035, "Port"],
+      [1135, [
+        [0, "Använd systemets proxy-inställningar"],
+        [1, "Ingen proxy"],
+        [2, "Manuell proxy-konfiguration"],
+        [3, "Identifiera proxy-inställningar automatiskt"]
+      ]]
+    ],
+    "Id": 11,
+    "Caption": "Internet"
+  }, {
+    "Controls": [
+      [1177, "Lägg till ordbok..."],
+      [1180, "Ta bort ordbok"]
+    ],
+    "Id": 12,
+    "Caption": "Tjänster"
+  }, {
+    "Controls": [
+      [1099, "Markera / Avmarkera alla"]
+    ],
+    "Id": 13,
+    "Caption": "Språk"
+  }, {
+    "Controls": [
+      [1076, "Allmänt"],
+      [1123, "Aktivera fönsterstil"],
+      [1169, "Tema:"],
+      [1158, "Ändra storlek automatiskt"],
+      [1160, "Aktivera automatisk position"],
+      [1159, "Aktivera om öppnat"],
+      [1161, "Pin when dragging"],
+      [1124, "Popupfönster"],
+      [1092, "Bakgrundsfärg:"],
+      [1091, "Textfärg:"],
+      [1090, "Kantfärg:"],
+      [1145, "Transparens (0 - 90):"],
+      [1146, "Kanttjocklek:"],
+      [1147, "Auto-hide delay:"],
+      [1194, "seconds"],
+      [1137, "Ikoner:"],
+      [1138, "Show open dictionary icon"],
+      [1139, "Show listen to selected text icon"],
+      [1140, "Show copy text to clipboard icon"],
+      [1141, "Show replace selected text icon"]
+    ],
+    "Id": 14,
+    "Caption": "Utseende"
+  }, {
+    "Controls": [
+      [1162, [
+        [0, "Aktiverat för dessa program:"],
+        [1, "Inaktiverat för dessa program:"]
+      ]],
+      [1101, "Lägg till"],
+      [1103, "Ändra"],
+      [1102, "Ta bort"],
+      [1113, "Aktivera smart igenkänning"]
+    ],
+    "Id": 15,
+    "Caption": "Undantag"
+  }, {
+    "Controls": [
+      [1118, "Aktivera snabbtangenter"],
+      [1165, [
+        [0, "Visa huvudfönstret"],
+        [1, "Visa popup-fönster"],
+        [2, "Visa ordboksfönster"],
+        [3, "Visa historikfönster"],
+        [4, "Visa tangentbordsfönster"],
+        [5, "Lyssna till markerad text"],
+        [6, "Kopiera översättning till Urklipp"],
+        [7, "Byt ut markerad text"],
+        [8, "Växla musläge"],
+        [9, "Översätt urklippsinnehåll"],
+        [10, "Översätt Urklipp i huvudfönstret"],
+        [11, "Översätt Urklipp i popupfönster"],
+        [12, "Ordbok från Urklipp"],
+        [13, "Ändra tangentbordslayout och markerad text"],
+        [14, "Lyssna till markerad textöversättning"],
+        [15, "Text recognition"],
+        [16, "Speech input"]
+      ]]
+    ],
+    "Id": 16,
+    "Caption": "Snabbtangenter"
+  }, {
+    "Controls": [
+      [1146, "Avancerat"],
+      [1151, "Standardwebbläsare:"],
+      [1147, "Kopieringstangent:"],
+      [1149, "Indikator för tangentbordslayout:"],
+      [1157, "Önskad domän:"],
+      [1154, "Aktivera GUI-översättning"],
+      [1159, "Enable listening to the same text at a slower speed"],
+      [1160, "Remove line breaks"],
+      [1186, "Musläge"],
+      [1155, "Aktivera musläge endast när Ctrl trycks ner"],
+      [1156, "Klick på meddelandefältets ikon, växlar musläge"],
+      [1158, "API keys"],
+      [1195, "OCR API key:"]
+    ],
+    "Id": 17,
+    "Caption": "Avancerat"
+  }, {
+    "Controls": [
+      [1188, "Sök automatiskt efter uppdateringar"],
+      [1190, "Sök nu"],
+      [1191, "Installera"]
+    ],
+    "Id": 18,
+    "Caption": "Uppdateringar"
+  }],
+  "Menus": [{
+    "Items": [
+      [10, "Stavningskontroll"],
+      [20, "Snabböversättning"],
+      [30, "Tillbakaöversättning"],
+      [40, "Utökat"],
+      [50, "Läs fonetiskt"],
+      [60, "Rensa indata vid Dra && Släpp"],
+      [61, "Automatisk borttagning av översättning"],
+      [62, "Spara innehåll vid avslut"],
+      [65, "Visa toppanel"],
+      [70, "Visa mellanpanel"],
+      [80, "Visa tjänstpanel"],
+      [81, "Minimera till meddelandefältet med 'Minimera'"],
+      [82, "Minimera till meddelandefältet med 'Stäng'"],
+      [85, "Vid uppstart"],
+      [86, "Visa programfönstret"],
+      [87, "Minimera till meddelandefältet"],
+      [88, "Återställ tidigare status"],
+      [90, "Ordbok"],
+      [100, "Historik"],
+      [110, "Tangentbord"],
+      [120, "Alternativ"],
+      [125, "Om QTranslate"],
+      [130, "Hjälp"],
+      [140, "Avsluta"]
+    ],
+    "Id": 1
+  }, {
+    "Items": [
+      [10, "Ångra"],
+      [20, "Klipp ut"],
+      [30, "Klipp ut alla"],
+      [40, "Kopiera"],
+      [50, "Kopiera alla"],
+      [60, "Klistra in"],
+      [70, "Markera alla"],
+      [75, "Översätt"],
+      [80, "Sök i ordbok efter"],
+      [90, "Lyssna"]
+    ],
+    "Id": 2
+  }, {
+    "Items": [
+      [10, "Öppna"],
+      [15, "Kopiera text"],
+      [20, "Kopiera översättning"],
+      [30, "Ta bort"],
+      [40, "Lyssna"]
+    ],
+    "Id": 3
+  }, {
+    "Items": [
+      [10, "Återställ"],
+      [20, "Redigera..."],
+      [30, "Identifiera alltid språk"]
+    ],
+    "Id": 4
+  }, {
+    "Items": [
+      [5, "Text recognition"],
+      [10, "Ordbok"],
+      [20, "Historik"],
+      [30, "Tangentbord"],
+      [36, "Aktivera snabbtangenter"],
+      [40, "Musläge"],
+      [50, "Aktiverad"],
+      [60, "Visa ikon"],
+      [70, "Visa översättning"],
+      [71, "Visa översättning och läs"],
+      [80, "Alternativ"],
+      [90, "Om QTranslate"],
+      [100, "Avsluta"]
+    ],
+    "Id": 5
+  }, {
+    "Items": [
+      [10, "Markera alla"],
+      [20, "Kopiera"],
+      [30, "Skriv ut..."],
+      [40, "Översätt"],
+      [50, "Sök"],
+      [60, "Lyssna"]
+    ],
+    "Id": 6
+  }, {
+    "Items": [
+      [10, "Visa full historik"]
+    ],
+    "Id": 7
+  }, {
+    "Items": [
+      [10, "Visa info"],
+      [20, "Ta bort ordbok"]
+    ],
+    "Id": 8
+  }, {
+    "Items": [
+      [10, "Rensa historik"],
+      [20, "Visa tjänstpanel"],
+      [30, "Exakt sökning"],
+      [40, "Alternativ"]
+    ],
+    "Id": 9
+  }, {
+    "Items": [
+      [110, "OCR language"],
+      [120, "Translate"],
+      [130, "Copy image"],
+      [140, "Copy text"],
+      [150, "Save image"],
+      [160, "Edit image"],
+      [170, "Select all"],
+      [180, "Clear selection"],
+      [190, "Close"]
+    ],
+    "Id": 10
+  }]
+}

@@ -1,0 +1,33 @@
+﻿Globala snabbtangenter (standardvärden):
+Dubbel Ctrl => Visa huvudfönstret (med översättning av markerad text, om någon)
+Ctrl+Q => Översätt markerad text och visa det i ett popup-fönster
+Ctrl+Alt+Q => Visa ordboksfönster
+Ctrl+E => Lyssna på markerad text
+
+Huvudfönstrets snabbtangenter:
+Ctrl+Retur => Översätt text
+Ctrl+N => Ta bort aktuell översättning
+Ctrl+D => Visa ordbok
+Ctrl+Alt+1..9 => Visa ordbok med vald 1..9:e översättningstjänst
+Ctrl+H => Visa översättningshistorik
+Ctrl+K => Visa virtuellt tangentbord
+Ctrl+Tab/Ctrl+Shift+Tab/Ctrl+1..9 => Växla till nästa/föregående/1:a..9:e översättningstjänsten
+Skift+Esc => Återställ språkparet till automatisk upptäckt
+Ctrl+Shift+1..9 => Välj språkpar
+Ctrl+I => Växla översättningsriktning
+Ctrl+Space => Visa förslag/kompletteringsmeny
+F1 => Visa hjälpen
+Alt+Vänsterpil => Gå till den föregående översättningen
+Alt+Högerpil => Gå till nästa översättning
+Ctrl+Upp => Kopiera översättning till indatafältet
+
+Det finns två lägen för översättning med hjälp av musnavigering:
+  1) Visar ikon (Markera text i ett program - Programikonen visas vid markören. Klicka på ikonen - Ett popup-fönster med översättningen av markerad text visas);
+  2) Visar översättning (Välj text i ett program - Ett popup-fönster med översättning av den markerade texten visas omedelbart).
+
+Åtgärder:
+  - Enkelklick på programikonen i meddelandefältet aktiverar/avaktiverar musnavigering markeringsläget (se ovan);
+  - Dubbelklick på programikonen i meddelandefältet visar huvudfönstret
+  - Dubbelklick på popup-fönstrets sidhuvud öppnar huvudfönstret med aktuell översättning;
+  - Enkelklick på översättningstjänsten i popup-fönstret ändrar den aktuella tjänsten och översätter texten på nytt.
+  

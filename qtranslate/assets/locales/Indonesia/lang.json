@@ -1,0 +1,341 @@
+﻿{
+  "Author": "FadlyFDL (fadly.fdl@gmail.com)",
+  "LanguageName": "Indonesia",
+  "LanguageNativeName": "Bahasa Indonesia",
+  "LanguageCode": "id",
+  "Strings": [
+    [171, "Hapus terjemahan saat ini (Ctrl+N)"],
+    [172, "Terjemahkan (Ctrl+Enter)"],
+    [173, "Ubah arah terjemahan (Ctrl+I)"],
+    [174, "Ucapkan teks"],
+    [175, "Kembali (Alt+Left Arrow)"],
+    [184, "Maju (Alt+Right Arrow)"],
+    [176, "Tidak dapat mendeteksi bahasa. Silakan pilih secara manual."],
+    [177, "Layanan tidak mendukung bahasa sumber."],
+    [178, "Tentang QTranslate"],
+    [179, "Versi "],
+    [180, "Server pembaruan tidak tersedia"],
+    [181, "Versi baru (%s) tersedia"],
+    [182, "%s terbaru"],
+    [183, "Memeriksa pembaruan..."],
+    [185, "Pembaruan gagal"],
+    [186, "Romanization: "],
+    [187, "Selalu di atas"],
+    [188, "Keyboard"],
+    [189, "Tidak ada koneksi internet."],
+    [190, "Tidak ada data dikembalikan (batas waktu saat mengirim data)."],
+    [191, "Tidak ada data dikembalikan."],
+    [192, "Tidak ada data untuk diterjemahkan."],
+    [193, "Layanan tidak mendukung kemampuan yang diminta."],
+    [194, "Tidak dapat memutar stream audio."],
+    [195, "Layanan tidak mendukung audio untuk bahasa ini, atau teks terlalu panjang."],
+    [196, "Kesalahan layanan skrip."],
+    [197, "Kesalahan tidak diduga."],
+    [198, "Layanan tidak mendukung bahasa tujuan."],
+    [199, "Tidak dapat menemukan berkas: "],
+    [200, "Mengunduh pembaruan..."],
+    [201, "Tambah ke Favorit"],
+    [202, "Hapus dari favorit"],
+    [203, "Pastikan mikrofon terhubung ke komputer Anda."],
+    [204, "Tidak dapat membuat koneksi Internet"],
+    [205, "Aktifkan input ucapan (%s)"],
+    [206, "Matikan input ucapan"]
+  ],
+  "Windows": [{
+    "Controls": [
+      [1004, "Terjemah"]
+    ],
+    "Id": 1,
+    "Caption": "QTranslate"
+  }, {
+    "Controls": [
+      [10, [
+        [20, "Pencarian kamus untuk"],
+        [30, "Ucapkan teks yang dipilih"],
+        [40, "Salin terjemahan ke papan klip"],
+        [50, "Ganti teks yang dipilih"]
+      ]]
+    ],
+    "Id": 6
+  }, {
+    "Controls": [],
+    "Strings": [
+      [10, "Tidak ditemukan hasil untuk '%s'."]
+    ],
+    "Id": 5,
+    "Caption": "Kamus"
+  }, {
+    "Controls": [
+      [1, "Oke"],
+      [1160, "Simpan di.."],
+      [1067, "Bersih"]
+    ],
+    "Id": 3,
+    "Caption": "Riwayat"
+  }, {
+    "Controls": [
+      [1, "Oke"],
+      [2, "Batal"],
+      [1049, "Terapkan"]
+    ],
+    "Id": 2,
+    "Caption": "Opsi"
+  }, {
+    "Controls": [
+      [1045, "Awal Windows dimulai"],
+      [1070, "Bahasa antarmuka:"],
+      [1075, "Nama huruf:"],
+      [1074, "Ukuran teks:"],
+      [1068, "Bahasa pertama:"],
+      [1069, "Bahasa kedua:"],
+      [1071, "Masukan ucapan:"],
+      [1063, "Deteksi bahasa otomatis"],
+      [1046, "Umum"],
+      [1064, "Riwayat"],
+      [1122, "Aktifkan riwayat"],
+      [1124, "Hapus riwayat saat keluar"],
+      [1123, "Perluas item"]
+    ],
+    "Id": 10,
+    "Caption": "Dasar-dasar"
+  }, {
+    "Controls": [
+      [1049, "Koneksi"],
+      [1084, "Waktu habis, dtk:"],
+      [1033, "Deteksi proxy otomatis"],
+      [1034, "Host"],
+      [1036, "Username"],
+      [1037, "Password"],
+      [1048, "Proxy"],
+      [1035, "Port"],
+      [1135, [
+        [0, "Gunakan pengaturan proxy sistem"],
+        [1, "tanpa proxy"],
+        [2, "Konfigurasi proxy manual"],
+        [3, "Deteksi otomatis pengaturan proxy"]
+      ]]
+    ],
+    "Id": 11,
+    "Caption": "Internet"
+  }, {
+    "Controls": [
+      [1177, "Tambah Kamus..."],
+      [1180, "Hapus kamus"]
+    ],
+    "Id": 12,
+    "Caption": "Layanan"
+  }, {
+    "Controls": [
+      [1099, "Tandai / Jangan tandai semua"]
+    ],
+    "Id": 13,
+    "Caption": "Bahasa"
+  }, {
+    "Controls": [
+      [1076, "Umum"],
+      [1123, "Aktifkan gaya jendela"],
+      [1169, "Tema:"],
+      [1158, "Aktifkan ukuran otomatis"],
+      [1160, "Aktifkan posisi otomatis"],
+      [1159, "Aktifkan saat dibuka"],
+      [1161, "Sematkan saat menyeret"],
+      [1124, "Popup window"],
+      [1092, "Warna latar belakang:"],
+      [1091, "Warna teks:"],
+      [1090, "Warna bingkai:"],
+      [1145, "Transparansi (0 - 90):"],
+      [1146, "Ketebalan bingkai:"],
+      [1147, "Sembunyikan penundaan otomatis:"],
+      [1194, "detik"],
+      [1137, "Ikon:"],
+      [1138, "Tampilkan buka ikon kamus"],
+      [1139, "Tampilkan ikon dengarkan teks yang dipilih"],
+      [1140, "Tampilkan teks salin ke ikon papan klip"],
+      [1141, "Tampilkan ganti ikon teks yang dipilih"],
+    ],
+    "Id": 14,
+    "Caption": "Tampilan"
+  }, {
+    "Controls": [
+      [1162, [
+        [0, "Aktifkan untuk program ini:"],
+        [1, "Nnonaktifkan untuk program ini:"]
+      ]],
+      [1101, "Tambah"],
+      [1103, "Modifikasi"],
+      [1102, "Hapus"],
+      [1113, "Aktifkan deteksi pintar"]
+    ],
+    "Id": 15,
+    "Caption": "Pengecualian"
+  }, {
+    "Controls": [
+      [1118, "Aktifkan hotkeys"],
+      [1165, [
+        [0, "Tampilkan jendela utama"],
+        [1, "Tampilkan jendela popup"],
+        [2, "Tampilkan jendela kamus"],
+        [3, "Tampilkan jendela riwayat"],
+        [4, "Tampilkan jendela keyboard"],
+        [5, "Ucapkan teks yang dipilih"],
+        [6, "Salin terjemahan ke papan klip"],
+        [7, "Ganti teks yang dipilih"],
+        [8, "Ganti mode mouse"],
+        [9, "Terjemahkan konten papan klip"],
+        [10, "Terjemahkan papan klip di jendela utama"],
+        [11, "Terjemahkan papan klip di jendela popup"],
+        [12, "Kamus dari papan klip"],
+        [13, "Ubah tata letak keyboard dan teks yang dipilih"],
+        [14, "Ucapkan terjemahan teks yang dipilih"],
+        [15, "Pengenalan teks"],
+        [16, "Masukan ucapan"]
+      ]]
+    ],
+    "Id": 16,
+    "Caption": "Hotkeys"
+  }, {
+    "Controls": [
+      [1146, "Lanjutan"],
+      [1151, "Browser bawaan:"],
+      [1147, "Salin tindakan:"],
+      [1149, "Indikator tata letak keyboard:"],
+      [1157, "Domain yang disukai:"],
+      [1154, "Aktifkan terjemahan GUI"],
+      [1159, "Aktifkan mendengar teks yang sama dengan kecepatan lebih lambat"],
+      [1160, "Hapus jeda baris"],
+      [1186, "Mode Mouse"],
+      [1155, "Aktifkan mode mouse hanya ketika Ctrl ditekan"],
+      [1156, "Klik ikon tray sistem untuk mengaktifkan mode mouse"],
+      [1158, "Kunci API"],
+      [1195, "Kunci API OCR:"]
+    ],
+    "Id": 17,
+    "Caption": "Lanjutan"
+  }, {
+    "Controls": [
+      [1188, "Otomatis memeriksa pembaruan"],
+      [1190, "Periksa sekarang"],
+      [1191, "Pasang"]
+    ],
+    "Id": 18,
+    "Caption": "Pembaruan"
+  }],
+  "Menus": [{
+    "Items": [
+      [10, "Pemeriksa ejaan"],
+      [20, "Terjemahan langsung"],
+      [30, "Terjemahan balik"],
+      [40, "Diperpanjang"],
+      [50, "Baca secara fonetis"],
+      [60, "Hapus input pada Seret && Lepaskan"],
+      [61, "Bersihkan terjemahan otomatis"],
+      [62, "Simpan konten saat keluar"],
+      [65, "Tampilkan panel atas"],
+      [70, "Tampilkan panel tengah"],
+      [80, "Tampilkan panel layanan"],
+      [81, "Minimalkan ke system tray saat diminimalkan"],
+      [82, "Minimalkan ke system tray saat ditutup"],
+      [85, "Saat memulai"],
+      [86, "Tampilkan jendela"],
+      [87, "Minimalkan ke tray"],
+      [88, "Pulihkan keadaan sebelumnya"],
+      [90, "Kamus"],
+      [100, "Riwayat"],
+      [110, "Keyboard"],
+      [120, "Opsi"],
+      [125, "Tentang QTranslate"],
+      [130, "Bantuan"],
+      [140, "Keluar"]
+    ],
+    "Id": 1
+  }, {
+    "Items": [
+      [10, "Undo"],
+      [20, "Potong"],
+      [30, "Potong semua"],
+      [40, "Salin"],
+      [50, "Salin semua"],
+      [60, "Tempel"],
+      [70, "Pilih semua"],
+      [75, "Terjemah"],
+      [80, "Pencarian kamus untuk"],
+      [90, "Dengarkan"]
+    ],
+    "Id": 2
+  }, {
+    "Items": [
+      [10, "Buka"],
+      [15, "Salin teks"],
+      [20, "Salin terjemahan"],
+      [30, "Hapus"],
+      [40, "Dengarkan"]
+    ],
+    "Id": 3
+  }, {
+    "Items": [
+      [10, "Atur ulang"],
+      [20, "Edit..."],
+      [30, "Selalu deteksi bahasa"]
+    ],
+    "Id": 4
+  }, {
+    "Items": [
+      [5, "Pengenalan teks"],
+      [10, "Kamus"],
+      [20, "Riwayat"],
+      [30, "Keyboard"],
+      [36, "Aktifkan global hotkey"],
+      [40, "Mode Mouse"],
+      [50, "Aktifkan"],
+      [60, "Tampilkan ikon"],
+      [70, "Tampilkan terjemahan"],
+      [71, "Tampilkan terjemahan dan baca"],
+      [80, "Opsi"],
+      [90, "Tentang QTranslate"],
+      [100, "Keluar"]
+    ],
+    "Id": 5
+  }, {
+    "Items": [
+      [10, "Pilih semua"],
+      [20, "Salin"],
+      [30, "Print..."],
+      [40, "Terjemah"],
+      [50, "Pencarian"],
+      [60, "Dengarkan"]
+    ],
+    "Id": 6
+  }, {
+    "Items": [
+      [10, "Tampilkan Riwayat Lengkap"]
+    ],
+    "Id": 7
+  }, {
+    "Items": [
+      [10, "Tampilkan info"],
+      [20, "Hapus kamus"]
+    ],
+    "Id": 8
+  }, {
+    "Items": [
+      [10, "Bersihkan riwayat"],
+      [20, "Tampilkan panel layanan"],
+      [30, "Pencarian tepat"],
+      [40, "Opsi"]
+    ],
+    "Id": 9
+  }, {
+    "Items": [
+      [110, "Bahasa OCR"],
+      [120, "Terjemah"],
+      [130, "Salin gambar"],
+      [140, "Salin teks"],
+      [150, "Simpan gambar"],
+      [160, "Edit gambar"],
+      [170, "Pilih semua"],
+      [180, "Hapus terpilih"],
+      [190, "Tutup"]
+    ],
+    "Id": 10
+  }]
+}

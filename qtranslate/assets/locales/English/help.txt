@@ -1,0 +1,36 @@
+﻿Global hotkeys (default values):
+Double Ctrl => Show main window (with translation of selected text, if any)
+Ctrl+Q => Translate selected text and show it in popup window
+Ctrl+Shift+Q => Show dictionary window
+Ctrl+E => Listen to selected text
+
+Main window hotkeys:
+Ctrl+Enter => Translate text
+Ctrl+N => Clear current translation
+Ctrl+D => Show dictionary
+Ctrl+Alt+1..9 => Show dictionary with selected 1..9th translation service
+Ctrl+H => Show translation history
+Ctrl+K => Show virtual keyboard
+Ctrl+Tab/Ctrl+Shift+Tab/Ctrl+1..9 => Switch to the next/previous/1..9th translation service
+Shift+Esc => Reset language pair to auto-detected
+Ctrl+Shift+1..9 => Select language pair
+Ctrl+I => Swap translation direction
+Ctrl+Space => Show suggestion/autocomplete menu
+F1 => Show help
+F11 => Turn on/off full-screen mode
+Alt+Left Arrow => Go to the previous translation
+Alt+Right Arrow => Go to the next translation
+Ctrl+Up => Copy translation to the text input box
+
+There are three modes of translation by mouse selection:
+  1) Show icon (select text in a program -> QTranslate icon will appear near cursor. Click the icon -> popup window with the translation of selected text will appear);
+  2) Show translation (select text in a program -> popup window with translation of the selected text will appear immediately);
+  3) Show translation and read (the same as previous plus speaking aloud selected text). 
+
+Actions:
+  - Left click on QTranslate icon in system tray turns on/off mouse selection mode (see above);
+  - Double click on QTranslate icon in system tray shows the main window;
+  - Double click on the popup window's header opens the main window with current translation;
+  - Left mouse click on the name of a service changes the current service and translates text;
+  - Middle mouse click on the name of a service opens the service in the browser;
+  - Right mouse click on the name of a service adds service to the services multi-selection.

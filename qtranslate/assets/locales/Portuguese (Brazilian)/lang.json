@@ -1,0 +1,341 @@
+﻿{
+  "Author": "Claudio (clmantovani@bol.com.br)",
+  "LanguageName": "Portuguese (Brazilian)",
+  "LanguageNativeName": "português brasileiro",
+  "LanguageCode": "pt-BR",
+  "Strings": [
+    [171, "Limpar a tradução atual (Ctrl+N)"],
+    [172, "Traduzir (Ctrl+Enter)"],
+    [173, "Alterar a direção da tradução (Ctrl+I)"],
+    [174, "Ouvir o texto"],
+    [175, "Voltar (Alt+Left Arrow)"],
+    [184, "Avançar (Alt+Right Arrow)"],
+    [176, "Não foi possível detectar o idioma. Por favor, escolha-o manualmente."],
+    [177, "O serviço não suporta idioma de origem."],
+    [178, "Sobre o QTranslate"],
+    [179, "Versão "],
+    [180, "O servidor de atualização não está disponível"],
+    [181, "Uma nova versão (%s) está disponível!"],
+    [182, "O %s está atualizado!"],
+    [183, "Verificando atualizações..."],
+    [185, "Falha ao atualizar"],
+    [186, "Romanização: "],
+    [187, "Sempre no topo"],
+    [188, "Teclado"],
+    [189, "Não é possível conectar-se à Internet."],
+    [190, "Não há dados retornados (intervalo ao enviar dados)."],
+    [191, "Não há dados retornados."],
+    [192, "Não há dados para traduzir."],
+    [193, "O serviço não suporta o recurso solicitado."],
+    [194, "Não é possível reproduzir a transmissão de áudio."],
+    [195, "O serviço não suporta áudio para este idioma, ou o texto é muito longo."],
+    [196, "Erro de serviço do script."],
+    [197, "Erro inesperado."],
+    [198, "O serviço não suporta idioma de destino."],
+    [199, "Não é possível localizar o arquivo: "],
+    [200, "Instalando atualização..."],
+    [201, "Adicionar aos favoritos"],
+    [202, "Remover dos favoritos"],
+    [203, "Verifique se o microfone está conectado ao computador."],
+    [204, "Não é possível estabelecer conexão com a Internet"],
+    [205, "Ativar entrada de fala (%s)"],
+    [206, "Desativar entrada de fala"]
+  ],
+  "Windows": [{
+    "Controls": [
+      [1004, "Traduzir"]
+    ],
+    "Id": 1,
+    "Caption": "QTranslate"
+  }, {
+    "Controls": [
+      [10, [
+        [20, "Dicionário de pesquisa de"],
+        [30, "Ouvir o texto selecionado"],
+        [40, "Copiar a tradução para a área de transferência"],
+        [50, "Substituir texto selecionado"]
+      ]]
+    ],
+    "Id": 6
+  }, {
+    "Controls": [],
+    "Strings": [
+      [10, "Nenhum resultado encontrado  para '%s'."]
+    ],
+    "Id": 5,
+    "Caption": "Dicionário"
+  }, {
+    "Controls": [
+      [1, "OK"],
+      [1160, "Salvar como..."],
+      [1067, "Limpar"]
+    ],
+    "Id": 3,
+    "Caption": "Histórico"
+  }, {
+    "Controls": [
+      [1, "OK"],
+      [2, "Cancelar"],
+      [1049, "Aplicar"]
+    ],
+    "Id": 2,
+    "Caption": "Opções"
+  }, {
+    "Controls": [
+      [1045, "Iniciar junto com o Windows"],
+      [1070, "Idioma da interface:"],
+      [1075, "Nome da fonte:"],
+      [1074, "Tamanho do texto:"],
+      [1068, "Primeiro idioma:"],
+      [1069, "Segundo idioma:"],
+      [1071, "Entrada de voz:"],
+      [1063, "Detectar automaticamente idiomas"],
+      [1046, "Geral"],
+      [1064, "Histórico"],
+      [1122, "Ativar o histórico"],
+      [1124, "Limpar histórico na saída"],
+      [1123, "Expandir os itens"]
+    ],
+    "Id": 10,
+    "Caption": "Básicos"
+  }, {
+    "Controls": [
+      [1049, "Conexão"],
+      [1084, "Intervalo, seg.:"],
+      [1033, "Detecção automática de proxy"],
+      [1034, "Host"],
+      [1036, "Nome do Usuário"],
+      [1037, "Senha"],
+      [1048, "Proxy"],
+      [1035, "Porta"],
+      [1135, [
+        [0, "Usar configurações de proxy do sistema"],
+        [1, "Sem proxy"],
+        [2, "Configuração manual do proxy"],
+        [3, "Detectar automaticamente configurações do proxy"]
+      ]]
+    ],
+    "Id": 11,
+    "Caption": "Internet"
+  }, {
+    "Controls": [
+      [1177, "Adicionar dicionário..."],
+      [1180, "Remover dicionário"]
+    ],
+    "Id": 12,
+    "Caption": "Serviços"
+  }, {
+    "Controls": [
+      [1099, "Marcar/Desmarcar tudo"]
+    ],
+    "Id": 13,
+    "Caption": "Idiomas"
+  }, {
+    "Controls": [
+      [1076, "Geral"],
+      [1123, "Habilitar estilo de janela"],
+      [1169, "Tema:"],
+      [1158, "Habilitar auto dimensionar"],
+      [1160, "Habilitar posição automática"],
+      [1159, "Ativar quando aberto"],
+      [1161, "Fixar ao arrastar"],
+      [1124, "Janela pop-up"],
+      [1092, "Cor do fundo:"],
+      [1091, "Cor do texto:"],
+      [1090, "Cor do quadro:"],
+      [1145, "Transparência (0 - 90):"],
+      [1146, "Espessura do quadro:"],
+      [1147, "Atraso para ocultar automaticamente:"],
+      [1194, "segundos"],
+      [1137, "Ícones:"],
+      [1138, "Mostrar ícone do dicionário aberto"],
+      [1139, "Mostrar o ícone de ouvir texto selecionado"],
+      [1140, "Mostrar o ícone de copiar o texto da área de transferência"],
+      [1141, "Mostrar o ícone de substituir texto selecionado"]
+    ],
+    "Id": 14,
+    "Caption": "Aparência"
+  }, {
+    "Controls": [
+      [1162, [
+        [0, "Habilitado para esses programas:"],
+        [1, "Desativada por estes programas:"]
+      ]],
+      [1101, "Adicionar"],
+      [1103, "Modificar"],
+      [1102, "Deletar"],
+      [1113, "Ativar a detecção inteligente"]
+    ],
+    "Id": 15,
+    "Caption": "Exceções"
+  }, {
+    "Controls": [
+      [1118, "Ativar os atalhos"],
+      [1165, [
+        [0, "Exibir a janela principal"],
+        [1, "Exibir a janela pop-up"],
+        [2, "Exibir a janela dicionário"],
+        [3, "Mostrar janela de histórico"],
+        [4, "Mostrar janela do teclado"],
+        [5, "Ouvir o texto selecionado"],
+        [6, "Copiar a tradução para a área de transferência"],
+        [7, "Substituir o texto selecionado"],
+        [8, "Mudar o modo mouse"],
+        [9, "Traduzir o conteúdo da área de transferência"],
+        [10, "Traduzir área de transferência na janela principal"],
+        [11, "Traduzir área de transferência em janela pop-up"],
+        [12, "Dicionário da área de transferência"],
+        [13, "Alterar o layout do teclado e texto selecionado"],
+        [14, "Ouvir a tradução de texto selecionada"],
+        [15, "Reconhecimento de texto"],
+        [16, "Entrada de voz"]
+      ]]
+    ],
+    "Id": 16,
+    "Caption": "Atalhos"
+  }, {
+    "Controls": [
+      [1146, "Avançado"],
+      [1151, "Navegador padrão:"],
+      [1147, "Ação de copiar:"],
+      [1149, "Indicador do layout do teclado:"],
+      [1157, "Domínio de sua preferência:"],
+      [1154, "Habilitar a tradução GUI"],
+      [1159, "Habilitar a escuta do mesmo texto a uma velocidade menor"],
+      [1160, "Remover quebras de linha"],
+      [1186, "Modo Mouse"],
+      [1155, "Habilitar modo mouse somente quando o Ctrl for pressionado"],
+      [1156, "Clique no ícone da bandeja do sistema para alternar o modo mouse"],
+      [1158, "Teclas da API"],
+      [1195, "Teclas OCR API:"]
+    ],
+    "Id": 17,
+    "Caption": "Avançado"
+  }, {
+    "Controls": [
+      [1188, "Verificar automaticamente se há atualizações"],
+      [1190, "Verificar agora"],
+      [1191, "Instalar"]
+    ],
+    "Id": 18,
+    "Caption": "Atualizações"
+  }],
+  "Menus": [{
+    "Items": [
+      [10, "Verificação ortográfica"],
+      [20, "Tradução instantânea"],
+      [30, "Tradução anterior"],
+      [40, "Estendida"],
+      [50, "Ler foneticamente"],
+      [60, "Limpar a entrada ao Arrastar && Soltar"],
+      [61, "Limpeza automática de tradução"],
+      [62, "Salvar o conteúdo ao sair"],
+      [65, "Exibir o painel no topo"],
+      [70, "Exibir o painel no meio"],
+      [80, "Exibir o painel de serviços"],
+      [81, "Minimizar para a bandeja ao minimizar"],
+      [82, "Minimizar para a bandeja ao fechar"],
+      [85, "Ao iniciar"],
+      [86, "Mostrar janela"],
+      [87, "Minimizar para bandeja do sistema"],
+      [88, "Restaurar estado anterior"],
+      [90, "Dicionário"],
+      [100, "Histórico"],
+      [110, "Teclado"],
+      [120, "Opções"],
+      [125, "Sobre o QTranslate"],
+      [130, "Ajuda"],
+      [140, "Sair"]
+    ],
+    "Id": 1
+  }, {
+    "Items": [
+      [10, "Desfazer"],
+      [20, "Recortar"],
+      [30, "Recortar tudo"],
+      [40, "Copiar"],
+      [50, "Copiar tudo"],
+      [60, "Colar"],
+      [70, "Selecionar tudo"],
+      [75, "Traduzir"],
+      [80, "Pesquisar no dicionário"],
+      [90, "Ouvir"]
+    ],
+    "Id": 2
+  }, {
+    "Items": [
+      [10, "Abrir"],
+      [15, "Copiar o texto"],
+      [20, "Copiar a tradução"],
+      [30, "Excluir"],
+      [40, "Ouvir"]
+    ],
+    "Id": 3
+  }, {
+    "Items": [
+      [10, "Redefinir"],
+      [20, "Editar..."],
+      [30, "Sempre detectar idioma"]
+    ],
+    "Id": 4
+  }, {
+    "Items": [
+      [5, "Reconhecimento de texto"],
+      [10, "Dicionário"],
+      [20, "Histórico"],
+      [30, "Teclado"],
+      [36, "Ativar os atalhos"],
+      [40, "Modo mouse"],
+      [50, "Ativado"],
+      [60, "Exibir o ícone"],
+      [70, "Exibir a tradução"],
+      [71, "Mostrar tradução e ler"],
+      [80, "Opções"],
+      [90, "Sobre o QTranslate"],
+      [100, "Sair"]
+    ],
+    "Id": 5
+  }, {
+    "Items": [
+      [10, "Selecionar tudo"],
+      [20, "Copiar"],
+      [30, "Imprimir..."],
+      [40, "Traduzir"],
+      [50, "Pesquisar"],
+      [60, "Ouvir"]
+    ],
+    "Id": 6
+  }, {
+    "Items": [
+      [10, "Exibir o Histórico Completo"]
+    ],
+    "Id": 7
+  }, {
+    "Items": [
+      [10, "Mostrar informação"],
+      [20, "Remover dicionário"]
+    ],
+    "Id": 8
+  }, {
+    "Items": [
+      [10, "Limpar histórico"],
+      [20, "Mostrar painel de serviços"],
+      [30, "Pesquisa exata"],
+      [40, "Opções"]
+    ],
+    "Id": 9
+  }, {
+    "Items": [
+      [110, "Idioma de OCR"],
+      [120, "Traduzir"],
+      [130, "Copiar imagem"],
+      [140, "Copiar texto"],
+      [150, "Salvar imagem"],
+      [160, "Editar imagem"],
+      [170, "Selecionar tudo"],
+      [180, "Limpar seleção"],
+      [190, "Fechar"]
+    ],
+    "Id": 10
+  }]
+}

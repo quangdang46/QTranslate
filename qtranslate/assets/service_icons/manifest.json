@@ -1,0 +1,51 @@
+{
+ "note": "Service strip icons recovered from the QTranslate 6.10.0 installer payload (Services/<Name>/Service.ico, 16x16 ICO groups). Each file is pixel-identical to the icon the native main window draws in its bottom strip.",
+ "provenance": {
+  "payload": "docs/review/artifacts/nsis_payload_unpacked.bin",
+  "extracted_by": "tools/_scratch/extract_icons.py",
+  "matched_against": "docs/review/g9_evidence/out/native.png (PrintWindow capture of the real QTranslate.exe)",
+  "evidence": "docs/review/rea/service_icons/_pairs.png"
+ },
+ "size": [
+  16,
+  16
+ ],
+ "icons": {
+  "google": {
+   "file": "google.png",
+   "recovered_from": "icon_017.png"
+  },
+  "microsoft": {
+   "file": "microsoft.png",
+   "recovered_from": "icon_021.png"
+  },
+  "promt": {
+   "file": "promt.png",
+   "recovered_from": "icon_029.png"
+  },
+  "babylon": {
+   "file": "babylon.png",
+   "recovered_from": "icon_008.png"
+  },
+  "yandex": {
+   "file": "yandex.png",
+   "recovered_from": "icon_039.png"
+  },
+  "youdao": {
+   "file": "youdao.png",
+   "recovered_from": "icon_033.png"
+  },
+  "baidu": {
+   "file": "baidu.png",
+   "recovered_from": "icon_011.png"
+  },
+  "naver": {
+   "file": "naver.png",
+   "recovered_from": "icon_025.png"
+  },
+  "deepl": {
+   "file": "deepl.png",
+   "recovered_from": "icon_013.png"
+  }
+ }
+}

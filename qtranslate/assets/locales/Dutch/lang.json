@@ -1,0 +1,341 @@
+﻿{
+  "Author": "HGZikken",
+  "LanguageName": "Dutch",
+  "LanguageNativeName": "Nederlands",
+  "LanguageCode": "nl",
+  "Strings": [
+    [171, "Wis de huidige vertaling (Ctrl+N)"],
+    [172, "Vertalen (Ctrl+Enter)"],
+    [173, "Wissel talen (Ctrl+I)"],
+    [174, "Luister naar de tekst"],
+    [175, "Go back (Alt+Left Arrow)"],
+    [184, "Go forward (Alt+Right Arrow)"],
+    [176, "Kan geen taal detecteren. Kies handmatig."],
+    [177, "Vertaaldienst ondersteunt de brontaal niet."],
+    [178, "Over"],
+    [179, "Versie "],
+    [180, "De updateserver is niet beschikbaar"],
+    [181, "Een nieuwe versie (%s) is beschikbaar"],
+    [182, "%s is bijgewerkt"],
+    [183, "Controleren voor een update..."],
+    [185, "Update failed"],
+    [186, "Alternatief spellingsysteem: "],
+    [187, "Altijd op voorgrond"],
+    [188, "Toetsenbord"],
+    [189, "Kan geen internetverbinding maken."],
+    [190, "Geen gegevens terug (Time-out tijdens het verzenden)."],
+    [191, "Geen gegevens terug"],
+    [192, "Geen gegevens om te vertalen."],
+    [193, "Vertaaldienst ondersteunt niet de gevraagde vermogen."],
+    [194, "Kan audio stream niet afspelen."],
+    [195, "Vertaaldienst ondersteunt de spraak voor deze taal niet of tekst is te lang."],
+    [196, "Scriptfout vertaaldienst."],
+    [197, "Onverwachte fout."],
+    [198, "Vertaaldienst ondersteunt de doeltaal niet."],
+    [199, "Kan bestand niet vinden: "],
+    [200, "Installing update..."],
+    [201, "Add to favorites"],
+    [202, "Remove from favorites"],
+    [203, "Zorg ervoor dat je microfoon is aangesloten op je computer."],
+    [204, "Kan geen verbinding maken met internet"],
+    [205, "Spraakinvoer inschakelen (%s)"],
+    [206, "Spraakinvoer uitschakelen"]
+  ],
+  "Windows": [{
+    "Controls": [
+      [1004, "Vertalen"]
+    ],
+    "Id": 1,
+    "Caption": "QTranslate"
+  }, {
+    "Controls": [
+      [10, [
+        [20, "Dictionary search for"],
+        [30, "Listen to selected text"],
+        [40, "Copy translation to clipboard"],
+        [50, "Replace selected text"]
+      ]]
+    ],
+    "Id": 6
+  }, {
+    "Controls": [],
+    "Strings": [
+      [10, "No results found for '%s'."]
+    ],
+    "Id": 5,
+    "Caption": "Dictionary"
+  }, {
+    "Controls": [
+      [1, "OK"],
+      [1160, "Save as..."],
+      [1067, "Wissen"]
+    ],
+    "Id": 3,
+    "Caption": "Geschiedenis"
+  }, {
+    "Controls": [
+      [1, "OK"],
+      [2, "Annuleren"],
+      [1049, "Toepassen"]
+    ],
+    "Id": 2,
+    "Caption": "Opties"
+  }, {
+    "Controls": [
+      [1045, "Start met Windows"],
+      [1070, "Interface taal:"],
+      [1075, "Font name:"],
+      [1074, "Tekst grootte:"],
+      [1068, "Eerste taal:"],
+      [1069, "Tweede taal:"],
+      [1071, "Speech input:"],
+      [1063, "Auto Detecteer Talen"],
+      [1046, "Algemeen"],
+      [1064, "History"],
+      [1122, "Enable history"],
+      [1124, "Clear history on exit"],
+      [1123, "Expand items"]
+    ],
+    "Id": 10,
+    "Caption": "Basis Instellingen"
+  }, {
+    "Controls": [
+      [1049, "Verbinding"],
+      [1084, "Timeout, sec:"],
+      [1033, "Automatische proxydetectie"],
+      [1034, "Host"],
+      [1036, "Gebruikersnaam"],
+      [1037, "Wachtwoord"],
+      [1048, "Proxy"],
+      [1035, "Poort"],
+      [1135, [
+        [0, "Use system proxy settings"],
+        [1, "No proxy"],
+        [2, "Manual proxy configuration"],
+        [3, "Auto-detect proxy settings"]
+      ]]
+    ],
+    "Id": 11,
+    "Caption": "Internet"
+  }, {
+    "Controls": [
+      [1177, "Add dictionary..."],
+      [1180, "Remove dictionary"]
+    ],
+    "Id": 12,
+    "Caption": "Vertaaldiensten"
+  }, {
+    "Controls": [
+      [1099, "Vink alles aan / uit"]
+    ],
+    "Id": 13,
+    "Caption": "Talen"
+  }, {
+    "Controls": [
+      [1076, "Algemeen"],
+      [1123, "Inschakelen vensterstijl"],
+      [1169, "Theme:"],
+      [1158, "Enable auto size"],
+      [1160, "Enable auto position"],
+      [1159, "Activate when opened"],
+      [1161, "Pin when dragging"],
+      [1124, "Popup venster"],
+      [1092, "Achtergrond kleur:"],
+      [1091, "Tekst kleur:"],
+      [1090, "Kader kleur:"],
+      [1145, "Transparency (0 - 90):"],
+      [1146, "Frame thickness:"],
+      [1147, "Auto-hide delay:"],
+      [1194, "seconds"],
+      [1137, "Icons:"],
+      [1138, "Show open dictionary icon"],
+      [1139, "Show listen to selected text icon"],
+      [1140, "Show copy text to clipboard icon"],
+      [1141, "Show replace selected text icon"]
+    ],
+    "Id": 14,
+    "Caption": "Uiterlijk"
+  }, {
+    "Controls": [
+      [1162, [
+        [0, "Enabled for these programs:"],
+        [1, "Uitschakelen in de volgende programmas:"]
+      ]],
+      [1101, "Toevoegen"],
+      [1103, "Wijzigen"],
+      [1102, "Verwijderen"],
+      [1113, "Slimme detectie inschakelen"]
+    ],
+    "Id": 15,
+    "Caption": "Uitzonderingen"
+  }, {
+    "Controls": [
+      [1118, "Inschakelen sneltoetsen"],
+      [1165, [
+        [0, "Het hoofdvenster weergeven"],
+        [1, "Popup venster weergeven"],
+        [2, "Show dictionary window"],
+        [3, "Show history window"],
+        [4, "Show keyboard window"],
+        [5, "Luister naar geselecteerde tekst"],
+        [6, "Kopieer de vertaling naar het klembord"],
+        [7, "Vervang de geselecteerde tekst"],
+        [8, "Switch mouse mode"],
+        [9, "Translate clipboard content"],
+        [10, "Translate clipboard in main window"],
+        [11, "Translate clipboard in popup window"],
+        [12, "Dictionary from clipboard"],
+        [13, "Change keyboard layout and selected text"],
+        [14, "Listen to selected text translation"],
+        [15, "Text recognition"],
+        [16, "Speech input"]
+      ]]
+    ],
+    "Id": 16,
+    "Caption": "Sneltoetsen"
+  }, {
+    "Controls": [
+      [1146, "Advanced"],
+      [1151, "Default browser:"],
+      [1147, "Copy action:"],
+      [1149, "Keyboard layout indicator:"],
+      [1157, "Voorkeursdomein:"],
+      [1154, "Enable GUI translation"],
+      [1159, "Enable listening to the same text at a slower speed"],
+      [1160, "Remove line breaks"],
+      [1186, "Mouse mode"],
+      [1155, "Enable mouse mode only when Ctrl is pressed"],
+      [1156, "Click on system tray icon switches mouse mode"],
+      [1158, "API keys"],
+      [1195, "OCR API key:"]
+    ],
+    "Id": 17,
+    "Caption": "Advanced"
+  }, {
+    "Controls": [
+      [1188, "Automatically check for updates"],
+      [1190, "Check now"],
+      [1191, "Install"]
+    ],
+    "Id": 18,
+    "Caption": "Updates"
+  }],
+  "Menus": [{
+    "Items": [
+      [10, "Spellingcontrole"],
+      [20, "Vertaling uitschakelen"],
+      [30, "Back translation"],
+      [40, "Extended"],
+      [50, "Fonetisch lezen"],
+      [60, "Clear input on Drag && Drop"],
+      [61, "Auto-cleanup of translation"],
+      [62, "Save contents on exit"],
+      [65, "Show top pane"],
+      [70, "Show middle pane"],
+      [80, "Show services pane"],
+      [81, "Minimize to system tray on minimize"],
+      [82, "Minimize to system tray on close"],
+      [85, "On startup"],
+      [86, "Show window"],
+      [87, "Minimize to tray"],
+      [88, "Restore previous state"],
+      [90, "Dictionary"],
+      [100, "Geschiedenis"],
+      [110, "Toetsenbord"],
+      [120, "Opties"],
+      [125, "Over"],
+      [130, "Help"],
+      [140, "Afsluiten"]
+    ],
+    "Id": 1
+  }, {
+    "Items": [
+      [10, "Undo"],
+      [20, "Cut"],
+      [30, "Cut all"],
+      [40, "Copy"],
+      [50, "Copy all"],
+      [60, "Paste"],
+      [70, "Select all"],
+      [75, "Translate"],
+      [80, "Search Dictionary for"],
+      [90, "Listen"]
+    ],
+    "Id": 2
+  }, {
+    "Items": [
+      [10, "Open"],
+      [15, "Copy text"],
+      [20, "Copy translation"],
+      [30, "Delete"],
+      [40, "Listen"]
+    ],
+    "Id": 3
+  }, {
+    "Items": [
+      [10, "Reset"],
+      [20, "Edit..."],
+      [30, "Always detect language"]
+    ],
+    "Id": 4
+  }, {
+    "Items": [
+      [5, "Text recognition"],
+      [10, "Dictionary"],
+      [20, "Geschiedenis"],
+      [30, "Toetsenbord"],
+      [36, "Inschakelen sneltoetsen"],
+      [40, "Muis Mode"],
+      [50, "Enabled"],
+      [60, "Pictogram weergeven"],
+      [70, "Vertaling weergeven"],
+      [71, "Vertaling weergeven en lezen"],
+      [80, "Opties"],
+      [90, "Over"],
+      [100, "Afsluiten"]
+    ],
+    "Id": 5
+  }, {
+    "Items": [
+      [10, "Select All"],
+      [20, "Copy"],
+      [30, "Print..."],
+      [40, "Translate"],
+      [50, "Search"],
+      [60, "Listen"]
+    ],
+    "Id": 6
+  }, {
+    "Items": [
+      [10, "Show Full History"]
+    ],
+    "Id": 7
+  }, {
+    "Items": [
+      [10, "Show info"],
+      [20, "Remove dictionary"]
+    ],
+    "Id": 8
+  }, {
+    "Items": [
+      [10, "Clear history"],
+      [20, "Show services pane"],
+      [30, "Exact search"],
+      [40, "Options"]
+    ],
+    "Id": 9
+  }, {
+    "Items": [
+      [110, "OCR language"],
+      [120, "Translate"],
+      [130, "Copy image"],
+      [140, "Copy text"],
+      [150, "Save image"],
+      [160, "Edit image"],
+      [170, "Select all"],
+      [180, "Clear selection"],
+      [190, "Close"]
+    ],
+    "Id": 10
+  }]
+}

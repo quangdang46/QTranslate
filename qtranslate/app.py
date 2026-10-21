@@ -113,6 +113,17 @@ _COLORS = _default_colors()
 # keep a single-argument caller working.
 BACKTR_MARKER = "--- back-translation ---"
 
+# Size of a service-strip icon, in PIXELS. The native's icons are 16x16
+# (recovered from the installer payload; see
+# `qtranslate/assets/service_icons/manifest.json`), and the native draws them
+# at that size in the main window's bottom strip.
+#
+# The unit matters: Tk reads a button's `width`/`height` as CHARACTERS for a
+# text button and as PIXELS for an image button. The strip's buttons always
+# carry an image, so these are pixels -- but the constant is named to keep
+# that from being re-broken by a well-meaning change.
+SVC_ICON_PX = 16
+
 # Full language table from Services/Google Translate/Service.js
 # SupportedLanguages (75 codes; index 1=auto .. 57=vi). Display names
 # are ISO English names (native combo shows localized names from its
@@ -578,14 +589,23 @@ class App:
         # and changes the reading order, which is the visual "lệch" the user
         # reported. `place()` with relx/rely reproduces the overlay.
         # docs/review/MAIN_WINDOW_LAYOUT_DIVERGED_2026-10-16.md
-        # Tahoma glyphs (emoji mic/headphone render blank on win32 Tk)
-        _ovl = dict(borderwidth=0, bg="white", font=("Tahoma", 7),
-                    relief="flat", highlightthickness=0, takefocus=0)
-        for _i, (_txt, _fn) in enumerate((("Mic", self.on_mic),
-                                          ("♫", self.on_listen))):
-            b = tk.Button(srcfrm, text=_txt, command=_fn, width=4, **_ovl)
-            b.place(relx=1.0, rely=1.0, anchor="se",
-                    x=-(13 + _i * 26), y=-5)
+        # Native overlays a MICROPHONE and a HEADPHONE on the source pane's
+        # bottom-right (native glyph boxes x 453..464 and 474..487 in a pane
+        # whose right edge is at ~500, bottoms 9px above the pane's bottom).
+        # The icons are native's own, recovered from the EXE's RT_ICON
+        # resources and bundled under qtranslate/assets/ui_icons/.
+        _ovl = dict(borderwidth=0, bg="white", relief="flat",
+                    highlightthickness=0, takefocus=0)
+        for _i, (_key, _fn, _dx) in enumerate(
+                (("mic", self.on_mic, 36), ("headphone", self.on_listen, 13))):
+            _photo = self._ui_icon(_key)
+            b = tk.Button(srcfrm, command=_fn, **_ovl)
+            if _photo is not None:
+                b.config(image=_photo, width=SVC_ICON_PX, height=SVC_ICON_PX)
+            else:
+                b.config(text="Mic" if _key == "mic" else "Head",
+                         font=("Tahoma", 7), width=6)
+            b.place(relx=1.0, rely=1.0, anchor="se", x=-_dx, y=-9)
         # Drag sash: resize the source pane, persisting the delta to
         # General.MidSplitterPos (native mid-pane splitter).
         sash = tk.Frame(self.root, bg="#c1c1c2", height=3,
@@ -627,22 +647,34 @@ class App:
         # [Translate] — no mic/headphone here (they live on the panes)
         bar = tk.Frame(self.root, bg=bg)
         bar.pack(fill="x", padx=4, pady=2)
+        # GRID, not pack: native's tool row always fits -- the Translate
+        # button sits at the right edge (native x 438..510 of 516). Packed
+        # left to right, the row overflowed a 516px window and the Translate
+        # button was cut off (the port drew it at x 481..497). The two
+        # combobox columns carry the weight, so they share whatever is left.
+        bar.columnconfigure(2, weight=1)
+        bar.columnconfigure(4, weight=1)
         # id1021 "New": clears source for a fresh translation
         tk.Button(bar, text="\U0001f4cb", width=3,
-                  command=self.on_new).pack(side="left", padx=1)
+                  command=self.on_new).grid(row=0, column=0, sticky="w", padx=1)
         tk.Button(bar, text="⋮", width=3,
-                  command=self.show_nav_menu).pack(side="left", padx=1)
+                  command=self.show_nav_menu).grid(row=0, column=1, sticky="w",
+                                                   padx=1)
+        # width is in CHARACTERS for a ttk combobox; native's Auto-Detect
+        # combo is 150px wide and shows the whole label, so 13 characters
+        # clipped it to "Auto-Detec".
         self.src_lang = ttk.Combobox(bar, values=_lang_names(LANGS),
-                                     width=13, state="readonly")
+                                     width=16, state="readonly")
         self.src_lang.set(LANG_DISPLAY.get(self.source, "Auto-Detect"))
-        self.src_lang.pack(side="left", padx=2)
+        self.src_lang.grid(row=0, column=2, sticky="ew", padx=2)
         tk.Button(bar, text="⇄", width=3, font=("Segoe UI Symbol", 10),
-                  command=self.on_swap).pack(side="left", padx=1)
+                  command=self.on_swap).grid(row=0, column=3, sticky="w",
+                                             padx=1)
         self.tgt = ttk.Combobox(bar, values=_lang_names(TO_LANGS,
                                                         False),
-                                width=13, state="readonly")
+                                width=18, state="readonly")
         self.tgt.set(LANG_DISPLAY.get(self.target, self.target))
-        self.tgt.pack(side="left", padx=2)
+        self.tgt.grid(row=0, column=4, sticky="ew", padx=2)
         self.tgt.bind("<<ComboboxSelected>>",
                       lambda e: self._persist_langs(
                           LANG_CODES.get(self.src_lang.get().strip(),
@@ -655,7 +687,7 @@ class App:
                                LANG_CODES.get(self.tgt.get().strip(),
                                               "vi")))
         tk.Button(bar, text=_Cw(1, 1004, "Translate"),
-                  command=self.on_go).pack(side="left", padx=4)
+                  command=self.on_go).grid(row=0, column=5, sticky="e", padx=4)
         self.suggest = tk.Label(self.root, text="", bg=bg, fg="gray",
                                 anchor="w", font=("Tahoma", 7),
                                 cursor="hand2")
@@ -716,11 +748,19 @@ class App:
         # Same overlay as the source pane: native's `Play` 1028 sits INSIDE
         # result pane 1017 (y 101-152) at y=134, 5 DU below its bottom and
         # 13 DU left of its right edge.
-        _b = tk.Button(outfrm, text="♫", width=4, borderwidth=0, bg="white",
-                       font=("Tahoma", 9), relief="flat",
+        # Native draws the same HEADPHONE icon on the result pane's
+        # bottom-right as on the source pane's (the glyph is native's own,
+        # recovered from the EXE's RT_ICON resources); the port used a music
+        # note, which is a different symbol entirely.
+        _b = tk.Button(outfrm, borderwidth=0, bg="white", relief="flat",
                        highlightthickness=0, takefocus=0,
                        command=self.on_listen)
-        _b.place(relx=1.0, rely=1.0, anchor="se", x=-13, y=-5)
+        _hp = self._ui_icon("headphone")
+        if _hp is not None:
+            _b.config(image=_hp, width=SVC_ICON_PX, height=SVC_ICON_PX)
+        else:
+            _b.config(text="♫", width=4, font=("Tahoma", 9))
+        _b.place(relx=1.0, rely=1.0, anchor="se", x=-13, y=-9)
         # --- the THIRD pane: DLG129's RichEdit50W id 1018, cy=27 DU ---
         # Native has three text panes, and the three Contents keys map onto
         # them in order: EditSource->1000, EditTranslation->1017,
@@ -771,8 +811,12 @@ class App:
             # native: small icon + short name side-by-side in one row
             cell = tk.Frame(strip, bg=bg)
             cell.pack(side="left", padx=2)
-            b = tk.Button(cell, width=22, height=22, borderwidth=0,
-                          bg=bg, activebackground=bg,
+            # width/height are PIXELS here because the button always ends up
+            # with an image (see _load_svc_icon). A text button would read
+            # them as characters and be 10x too wide.
+            b = tk.Button(cell, width=SVC_ICON_PX, height=SVC_ICON_PX,
+                          borderwidth=0, bg=bg, activebackground=bg,
+                          highlightthickness=0,
                           command=lambda n=name: self.switch_service(n))
             b.pack(side="left")
             b.bind("<Button-2>",
@@ -967,35 +1011,99 @@ class App:
         except Exception as e:
             self.render(f"[error] {e}")
 
-    def _load_svc_icon(self, name, button):
-        """Load Services/<Name>/Service.ico as the strip button image."""
-        import glob
-        import os
+    def _ui_icon(self, name):
+        """The bundled native UI icon (``mic`` / ``headphone``), or None.
+
+        These are native's own icons, recovered from the QTranslate 6.10.0
+        EXE's RT_ICON resources and committed under
+        ``qtranslate/assets/ui_icons/`` — the same 16x16 bitmaps the native
+        main window draws. The result is cached on the app so the
+        PhotoImage is not rebuilt per button.
+        """
+        cache = getattr(self, "_ui_icons", None)
+        if cache is None:
+            cache = {}
+            self._ui_icons = cache
+        if name in cache:
+            return cache[name]
+        photo = None
         try:
-            pats = {
-                "google": "Google Translate", "deepl": "DeepL",
-                "yandex": "Yandex", "baidu": "Baidu", "naver": "Naver",
-                "youdao": "youdao", "bing": "Microsoft Translator",
-                "microsoft": "Microsoft Translator", "promt": "Promt",
-                "reverso": "Reverso", "babylon": "Babylon",
-            }
-            folder = pats.get(name, name)
-            ico = os.path.join("C:/Program Files (x86)/QTranslate/Services",
-                               folder, "Service.ico")
-            if not os.path.exists(ico):
-                button.config(text=name[:4])
-                return
-            try:
-                from PIL import Image, ImageTk
-                im = Image.open(ico)
-                im = im.convert("RGBA").resize((22, 22), Image.LANCZOS)
-                photo = ImageTk.PhotoImage(im)
-            except Exception:
-                photo = tk.PhotoImage(file=ico)
-                w, h = photo.width(), photo.height()
-                if w > 24 or h > 24:
-                    photo = photo.subsample(max(1, w // 22),
-                                            max(1, h // 22))
+            import os
+            path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                "assets", "ui_icons", name + ".png")
+            if os.path.exists(path):
+                photo = tk.PhotoImage(file=path)
+                if (photo.width() != SVC_ICON_PX
+                        or photo.height() != SVC_ICON_PX):
+                    photo = photo.subsample(
+                        max(1, photo.width() // SVC_ICON_PX),
+                        max(1, photo.height() // SVC_ICON_PX))
+        except Exception:
+            photo = None
+        cache[name] = photo
+        return photo
+
+    def _load_svc_icon(self, name, button):
+        """Give the strip button the service's own icon.
+
+        The icons are the native ones, recovered from the QTranslate 6.10.0
+        installer payload and committed under
+        ``qtranslate/assets/service_icons/`` — pixel-identical to the icons
+        the native main window draws in its bottom strip (see
+        ``docs/review/rea/service_icons/_pairs.png``). Bundling them is what
+        makes the strip render on every platform: the previous code only ever
+        looked at ``C:/Program Files (x86)/QTranslate/Services/<Name>/
+        Service.ico``, so off Windows no icon was loaded at all.
+
+        The button is always given an IMAGE, because Tk reads a button's
+        ``width``/``height`` as **characters** for a text button and as
+        **pixels** for an image button. Without an image, ``width=22`` became
+        a 230-pixel-wide text button and six of the nine services were pushed
+        off the end of the strip.
+        """
+        import os
+        photo = None
+        bundled = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                "assets", "service_icons", name + ".png")
+        if name == "bing":
+            bundled = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                    "assets", "service_icons",
+                                    "microsoft.png")
+        try:
+            if os.path.exists(bundled):
+                photo = tk.PhotoImage(file=bundled)
+                if photo.width() != SVC_ICON_PX or photo.height() != SVC_ICON_PX:
+                    photo = photo.subsample(
+                        max(1, photo.width() // SVC_ICON_PX),
+                        max(1, photo.height() // SVC_ICON_PX))
+            else:
+                # Fall back to a real installed copy (Windows).
+                pats = {
+                    "google": "Google Translate", "deepl": "DeepL",
+                    "yandex": "Yandex", "baidu": "Baidu", "naver": "Naver",
+                    "youdao": "youdao", "bing": "Microsoft Translator",
+                    "microsoft": "Microsoft Translator", "promt": "Promt",
+                    "reverso": "Reverso", "babylon": "Babylon",
+                }
+                folder = pats.get(name, name)
+                ico = os.path.join(
+                    "C:/Program Files (x86)/QTranslate/Services",
+                    folder, "Service.ico")
+                if not os.path.exists(ico):
+                    button.config(text=name[:4])
+                    return
+                try:
+                    from PIL import Image, ImageTk
+                    im = Image.open(ico)
+                    im = im.convert("RGBA").resize((SVC_ICON_PX, SVC_ICON_PX),
+                                                    Image.LANCZOS)
+                    photo = ImageTk.PhotoImage(im)
+                except Exception:
+                    photo = tk.PhotoImage(file=ico)
+                    w, h = photo.width(), photo.height()
+                    if w > 24 or h > 24:
+                        photo = photo.subsample(max(1, w // SVC_ICON_PX),
+                                                max(1, h // SVC_ICON_PX))
             self.svc_icons[name] = photo  # keep ref
             button.config(image=photo, text="")
         except Exception:
@@ -1072,14 +1180,25 @@ class App:
         Actions), not just 4 lines.
         """
         lines = ["QTranslate Version  6.10.0", ""]
-        try:
-            with open("C:/Program Files (x86)/QTranslate/Locales/English/"
-                      "help.txt", encoding="utf-8-sig") as f:
-                lines.append(f.read().strip())
-        except Exception:
-            lines.append("Double Ctrl => Show main window\n"
-                         "Ctrl+Q => Translate selected text\n"
-                         "Ctrl+E => Listen to selected text")
+        # The native's own help.txt, recovered from the installer payload and
+        # bundled under qtranslate/assets/locales/en/. Reading it from the
+        # Windows install only meant the port opened with a three-line stub
+        # everywhere else -- and the native opens with the WHOLE help text
+        # (Global hotkeys + Main window hotkeys + mouse modes + Actions).
+        import os
+        for _path in (
+                os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                             "assets", "locales", "English", "help.txt"),
+                "C:/Program Files (x86)/QTranslate/Locales/English/help.txt"):
+            try:
+                with open(_path, encoding="utf-8-sig") as f:
+                    lines.append(f.read().strip())
+                return "\n".join(lines)
+            except Exception:
+                continue
+        lines.append("Double Ctrl => Show main window\n"
+                     "Ctrl+Q => Translate selected text\n"
+                     "Ctrl+E => Listen to selected text")
         return "\n".join(lines)
 
     def hist_back(self):

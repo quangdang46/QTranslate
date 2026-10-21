@@ -1,0 +1,33 @@
+﻿Atajos globales (valores por defecto):
+Doble Ctrl => Mostrar ventana principal (Con traducción del texto seleccionado, si hay alguno)
+Ctrl+Q => Traducir texto seleccionado y mostrar en ventana emergente
+Ctrl+Shift+Q => Mostrar ventana de diccionario
+Ctrl+E => Escuchar texto seleccionado
+
+Atajos de ventana principal:
+Ctrl+Enter => Traducir texto
+Ctrl+N => Limpiar traducción actual
+Ctrl+D => Mostrar diccionario
+Ctrl+Alt+1..9 => Mostrar diccionario con 1..9º servicio de traducción seleccionado
+Ctrl+H => Mostrar historial de traducciones
+Ctrl+K => Mostrar teclado virtual
+Ctrl+Tab/Ctrl+Shift+Tab/Ctrl+1..9 => Cambiar al siguiente/anterior/1..9º servicio de traduccion
+Shift+Esc => Restablecer par de idiomas a detección automática
+Ctrl+Shift+1..9 => Seleccionar par de idiomas
+Ctrl+I => Cambiar dirección de traducción
+Ctrl+Space => Mostrar menú de sugerencias/autocompletar
+F1 => Mostrar ayuda
+Alt+Left Arrow => Ir a la traducción anterior
+Alt+Right Arrow => Ir a la siguiente traducción
+Ctrl+Up => Copiar traducción al cuadro de entrada de texto
+
+Hay dos tres de traducción por selección de ratón:
+  1) Mostrar icono (seleccionar texto en un programa - el icono de QTranslate aparecerá cerca del cursor. Clic en el icono - aparecerá la ventana emergente con traducción del texto seleccionado);
+  2) Mostrar traducción (seleccionar texto en un programa - una ventana emergente con traducción del texto seleccionado aparecerá inmediatamente);
+  3) Mostrar traducción y leer (lo mismo que el anterior además de hablar en voz alta el texto seleccionado). 
+
+Acciones:
+  - Clic izquierdo sobre el icono de QTranslate en la bandeja del sistema activa/desactiva el modo de selección del ratón (véase más arriba);
+  - Doble clic en el icono de QTranslate en la bandeja del sistema muestra la ventana principal;
+  - Doble clic en el encabezado de la ventana emergente abre la ventana principal con la traducción actual;
+  - Clic izquierdo del ratón sobre el nombre del servicio en la ventana emergente cambia el servicio actual y vuelve a traducir el texto.

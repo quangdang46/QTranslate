@@ -182,6 +182,23 @@ def detect(text: str):
     return get_source_language(obj)
 
 
+def detect_code(text: str) -> str:
+    """``detect`` resolved to a language CODE string.
+
+    ``detect`` returns the language *index* (native's ``languageFromCode``),
+    which is only meaningful against THIS provider's table. The registry's
+    detect chain has to hand back code strings -- the request's ``src`` is a
+    code, and an index that reaches a provider adapter is read as that
+    provider's own index (a different language, or an ``AttributeError`` when
+    the adapter calls ``str.upper`` on it).
+
+    Native stores the source as an index too (``FUN_0045fde8`` ->
+    ``FUN_0046021c``), so this is the port's boundary conversion, not a
+    change of meaning.
+    """
+    return code_from_language(detect(text), SUPPORTED_LANGS)
+
+
 def _translate_response(obj, sl, tl):
     """Port of serviceTranslateResponse (translation + dt=bd dict branch).
 

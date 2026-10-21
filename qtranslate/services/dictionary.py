@@ -200,10 +200,25 @@ def babylon_dict_link(sl, tl) -> str:
 
 
 def babylon_lookup(word, sl, tl):
-    """GET /translate/babylon.php?...callback=callbackFn; unwrap JSONP."""
+    """GET /translate/babylon.php?...callback=callbackFn; unwrap JSONP.
+
+    Native ``serviceTranslateRequest``::
+
+        format("/translate/babylon.php?v=1.0&q={0}&langpair={1}%7C{2}
+               &callback=callbackFn&context=babylon",
+               encodeGetParam(prepareSource(a)),
+               codeFromLanguage(b), codeFromLanguage(c))
+
+    so the pair is **Babylon's own numeric codes** -- ``BABYLON_LANGS`` holds
+    numbers (0 is English, 7 is Russian), not language names. This port
+    interpolated the raw language codes instead, so it asked Babylon for a
+    pair (``en|ru``) that is not a pair Babylon accepts, and it never read
+    the table at all.
+    """
     import json
+    src, tgt = _codes(BABYLON_LANGS, sl, tl)
     url = (BABYLON_HOST + "/translate/babylon.php?v=1.0&q={0}&langpair={1}%7C{2}"
-           "&callback=callbackFn&context=babylon").format(_q(word), sl, tl)
+           "&callback=callbackFn&context=babylon").format(_q(word), src, tgt)
     body = _get(url)
     i = body.find("(")
     if i >= 0:
@@ -654,10 +669,20 @@ def _resolve(table, lang):
     an id first -- the framework's own ``languageFromCode`` step -- so both
     spellings of the same language converge.
 
-    An entry that is ``None``/empty is **unsupported**, and resolves to ``-1``
+    An entry that is ``None`` is **unsupported**, and resolves to ``-1``
     exactly as native interpolates it -- it must NOT fall back to the input,
     or index ``60`` would echo ``60`` into the URL and look like a code. An
     index outside the array is ``-1`` for the same reason.
+
+    ``None`` is the port's spelling of native's ``-1``; native's tables hold
+    ``-1`` in the unsupported slots and never ``""``. The one ``""`` native
+    does hold is the AUTO slot (index 1) of Google Search, ImTranslator,
+    Wikipedia and WordReference, and ``codeFromLanguage(1)`` returns it
+    verbatim -- so ``""`` is passed through as ``""`` and NOT flattened into
+    ``-1``. An earlier version of this function folded ``""`` into ``-1``
+    too, which is why Google Search's builder had to call
+    ``common.code_from_language`` itself to keep native's empty ``hl=``
+    intact.
 
     A *code* that is not any language at all (``"vi"``, where the app's table
     has no such entry) is passed through unchanged: that is an unresolvable
@@ -666,12 +691,12 @@ def _resolve(table, lang):
     """
     if isinstance(lang, int):
         v = common.code_from_language(lang, table)
-        return -1 if v in (None, "") else v
+        return -1 if v is None else v
     idx = _idx(lang)
     if idx is None:
         return lang                     # not a language the app knows at all
     v = common.code_from_language(idx, table)
-    return -1 if v in (None, "") else v
+    return -1 if v is None else v
 
 
 def _codes(table, sl, tl):
@@ -1029,10 +1054,15 @@ def gsearch_build_uri(word, tl) -> str:
     (``codeFromLanguage``), so the index 46 becomes ``hl=ru``. Index 1 maps to
     ``""`` natively -- the auto-detect slot -- and interpolating that leaves
     ``hl=`` empty, which is what the native client sends.
+
+    The table is consulted for an **ISO code** as well as for an index. That
+    is not a formality: the app's call sites pass codes, and the two
+    spellings are not interchangeable -- ``"kk"`` is the app's index 64, and
+    this table's entry there is ``"kz"``. Resolving only the index form left
+    ``GSEARCH_LANGS`` unread on every live call.
     """
     return "/search?q={0}&ie=UTF-8&hl={1}".format(
-        _q(word), common.code_from_language(tl, GSEARCH_LANGS)
-        if isinstance(tl, int) else tl)
+        _q(word), _resolve(GSEARCH_LANGS, tl))
 GSEARCH_LANGS = [None, "", "af", "az", "sq", "ar", "hy", "eu", "be", "bg",
                  "ca", "zh-CN", "zh-TW", "hr", "cs", "da", "nl", "en", "et",
                  "fi", "tl", "fr", "gl", "de", "el", "ht", "iw", "hi", "hu",

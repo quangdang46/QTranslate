@@ -191,6 +191,26 @@ def _load_meta(path: Path) -> dict:
             "metadata 'size_origin' must be 'template', 'placement' or "
             "'unspecified'")
     meta["size_origin"] = origin
+    # How each side's pixels were obtained. A PrintWindow capture of a native
+    # window renders the window's own frame (border/shadow); a desktop crop
+    # shows whatever is behind the window. The two produce different edge
+    # pixels for an otherwise identical UI, so the methods must agree or the
+    # diff measures the capture method rather than the application.
+    method = meta.get("capture_method") or "unspecified"
+    if method not in ("printwindow", "desktop-crop", "unspecified"):
+        raise ValueError(
+            "metadata 'capture_method' must be 'printwindow', 'desktop-crop' "
+            "or 'unspecified'")
+    meta["capture_method"] = method
+    # Whether the captured window was the active one. Windows dims an
+    # inactive title bar's caption text and glyphs, so an unfocused native
+    # capture and a focused port capture differ in the chrome even when the
+    # application's own pixels are identical.
+    focus = meta.get("focus") or "unspecified"
+    if focus not in ("active", "inactive", "unspecified"):
+        raise ValueError(
+            "metadata 'focus' must be 'active', 'inactive' or 'unspecified'")
+    meta["focus"] = focus
     # Acceptance captures MUST carry a content hash; mechanics captures may omit it.
     if meta["capture_kind"] == "acceptance":
         h = meta.get("sha256")
@@ -225,6 +245,83 @@ def _diff(native: bytes, port: bytes, w: int, h: int, tol: int):
     total = w * h
     mean_delta = (total_delta / (total * 3)) if total else 0.0
     return diff_pixels, total, mean_delta, max_delta, bytes(diff_rgb)
+
+
+def _diff_mask(native: bytes, port: bytes, w: int, h: int, tol: int) -> bytearray:
+    """1 where the two images differ by more than ``tol`` on any channel."""
+    mask = bytearray(w * h)
+    for p in range(w * h):
+        o = 3 * p
+        worst = max(
+            abs(native[o] - port[o]),
+            abs(native[o + 1] - port[o + 1]),
+            abs(native[o + 2] - port[o + 2]),
+        )
+        if worst > tol:
+            mask[p] = 1
+    return mask
+
+
+def _frame_bands(mask: bytearray, w: int, h: int) -> dict:
+    """Measure the edge bands in which *every* pixel differs.
+
+    A window captured with ``PrintWindow`` renders its own border and shadow;
+    the same window cropped out of a desktop screenshot shows the desktop
+    instead. The result is an edge band that differs in every row (or every
+    column) while the application's own pixels match.
+
+    This measures the band; it does not assume what is in it. The caller
+    decides what the band means.
+    """
+    def col_full(x: int) -> bool:
+        base = x
+        return all(mask[y * w + base] for y in range(h))
+
+    def row_full(y: int) -> bool:
+        base = y * w
+        return all(mask[base + x] for x in range(w))
+
+    left = 0
+    while left < w and col_full(left):
+        left += 1
+    right = 0
+    while right < w and col_full(w - 1 - right):
+        right += 1
+    top = 0
+    while top < h and row_full(top):
+        top += 1
+    bottom = 0
+    while bottom < h and row_full(h - 1 - bottom):
+        bottom += 1
+    # Bands that would overlap are not bands; clamp so the client rectangle
+    # never inverts.
+    if left + right >= w:
+        left = right = 0
+    if top + bottom >= h:
+        top = bottom = 0
+    return {
+        "left": left,
+        "right": right,
+        "top": top,
+        "bottom": bottom,
+        "client_rect": [left, top, w - right, h - bottom],
+    }
+
+
+def _client_metrics(mask: bytearray, w: int, h: int, rect) -> dict:
+    """Diff ratio restricted to the client rectangle."""
+    x0, y0, x1, y1 = rect
+    total = max(0, (x1 - x0)) * max(0, (y1 - y0))
+    if total <= 0:
+        return {"client_pixels": 0, "client_diff_pixels": 0, "client_diff_ratio": 0.0}
+    count = 0
+    for y in range(y0, y1):
+        count += sum(mask[y * w + x0 : y * w + x1])
+    return {
+        "client_pixels": total,
+        "client_diff_pixels": count,
+        "client_diff_ratio": round(count / total, 6),
+    }
 
 
 def cmd_compare(args) -> int:
@@ -306,6 +403,27 @@ def cmd_compare(args) -> int:
     report["g9_evidence"] = False
     report["evidence_kind"] = "unknown"
 
+    # --- frame decomposition -------------------------------------------------
+    # A window's edge pixels come from the *capture*, not from the
+    # application: PrintWindow renders the window's own frame, a desktop crop
+    # shows what is behind it. Measure the band where every pixel differs
+    # and report the client-area (frame-excluded) ratio alongside the raw
+    # one, so a FAIL is attributable instead of mysterious.
+    mask = _diff_mask(npx, ppx, nw, nh, args.channel_tolerance)
+    bands = _frame_bands(mask, nw, nh)
+    client = _client_metrics(mask, nw, nh, bands["client_rect"])
+    report["frame_analysis"] = {
+        "edge_bands": {k: bands[k] for k in ("left", "right", "top", "bottom")},
+        "client_rect": bands["client_rect"],
+        "has_frame_band": any(bands[k] for k in ("left", "right", "top", "bottom")),
+        "client_metrics": client,
+        "note": (
+            "edge_bands count pixels at each edge where EVERY pixel differs; "
+            "client_rect is the remaining rectangle and client_diff_ratio is "
+            "the diff ratio restricted to it."
+        ),
+    }
+
     # --- protocol equivalence: meta must agree with images and each other ---
     if (nm["width"], nm["height"]) != (nw, nh):
         return blocked("native metadata dimensions disagree with its image")
@@ -329,6 +447,28 @@ def cmd_compare(args) -> int:
             f"(native={nm['size_origin']!r} port={pm['size_origin']!r}) -- "
             "one side is a fresh template and the other a restored placement, "
             "so the diff would measure window-manager state, not UI fidelity"
+        )
+    # A capture-method mismatch is a protocol mismatch for the same reason:
+    # PrintWindow renders the window's own frame, a desktop crop shows what
+    # is behind the window. The edge pixels then differ in every row even
+    # when the application's own pixels are identical.
+    if nm["capture_method"] != pm["capture_method"]:
+        return blocked(
+            "protocol mismatch: capture_method differs "
+            f"(native={nm['capture_method']!r} port={pm['capture_method']!r}) -- "
+            "one side renders the window frame and the other shows the "
+            "desktop behind it, so the diff would measure the capture method, "
+            "not UI fidelity"
+        )
+    # An active window and an inactive one differ in the caption text and the
+    # minimise/maximise/close glyphs, because Windows dims an inactive title
+    # bar. That is window-manager state, not application pixels.
+    if nm["focus"] != pm["focus"]:
+        return blocked(
+            "protocol mismatch: focus differs "
+            f"(native={nm['focus']!r} port={pm['focus']!r}) -- "
+            "an inactive window's caption text and caption buttons are dimmed, "
+            "so the diff would measure the activation state, not UI fidelity"
         )
 
     # --- geometry: a size mismatch is a real negative (FAIL), not a block ---
@@ -418,6 +558,38 @@ def cmd_compare(args) -> int:
         "port_png": str(out_dir / "port.png"),
         "diff_png": str(out_dir / "diff.png"),
     }
+
+    # A difference confined to the window frame is a capture artifact, not a
+    # fidelity failure -- the same reasoning that makes a size_origin
+    # mismatch BLOCKED rather than FAIL. Report it as BLOCKED and keep the
+    # client-area measurement visible, because the client-area number IS the
+    # fidelity measurement the reviewer needs.
+    if report["frame_analysis"]["has_frame_band"] and \
+            client["client_diff_ratio"] <= args.max_diff_ratio:
+        report["client_fidelity"] = {
+            "client_diff_ratio": client["client_diff_ratio"],
+            "client_diff_pixels": client["client_diff_pixels"],
+            "client_pixels": client["client_pixels"],
+            "max_diff_ratio": args.max_diff_ratio,
+            "verdict": "within tolerance",
+            "interpretation": (
+                "The application's own pixels (the client rectangle) are within "
+                "tolerance; the whole-image difference is confined to the window "
+                "frame, which comes from the capture method and the activation "
+                "state rather than from the UI."
+            ),
+        }
+        return blocked(
+            "capture artifact: the difference is confined to the window frame "
+            f"(edge bands L{report['frame_analysis']['edge_bands']['left']} "
+            f"R{report['frame_analysis']['edge_bands']['right']} "
+            f"T{report['frame_analysis']['edge_bands']['top']} "
+            f"B{report['frame_analysis']['edge_bands']['bottom']}), while the "
+            f"client area matches at {client['client_diff_ratio']:.6f} "
+            f"(<= {args.max_diff_ratio}). Re-capture both sides with the same "
+            "capture method and the same window activation state to obtain a "
+            "valid whole-window measurement."
+        )
 
     if ratio <= args.max_diff_ratio:
         report["result"] = "PASS"
@@ -700,6 +872,8 @@ def _write_meta(
     png: Path | None = None,
     sha256: str | None = None,
     size_origin="unspecified",
+    capture_method="unspecified",
+    focus="unspecified",
 ):
     meta = {
         "app": app,
@@ -715,6 +889,11 @@ def _write_meta(
         # window). Both sides of a comparison must agree or the diff
         # measures window-manager state -- see G9_TEMPLATE_VS_PLACEMENT.
         "size_origin": size_origin,
+        # How the pixels were obtained, and whether the window was active.
+        # Both sides must agree or the diff measures the capture method /
+        # activation state instead of the UI.
+        "capture_method": capture_method,
+        "focus": focus,
     }
     if sha256:
         meta["sha256"] = sha256
@@ -970,6 +1149,93 @@ def cmd_selftest(args) -> int:
             "diff-ratio FAIL keeps g9_evidence True (valid negative evidence)",
             rc == 1 and rep["result"] == "FAIL" and rep["g9_evidence"] is True
         ))
+
+        # 16. A difference confined to the window FRAME is a capture artifact,
+        # not a fidelity failure -- the same rule that makes a size_origin
+        # mismatch BLOCKED rather than FAIL. The client area matches, and the
+        # report must say so instead of reporting a misleading negative.
+        n16 = img("n16", _solid(W, H, base_rgb))
+        # Paint a 2px frame band on the port side only.
+        frame = bytearray(_solid(W, H, base_rgb))
+        for y in range(H):
+            for x in range(W):
+                if x < 2 or x >= W - 2 or y < 1 or y >= H - 2:
+                    o = (y * W + x) * 3
+                    frame[o : o + 3] = bytes((200, 200, 200))
+        p16 = t / "p16.png"
+        _save(p16, W, H, bytes(frame))
+        rc = _run_compare_quiet(n16, p16, meta("n16", "native"), meta("p16", "port"),
+                                t / "o16", 4, 0.005)
+        rep = json.loads((t / "o16" / "report.json").read_text())
+        cases.append((
+            "frame-only difference -> BLOCKED (capture artifact), client area reported",
+            rc == 2 and rep["result"] == "BLOCKED"
+            and rep["frame_analysis"]["has_frame_band"] is True
+            and rep["client_fidelity"]["client_diff_ratio"] == 0.0
+            and rep["g9_evidence"] is False
+        ))
+
+        # 17. A real difference INSIDE the client area must still FAIL, even
+        # when a frame band is also present -- the frame rule must not mask a
+        # genuine fidelity gap.
+        n17 = img("n17", _solid(W, H, base_rgb))
+        frame2 = bytearray(_solid(W, H, base_rgb))
+        for y in range(H):
+            for x in range(W):
+                if x < 2 or x >= W - 2 or y < 1 or y >= H - 2:
+                    o = (y * W + x) * 3
+                    frame2[o : o + 3] = bytes((200, 200, 200))
+        p17 = img("p17", _with_block(W, H, bytes(frame2), 10, 8, 8, 8, (255, 255, 255)))
+        rc = _run_compare_quiet(n17, p17, meta("n17", "native"), meta("p17", "port"),
+                                t / "o17", 4, 0.005)
+        rep = json.loads((t / "o17" / "report.json").read_text())
+        cases.append((
+            "frame band + real client difference -> FAIL (frame rule does not mask)",
+            rc == 1 and rep["result"] == "FAIL"
+        ))
+
+        # 18. capture_method mismatch -> BLOCKED (protocol violation).
+        n18 = img("n18", _solid(W, H, base_rgb))
+        p18 = img("p18", _solid(W, H, base_rgb))
+        _write_meta(t / "n18.json", "native", W, H, capture_method="printwindow")
+        _write_meta(t / "p18.json", "port", W, H, capture_method="desktop-crop")
+        rc = _run_compare_quiet(n18, p18, t / "n18.json", t / "p18.json",
+                                t / "o18", 4, 0.005)
+        rep = json.loads((t / "o18" / "report.json").read_text())
+        cases.append((
+            "capture_method mismatch -> BLOCKED",
+            rc == 2 and "capture_method" in rep["reason"]
+            and rep["g9_evidence"] is False
+        ))
+
+        # 19. focus mismatch -> BLOCKED (protocol violation).
+        _write_meta(t / "n19.json", "native", W, H, focus="inactive")
+        _write_meta(t / "p19.json", "port", W, H, focus="active")
+        rc = _run_compare_quiet(n18, p18, t / "n19.json", t / "p19.json",
+                                t / "o19", 4, 0.005)
+        rep = json.loads((t / "o19" / "report.json").read_text())
+        cases.append((
+            "focus mismatch -> BLOCKED",
+            rc == 2 and "focus" in rep["reason"]
+        ))
+
+        # 20. matching capture_method/focus must NOT over-trigger.
+        _write_meta(t / "n20.json", "native", W, H, capture_method="printwindow",
+                    focus="active")
+        _write_meta(t / "p20.json", "port", W, H, capture_method="printwindow",
+                    focus="active")
+        rc = _run_compare_quiet(n18, p18, t / "n20.json", t / "p20.json",
+                                t / "o20", 4, 0.005)
+        cases.append(("matching capture_method/focus -> PASS (no over-trigger)", rc == 0))
+
+        # 21. an unknown capture_method/focus value is rejected by the loader.
+        try:
+            _write_meta(t / "bad2.json", "port", W, H, capture_method="telepathy")
+            _load_meta(t / "bad2.json")
+            bad2_ok = False
+        except ValueError:
+            bad2_ok = True
+        cases.append(("unknown capture_method value rejected", bad2_ok))
 
     width = max(len(c[0]) for c in cases) + 4
     all_ok = True

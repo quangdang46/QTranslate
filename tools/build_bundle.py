@@ -71,10 +71,12 @@ a = Analysis(
     [os.path.join(REPO, 'start_app.py')],
     pathex=[REPO],
     binaries=[],
-    # No committed data files: Locales/ live beside the install and are
-    # read at runtime (D16 never loads extensions from the install dir, and
-    # user data is not bundled).
-    datas=[],
+    # The recovered native assets ARE committed and bundled: the 35 UI
+    # locale packs, the service strip icons and the main window's
+    # microphone/headphone icons, all recovered from the QTranslate 6.10.0
+    # installer payload / EXE resources. User data is still not bundled
+    # (D16 never loads extensions from the install dir).
+    datas=[('qtranslate/assets', 'qtranslate/assets')],
     hiddenimports=[
         # tkinter submodules imported lazily inside widgets/filedialog use.
         'tkinter',
@@ -230,9 +232,23 @@ def prepare_assets() -> dict:
             import shutil
             shutil.copyfile(ICON_SRC, icon)
     else:
-        print("NOTE: native Service.ico not found at %s -- the exe ships "
-              "without an icon" % ICON_SRC)
-        icon = None
+        # Fall back to the native's OWN application icon, recovered from the
+        # EXE's RT_ICON resources (group 0) and committed under
+        # qtranslate/assets/app_icon/. It matches the native window's title
+        # bar icon pixel for pixel (ssd 144 over 768 channel bytes).
+        recovered = os.path.join(HERE, "qtranslate", "assets", "app_icon")
+        recovered_ico = os.path.join(recovered, "QTranslate.ico")
+        if os.path.isfile(recovered_ico):
+            # The recovered .ico already carries native's own frames
+            # (256/48/32/16), so it is copied verbatim -- no re-encode, and
+            # no Pillow needed (the build runs with -I, which hides it).
+            import shutil
+            shutil.copyfile(recovered_ico, icon)
+            print("app icon: recovered from the EXE's RT_ICON resources")
+        else:
+            print("NOTE: native Service.ico not found at %s and no recovered "
+                  "app icon -- the exe ships without an icon" % ICON_SRC)
+            icon = None
 
     version = os.path.join(BUILD_ASSETS, "version_info.txt")
     # `ffi` fields are the only numbers the resource compiler reads; every

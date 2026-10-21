@@ -93,18 +93,26 @@ if m:
 
 # --- 2. the capability is a module-level table, not an inline set ---
 # Since 2026-10-15 the table lives in qtranslate/registry.py as
-# USES_AUTO_DETECT (Phase 2 slice); app.py holds an alias. Read the
-# canonical table from the registry source — headless-safe.
+# USES_AUTO_DETECT (Phase 2 slice); app.py holds an alias. Since
+# 2026-10-21 it is DERIVED from the provider language tables by native's own
+# rule (Common.js's usesAutoDetectCode), so ask the registry for the answer
+# rather than reading a literal out of the source text.
 reg_src = open(os.path.join(ROOT, "qtranslate", "registry.py"),
                encoding="utf-8", errors="replace").read()
-m2 = re.search(r"USES_AUTO_DETECT\s*=\s*(\{.*?\})", reg_src, re.S)
-ck("USES_AUTO_DETECT table exists in registry", m2 is not None)
-if m2:
-    entries = dict(re.findall(r'["\']([^"\']+)["\']\s*:\s*(True|False)',
-                              m2.group(1)))
+try:
+    from qtranslate import registry as _RG
+    _reg_ok = True
+except Exception as e:  # pragma: no cover - registry is stdlib-only
+    _reg_ok = False
+    _RG = None
+    ck("registry importable", False, repr(e))
+ck("USES_AUTO_DETECT table exists in registry",
+   _reg_ok and hasattr(_RG, "USES_AUTO_DETECT"))
+if _reg_ok:
+    entries = dict(_RG.USES_AUTO_DETECT)
     ck("the table has entries", len(entries) >= 4, repr(entries))
     ck("it is keyed by service id -> bool",
-       all(isinstance(k, str) and v in ("True", "False")
+       all(isinstance(k, str) and isinstance(v, bool)
            for k, v in entries.items()), repr(entries))
     # no leftover inline set: an ASSIGNMENT, not a mention. A comment that
     # names the old set to explain the migration is fine and expected.
@@ -120,22 +128,55 @@ if m2:
     ck("engine.translate consults the capability",
        "uses_auto_detect(" in (m.group(0) if m else ""))
 
-# --- 3. the code must not claim native derivation for the table
-if m2:
-    # Anchor on the DEFINITION line, not the first mention: the module
-    # docstring names the table when describing the design, so a plain
-    # .find() lands in the docstring and the "25 lines above" window
-    # misses the attribution comment entirely (false FAIL, 2026-10-15).
-    _def = re.search(r"^USES_AUTO_DETECT\s*=\s*\{", reg_src, re.M)
-    before = reg_src[:_def.start()] if _def else ""
-    # find the comment block immediately above the table
-    lines = before.splitlines()
-    block = "\n".join(lines[-25:])
-    ck("the table's comment says it is NOT native-derived",
-       "NOT native-derived" in block,
-       "a port-side capability presented without attribution")
-    ck("the comment cites the loader proof",
-       "PLUGIN_LOADER_FOUND" in block)
+# --- 3. the table IS native-derived (the premise changed) ---
+# The old suite pinned "NOT native-derived" because the Services/*/Service.js
+# files were thought to be unrecoverable. They are not: the plugin loader
+# reads them from the installed tree at runtime, and the installer's payload
+# carries all 19 of them. The hook is a FRAMEWORK function in Common.js --
+# `SupportedLanguages[AUTO_DETECT_LANGUAGE] !== UNKNOWN_LANGUAGE_CODE` -- so
+# the truth table is derivable from the recovered JS and the port's own
+# transcribed language tables.
+#   docs/review/AUTO_DETECT_CAPABILITY_2026-10-21.md
+if _reg_ok:
+    ck("the capability is derived, not a hand-listed literal",
+       "_auto_capability()" in reg_src
+       and re.search(r"^USES_AUTO_DETECT\s*=\s*_auto_capability\(\)",
+                     reg_src, re.M) is not None,
+       "the table is a literal again")
+    ck("the derivation cites native's rule",
+       "usesAutoDetectCode" in reg_src
+       and "AUTO_DETECT_LANGUAGE" in reg_src)
+    ck("the derivation cites the measured truth table",
+       "AUTO_DETECT_CAPABILITY" in reg_src)
+    # Behaviour: the answers native gives, measured from the recovered JS.
+    ck("microsoft accepts an auto source",
+       _RG.uses_auto_detect("microsoft") is True)
+    ck("bing aliases microsoft's capability",
+       _RG.uses_auto_detect("bing") is True)
+    ck("yandex does not accept an auto source",
+       _RG.uses_auto_detect("yandex") is False)
+    ck("baidu does not accept an auto source",
+       _RG.uses_auto_detect("baidu") is False)
+    ck("babylon does not accept an auto source",
+       _RG.uses_auto_detect("babylon") is False)
+    ck("naver accepts an auto source (Papago slot 1 is 'auto')",
+       _RG.uses_auto_detect("naver") is True)
+    ck("youdao accepts an auto source (slot 1 is 'AUTO')",
+       _RG.uses_auto_detect("youdao") is True)
+    ck("promt accepts an auto source (slot 1 is 'au')",
+       _RG.uses_auto_detect("promt") is True)
+    ck("an unknown service defaults to detect-yourself",
+       _RG.uses_auto_detect("no-such-service") is False)
+    # And each provider's OWN auto code -- native sends codeFromLanguage(1),
+    # not a literal "auto".
+    ck("microsoft's own auto code is 'auto-detect'",
+       _RG.auto_detect_code("microsoft") == "auto-detect")
+    ck("youdao's own auto code is 'AUTO'",
+       _RG.auto_detect_code("youdao") == "AUTO")
+    ck("promt's own auto code is 'au'",
+       _RG.auto_detect_code("promt") == "au")
+    ck("google's own auto code is 'auto'",
+       _RG.auto_detect_code("google") == "auto")
 
 # --- 4. behavioral, when the app module can be imported ------------------
 _tried = False

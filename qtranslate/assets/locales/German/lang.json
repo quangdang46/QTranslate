@@ -1,0 +1,341 @@
+﻿{
+  "Author": "Thomas Linke, u!^DEV",
+  "LanguageName": "German",
+  "LanguageNativeName": "Deutsch",
+  "LanguageCode": "de",
+  "Strings": [
+    [171, "Aktuelle Übersetzung leeren (Strg+N)"],
+    [172, "Übersetzen (Strg+Enter)"],
+    [173, "Wechseln der Sprache (Strg+I)"],
+    [174, "Audiowiedergabe des Textes"],
+    [175, "Vorherige (Alt+Pfeil links)"],
+    [184, "Nächste (Alt+Pfeil rechts)"],
+    [176, "Sprache wird nicht automatisch erkannt. Bitte manuell auswählen."],
+    [177, "Übersetzungsdienst unterstützt die Quellsprache nicht."],
+    [178, "Über QTranslate"],
+    [179, "Version "],
+    [180, "Der Updateserver ist nicht erreichbar"],
+    [181, "Die neue Version (%s) ist verfügbar"],
+    [182, "%s ist aktuell"],
+    [183, "Suche nach Aktualisierungen..."],
+    [185, "Aktualisierung fehlgeschlagen"],
+    [186, "Transkription: "],
+    [187, "Immer im Vordergrund"],
+    [188, "Tastatur"],
+    [189, "Kann keine Internetverbindung herstellen."],
+    [190, "Keine Daten zurückgegeben (Zeitüberschreibung beim senden von Daten)."],
+    [191, "Keine Daten zurückgegeben."],
+    [192, "Keine zu übersetzenden Daten."],
+    [193, "Übersetzungsdienst unterstützt die angeforderte Funktion nicht."],
+    [194, "Audio kann nicht wiedergegeben werden."],
+    [195, "Übersetzungsdienst unterstützt für diese Sprache keine Audiowiedergabe oder der Text ist zu lang."],
+    [196, "Skript-Fehler (Übersetzungsdienst)."],
+    [197, "Unerwarteter Fehler."],
+    [198, "Übersetzungsdienst unterstützt die Zielsprache nicht."],
+    [199, "Kann Datei nicht finden: "],
+    [200, "Aktualisierung wird installiert..."],
+    [201, "Zu Favoriten hinzufügen"],
+    [202, "Aus Favoriren entfernen"],
+    [203, "Vergewissern Sie sich, dass das Mikrofon mit dem Computer verbunden ist."],
+    [204, "Internetverbindung konnte nicht hergestellt werden"],
+    [205, "Spracheingabe (%s) aktivieren"],
+    [206, "Spracheingabe deaktivieren"]
+  ],
+  "Windows": [{
+    "Controls": [
+      [1004, "Übersetzen"]
+    ],
+    "Id": 1,
+    "Caption": "QTranslate"
+  }, {
+    "Controls": [
+      [10, [
+        [20, "Suche im Wörterbuch nach"],
+        [30, "Ausgewählten Text anhören"],
+        [40, "Übersetzung in Zwischenablage kopieren"],
+        [50, "Ausgewählten Text ersetzen"]
+      ]]
+    ],
+    "Id": 6
+  }, {
+    "Controls": [],
+    "Strings": [
+      [10, "Für '%s' wurden keine Ergebnisse gefunden."]
+    ],
+    "Id": 5,
+    "Caption": "Wörterbuch"
+  }, {
+    "Controls": [
+      [1, "OK"],
+      [1160, "Speichern als..."],
+      [1067, "Löschen"]
+    ],
+    "Id": 3,
+    "Caption": "Verlauf"
+  }, {
+    "Controls": [
+      [1, "OK"],
+      [2, "Abbrechen"],
+      [1049, "Übernehmen"]
+    ],
+    "Id": 2,
+    "Caption": "Einstellungen"
+  }, {
+    "Controls": [
+      [1045, "Mit Windows starten"],
+      [1070, "Programmsprache:"],
+      [1075, "Schriftart:"],
+      [1074, "Textgröße:"],
+      [1068, "Erste Sprache:"],
+      [1069, "Zweite Sprache:"],
+      [1071, "Spracheingabe:"],
+      [1063, "Automatische Spracherkennung"],
+      [1046, "Allgemein"],
+      [1064, "Verlauf"],
+      [1122, "Verlauf aktivieren"],
+      [1124, "Verlauf beim Beenden leeren"],
+      [1123, "Einträge erweitern"]
+    ],
+    "Id": 10,
+    "Caption": "Allgemein"
+  }, {
+    "Controls": [
+      [1049, "Verbindung"],
+      [1084, "Timeout in Sekunden:"],
+      [1033, "Automatische Proxy-Erkennung"],
+      [1034, "Hostname / IP-Adresse"],
+      [1036, "Benutzername"],
+      [1037, "Passwort"],
+      [1048, "Proxy"],
+      [1035, "Port"],
+      [1135, [
+        [0, "Systemeinstellung verwenden"],
+        [1, "Kein Proxy"],
+        [2, "Manuelle Proxy-Konfiguration"],
+        [3, "Automatische Proxy-Konfiguration"]
+      ]]
+    ],
+    "Id": 11,
+    "Caption": "Internet"
+  }, {
+    "Controls": [
+      [1177, "Wörterbuch hinzufügen"],
+      [1180, "Wörterbuch entfernen"]
+    ],
+    "Id": 12,
+    "Caption": "Übersetzungsdienste"
+  }, {
+    "Controls": [
+      [1099, "Alle Aktivieren / Deaktivieren"]
+    ],
+    "Id": 13,
+    "Caption": "Sprachen"
+  }, {
+    "Controls": [
+      [1076, "Allgemein"],
+      [1123, "Fensterstil aktivieren"],
+      [1169, "Stil:"],
+      [1158, "Automatische Größe aktivieren"],
+      [1160, "Automatische Positionierung aktivieren"],
+      [1159, "Aktivieren wenn geöffnet"],
+      [1161, "Beim Ziehen anheften"],
+      [1124, "Popup-Fenster"],
+      [1092, "Hintergrundfarbe:"],
+      [1091, "Textfarbe:"],
+      [1090, "Rahmenfarbe:"],
+      [1145, "Transparenz (0 - 90):"],
+      [1146, "Rahmendicke:"],
+      [1147, "Automatisch Ausblenden nach:"],
+      [1194, "Sekunden"],
+      [1137, "Symbole:"],
+      [1138, "Symbol für geöffnetes Wörterbuch anzeigen"],
+      [1139, "Symbol für das Anöhren des ausgewählten Text anzeigen"],
+      [1140, "Symbol für das Kopieren von Text in die Zwischenablage anzeigen"],
+      [1141, "Symbol für das Ersetzen des ausgewählten Text anzeigen"]
+    ],
+    "Id": 14,
+    "Caption": "Erscheinungsbild"
+  }, {
+    "Controls": [
+      [1162, [
+        [0, "Aktiviert für diese Programme:"],
+        [1, "Deaktiviert für diese Programme:"]
+      ]],
+      [1101, "Hinzufügen"],
+      [1103, "Ändern"],
+      [1102, "Löschen"],
+      [1113, "Intelligente Erkennung aktivieren"]
+    ],
+    "Id": 15,
+    "Caption": "Ausnahmen"
+  }, {
+    "Controls": [
+      [1118, "Aktivieren der Tastenkombinationen"],
+      [1165, [
+        [0, "Anzeige des Programms"],
+        [1, "Anzeige des Popup-Fensters"],
+        [2, "Wörterbuch anzeigen"],
+        [3, "Verlauf-Fenster anzeigen"],
+        [4, "Tastatur-Fenster anzeigen"],
+        [5, "Audiowiedergabe des selektierten Textes"],
+        [6, "Kopieren der Übersetzung in Zwischenablage"],
+        [7, "Ersetzen des markierten Texts"],
+        [8, "Maus-Modus wechseln"],
+        [9, "Inhalt der Zwischenablage übersetzen"],
+        [10, "Zwischenablage in Hauptfenster übersetzen"],
+        [11, "Zwischenablage in Popup-Fenster übersetzen"],
+        [12, "Wörterbuch aus Zwischenablage"],
+        [13, "Tastaturlayout und ausgewählten Text ändern"],
+        [14, "Anhören der ausgewählten Text-Übersetzung"],
+        [15, "Texterkennung"],
+        [16, "Spracheingabe"]
+      ]]
+    ],
+    "Id": 16,
+    "Caption": "Tastenkombinationen"
+  }, {
+    "Controls": [
+      [1146, "Erweitert"],
+      [1151, "Standardbrowser:"],
+      [1147, "Aktion kopieren:"],
+      [1149, "Tastaturlayout-Indikator:"],
+      [1157, "Bevorzugte Domäne:"],
+      [1154, "GUI-Übersetzung aktivieren"],
+      [1159, "Anhören des selben Texts bei langsamerer Geschwindigkeit aktivieren"],
+      [1160, "Zeilenumbrüche entfernen"],
+      [1186, "Maus-Modus"],
+      [1155, "Maus-Modus nur aktivieren, wenn Strg gedrückt wird"],
+      [1156, "Auf das Taskleistensymbol klicken um den Mausmodus zu wechseln"],
+      [1158, "API-Schlüssel"],
+      [1195, "OCR API-Schlüssel:"]
+    ],
+    "Id": 17,
+    "Caption": "Erweitert"
+  }, {
+    "Controls": [
+      [1188, "Automatisch nach Aktualisierungen suchen"],
+      [1190, "Jetzt prüfen"],
+      [1191, "Installieren"]
+    ],
+    "Id": 18,
+    "Caption": "Aktualisierungen"
+  }],
+  "Menus": [{
+    "Items": [
+      [10, "Rechtschreibprüfung"],
+      [20, "Sofortübersetzung"],
+      [30, "Übersetzung umkehren"],
+      [40, "Erweitert"],
+      [50, "Umschreibung"],
+      [60, "Inhalt bei Drag && Drop löschen"],
+      [61, "Automatisches Leeren der Übersetzung"],
+      [62, "Inhalt beim Schließen speichern"],
+      [65, "Oberes Menü anzeigen"],
+      [70, "Mittleres Menü anzeigen"],
+      [80, "Unteres Menü anzeigen "],
+      [81, "Beim Minimieren in Taskleiste minimieren"],
+      [82, "Beim Schließen in Taskleiste minimieren"],
+      [85, "Beim starten"],
+      [86, "Fenster anzeigen"],
+      [87, "In Taskleiste minimieren"],
+      [88, "Vorherigen Zustand wiederherstellen"],
+      [90, "Wörterbuch"],
+      [100, "Verlauf"],
+      [110, "Tastatur"],
+      [120, "Einstellungen"],
+      [125, "Über"],
+      [130, "Hilfe"],
+      [140, "Ende"]
+    ],
+    "Id": 1
+  }, {
+    "Items": [
+      [10, "Zurück"],
+      [20, "Ausschneiden"],
+      [30, "Alles Ausschneiden"],
+      [40, "Kopieren"],
+      [50, "Alles Kopieren"],
+      [60, "Einfügen"],
+      [70, "Alles Markieren"],
+      [75, "Übersetzen"],
+      [80, "Suche Wörterbucheintrag für"],
+      [90, "Anzeigen"]
+    ],
+    "Id": 2
+  }, {
+    "Items": [
+      [10, "Öffnen"],
+      [15, "Text kopieren"],
+      [20, "Übersetzung kopieren"],
+      [30, "Löschen"],
+      [40, "Anzeigen"]
+    ],
+    "Id": 3
+  }, {
+    "Items": [
+      [10, "Rücksetzen"],
+      [20, "Editieren"],
+      [30, "Sprache immer erkennen"]
+    ],
+    "Id": 4
+  }, {
+    "Items": [
+      [5, "Texterkennung"],
+      [10, "Wörterbuch"],
+      [20, "Verlauf"],
+      [30, "Tastatur"],
+      [36, "Aktivieren der Tastenkombinationen"],
+      [40, "Maus-Modus"],
+      [50, "Aktiviere"],
+      [60, "Anzeige des Icons"],
+      [70, "Anzeige der Übersetzung"],
+      [71, "Anzeige der Übersetzung und lesen"],
+      [80, "Einstellungen"],
+      [90, "Über"],
+      [100, "Ende"]
+    ],
+    "Id": 5
+  }, {
+    "Items": [
+      [10, "Alles Markieren"],
+      [20, "Kopieren"],
+      [30, "Druck..."],
+      [40, "Übersetzen"],
+      [50, "Suchen"],
+      [60, "Anzeigen"]
+    ],
+    "Id": 6
+  }, {
+    "Items": [
+      [10, "Vollständigen Verlauf anzeigen"]
+    ],
+    "Id": 7
+  }, {
+    "Items": [
+      [10, "Info anzeigen"],
+      [20, "Wörterbuch entfernen"]
+    ],
+    "Id": 8
+  }, {
+    "Items": [
+      [10, "Verlauf leeren"],
+      [20, "Leiste der Übersetzungsdienste anzeigen"],
+      [30, "Genaue Suche"],
+      [40, "Optionen"]
+    ],
+    "Id": 9
+  }, {
+    "Items": [
+      [110, "OCR-Sprache"],
+      [120, "Übersetzen"],
+      [130, "Bild kopieren"],
+      [140, "Text kopieren"],
+      [150, "Bild speichern"],
+      [160, "Bild bearbeiten"],
+      [170, "Alles auswählen"],
+      [180, "Auswahl aufheben"],
+      [190, "Schließen"]
+    ],
+    "Id": 10
+  }]
+}

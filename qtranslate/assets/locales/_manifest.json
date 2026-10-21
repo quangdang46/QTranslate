@@ -1,0 +1,306 @@
+{
+ "source_payload": "docs/review/artifacts/nsis_payload_unpacked.bin",
+ "note": "Recovered from the QTranslate 6.10.0 installer payload. The lang.json files are byte-identical to the installed Locales/<dir>/lang.json; the help.txt files are paired to their pack by vocabulary overlap (the payload interleaves the two streams without pairing them).",
+ "locales": [
+  {
+   "code": "ar",
+   "directory": "Arabic",
+   "lang_chunk": 44,
+   "lang_sha256": "15ca8fa0c6be8cf7e6086f507eb980681501ea0cf1ff76592ab7795549f4afcf",
+   "help_chunk": 43,
+   "help_sha256": "b5a75f9b83d99cf3956e814b9e74c60f80319fd6601399adbff64e7852dd808f",
+   "match_score": 0.343
+  },
+  {
+   "code": "bg",
+   "directory": "Bulgarian",
+   "lang_chunk": 46,
+   "lang_sha256": "48d9729766e1a4d06529edafef6e2cd9422de8b6e0f1f5b0ea1a4da55c154b25",
+   "help_chunk": 45,
+   "help_sha256": "f1b2dc51fee606b18fd1eacf39155f345ff90c8a4d6f7851406e1b0881f237e1",
+   "match_score": 0.394
+  },
+  {
+   "code": "zh-CN",
+   "directory": "Chinese (Simplified)",
+   "lang_chunk": 48,
+   "lang_sha256": "6bda9093480e923cf741f5e9ecd1e8a0fda96172d2ba96bb44f9651ccf6c9de6",
+   "help_chunk": 47,
+   "help_sha256": "f5bb91f488afa6c23c29d63559203efcba6cc6d9b4e11930fb74e9aedc9f7d52",
+   "match_score": 0.153
+  },
+  {
+   "code": "zh-TW",
+   "directory": "Chinese (Traditional)",
+   "lang_chunk": 50,
+   "lang_sha256": "1b083696e47f3507c8199e7359f171a65cb098af36edd47b380294809d6941bb",
+   "help_chunk": 49,
+   "help_sha256": "8702148ee40944fe8b5e5b52275e40a637108c26107b994166a01a60a9b6687b",
+   "match_score": 0.228
+  },
+  {
+   "code": "cs",
+   "directory": "Czech",
+   "lang_chunk": 52,
+   "lang_sha256": "71b4b3a830d155a59381a8ec985cde76506829252edd0109a051b13527ffef23",
+   "help_chunk": 51,
+   "help_sha256": "09c1b3ad41ca7bb4408e7efe760d928fbe78324bdabbb2dc5475234c4a328834",
+   "match_score": 0.358
+  },
+  {
+   "code": "da",
+   "directory": "Danish",
+   "lang_chunk": 54,
+   "lang_sha256": "95d318ab056dc64d72d9bba3a0177f9383758950c98be08050e80365ea420dcf",
+   "help_chunk": 53,
+   "help_sha256": "3cfb2f8bd618c3d6556d8948924447e0d34d4c9500595dc71d1b15fd9f203c3d",
+   "match_score": 0.481
+  },
+  {
+   "code": "nl",
+   "directory": "Dutch",
+   "lang_chunk": 56,
+   "lang_sha256": "bc8750e805182f24881fa00ac295c0d6e748b5a157b0cb9a655c32f274062b29"
+  },
+  {
+   "code": "en",
+   "directory": "English",
+   "lang_chunk": 58,
+   "lang_sha256": "9868f91dcd940275f2aa32e9300671c4deda24078186186c4593c2c7dc357a4b",
+   "help_chunk": 57,
+   "help_sha256": "d9e1a14d212f306bd961fce4fecc864ab53ea12ff951b1e127d63c8eec1bd28a",
+   "match_score": 1.0
+  },
+  {
+   "code": "fa-ir",
+   "directory": "Farsi",
+   "lang_chunk": 60,
+   "lang_sha256": "12da6b327d7a7ff8c7bafe616532f600918b13d93a2a260b49c9fb3a6d6e3fb6",
+   "help_chunk": 59,
+   "help_sha256": "058a07a6f5a7537ebed680470dd4e10b57291943d57cbd41e33c5ce1bb5b1697",
+   "match_score": 0.635
+  },
+  {
+   "code": "fi",
+   "directory": "Finnish",
+   "lang_chunk": 62,
+   "lang_sha256": "3a9e29f718fb84e60f99db797e0eaa276516eea764dbba183607ef9808d66aa2",
+   "help_chunk": 61,
+   "help_sha256": "46c1070f2d451104064026fc5f6350954f9635b7e399872b00ddd7399f4fb41f",
+   "match_score": 0.343
+  },
+  {
+   "code": "fr",
+   "directory": "French",
+   "lang_chunk": 64,
+   "lang_sha256": "b3eaf7fb57efae1a5fe7c2aec26c85463b0c17932033c8e1ec36362c1f3d7011",
+   "help_chunk": 63,
+   "help_sha256": "7d3987df54b54e5f4e893f597d4c6a25b84a5b0c54c9c36fb0052a215eaaca04",
+   "match_score": 0.465
+  },
+  {
+   "code": "de",
+   "directory": "German",
+   "lang_chunk": 66,
+   "lang_sha256": "4ee3357131924cc560dd43843e4f3f2acddec3222ee2df9c69cce1e85a619c26"
+  },
+  {
+   "code": "el",
+   "directory": "Greek",
+   "lang_chunk": 68,
+   "lang_sha256": "a0524daac38c0fe1d4173897e392262ec660ea3d1fe8947e80fb9ee2a285ba21",
+   "help_chunk": 67,
+   "help_sha256": "50d80c604c4ce27e7714766c63f65030ff93fff83bbead08729d8fec9e7bd592",
+   "match_score": 0.495
+  },
+  {
+   "code": "iw",
+   "directory": "Hebrew",
+   "lang_chunk": 70,
+   "lang_sha256": "5c477c95fe9dd6898106a81cda59b93cfc24db7087ae5668cfca0fbb53ecbe60",
+   "help_chunk": 69,
+   "help_sha256": "826f4df5b0c7646dc3a25d87247f390615b501fea748980675340db6a5c68c70",
+   "match_score": 0.425
+  },
+  {
+   "code": "hu",
+   "directory": "Hungarian",
+   "lang_chunk": 72,
+   "lang_sha256": "64a12f723898c05eee131489e4c4129aeb955688e0e709f4daa2d3c8201b8c2a",
+   "help_chunk": 71,
+   "help_sha256": "13472e673f16d9254fe13390c9f25e5616da5013bb95f8d50f54002aff0d9d7e",
+   "match_score": 0.36
+  },
+  {
+   "code": "id",
+   "directory": "Indonesia",
+   "lang_chunk": 74,
+   "lang_sha256": "e0b48f9284b827adb534109d4542ae5b84a95dfe3e613833a8501e11d8aaf19a",
+   "help_chunk": 73,
+   "help_sha256": "5ecf11f39049348845e4c1ab0c323e76ad8b6a62ac8154e32f29ad2d16aaaeab",
+   "match_score": 0.562
+  },
+  {
+   "code": "it",
+   "directory": "Italian",
+   "lang_chunk": 76,
+   "lang_sha256": "2ddec96d2abe43fbf218e6417ff8fbbb13c4f0e6b588434271ebd7f98801c130"
+  },
+  {
+   "code": "ja",
+   "directory": "Japanese",
+   "lang_chunk": 78,
+   "lang_sha256": "ed3a78cc6bdec321a998486295f9f6f33eb01dfd2aff34c624fc6c2ae2523eef",
+   "help_chunk": 77,
+   "help_sha256": "42d11c487e58480ed7fdb2c555db63b2de4f65feba4d84277c18f7d0ea1ef692",
+   "match_score": 0.184
+  },
+  {
+   "code": "ko",
+   "directory": "Korean",
+   "lang_chunk": 80,
+   "lang_sha256": "e37498cf20d3d23a2b6f936e32d82037bae3a62c54ce2aa5c16430112bb0900e",
+   "help_chunk": 79,
+   "help_sha256": "35a9684ff0dcb9f50dab9d42eca3c6b3578bc2fdb8fa75c94d33414e0e5e39a8",
+   "match_score": 0.222
+  },
+  {
+   "code": "lv",
+   "directory": "Latvian",
+   "lang_chunk": 82,
+   "lang_sha256": "5ba57b2dfd076743fc76ef595e8da725d4a5c37360266b6316e27e16b65dfcbe",
+   "help_chunk": 81,
+   "help_sha256": "e2fab873b9c80f1f1648b1edeab7ea1a673b22194584d5b6d1fbe26c630adee5",
+   "match_score": 0.417
+  },
+  {
+   "code": "mn",
+   "directory": "Mongolian",
+   "lang_chunk": 84,
+   "lang_sha256": "198324a89fa7c46ecebb12e6dd8af97a5fc5b9ca38de4c929fdd644db61140dc",
+   "help_chunk": 83,
+   "help_sha256": "f8bdb6b49dca2712439969b8727c0549918c13f9cfd5ab716b4d13567862486d",
+   "match_score": 0.421
+  },
+  {
+   "code": "pl",
+   "directory": "Polish",
+   "lang_chunk": 86,
+   "lang_sha256": "98ddd9853f76cffd9d3b8f3de034aaded8a1ed059e1a165ba6a92b742f00804d",
+   "help_chunk": 85,
+   "help_sha256": "fdd19029329cece8261a3f506e3dd6127f312accf9192eac482d42e085b88222",
+   "match_score": 0.367
+  },
+  {
+   "code": "pt-BR",
+   "directory": "Portuguese (Brazilian)",
+   "lang_chunk": 88,
+   "lang_sha256": "e477696adb377007251747e1ed5fc5a0c337a849e6f41762a6a265b7a63edec7",
+   "help_chunk": 87,
+   "help_sha256": "1e12f732e97c2fefb45bb9fc8661ca9e5c3969894e11dfda1283602251f4eb60",
+   "match_score": 0.476
+  },
+  {
+   "code": "pt-PT",
+   "directory": "Portuguese (Europian)",
+   "lang_chunk": 90,
+   "lang_sha256": "5ec1ab4b44f66114affead77cda2c7ac47f9e850ba1a3947a551ebe1bf736e3c",
+   "help_chunk": 89,
+   "help_sha256": "85acfa9080310db2d8fc8bfbae441bbba3191162476ddd93cb063a30c7d3cec4",
+   "match_score": 0.449
+  },
+  {
+   "code": "ro",
+   "directory": "Romanian",
+   "lang_chunk": 92,
+   "lang_sha256": "d40371284eec338c4728d3a8beb0f8f5ab05b83f54336d807f7d8151c32aa3f0"
+  },
+  {
+   "code": "ru",
+   "directory": "Russian",
+   "lang_chunk": 94,
+   "lang_sha256": "f590fb2f350b40f3ef2035ef428b8ecb4d01822b8cce56029809c1312f9a7cc9",
+   "help_chunk": 93,
+   "help_sha256": "35794410c8869254637b2951fbe0ef93043629abea091347fe31b2f92c115efa",
+   "match_score": 0.439
+  },
+  {
+   "code": "sr",
+   "directory": "Serbian",
+   "lang_chunk": 96,
+   "lang_sha256": "293af1123da000e5745cf1ecd551e3050a3a1873ad10beb1a2a8f6c889791052",
+   "help_chunk": 95,
+   "help_sha256": "d9ebb8dbc769fa3fcd1b174f185352aa0bedb58878f013ec98ab61a43405555d",
+   "match_score": 0.314
+  },
+  {
+   "code": "sk",
+   "directory": "Slovak",
+   "lang_chunk": 98,
+   "lang_sha256": "37cf39511d03602d0b5508950209bdd9ea020229d6f6f6def8575d8c14db7871"
+  },
+  {
+   "code": "si",
+   "directory": "Slovenian",
+   "lang_chunk": 100,
+   "lang_sha256": "eda433224dd2f0a330a205d32657caa667a9c00ba4653ffc60026214b8de9a8b",
+   "help_chunk": 99,
+   "help_sha256": "029c6d20bc20056528bf4b31725dfec613da8c97a9fb36430b3cab7c8834d1d3",
+   "match_score": 0.461
+  },
+  {
+   "code": "es",
+   "directory": "Spanish",
+   "lang_chunk": 102,
+   "lang_sha256": "3f0d0fd06a1d17e18dc9d25a590e617be00332c2121760993b9c7fab72c98b21",
+   "help_chunk": 101,
+   "help_sha256": "2953d5f608fa66e3e63a9da4e59ffc1da2f339406aa613646a38cb824f356c22",
+   "match_score": 0.511
+  },
+  {
+   "code": "sv",
+   "directory": "Swedish",
+   "lang_chunk": 104,
+   "lang_sha256": "0df10ac7ca4f709f25115b3c3d8d95b708538085f680d574a25536a494c204d9",
+   "help_chunk": 103,
+   "help_sha256": "741631edbac197a81b12b46953fd7438df8c5353122118309966f20768c4ace5",
+   "match_score": 0.415
+  },
+  {
+   "code": "tr",
+   "directory": "Turkish",
+   "lang_chunk": 106,
+   "lang_sha256": "2bdbfdb38bf6bb89d20ada651ac9e288d7b2f64f4367b40457c74fadfcbb3304",
+   "help_chunk": 105,
+   "help_sha256": "9cca229cbcc8eded2810967ed21ac80a89303ad6103a82e5797dece66a31a775",
+   "match_score": 0.476
+  },
+  {
+   "code": "uk",
+   "directory": "Ukrainian",
+   "lang_chunk": 108,
+   "lang_sha256": "dc73c2eaeb9e9e1d93c16e4226e37b5e6f36ef80d272c00ef449584e6afe4a94",
+   "help_chunk": 107,
+   "help_sha256": "ecb5e9ff8000a08d639c0edc0ee22e5af9db5c3c66966cb87eea896eafc7b1ea",
+   "match_score": 0.441
+  },
+  {
+   "code": "ug",
+   "directory": "Uyghur",
+   "lang_chunk": 110,
+   "lang_sha256": "4014a35a9df49d6028883d1c340d57c1a45b924eb4d0e31dab41447300953fc6",
+   "help_chunk": 109,
+   "help_sha256": "7c4d4550e00d756a7d9055ebad95a88d5878a17e4b9d575dd9976215584f5f16",
+   "match_score": 0.47
+  },
+  {
+   "code": "vi",
+   "directory": "Vietnamese",
+   "lang_chunk": 112,
+   "lang_sha256": "6a316136c0d95db59c42742fa352971bb9d702158953c790daf2a3235046f5d8",
+   "help_chunk": 111,
+   "help_sha256": "6482a375225b21b92ffcdcbf58458cfc4860b7007161707c7271571710e180bc",
+   "match_score": 0.711
+  }
+ ]
+}

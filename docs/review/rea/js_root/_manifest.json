@@ -1,0 +1,184 @@
+{
+ "source_payload": "docs/review/artifacts/nsis_payload_unpacked.bin",
+ "payload_sha256": "c168de58f9c31e284900399b85482c4c0dfcdf41951f151e891cd0f30c6c331f",
+ "payload_bytes": 2263053,
+ "chunks_walked": 131,
+ "extracted": 25,
+ "files": [
+  {
+   "chunk": 5,
+   "path": "Common.js",
+   "kind": "common",
+   "bytes": 6203,
+   "sha256": "a03d677a8b3788b5d97b31a33874d96719dc25e0f53087883964d20a878f8b93"
+  },
+  {
+   "chunk": 7,
+   "path": "Services/ABBYY Lingvo Live/Service.js",
+   "kind": "service",
+   "bytes": 2029,
+   "sha256": "4c0ef8506ff322ce78a29488b90e04f3dd16e55a5bf93e5ddee0282f637d04e0"
+  },
+  {
+   "chunk": 9,
+   "path": "Services/Babylon/Service.js",
+   "kind": "service",
+   "bytes": 1243,
+   "sha256": "c12e825d73cbf78ce3be414a3bbbd2cdf7ff9bb4ae1fa2cda33c1bbf4947c324"
+  },
+  {
+   "chunk": 10,
+   "path": "Services/Babylon Dictionary/Service.js",
+   "kind": "service",
+   "bytes": 1243,
+   "sha256": "f406c6fb359820dc24ba74c60ccbda85f191211320c3a62d2460a18e8220b900"
+  },
+  {
+   "chunk": 12,
+   "path": "Services/Baidu/Service.js",
+   "kind": "service",
+   "bytes": 3490,
+   "sha256": "910dfe9adcd7994c1fe0f9f12fb24d598ee121e302e823f912c811b9a3bda92b"
+  },
+  {
+   "chunk": 14,
+   "path": "Services/DeepL/Service.js",
+   "kind": "service",
+   "bytes": 2757,
+   "sha256": "0abf802669004dd0966a1939d065f17d733529d66d8f553c92d0c9febc56e78a"
+  },
+  {
+   "chunk": 16,
+   "path": "Services/Google Search/Service.js",
+   "kind": "service",
+   "bytes": 1449,
+   "sha256": "82885d093a2c8cbda4cea667304c6bcf25596dc9d800bb3030e726c2febdf0c3"
+  },
+  {
+   "chunk": 18,
+   "path": "Services/Google/Service.js",
+   "kind": "service",
+   "bytes": 3388,
+   "sha256": "f3459f952a2f5a331b038df8de3816f5238e0db52a5abb8c3217b6eba4e53fce"
+  },
+  {
+   "chunk": 20,
+   "path": "Services/ImTranslator/Service.js",
+   "kind": "service",
+   "bytes": 1303,
+   "sha256": "76a9612fe84bac2f8e58680e2768d12ace22f9189450235b44d5130ee24fcd42"
+  },
+  {
+   "chunk": 22,
+   "path": "Services/Microsoft/Service.js",
+   "kind": "service",
+   "bytes": 3291,
+   "sha256": "b1c12a050eda6d7f644b2cff83345a677c15a3374d1f84058b7bd534e7d8b009"
+  },
+  {
+   "chunk": 24,
+   "path": "Services/Multitran/Service.js",
+   "kind": "service",
+   "bytes": 1322,
+   "sha256": "b9a6da58fe67c6f4b720e0573776150b74ccd81aaa7cddcbf3723a71698be771"
+  },
+  {
+   "chunk": 26,
+   "path": "Services/Papago/Service.js",
+   "kind": "service",
+   "bytes": 9462,
+   "sha256": "8eee5f6cb20217abb51dc21dd475680ca02ee05d4f7fa1e6a4c5f0e12cc40ac0"
+  },
+  {
+   "chunk": 28,
+   "path": "Services/Oxford Learner Dictionary/Service.js",
+   "kind": "service",
+   "bytes": 3379,
+   "sha256": "60d291430ea098639b99d4d8f240f360a541f12b6ddd71c6589934465d9db906"
+  },
+  {
+   "chunk": 30,
+   "path": "Services/Promt/Service.js",
+   "kind": "service",
+   "bytes": 2040,
+   "sha256": "1135da5bb2b118d98fc2e0243101c1dd5955215c67ef6810225d20b26c60da15"
+  },
+  {
+   "chunk": 32,
+   "path": "Services/Reverso/Service.js",
+   "kind": "service",
+   "bytes": 1462,
+   "sha256": "c9f069e3ddd8bb0b6870d764fafcb4457aa35796e1e8630766c06a7976be0897"
+  },
+  {
+   "chunk": 34,
+   "path": "Services/Urban Dictionary/Service.js",
+   "kind": "service",
+   "bytes": 1231,
+   "sha256": "270440849c25582e8b100697f06cd463b1ecdb6bb6d2df45568b10d7965a472b"
+  },
+  {
+   "chunk": 36,
+   "path": "Services/Wikipedia/Service.js",
+   "kind": "service",
+   "bytes": 1495,
+   "sha256": "b2dd1f2f396698e0ddf91e23e247c2f7062056e132ded0575814818a4a188658"
+  },
+  {
+   "chunk": 38,
+   "path": "Services/WordReference/Service.js",
+   "kind": "service",
+   "bytes": 1531,
+   "sha256": "2ada261c54f054a0971a03e7f085933a3df0ffdacc545ac31970330718f054ef"
+  },
+  {
+   "chunk": 40,
+   "path": "Services/Yandex/Service.js",
+   "kind": "service",
+   "bytes": 4431,
+   "sha256": "93136ba152bf334b2dd84ca2434ef01565383fa6131918cfa652a9e1c4b9d206"
+  },
+  {
+   "chunk": 42,
+   "path": "Services/youdao/Service.js",
+   "kind": "service",
+   "bytes": 3343,
+   "sha256": "6b2ee411798c6f20b3e39226cab6676a89fe6a63ec80c8e68535b0285b136bd6"
+  },
+  {
+   "chunk": 113,
+   "path": "Plugins/History/csv.js",
+   "kind": "history",
+   "bytes": 439,
+   "sha256": "11c43d156c846c91e00fbd394f809f96953b7aa398d68276c9703ac54bac386d"
+  },
+  {
+   "chunk": 114,
+   "path": "Plugins/History/html.js",
+   "kind": "history",
+   "bytes": 984,
+   "sha256": "af07a14e423b9e7ace405ab201dd7e8cf030f7c107a9cc8fce885349c698eeb8"
+  },
+  {
+   "chunk": 115,
+   "path": "Plugins/History/json.js",
+   "kind": "history",
+   "bytes": 753,
+   "sha256": "3115b9a220596f2fa50ba4ad87f313ce5461047badb3f55036770b09d2c87b0b"
+  },
+  {
+   "chunk": 116,
+   "path": "Plugins/History/txt.js",
+   "kind": "history",
+   "bytes": 381,
+   "sha256": "082fbc40e118aa552e6a7729989aa49829a81283b1f035f78f54dca9cccc13c6"
+  },
+  {
+   "chunk": 117,
+   "path": "Resources/XdxfArticle.xslt",
+   "kind": "xslt",
+   "bytes": 832,
+   "sha256": "f2e12ccad4c5ec847f024e0b4c6cb512e9da53f555d09a7a2d6580f2cd12b419"
+  }
+ ]
+}

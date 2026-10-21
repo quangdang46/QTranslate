@@ -40,6 +40,7 @@ def skip(name, reason):
     skipped.append("SKIP: %s -- %s" % (name, reason))
 
 
+from qtranslate import registry as _RG  # noqa: E402
 REG_SRC = io.open(os.path.join(ROOT, "qtranslate", "registry.py"),
                   encoding="utf-8").read()
 APP_SRC = io.open(os.path.join(ROOT, "qtranslate", "app.py"),
@@ -62,8 +63,9 @@ ck("registry defines router_order()",
 ck("registry defines google_suggest()",
    "def google_suggest(" in REG_SRC)
 ck("registry owns USES_AUTO_DETECT + uses_auto_detect()",
-   re.search(r"^USES_AUTO_DETECT = \{", REG_SRC, re.M) is not None
-   and "def uses_auto_detect(" in REG_SRC)
+   "def uses_auto_detect(" in REG_SRC
+   and _RG.uses_auto_detect("microsoft") is True
+   and _RG.uses_auto_detect("no-such-service") is False)
 ck("registry owns call_with_sink + apply_phonetics",
    "def call_with_sink(" in REG_SRC
    and "def apply_phonetics(" in REG_SRC)

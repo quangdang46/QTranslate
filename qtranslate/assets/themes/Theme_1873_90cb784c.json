@@ -1,0 +1,100 @@
+{
+	"Common": {
+		"ButtonRadius": 0,
+		"WindowBorderRadius": 3, // 0 - None, 1 - Top, 2 - Both, 3 - Small
+		"ClientBackColor": "1d8abd",
+		"GroupBoxColor": "1586bb", // Required
+		"PaintClassicFocus": true
+	},
+	"Window": {
+		"Normal": {
+			"Back": "1586bb",
+			"Text": "fe",
+			"Border": "0c4b73",
+			"BorderInner": "469fc6"
+		},
+		"Disabled": {
+			"Back": "1586bb",
+			"Text": "be",
+			"Border": "0c4b73",
+			"BorderInner": "469fc6"
+		}
+	},
+	"WindowButton": {
+		"Normal": {
+			"Main": "fe",
+			"Shadow": "fe",
+			"Back": "1d8abd"
+		},
+		"Hover": {
+			"Main": "f",
+			"Shadow": "f",
+			"Back": "61add1"
+		},
+		"Pressed": {
+			"Main": "fe",
+			"Shadow": "fe",
+			"Back": "16688e"
+		},
+		"Disabled": {
+			"Main": "be",
+			"Shadow": "be",
+			"Back": ""
+		}
+	},
+	"Button": {
+		"Normal": {
+			"Border": "429fca",
+			"BackTop": "429fca", // Required
+			"BackBottom": "429fca", // Required
+			"ShadowBottom": "1b82b3",
+			"Text": "fe"
+		},
+		"Hover": {
+			"Border": "61add1",
+			"BackTop": "61add1", // Required
+			"BackBottom": "61add1", // Required
+			"ShadowBottom": "1b7fad",
+			"Text": "fe"
+		},
+		"Pressed": {
+			"Border": "16688e",
+			"BackTop": "16688e", // Required
+			"BackBottom": "16688e", // Required
+			"Text": "fe"
+		},
+		"Disabled": {
+			"Border": "1586bb",
+			"BackTop": "1d8abd", // Required
+			"BackBottom": "1d8abd", // Required
+			"Text": "be"
+		}
+	},
+	"Edit": {
+		"Normal": {
+			"Border": "1d8abd",
+			"Back": "16688e", // Required
+			"Text": "f"
+		},
+		"Disabled": {
+			"Border": "1d8abd",
+			"Back": "1d8abd", // Required
+			"Text": "be"
+		},
+		"Focused": {
+			"Border": "0d7aad",
+			"Back": "16688e", // Required
+			"Text": ""
+		}
+	},
+	"Icon": {
+		"Normal": {
+			"Gleam": "fe",
+			"Main": "fe"
+		},
+		"Disabled": {
+			"Gleam": "be",
+			"Main": "be"
+		}
+	}
+}

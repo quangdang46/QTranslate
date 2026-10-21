@@ -4,7 +4,9 @@ Native ships Resources/XdxfArticle.xslt; the port reproduces its
 templates with xml.etree. Pinned per the docstring's template list:
   <k> -> <div><b>key</b></div>; <tr> -> <span>[..]</span>;
   <kref> -> <a href="qtdp:..">..</a>; <iref> -> <a href="href">..</a>;
-  <ex> -> <span style="color:gray">..</span>; <ar>/<xdxf> unwrapped.
+  <ex> -> <span style="color:gray">..</span>; <ar>/<xdxf> COPIED, not
+  unwrapped — the stylesheet's identity template (<xsl:copy>) has no rule
+  for them, so they survive into the output.
 
 Offline: string in, string out — no file, no window.
 """
@@ -25,9 +27,9 @@ def ck(name, cond, detail=""):
 
 from qtranslate import xdxf as X
 
-# --- <k> key: direct text only, wrapped in div/b ------------------------
+# --- <k> key: string value, wrapped in div/b ----------------------------
 ck("<k> -> div/b", X.render_article("<ar><k>hello</k></ar>")
-   == "<div><b>hello</b></div>",
+   == "<ar><div><b>hello</b></div></ar>",
    X.render_article("<ar><k>hello</k></ar>"))
 
 # --- <tr> transcription -------------------------------------------------
@@ -50,9 +52,10 @@ ck("<iref> -> external href", 'href="http://x"' in _ir and ">site<" in _ir,
 _ex = X.render_article("<ar><ex>an example</ex></ar>")
 ck("<ex> -> gray span", 'color:gray' in _ex and "an example" in _ex, _ex)
 
-# --- <ar>/<xdxf> are unwrapped, not emitted -----------------------------
-ck("<ar> root unwrapped (no <ar> tag in output)",
-   "<ar>" not in X.render_article("<ar><k>x</k></ar>"))
+# --- <ar>/<xdxf> are copied, not unwrapped ------------------------------
+ck("<ar> root copied (the stylesheet's identity template keeps it)",
+   X.render_article("<ar><k>x</k></ar>") == "<ar><div><b>x</b></div></ar>",
+   X.render_article("<ar><k>x</k></ar>"))
 
 # --- nested content is rendered -----------------------------------------
 _nested = X.render_article("<ar><k>k</k><ex>e</ex></ar>")

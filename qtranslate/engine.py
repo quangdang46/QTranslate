@@ -13,6 +13,18 @@ Locked decisions (design phase):
 - Request shaping happens exactly ONCE (inside the router; the
   no-router fallback shapes explicitly because it bypasses the router).
 - tkinter-free (pinned by ``tests/regress_engine.py``).
+
+The reliability audit's open items (docs/review/
+RELIABILITY_WIRING_AUDIT_2026-10-10.md §2/§3/§7), settled here:
+
+- **A detection that names no source is recorded, not swallowed.** The
+  request degrades to ``src="auto"`` and the service resolves the source
+  itself where it can; it is NOT stopped. See ``_detect_source``.
+- **The classified failures reach the caller.** A failed route used to
+  come back as the bare native error string with the failures dropped on
+  the floor; they are now in ``Result.failures`` and in the note.
+- **Every failure is logged** through the reliability log sink (§7), so
+  the "which layer failed" report is answerable from a file.
 """
 from __future__ import annotations
 
@@ -37,6 +49,41 @@ def _router(sink=None):
         return None
 
 
+def _detect_source(text):
+    """(src, failure) — the port's detect chain and its diagnosis.
+
+    ``registry.detect_language`` returns the ``"auto"`` sentinel when it
+    cannot name the source language: either every detector failed, or a
+    detector answered ``"auto"`` (it could not tell either). The port
+    cannot tell those apart — the per-detector exceptions are swallowed
+    upstream — so the failure is recorded at chain level
+    (``reliability.detect_failure``).
+
+    **The request is not stopped.** Two reasons, both from the evidence:
+
+    1. Native passes the auto source through in the same situation
+       (``FUN_004606ba`` substitutes a concrete code only when the
+       service's ``usesAutoDetectCode`` hook answered false; the request
+       otherwise carries whatever the source slot held).
+    2. Several of the port's providers accept ``"auto"`` natively — Naver's
+       language table carries ``"auto"``, Google's and DeepL's do too — so
+       stopping would turn a working translation into an error.
+       ``registry.USES_AUTO_DETECT`` is *derived* from those tables by
+       native's own rule (Common.js's ``usesAutoDetectCode``), so a policy
+       keyed on it rests on a measured truth table, not on a declared
+       guess — see docs/review/AUTO_DETECT_CAPABILITY_2026-10-21.md.
+
+    What was missing was the signal, not the policy: the failure is now
+    recorded (``Result.failures``) and logged.
+    """
+    from qtranslate import registry as _RG
+    from qtranslate import reliability as _REL
+    lang = _RG.detect_language(text)
+    if lang and lang != "auto":
+        return lang, None
+    return "auto", _REL.detect_failure()
+
+
 def translate(service, text, target, src="auto", auto_detect=False,
               back_translate=False):
     """Port of ``FUN_00404A12``: pick → execute → fallbacks.
@@ -52,6 +99,12 @@ def translate(service, text, target, src="auto", auto_detect=False,
     from qtranslate.registry import (TRANSLATORS, _t_google, call_with_sink,
                                      apply_phonetics)
     from qtranslate.core import TranslationRequest as _TReq
+    from qtranslate import reliability as _REL
+
+    # §7: the failures of this request land in the log file. The sink is
+    # installed once per process and never replaced, so an app (or a test)
+    # that installed its own sink keeps it.
+    _REL.ensure_log_sink()
 
     req = _TReq(service=service or "", text=(text or "").strip(),
                 target=target, src=src, auto_detect=bool(auto_detect),
@@ -60,6 +113,10 @@ def translate(service, text, target, src="auto", auto_detect=False,
     service = req.service
     if not text:
         return Result("", "", service or "", note="empty request")
+    # Failures raised outside the provider route (a detection that named
+    # no source, a back-translation that died) are collected here so they
+    # reach the caller and the log.
+    extra = []
     # Request shaping (RemoveLineBreaks collapse + 5000-char cut) happens
     # ONCE inside ProviderRouter.translate via reliability.normalize_request.
     # The _router-is-None fallback shapes explicitly (it bypasses the router).
@@ -73,10 +130,12 @@ def translate(service, text, target, src="auto", auto_detect=False,
         # Native calls the service's own `usesAutoDetectCode` JS hook
         # (FUN_0045f6c1) and stores the answer at request+0x50; the
         # translate stage (FUN_004606ba) runs detect itself only when that
-        # flag is false. The hook answers live in runtime-loaded
-        # Services/*/Service.js (absent from the artifact), so the
-        # per-service table is a declared port-side capability, NOT
-        # native-derived.
+        # flag is false. The hook is a *framework* function in
+        # `Services/Common.js` -- it tests the service's own language table
+        # (`SupportedLanguages[AUTO_DETECT_LANGUAGE] !== UNKNOWN_LANGUAGE_CODE`)
+        # -- so the per-service capability is DERIVED from the port's own
+        # transcribed tables, not hand-listed.
+        #   docs/review/AUTO_DETECT_CAPABILITY_2026-10-21.md
         # RE-closed 2026-10-15: `DAT_0054941f` is the true
         # `AlwaysDetectLanguage` flag (nav-menu 0x808e; the Options-page
         # byte `DAT_005494e6` is RemoveLineBreaks). The orchestrator packs
@@ -86,12 +145,30 @@ def translate(service, text, target, src="auto", auto_detect=False,
         src = req.src
         if src == "auto":
             if req.auto_detect or not _RG.uses_auto_detect(service):
-                req = req.with_src(_RG.detect_language(text))
+                _lang, _det_fail = _detect_source(text)
+                if _det_fail is not None:
+                    extra.append(_det_fail)
+                    _REL.log_failure(_det_fail)
+                req = req.with_src(_lang)
                 src = req.src
+            else:
+                # The service resolves the auto source itself. Native sends
+                # each service its OWN slot-1 code (`codeFromLanguage(1)`):
+                # Microsoft "auto-detect", youdao "AUTO", Promt "au" -- not a
+                # literal "auto". The request keeps the canonical "auto"
+                # (that is what the UI shows); the provider's own spelling
+                # is applied at the adapter boundary.
+                _own = _RG.auto_detect_code(service)
+                if _own:
+                    req = req.with_src(_own)
+                    src = req.src
         elif req.auto_detect:
-            _det = _RG.detect_language(text)
-            if _det and _det != "auto":
-                req = req.with_src(_det)
+            _lang, _det_fail = _detect_source(text)
+            if _det_fail is not None:
+                extra.append(_det_fail)
+                _REL.log_failure(_det_fail)
+            if _lang and _lang != "auto":
+                req = req.with_src(_lang)
                 src = req.src
         # One fresh sink per call, so J7's phonetics travels with this
         # call's own result (worker threads must not share module state).
@@ -114,6 +191,7 @@ def translate(service, text, target, src="auto", auto_detect=False,
                 return Result(service or "",
                               "No data returned (timeout while sending data.)",
                               service or "",
+                              failures=tuple(extra),
                               note="no data returned (timeout)")
             if req.back_translate:
                 try:
@@ -121,10 +199,16 @@ def translate(service, text, target, src="auto", auto_detect=False,
                         out[:5000], target, src)
                     if back:
                         out += f"\n\n--- back-translation ---\n{back}"
-                except Exception:
-                    pass
+                except Exception as exc:
+                    _bf = _REL.Failure(
+                        provider=service or "back-translation",
+                        kind=_REL.classify(exc),
+                        detail="back-translation failed: %s" % (exc,))
+                    extra.append(_bf)
+                    _REL.log_failure(_bf)
             out = apply_phonetics(out, service, _sink[0])
             return Result(service or "", out, service or "",
+                          failures=tuple(extra),
                           phonetics=_sink[0])
         res = _r.translate(service, text, src, target,
                            config=_cfg_safe(), phonetics_sink=_sink)
@@ -133,11 +217,19 @@ def translate(service, text, target, src="auto", auto_detect=False,
         # res.provider_used — for back-translation and J7's phonetics.
         service = res.provider_used or service
         if not res.ok:
-            # native error string id 190
+            # native error string id 190 — the text the user sees. The note
+            # and the failures carry WHY: the route's own note names the
+            # kinds ("no provider answered (timeout, provider-dead): google,
+            # yandex") and `failures` holds one classified Failure per
+            # provider. Dropping them here is what made a dead endpoint
+            # indistinguishable from a timeout.
             return Result(service or "",
                           "No data returned (timeout while sending data.)",
                           service or "",
-                          note="no data returned (timeout)")
+                          failures=tuple(res.failures) + tuple(extra),
+                          attempts=res.attempts,
+                          note=res.note or "no data returned (timeout)")
+        note = res.note
         if req.back_translate and not out.startswith("No data"):
             try:
                 # Back-translate through the provider that ACTUALLY answered.
@@ -145,14 +237,25 @@ def translate(service, text, target, src="auto", auto_detect=False,
                 back = _bfn(out[:5000], target, src)
                 if back:
                     out += f"\n\n--- back-translation ---\n{back}"
-            except Exception:
-                pass
+            except Exception as exc:
+                # The back-translation half silently never ran: the user
+                # asked for it and the result looks like a translation
+                # without one. Record it (result + log) instead.
+                _bf = _REL.Failure(
+                    provider=res.provider_used or service or "back-translation",
+                    kind=_REL.classify(exc),
+                    detail="back-translation failed: %s" % (exc,))
+                extra.append(_bf)
+                _REL.log_failure(_bf)
+                note = ("%s; back-translation failed" % note).lstrip("; ")
         out = apply_phonetics(out, service, res.phonetics)
         return Result(res.provider_used, out, res.requested,
-                      res.failures, res.attempts, res.note,
+                      tuple(res.failures) + tuple(extra),
+                      res.attempts, note,
                       phonetics=res.phonetics)
     except Exception:
         return Result(service or "",
                       "No data returned (timeout while sending data.)",
                       service or "",
+                      failures=tuple(extra),
                       note="exception: no data returned (timeout)")

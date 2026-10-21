@@ -1,0 +1,34 @@
+﻿Splošne vroče tipke (privzete vrednosti):
+Double Ctrl => Prikaži glavno okno (s prevodom izbranega besedila, če obstaja)
+Ctrl+Q => Prevedi izbrano besedilo in ga prikaži v pojavnem oknu
+Ctrl+Shift+Q => Prikaži okno slovarja 
+Ctrl+E => Poslušaj izbrano besedilo
+
+Vroče tipke glavnega okna:
+Ctrl+Enter => Prevedi besedilo
+Ctrl+N => Počisti trenutni prevod
+Ctrl+D => Prikaži slovar
+Ctrl+Alt+1..9 => Prikaži slovar z izbrano 1..9-to prevajalsko storitvijo.
+Ctrl+H => Prikaži zgodovino prevoda
+Ctrl+K => Prikaži  navidezno tipkovnico
+Ctrl+Tab/Ctrl+Shift+Tab/Ctrl+1..9 => Preklopi na naslednjo/prejšnjo/1..9-to storitev za prevajanje
+Shift+Esc => Ponastavi jezikovni par na samodejno zaznavanje
+Ctrl+Shift+1..9 => Izberi jezikovni par
+Ctrl+I => Zamenjaj smer prevoda
+Ctrl+Preslednica => Prikaži meni Predlog/Samodokončaj
+F1 => Prikaži pomoč
+F11 => Vklopi/Izklopi celozaslonski način
+Alt+Leva puščica => Pojdi na prejšnji prevod
+Alt+Desna puščica => Pojdi na naslednji prevod
+Ctrl+Gor => Kopiraj prevod v besedilno vnosno polje
+
+Obstajajo trije načini izbire prevoda z miško:
+  1) Prikaži ikono (izberite besedilo v programu -> ikona QTranslate bo prikazana v bližini kazalca. Kliknite na ikono -> prikazano bo pojavno okno s prevodom izbranega besedila);
+  2) Prikaži prevod (izberite besedilo v programu -> takoj bo prikazano pojavno okno s prevodom izbranega besedila).
+  3) Prikaži prevod in branje (enako kot prejšnje vendar z glasnim predvajanjem izbranega besedila).
+
+Akcije:
+   - Levi klik na ikono programa v programski vrstici vklopi/izklopi način izbire z miško (glejte zgoraj);
+   - Dvojni klik na ikono programa v programski vrstici prikaže glavno okno;
+   - Dvojni klik na glavo pojavnega okna odpre glavno okno s trenutnim prevodom;
+   - Levi klik z miško na ime storitve v pojavnem oknu spremeni trenutno storitev in ponovno prevede besedilo.

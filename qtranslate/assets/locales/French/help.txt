@@ -1,0 +1,35 @@
+﻿Raccourcis clavier généraux (valeurs par défaut):
+Double Ctrl => Affiche la fenêtre principale (avec la traduction du texte sélectionné, le cas échéant)
+Ctrl+Q => Traduit le texte sélectionné et l'affiche dans la fenêtre contextuelle
+Ctrl+Shift+Q => Affiche la fenêtre du dictionnaire
+Ctrl+E => Lit le texte sélectionné
+
+Raccourcis clavier de la fenêtre principale:
+Ctrl+Enter => Traduit
+Ctrl+N => Efface la traduction actuelle
+Ctrl+D => Affiche le dictionnaire
+Ctrl+Alt+1..9 => Affiche le dictionnaire avec le service de traduction sélectionné (de 1..9)
+Ctrl+H => Affiche l'historique des traductions
+Ctrl+K => Affiche le clavier virtuel
+Ctrl+Tab/Ctrl+Shift+Tab/Ctrl+1..9 => Bascule vers le service de traduction suivant/pécédent/1..9
+Shift+Esc => Réinitialise la détection automatique des langues
+Ctrl+Shift+1..9 => Sélectionne la paire de langues
+Ctrl+I => Inverse le sens de traduction
+Ctrl+Space => Affiche le menu déroulant de suggestion/saisie 
+F1 => Affiche l'aide
+F11 => Active/désactive le mode plein écran
+
+Alt+Flèche gauche => Va à la traduction précédente
+Alt+Flèche droite => Va à la traduction suivante
+Ctrl+Up => Copie la traduction dans la zone de saisie de texte
+
+Il y a trois modes de traduction par sélection avec la souris:
+  1) Afficher l'icône (Sélectionnez le texte dans n'importe quel programme -> l'icône du programme apparaîtra près du curseur. Cliquez sur l'icône -> la fenêtre contextuelle avec la traduction du texte sélectionné apparaîtra);
+  2) Afficher la traduction (Sélectionnez le texte dans n'importe quel programme -> la fenêtre contextuelle avec la traduction du texte sélectionné apparaîtra immédiatement);
+  3) Afficher la traduction et la lire (Même que précédemment, plus lecture à voix haute du texte sélectionné). 
+
+Actions:
+  - Clique gauche sur l'icône de Qtranslate  dans la barre système active/désactive le mode de sélection de la souris (voir ci-dessus);
+  - Double-clique sur l'icône de Qtranslate dans la barre système affiche la fenêtre principale;
+  - Double-clique sur l'entête de la fenêtre contextuelle ouvre la fenêtre principale avec la traduction en cours;
+  - Clique gauche sur le nom du service de traduction dans la fenêtre contextuelle change le service en cours et retraduit le texte.

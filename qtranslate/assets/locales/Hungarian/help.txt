@@ -1,0 +1,34 @@
+﻿Globális billentyűparancsok (alapértelmezett értékek):
+Dupla kattintás a Ctrl lenyomásakor => A fő ablak megjelenítése (a kijelölt szöveg fordításával, ha van)
+Ctrl+Q => A kijelölt szöveg lefordítása és megjelenítése egy felbukkanó ablakban
+Ctrl+Shift+Q => A szótár ablakának megjelenítése
+Ctrl+E => A kijelölt szöveg felolvasása
+
+Fő ablak billentyűparancsai:
+Ctrl+Enter => Szöveg lefordítása
+Ctrl+N => A jelenlegi fordítás törlése
+Ctrl+D => Szótár megjelenítése
+Ctrl+Alt+1..9 => Szótár megjelenítése a kiválasztott 1..9. fordítási szolgáltatással
+Ctrl+H => Fordítási előzmények megjelenítése
+Ctrl+K => Virtuális billentyűzet megjelenítése
+Ctrl+Tab/Ctrl+Shift+Tab/Ctrl+1..9 => Váltás a következő/előző/1..9. fordítási szolgáltatásra
+Shift+Esc => Nyelvpár visszaállítása automatikus felismerésre
+Ctrl+Shift+1..9 => Nyelvpár kiválasztása
+Ctrl+I => Fordítási nyelvek felcserélése
+Ctrl+Szóköz => Javaslat/automatikus kiegészítés menü megjelenítése
+F1 => Súgó megjelenítése
+F11 => Teljes képernyős mód ki-/bekapcsolása
+Alt+Balra nyíl => Ugrás az előző fordításra
+Alt+Jobbra nyíl => Ugrás a következő fordításra
+Ctrl+Felfelé nyíl => Fordítás másolása a szövegbeviteli mezőbe
+
+A program két fordítási üzemmódban működik az egérkijelölésnél (az aktiválás módjáról, itt olvashat):
+  1) Ikon megjelenítése (jelöljön ki szöveget egy programban -> a QTranslate ikonja fel fog tűnni a kurzor közelében. Kattintson az ikonra -> ekkor egy felugró ablak fog megjelenni a kijelölt szöveg fordításával);
+  2) Fordítás megjelenítése (jelöljön ki szöveget egy programban -> ekkor egy felugró ablak fog megjelenni a kijelölt szöveg fordításával);
+  3) Fordítás megjelenítése és felolvasása (ugyanaz, mint az előző + a kiválasztott szöveg hangos felolvasása). 
+
+Műveletek:
+  - Kattintson a bal egérgombbal a QTranslate tálcaikonjára az egér kiválasztási mód be és/vagy kikapcsolásához (lásd fent);
+  - Kattintson duplán bal egérgombbal a QTranslate tálcaikonjára a fő ablak megjelenítéséhez;
+  - Kattintson duplán bal egérgombbal a felugró ablak fejlécére a fordítást tartalmazó fő ablak megnyitásához;
+  - Kattintson a bal egérgombbal a szolgáltatás nevére a felugró ablakban az aktuális szolgáltatás módosításához és a szöveg újrafordításához.

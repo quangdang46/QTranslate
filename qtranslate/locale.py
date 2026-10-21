@@ -28,7 +28,16 @@ import json
 import os
 import re
 
-LOCALES_DIR = "C:/Program Files (x86)/QTranslate/Locales"
+# The port ships the native locale packs, recovered from the QTranslate
+# 6.10.0 installer payload and committed under `qtranslate/assets/locales/`
+# (35 `lang.json` files, byte-identical to the installed
+# `Locales/<dir>/lang.json`). The Windows install is only a fallback: with
+# the path hardcoded to it, the port had NO locales off Windows.
+#   docs/review/PAYLOAD_CHUNK_CENSUS_2026-10-15.md §3 (35/35 identical)
+_BUNDLED_LOCALES = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                "assets", "locales")
+LOCALES_DIR = (_BUNDLED_LOCALES if os.path.isdir(_BUNDLED_LOCALES)
+               else "C:/Program Files (x86)/QTranslate/Locales")
 
 
 def _read_pack(path: str) -> dict:

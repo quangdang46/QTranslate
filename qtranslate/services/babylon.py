@@ -84,6 +84,35 @@ def _translate_response(body: str, sl, tl):
     return a, sl, tl
 
 
+def _resolve_code(code):
+    """Native's ``codeFromLanguage`` for an ISO code.
+
+    Native's framework hands a service a language **index** and the service
+    indexes its own ``SupportedLanguages`` with it. This port's call sites
+    hand over the ISO **code** instead, so the code has to become the app's
+    language id first -- the framework's own ``languageFromCode`` step over
+    the shared language list -- and only then can the provider's table be
+    indexed.
+
+    For Babylon this is not cosmetic: its table holds **numbers** (0 is
+    English, 7 is Russian), so the port used to ask Babylon for
+    ``langpair=en|ru`` where native asks for ``langpair=0|7``.
+
+    ``"auto"`` is left alone: native's framework detects the source itself
+    for a provider whose table cannot express AUTO (``usesAutoDetectCode``
+    is false for Babylon -- its slot 1 is ``-1``), so the index never
+    reaches the service, and passing the marker through keeps the port's
+    own detect step in charge.
+    """
+    if code in ("auto", "", None) or isinstance(code, int):
+        return code
+    from qtranslate.services.google_translate import SUPPORTED_LANGS as _APP
+    idx = language_from_code(code, _APP)
+    if not idx:
+        return code              # not a language the app knows at all
+    return code_from_language(idx, SUPPORTED_LANGS)
+
+
 def translate(text: str, sl="auto", tl="en") -> str:
     """Port of serviceTranslateRequest + serviceTranslateResponse.
 
@@ -92,9 +121,9 @@ def translate(text: str, sl="auto", tl="en") -> str:
     """
     text = limit_source(text)
     sl_code = code_from_language(sl, SUPPORTED_LANGS) \
-        if isinstance(sl, int) else sl
+        if isinstance(sl, int) else _resolve_code(sl)
     tl_code = code_from_language(tl, SUPPORTED_LANGS) \
-        if isinstance(tl, int) else tl
+        if isinstance(tl, int) else _resolve_code(tl)
     path = ("/translate/babylon.php?v=1.0&q={0}&langpair={1}%7C{2}"
             "&callback=callbackFn&context=babylon").format(
                 encode_get_param(text), sl_code, tl_code)

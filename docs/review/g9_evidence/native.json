@@ -8,5 +8,7 @@
   "capture_kind": "acceptance",
   "source": "QTranslate.exe 6.10.0 PE32 i386 via WoW64 on Win11 26200 AMD64, 2026-10-16",
   "size_origin": "placement",
-  "sha256": "ed4feebcbeb9adcde348ec11d2db146907076c2ec4fc45e105a87b83daa372b3"
+  "sha256": "ed4feebcbeb9adcde348ec11d2db146907076c2ec4fc45e105a87b83daa372b3",
+  "capture_method": "printwindow",
+  "focus": "inactive"
 }

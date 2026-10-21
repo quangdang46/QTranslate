@@ -1,0 +1,132 @@
+{
+	"Common": {
+		"ButtonRadius": 2,
+		"WindowBorderRadius": 1,
+		"ClientBackColor": "53",
+		"GroupBoxColor": "38",
+		"GroupBoxHighlightColor": "70",
+		"PaintClassicFocus": false
+	},
+	"Window": {
+		"Normal": {
+			"Back": "53",
+			"Text": "f5",
+			"Border": "36",
+			"BorderInner": "65",
+			"Caption": ""
+		},
+		"Disabled": {
+			"Back": "53",
+			"Text": "96",
+			"Border": "36",
+			"BorderInner": "73",
+			"Caption": ""
+		}
+	},
+	"WindowButton": {
+		"Normal": {
+			"Gleam": "2f",
+			"Main": "e5",
+			"Shadow": "e5"
+		},
+		"Hover": {
+			"Gleam": "3f",
+			"Main": "e5",
+			"Shadow": "e5",
+			"Back": "79"
+		},
+		"Pressed": {
+			"Gleam": "35",
+			"Main": "de",
+			"Shadow": "de",
+			"Back": "3d"
+		},
+		"Disabled": {
+			"Gleam": "5d",
+			"Main": "96",
+			"Shadow": "96"
+		}
+	},
+	"Button": {
+		"Normal": {
+			"ShadowTop": "",
+			"Border": "27",
+			"GleamTop": "91",
+			"BackTop": "75",
+			"BackBottom": "62",
+			"GleamBottom": "",
+			"ShadowBottom": "6a",
+			"Text": "f"
+		},
+		"Pressed": {
+			"ShadowTop": "506fac",
+			"Border": "27",
+			"GleamTop": "33",
+			"BackTop": "3f",
+			"BackBottom": "37",
+			"GleamBottom": "",
+			"ShadowBottom": "506fac",
+			"Text": "f"
+		},
+		"Disabled": {
+			"ShadowTop": "",
+			"Border": "3e",
+			"GleamTop": "74",
+			"BackTop": "64",
+			"BackBottom": "5b",
+			"GleamBottom": "",
+			"ShadowBottom": "5e",
+			"Text": "9f"
+		},
+		"Focused": {
+			"ShadowTop": "506fac",
+			"Border": "27",
+			"GleamTop": "91",
+			"BackTop": "75",
+			"BackBottom": "62",
+			"GleamBottom": "",
+			"ShadowBottom": "506fac",
+			"Text": "f"
+		}
+	},
+	"Edit": {
+		"Normal": {
+			"ShadowTop": "37",
+			"Border": "27",
+			"Back": "3a",
+			"ShadowBottom": "69",
+			"Text": "d"
+		},
+		"Disabled": {
+			"ShadowTop": "47",
+			"Border": "42",
+			"Back": "4a",
+			"ShadowBottom": "5e",
+			"Text": "9f"
+		},
+		"Focused": {
+			"ShadowTop": "37",
+			"Border": "27",
+			"Back": "3a",
+			"ShadowBottom": "506fac",
+			"Text": "d"
+		}
+	},
+	"Icon": {
+		"Normal": {
+			"Gleam": "39",
+			"Main": "e9",
+			"Shadow": "e9"
+		},
+		"Pressed": {
+			"Gleam": "1f",
+			"Main": "e9",
+			"Shadow": "e9"
+		},
+		"Disabled": {
+			"Gleam": "48",
+			"Main": "98",
+			"Shadow": "a4"
+		}
+	}
+}

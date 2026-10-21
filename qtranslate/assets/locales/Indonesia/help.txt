@@ -1,0 +1,36 @@
+﻿Global hotkeys (nilai bawaan):
+Double Ctrl => Tampilkan jendela utama (dengan terjemahan teks yang dipilih, jika ada)
+Ctrl+Q => Terjemahkan teks yang dipilih dan tampilkan pada jendela popup
+Ctrl+Shift+Q => Tampilkan jendela kamus
+Ctrl+E => Dengarkan teks yang dipilih
+
+Main window hotkeys:
+Ctrl+Enter => Terjemahkan teks
+Ctrl+N => Hapus terjemahan saat ini
+Ctrl+D => Tampilkan kamus
+Ctrl+Alt+1..9 => Tampilkan kamus dengan layanan terjemahan 1..9th yang dipilih
+Ctrl+H => Tampilkan riwayat terjemahan
+Ctrl+K => Tampilkan keyboard virtual
+Ctrl+Tab/Ctrl+Shift+Tab/Ctrl+1..9 => Beralih ke layanan terjemahan berikutnya/sebelumnya/1..9th
+Shift+Esc => Atur ulang pasangan bahasa ke deteksi otomatis
+Ctrl+Shift+1..9 => Pilih pasangan bahasa
+Ctrl+I => Tukar arah terjemahan
+Ctrl+Space => Tampilkan menu saran/pelengkapan otomatis
+F1 => Tampilkan bantuan
+F11 => Mengaktifkan/menonaktifkan mode layar penuh
+Alt+Left Arrow => Pergi ke terjemahan sebelumnya
+Alt+Right Arrow => Pergi ke terjemahan selanjutnya
+Ctrl+Up => Salin terjemahan ke kotak input teks
+
+Ada tiga mode terjemahan dengan pemilihan mouse:
+  1) Tampilkan ikon (pilih teks dalam suatu program -> Ikon QTranslate akan muncul di dekat kursor. Klik ikonnya -> jendela popup dengan terjemahan teks yang dipilih akan muncul);
+  2) Tampilkan terjemahan (pilih teks dalam suatu program -> jendela popup dengan terjemahan teks yang dipilih akan segera muncul);
+  3) Tampilkan terjemahan dan baca (sama dengan teks yang dipilih sebelumnya dan ucapkan dengan keras). 
+
+Tindakan:
+  - Klik kiri pada ikon QTranslate di sistem tray mengaktifkan/menonaktifkan mode pemilihan mouse (lihat di atas);
+  - Klik dua kali pada ikon QTranslate di sistem tray menampilkan jendela utama;
+  - Klik dua kali pada header jendela popup membuka jendela utama dengan terjemahan saat ini;
+  - Klik kiri mouse pada nama layanan mengubah layanan saat ini dan menerjemahkan teks;
+  - Klik tengah mouse pada nama layanan membuka layanan di browser;
+  - Klik kanan mouse pada nama layanan menambah layanan ke layanan multi-seleksi.

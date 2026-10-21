@@ -1,0 +1,54 @@
+{
+ "source_payload": "docs/review/artifacts/nsis_payload_unpacked.bin",
+ "note": "The 8 native Themes/*.json, recovered from the installer payload (byte-identical to the installed copies). The payload carries NO filenames and the EXE's string table carries no theme names either, so the native's own file names are not recoverable; the files are named by a content digest here. The port therefore still loads themes from an installed copy and falls back to theme.default_theme().",
+ "themes": [
+  {
+   "file": "Theme_2286_e68409ba.json",
+   "client_back_color": "#535353",
+   "sha256": "e68409ba0f7190ef317f84492f76c15f85334b7b028ed78f4fad90f940ff1ddc",
+   "bytes": 2286
+  },
+  {
+   "file": "Theme_1873_90cb784c.json",
+   "client_back_color": "#1d8abd",
+   "sha256": "90cb784c91d08c23a423e1f4c2ae3834d8cf66f68d59445e57811524d68c92a5",
+   "bytes": 1873
+  },
+  {
+   "file": "Theme119.json",
+   "client_back_color": "#dfe2e2",
+   "sha256": "592ca64df3ea7a38a689c360307e2d44aeda97d9ede80af436b6d2eee91eba2c",
+   "bytes": 2668
+  },
+  {
+   "file": "Theme120.json",
+   "client_back_color": "#202020",
+   "sha256": "b16bd18f91abb33ff5062e6b3f95e7376488916c354b3d7e55406c64012cb9c9",
+   "bytes": 1632
+  },
+  {
+   "file": "Theme121.json",
+   "client_back_color": "#111",
+   "sha256": "b20e0542fc2a1250c81d5b854fca8c80064f6e34134b8c5afcad21fc93e212ea",
+   "bytes": 2566
+  },
+  {
+   "file": "Theme122.json",
+   "client_back_color": "#f2f2f2",
+   "sha256": "66daa00ee19afe38a3830d0a74caee76642350dc5b9b0a0c5247905fc9147807",
+   "bytes": 2637
+  },
+  {
+   "file": "Theme123.json",
+   "client_back_color": "#fff",
+   "sha256": "c9e578fc5332a5b02878d51a630e28f4d9c6e59642c939bbd18508ce0e1b2bf4",
+   "bytes": 1990
+  },
+  {
+   "file": "Theme124.json",
+   "client_back_color": "#dedede",
+   "sha256": "dd79f734097d1b0edec99052beed2b5688e67e9f193236ee3760237f1b611ef0",
+   "bytes": 1841
+  }
+ ]
+}

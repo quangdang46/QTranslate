@@ -1,0 +1,341 @@
+﻿{
+  "Author": "Zbigniew Strzelczyk",
+  "LanguageName": "Polish",
+  "LanguageNativeName": "Polski",
+  "LanguageCode": "pl",
+  "Strings": [
+    [171, "Usuń bieżące tłumaczenie (Ctrl+N)"],
+    [172, "Tłumacz (Ctrl+Enter)"],
+    [173, "Odwróć kierunek tłumaczenia (Ctrl+I)"],
+    [174, "Czytaj tekst"],
+    [175, "Wróć (Alt+Left Arrow)"],
+    [184, "Przejdź do przodu (Alt+Right Arrow)"],
+    [176, "Nie można wykryć języka. Wybierz ręcznie."],
+    [177, "Serwis nie obsługuje języka źródłowego."],
+    [178, "O programie"],
+    [179, "Wersja "],
+    [180, "Serwer aktualizacji nie jest dostępny"],
+    [181, "Nowa wersja (%s) jest dostępna"],
+    [182, "Używasz najnowszej wersj %s"],
+    [183, "Sprawdź aktualizację..."],
+    [185, "Aktualizacja nieudana"],
+    [186, "Latynizacja: "],
+    [187, "Zawsze na wierzchu"],
+    [188, "Klawiatura"],
+    [189, "Nie można nawiązać połączenia z internetem."],
+    [190, "Nie są zwracane dane (przekroczony limit czasu wysyłania danych)."],
+    [191, "Brak zwrotu danych."],
+    [192, "Brak danych do tłumaczenia."],
+    [193, "Serwis nie ma żądanej zdolności."],
+    [194, "Nie można odtworzyć strumienia audio."],
+    [195, "Serwis nie obsługuje odtwarzania audio dla tego języka lub tekst jest zbyt długi."],
+    [196, "Błąd sktyptu serwisu."],
+    [197, "Nieznany błąd."],
+    [198, "Serwis nie obsługuje języka docelowego."],
+    [199, "Nie można znaleźć pliku: "],
+    [200, "Instalacja aktualizacji..."],
+    [201, "Dodaj do ulubionych"],
+    [202, "Usuń z ulubionych"],
+    [203, "Upewnij się, czy mikrofon jest podłączony do komputera."],
+    [204, "Nie można połączyć się z internetem"],
+    [205, "Włącz tekstowy zapis mowy (%s)"],
+    [206, "Wyłącz tekstowy zapis mowy"]
+  ],
+  "Windows": [{
+    "Controls": [
+      [1004, "Tłumacz"]
+    ],
+    "Id": 1,
+    "Caption": "QTranslate"
+  }, {
+    "Controls": [
+      [10, [
+        [20, "Szukaj w słowniku"],
+        [30, "Słuchaj wybrany tekst"],
+        [40, "Kopiuj tłumaczenia do schowka"],
+        [50, "Zastąp zaznaczony tekst"]
+      ]]
+    ],
+    "Id": 6
+  }, {
+    "Controls": [],
+    "Strings": [
+      [10, "Nie znaleziono wyników dla'%s'."]
+    ],
+    "Id": 5,
+    "Caption": "Słownik"
+  }, {
+    "Controls": [
+      [1, "OK"],
+      [1160, "Zapisz jako..."],
+      [1067, "Wyczyść"]
+    ],
+    "Id": 3,
+    "Caption": "Historia"
+  }, {
+    "Controls": [
+      [1, "OK"],
+      [2, "Anuluj"],
+      [1049, "Zastosuj"]
+    ],
+    "Id": 2,
+    "Caption": "Opcje"
+  }, {
+    "Controls": [
+      [1045, "Uruchom z Windowsem"],
+      [1070, "Język interfejsu:"],
+      [1075, "Nazwa czcionki:"],
+      [1074, "Wielkość tekstu:"],
+      [1068, "Pierwszy język:"],
+      [1069, "Drugi język:"],
+      [1071, "Wejście głosowe:"],
+      [1063, "Auto wykrywanie języków"],
+      [1046, "Ogólne"],
+      [1064, "Historia"],
+      [1122, "Włącz historię"],
+      [1124, "Wyczyść historię przy wyjściu"],
+      [1123, "Rozwiń pozycje"]
+    ],
+    "Id": 10,
+    "Caption": "Podstawowe"
+  }, {
+    "Controls": [
+      [1049, "Połączenie"],
+      [1084, "Limit czasu, sek:"],
+      [1033, "Automatycznie wykryj proxy"],
+      [1034, "Host"],
+      [1036, "Nazwa użytkownika"],
+      [1037, "Hasło"],
+      [1048, "Proxy"],
+      [1035, "Port"],
+      [1135, [
+        [0, "Użyj systemowych ustawień proxy"],
+        [1, "Bez proxy"],
+        [2, "Ręczne ustawienie proxy"],
+        [3, "Automatycznie wykryj ustawienia proxy"]
+      ]]
+    ],
+    "Id": 11,
+    "Caption": "Internet"
+  }, {
+    "Controls": [
+      [1177, "Dodaj słownik..."],
+      [1180, "Usuń słownik"]
+    ],
+    "Id": 12,
+    "Caption": "Serwisy"
+  }, {
+    "Controls": [
+      [1099, "Wybierz / Odznacz wszystko"]
+    ],
+    "Id": 13,
+    "Caption": "Języki"
+  }, {
+    "Controls": [
+      [1076, "Główne"],
+      [1123, "Włącz styl okna"],
+      [1169, "Motyw:"],
+      [1158, "Włącz autodopasowanie rozmiaru"],
+      [1160, "Włącz automatyczne położenie"],
+      [1159, "Aktywuj podczas otwierania"],
+      [1161, "Przypnij podczas przeciągania"],
+      [1124, "Wyskakujące okno"],
+      [1092, "Kolor tła:"],
+      [1091, "Kolor tekstu:"],
+      [1090, "Kolor ramki:"],
+      [1145, "Przezroczystość (0 - 90):"],
+      [1146, "Grubość ramy:"],
+      [1147, "Automatyczne ukrywanie opóźnień:"],
+      [1194, "sekund"],
+      [1137, "Ikony:"],
+      [1138, "Pokaż ikonę otwartego słownika"],
+      [1139, "Pokaż ikonę odsłuchaj wybranego tekstu"],
+      [1140, "Pokaż ikonę kopiuj tekst do schowka"],
+      [1141, "Pokaż ikonę zamień wybrany tekst"]
+    ],
+    "Id": 14,
+    "Caption": "Wygląd"
+  }, {
+    "Controls": [
+      [1162, [
+        [0, "Włączone do programów:"],
+        [1, "Wyłącz w następujących programach:"]
+      ]],
+      [1101, "Dodaj"],
+      [1103, "Modyfikowanie"],
+      [1102, "Usuń"],
+      [1113, "Włącz inteligentne wykrywanie"]
+    ],
+    "Id": 15,
+    "Caption": "Wyjątki"
+  }, {
+    "Controls": [
+      [1118, "Włącz skróty klawiszowe"],
+      [1165, [
+        [0, "Pokaż w oknie głównym"],
+        [1, "Pokaż wyskakujące okno"],
+        [2, "Pokaż okno słownika"],
+        [3, "Pokaż historię tłumaczeń"],
+        [4, "Pokaż okno klawiatury"],
+        [5, "Czytaj zaznaczony tekst"],
+        [6, "Kopiuj tłumaczenia do schowka"],
+        [7, "Zastąpi zaznaczony tekst"],
+        [8, "Przełącz tryb myszy"],
+        [9, "Tłumacz zawartość schowka"],
+        [10, "Tłumaczenie schowka w głównym oknie"],
+        [11, "Tłumaczenie schowka, w wyskakującym oknie"],
+        [12, "Słownik ze schowka"],
+        [13, "Zmień układ klawiatury i zaznaczony tekst"],
+        [14, "Słuchaj wybranego tłumaczenia tekstu"],
+        [15, "Rozpoznawanie tekstu"],
+        [16, "Wejście mowy"]
+      ]]
+    ],
+    "Id": 16,
+    "Caption": "Klawisz skrótu"
+  }, {
+    "Controls": [
+      [1146, "Zaawansowane"],
+      [1151, "Domyślna przeglądarka:"],
+      [1147, "Kopiuj działanie:"],
+      [1149, "Wskaźnik układu klawiatury:"],
+      [1157, "Preferowana domena:"],
+      [1154, "Włącz interfejs tłumaczenia"],
+      [1159, "Włącz słuchanie tego samego tekstu przy niższej szybkości"],
+      [1160, "Usuń podziały wiersza"],
+      [1186, "Tryb myszy"],
+      [1155, "Włącz tryb myszy tylko przy wciśniętym Ctrl"],
+      [1156, "Klik na ikonę w zasobniku przełącza na tryb myszy"],
+      [1158, "Klucze API"],
+      [1195, "Klucz API OCR:"]
+    ],
+    "Id": 17,
+    "Caption": "Zaawansowane"
+  }, {
+    "Controls": [
+      [1188, "Automatycznie sprawdź aktualizacje"],
+      [1190, "Sprawdź teraz"],
+      [1191, "Instaluj"]
+    ],
+    "Id": 18,
+    "Caption": "Aktualizacje"
+  }],
+  "Menus": [{
+    "Items": [
+      [10, "Sprawdź pisownię"],
+      [20, "Tłumaczenie na bieżąco"],
+      [30, "Odwróć tłumaczenie"],
+      [40, "Rozszerzenie"],
+      [50, "Zapis fonetyczny"],
+      [60, "Wyczyść dane wejściowe na \"Przeciągnij i upuść\""],
+      [61, "Automatyczne czyszczenie tłumaczenia"],
+      [62, "Zapisz zawartość przy wyjściu"],
+      [65, "Pokaż górny panel"],
+      [70, "Pokaż środkowy panel"],
+      [80, "Pokaż okno serwisów"],
+      [81, "Minimalizuj do zasobnika"],
+      [82, "Przy zamknięciu minimalizuj do zasobnika"],
+      [85, "Na starcie"],
+      [86, "Pokaż okno"],
+      [87, "Minimalizuj do zasobnika"],
+      [88, "Przywróć poprzedni stan"],
+      [90, "Słownik"],
+      [100, "Historia"],
+      [110, "Klawiatura"],
+      [120, "Opcje"],
+      [125, "O programie"],
+      [130, "Pomoc"],
+      [140, "Wyjście"]
+    ],
+    "Id": 1
+  }, {
+    "Items": [
+      [10, "Cofnij"],
+      [20, "Wytnij"],
+      [30, "Wytnij wszystko"],
+      [40, "Kopiuj"],
+      [50, "Kopiuj wszystko"],
+      [60, "Wklej"],
+      [70, "Wybierz wszystko"],
+      [75, "Tłumacz"],
+      [80, "Szukaj w słowniku"],
+      [90, "Słuchaj"]
+    ],
+    "Id": 2
+  }, {
+    "Items": [
+      [10, "Otwórz"],
+      [15, "Kopiuj tekst"],
+      [20, "Kopiuj tłumaczenie"],
+      [30, "Usuń"],
+      [40, "Słuchaj"]
+    ],
+    "Id": 3
+  }, {
+    "Items": [
+      [10, "Resetuj"],
+      [20, "Edytuj..."],
+      [30, "Zawsze wykrywaj język"]
+    ],
+    "Id": 4
+  }, {
+    "Items": [
+      [5, "Rozpoznawanie tekstu"],
+      [10, "Słownik"],
+      [20, "Historia"],
+      [30, "Klawiatura"],
+      [36, "Włącz skróty klawiszowe"],
+      [40, "Tryb myszy"],
+      [50, "Włącz"],
+      [60, "Pokaż ikonę"],
+      [70, "Pokaż tłumaczenie"],
+      [71, "Pokaż tłumaczenia i czytaj"],
+      [80, "Opcje"],
+      [90, "O programie"],
+      [100, "Wyjście"]
+    ],
+    "Id": 5
+  }, {
+    "Items": [
+      [10, "Wybierz wszystko"],
+      [20, "Kopiuj"],
+      [30, "Drukuj..."],
+      [40, "Tłumacz"],
+      [50, "Szukaj"],
+      [60, "Słuchaj"]
+    ],
+    "Id": 6
+  }, {
+    "Items": [
+      [10, "Pokaż pełną historię"]
+    ],
+    "Id": 7
+  }, {
+    "Items": [
+      [10, "Pokaż informacje"],
+      [20, "Usuń słownik"]
+    ],
+    "Id": 8
+  }, {
+    "Items": [
+      [10, "Wyczyść historię"],
+      [20, "Pokaż okno serwisów"],
+      [30, "Szukaj dokładnie"],
+      [40, "Opcje"]
+    ],
+    "Id": 9
+  }, {
+    "Items": [
+      [110, "Język OCR"],
+      [120, "Tłumacz"],
+      [130, "Kopiuj obraz"],
+      [140, "Kopiuj tekst"],
+      [150, "Zapisz obraz"],
+      [160, "Edytuj obraz"],
+      [170, "Wybierz wszystko"],
+      [180, "Wyczyść wybrane"],
+      [190, "Zamknij"]
+    ],
+    "Id": 10
+  }]
+}

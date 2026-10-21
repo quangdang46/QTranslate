@@ -1,0 +1,341 @@
+﻿{
+  "Author": "Jadran Rudec (jrudec@gmail.com)",
+  "LanguageName": "Slovenian",
+  "LanguageNativeName": "Slovenski jezik",
+  "LanguageCode": "si",
+  "Strings": [
+    [171, "Počisti trenutni prevod (Ctrl+N)"],
+    [172, "Prevedi (Ctrl+Enter)"],
+    [173, "Zamenjaj smer prevoda (Ctrl+I)"],
+    [174, "Poslušaj besedilo"],
+    [175, "Pojdi nazaj (Alt+Left Arrow)"],
+    [184, "Pojdi naprej (Alt+Right Arrow)"],
+    [176, "Ni mogoče zaznati jezika. Ročno ga izberite."],
+    [177, "Storitev ne podpira izvirnega jezika."],
+    [178, "Vizitka"],
+    [179, "Različica "],
+    [180, "Strežnik za posodobitev ni na voljo"],
+    [181, "Na voljo je nova različica (%s)"],
+    [182, "%s je posodobljen"],
+    [183, "Preverjanje obstoja posodobitev..."],
+    [185, "Posodobitev ni uspela"],
+    [186, "Romanizacija: "],
+    [187, "Vedno na vrhu"],
+    [188, "Tipkovnica"],
+    [189, "Ni mogoče vzpostaviti internetne povezave."],
+    [190, "Ni vrnjenih nobenih podatkov (zakasnitev pri pošiljanju podatkov)."],
+    [191, "Ni vrnjenih nobenih podatkov."],
+    [192, "Ni podatkov za prevod."],
+    [193, "Storitev ne podpira zahtevano zmožnost."],
+    [194, "Ni mogoče pradvajati zvočnega toka."],
+    [195, "Storitev ne podpira zvok za ta jezik ali je besedilo predolgo."],
+    [196, "Napaka storitve skripte."],
+    [197, "Nepričakovana napaka."],
+    [198, "Storitev ne podpira ciljnega jezika."],
+    [199, "Ni mogoče najti datoteke: "],
+    [200, "Namestitev posodobitve..."],
+    [201, "Dodaj med priljubljene"],
+    [202, "Odstrani iz priljubljenih"],
+    [203, "Preverite, ali je mikrofon priključen v računalnik."],
+    [204, "Ni mogoče vzpostaviti internetne povezave"],
+    [205, "Vklopi govorni vnos (%s)"],
+    [206, "Izklopi govorni vnos"]
+  ],
+  "Windows": [{
+    "Controls": [
+      [1004, "Prevedi"]
+    ],
+    "Id": 1,
+    "Caption": "QTranslate"
+  }, {
+    "Controls": [
+      [10, [
+        [20, "Iskanje po slovarju za"],
+        [30, "Poslušaj izbrano besedilo"],
+        [40, "Kopiraj prevod v odložišče"],
+        [50, "Zamenjaj izbrano besedilo"]
+      ]]
+    ],
+    "Id": 6
+  }, {
+    "Controls": [],
+    "Strings": [
+      [10, "Ni najdenih rezultatov za '%s'."]
+    ],
+    "Id": 5,
+    "Caption": "Slovar"
+  }, {
+    "Controls": [
+      [1, "Vredu"],
+      [1160, "Shrani kot..."],
+      [1067, "Počisti"]
+    ],
+    "Id": 3,
+    "Caption": "Zgodovina"
+  }, {
+    "Controls": [
+      [1, "Vredu"],
+      [2, "Prekliči"],
+      [1049, "Uporabi"]
+    ],
+    "Id": 2,
+    "Caption": "Možnosti"
+  }, {
+    "Controls": [
+      [1045, "Zaženi ob zagonu Windows"],
+      [1070, "Jezik vmesnika:"],
+      [1075, "Ime pisave:"],
+      [1074, "Velikost besedila:"],
+      [1068, "Prvi jezik:"],
+      [1069, "Drugi jezik:"],
+      [1071, "Govorni vnos:"],
+      [1063, "Samodejno zaznaj jezike"],
+      [1046, "Splošno"],
+      [1064, "Zgodovina"],
+      [1122, "Omogoči zgodovino"],
+      [1124, "Izbriši zgodovino ob izhodu"],
+      [1123, "Razširi vnose"]
+    ],
+    "Id": 10,
+    "Caption": "Osnovno"
+  }, {
+    "Controls": [
+      [1049, "Povezava"],
+      [1084, "Pavza, sek:"],
+      [1033, "Samodejno zaznaj namestniškega strežnika"],
+      [1034, "Gostitelj"],
+      [1036, "Uporabniško ime"],
+      [1037, "Geslo"],
+      [1048, "Namestniški strežnik"],
+      [1035, "Vrata"],
+      [1135, [
+        [0, "Uporabi sistemske nastavitve namestniškega strežnika"],
+        [1, "Ni namestniškega strežnika"],
+        [2, "Ročno konfiguriraj namestniški strežnik"],
+        [3, "Samodejno zaznaj nastavitve namestniškega strežnika"]
+      ]]
+    ],
+    "Id": 11,
+    "Caption": "Internet"
+  }, {
+    "Controls": [
+      [1177, "Dodaj slovar..."],
+      [1180, "Odstrani slovar"]
+    ],
+    "Id": 12,
+    "Caption": "Storitve"
+  }, {
+    "Controls": [
+      [1099, "Označi/Odznači vse"]
+    ],
+    "Id": 13,
+    "Caption": "Jeziki"
+  }, {
+    "Controls": [
+      [1076, "Splošno"],
+      [1123, "Omogoči slog okna"],
+      [1169, "Tema:"],
+      [1158, "Omogoči smodejno velikost"],
+      [1160, "Omogoči smodejni položaj"],
+      [1159, "Aktiviraj, ko je odprto"],
+      [1161, "Pripni pri vlečenju"],
+      [1124, "Pojavno okno"],
+      [1092, "Barva ozadja:"],
+      [1091, "Barva besedila:"],
+      [1090, "Barva okvirja:"],
+      [1145, "Prosojnost (0 - 90):"],
+      [1146, "Debelina okvirja:"],
+      [1147, "Zakasnitev samodejnega skrivanja:"],
+      [1194, "sekund"],
+      [1137, "Ikone:"],
+      [1138, "Prikaži ikono odprtega slovarja"],
+      [1139, "Prikaži ikono za poslušanje izbranega besedila"],
+      [1140, "Prikaži ikono za kopiranje besedila v odložišče"],
+      [1141, "Prikaži ikono 'Zamenjaj izbrano besedilo'"]
+    ],
+    "Id": 14,
+    "Caption": "Videz"
+  }, {
+    "Controls": [
+      [1162, [
+        [0, "Omogočen za te programe:"],
+        [1, "Onemogočen za te programe:"]
+      ]],
+      [1101, "Dodaj"],
+      [1103, "Prilagodi"],
+      [1102, "Zbriši"],
+      [1113, "Omogoči pametno zaznavanje"]
+    ],
+    "Id": 15,
+    "Caption": "Izjeme"
+  }, {
+    "Controls": [
+      [1118, "Omogoči vroče tipke"],
+      [1165, [
+        [0, "Prikaži glavno okno"],
+        [1, "Prikaži pojavno okno"],
+        [2, "Prikaži okno slovarja"],
+        [3, "Prikaži okno zgodovine"],
+        [4, "Prikaži okno tipkovnice"],
+        [5, "Poslušaj izbrano besedilo"],
+        [6, "Kopiraj prevod v odložišče"],
+        [7, "Zamenjaj izbrano besedilo"],
+        [8, "Izberi način izbire z miško"],
+        [9, "Prevedi vsebino odložišča"],
+        [10, "Prevedi odložišče v glavnem oknu"],
+        [11, "Prevedi odložišče v pojavnem oknu"],
+        [12, "Slovar iz odložišča"],
+        [13, "Spremeni postavitev tipkovnice in izbrano besedilo"],
+        [14, "Poslušaj izbrani prevod besedila"],
+        [15, "Prepoznavanje besedila"],
+        [16, "Govorni vnos"]
+      ]]
+    ],
+    "Id": 16,
+    "Caption": "Vroče tipke"
+  }, {
+    "Controls": [
+      [1146, "Napredno"],
+      [1151, "Privzeti brskalnik:"],
+      [1147, "Kopiraj akcijo:"],
+      [1149, "Indikator postavitve tipkovnice:"],
+      [1157, "Želena domena:"],
+      [1154, "Omogoči prevod grafičnega uporabniškega vmesnika"],
+      [1159, "Omogoči počasnejše poslušanje istega besedila"],
+      [1160, "Odstrani prelome vrstic"],
+      [1186, "Način miške"],
+      [1155, "Omogoči način miške le kadar je pritisnjena tipka Ctrl"],
+      [1156, "Klik na ikono v programski vrstici preklopi na način miške"],
+      [1158, "API ključi"],
+      [1195, "OCR API ključ:"]
+    ],
+    "Id": 17,
+    "Caption": "Napredno"
+  }, {
+    "Controls": [
+      [1188, "Samodejno preveri obstoj posodobitev"],
+      [1190, "Preveri zdaj"],
+      [1191, "Namesti"]
+    ],
+    "Id": 18,
+    "Caption": "Posodobitve"
+  }],
+  "Menus": [{
+    "Items": [
+      [10, "Preveri črkovanje"],
+      [20, "Neposredno prevedi"],
+      [30, "Prevedi nazaj"],
+      [40, "Razširjeno"],
+      [50, "Preberi fonetično"],
+      [60, "Počisti vnos ob 'Povleci in spusti'"],
+      [61, "Samodejno počisti prevod"],
+      [62, "Ob izhodu shrani vsebino"],
+      [65, "Prikaži zgornje podokno"],
+      [70, "Prikaži srednje podokno"],
+      [80, "Prikaži podokno storitev"],
+      [81, "Ob pomanjšanju premakni v ikono programske vrstice"],
+      [82, "Ob zapiranju okna pomanjšaj v programsko vrstico "],
+      [85, "Ob zagonu"],
+      [86, "Prikaži okno"],
+      [87, "Pomanjšaj v programsko vrstico"],
+      [88, "Obnovi prejšnje stanje"],
+      [90, "Slovar"],
+      [100, "Zgodovina"],
+      [110, "Tipkovnica"],
+      [120, "Možnosti"],
+      [125, "Vizitka"],
+      [130, "Pomoč"],
+      [140, "Izhod"]
+    ],
+    "Id": 1
+  }, {
+    "Items": [
+      [10, "Razveljavi"],
+      [20, "Izreži"],
+      [30, "Izreži vse"],
+      [40, "Kopiraj"],
+      [50, "Kopiraj vse"],
+      [60, "Prilepi"],
+      [70, "Izberi vse"],
+      [75, "Prevedi"],
+      [80, "Poišči v slovarju"],
+      [90, "Poslušaj"]
+    ],
+    "Id": 2
+  }, {
+    "Items": [
+      [10, "Odpri"],
+      [15, "Kopiraj besedilo"],
+      [20, "Kopiraj prevod"],
+      [30, "Zbriši"],
+      [40, "Poslušaj"]
+    ],
+    "Id": 3
+  }, {
+    "Items": [
+      [10, "Ponastavi"],
+      [20, "Uredi..."],
+      [30, "Vedno zaznaj jezik"]
+    ],
+    "Id": 4
+  }, {
+    "Items": [
+      [5, "Prepoznavanje besedila"],
+      [10, "Slovar"],
+      [20, "Zgodovina"],
+      [30, "Tipkovnica"],
+      [36, "Omogoči vroče tipke"],
+      [40, "Način z miško"],
+      [50, "Omogočen"],
+      [60, "Prikaži ikono"],
+      [70, "Prikaži prevod"],
+      [71, "Prikaži prevod in branje"],
+      [80, "Možnosti"],
+      [90, "Vizitka"],
+      [100, "Izhod"]
+    ],
+    "Id": 5
+  }, {
+    "Items": [
+      [10, "Izberi vse"],
+      [20, "Kopiraj"],
+      [30, "Natisni..."],
+      [40, "Prevedi"],
+      [50, "Poišči"],
+      [60, "Poslušaj"]
+    ],
+    "Id": 6
+  }, {
+    "Items": [
+      [10, "Prikaži vso zgodovino"]
+    ],
+    "Id": 7
+  }, {
+    "Items": [
+      [10, "Prikaži informacijo"],
+      [20, "Odstrani slovar"]
+    ],
+    "Id": 8
+  }, {
+    "Items": [
+      [10, "Počisti zgodovino"],
+      [20, "Pokaži podokno storitev"],
+      [30, "Natančno poišči"],
+      [40, "Možnosti"]
+    ],
+    "Id": 9
+  }, {
+    "Items": [
+      [110, "Jezik optične prepoznave"],
+      [120, "Prevedi"],
+      [130, "Kopiraj sliko"],
+      [140, "Kopiraj besedilo"],
+      [150, "Shrani sliko"],
+      [160, "Uredi sliko"],
+      [170, "Izberi vse"],
+      [180, "Počisti izbor"],
+      [190, "Zapri"]
+    ],
+    "Id": 10
+  }]
+}

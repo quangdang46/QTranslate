@@ -1,0 +1,32 @@
+﻿Järjestelmälaajuiset pikanäppäimet (oletusarvot):
+Tupla Ctrl => Näytä pääikkuna (ja valitun tekstin käännös, jos sellainen ​​on)
+Ctrl+Q => Käännä valittu teksti ja näytä se ponnahdusikkunassa
+Ctrl+Shift+Q => Näytä sanakirja
+Ctrl+E => Kuuntele valittua tekstiä
+
+Pikanäppäimet pääikkunassa:
+Ctrl+Enter => Käännä teksti
+Ctrl+N => Tyhjennä nykyinen käännös
+Ctrl+D => Näytä sanasto
+Ctrl+Alt+1..9 => Näytä sanasto valitussa 1..9. - käännöspalvelussa
+Ctrl+H => Käännöshistoria
+Ctrl+K => Näytä virtuaalinäppäimistö
+Ctrl+Tab/Ctrl+Shift+Tab/Ctrl+1..9 => Siirry seuraavaan/edelliseen /1..9 käännöspalveluun
+Shift+Esc => Nollaa/vaihda kielipari automaattiseen tunnistukseen
+Ctrl+Shift+1..9 => Valitse kielipari
+Ctrl+I => Käänteinen käännössuunta
+Ctrl+Space => Näytä ehdotus-/automaattinen täydennysvalikko
+F1 => Näytä ohje
+Alt+Vasen nuoli => Siirry edelliseen käännökseen
+Alt+Oikea nuoli => Siirry seuraavaan käännökseen
+Ctrl+Up => Kopioi käännös tekstikenttään
+
+Hiirivalinnassa on kaksi tapaa kääntää:
+  1) Näytä kuvake (valitse teksti jostain ohjelmasta, jolloin ohjelmakuvake näkyy kohdistimen lähellä. Klikkaa kuvaketta ja ponnahdusikkunassa näkyy valitun tekstin käännös);
+  2) Näytä käännös (valitse teksti jostain ohjelmasta, jolloin ponnahdusikkunassa näkyy valitun tekstin käännös välittömästi)
+
+Toiminnot:
+  - Klikkaa hiiren vasemmalla näppäimellä ohjelmakuvaketta tehtäväpalkissa kytkeäksesi hiiren valintatilan päälle/pois (ks. edellä);
+  - Tuplaklikkaa hiiren vasemmalla näppäimellä ohjelmakuvaketta tehtäväpalkissa avataksesi pääikkunan;
+  - Kaksoisklikkaus ponnahsusikkunan otsikossa avaa pääikkunan nykyisellä käännöksellä;
+  - Klikkaa hiiren vasemmalla painikkeella palvelun nimeä ponnahdusikkunassa muuttaaksesi nykyistä palvelua, jolloin teksti käännetään uudelleen.
