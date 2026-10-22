@@ -81,9 +81,14 @@ band.
 
 **Gate:** the render-and-compare pipeline, with a number per screen.
 
-**State:** DONE for the main window, the Dictionary and eight of the
-nine Options pages. The History and the keyboard are in flight
-(`PROGRESS.md`).
+**State:** DONE. Every window the native has, the port has: the main
+window, the Dictionary, the History, the virtual keyboard, the popup,
+the tray menu and all nine Options pages, each one its own module.
+Twelve screens are rendered and compared with their native captures: the
+main window, the Dictionary, the History, the keyboard and eight Options
+pages. The Basics page is in the sidebar of every Options capture but
+has no capture of its own, and the tray menu is the OS's own menu, so
+there is nothing to compare.
 
 ## G7 -- Reliability
 
@@ -101,8 +106,10 @@ behaviour is in the right place.
 
 **Gate:** the ink diff per screen (`BASELINE_RESULTS.md`).
 
-**State:** the mean ink diff is **0.0198** over ten screens. The residual
-is ClearType phase and icon edges, not layout.
+**State:** the mean ink diff is **0.0037** over twelve screens. The
+residual is the ClearType sub-pixel phase, the icon edges, the OS's drop
+shadow in one capture and the native's own mouse pointer, not the
+layout.
 
 ## G9 -- Packaging
 
@@ -126,8 +133,9 @@ evidence.
 **Gate:** `tools/run_suites.py` exits 0, and every document's claims
 point at a run.
 
-**State:** the suite is green (133 suites, 0 failed). The final
-acceptance waits on the two blocked gates.
+**State:** the suite is green (134 suites, 0 failed). The final
+acceptance waits on the two blocked gates (see `BLOCKERS.md`); it needs
+a human, and so does the G9 screenshot review.
 
 ## The order the work was done in
 
@@ -140,3 +148,7 @@ acceptance waits on the two blocked gates.
    font, the link colour, the strip's colours).
 5. The defaults were corrected where the native's real settings file
    disagreed with the port's.
+6. The twelve windows were measured with the ink profile and corrected
+   on the offsets it gave, and the parts that are artwork (the theme's
+   list checkbox, the Appearance page's icon buttons) were recovered
+   from the captures.

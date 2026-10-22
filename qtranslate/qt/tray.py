@@ -16,9 +16,10 @@ from __future__ import annotations
 from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import QMenu, QSystemTrayIcon
 
-# The three mouse modes, in native's order.
-MOUSE_MODES = ("Show icon", "Translate in popup window",
-               "Translate in main window")
+# The three mouse modes, in native's order. The names are native's own
+# strings -- the English lang.json, ids 60/70/71 -- and the index is
+# native's General.MouseMode (DAT_005493F8).
+MOUSE_MODES = ("Show icon", "Show translation", "Show translation and read")
 
 
 class Tray:
@@ -82,9 +83,7 @@ class Tray:
         self.app.set_hotkeys_enabled(self._hotkeys_on)
 
     def _set_mouse_mode(self, mode):
-        self._mouse_mode = mode
-        for name, act in self._mode_actions.items():
-            act.setChecked(name == mode)
+        self.set_mouse_mode(mode)
         self.app.set_mouse_mode(mode)
 
     def _activated(self, reason):
@@ -107,3 +106,14 @@ class Tray:
     def set_hotkeys(self, on):
         self._hotkeys_on = bool(on)
         self.act_hotkeys.setChecked(self._hotkeys_on)
+
+    def set_mouse_mode(self, mode):
+        """Reflect the mode in the submenu.
+
+        It does NOT call the app back: the app calls this, so the
+        checkmarks follow the mode whoever changed it (the tray, the
+        hotkey, the config the last session left behind).
+        """
+        self._mouse_mode = mode
+        for name, act in self._mode_actions.items():
+            act.setChecked(name == mode)

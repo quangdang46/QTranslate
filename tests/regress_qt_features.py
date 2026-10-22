@@ -177,7 +177,163 @@ try:
         ck("the popup builds and takes text", False,
            "%s: %s" % (type(exc).__name__, exc))
 
-    # --- 7. the tray -----------------------------------------------------
+    # --- 7. the popup hotkey (Ctrl+Q) and the mouse mode (boi den) ------
+    # The popup hotkey: the clipboard's text is translated and shown in
+    # the popup, the panes and the history.
+    shown = {}
+    real_popup = sys.modules.get("qtranslate.qt.popup")
+    from qtranslate.qt import popup as popup_mod
+
+    class _Popup:
+        def __init__(self, app=None):
+            self.lbl_text = type("L", (), {"text": ""})()
+            self.lbl_pair = type("L", (), {"text": ""})()
+
+        def set_text(self, source, result, pair=""):
+            self.lbl_text.text = result
+            self.lbl_pair.text = pair
+
+        def show(self):
+            shown["popup"] = self.lbl_text.text
+
+    try:
+        popup_mod.PopupWindow = _Popup
+        app.win.src.setPlainText("old")
+        app._clipboard_text = lambda: "xin chào"
+        engine.translate = fake_translate
+        try:
+            app.hotkey_popup()
+        finally:
+            engine.translate = real_translate
+        ck("Ctrl+Q shows the translation in the popup",
+           shown.get("popup") == "Xin chào", str(shown))
+        ck("Ctrl+Q puts the source in the pane",
+           "xin chào" in app.win.src.toPlainText(), app.win.src.toPlainText()[:40])
+        ck("Ctrl+Q writes the history", len(app.history) >= 1)
+    finally:
+        popup_mod.PopupWindow = real_popup.PopupWindow
+
+    # The mouse mode: the hook is started when the mode is on and
+    # stopped when it is off, the mode is written to the config, and a
+    # selection click captures the text and translates it.
+    import qtranslate.mouse_capture as mc
+    import qtranslate.config as qcfg
+    import qtranslate.sendkeys as qsendkeys
+
+    calls = []
+    saved = {}
+    real_start, real_stop = mc.start, mc.stop
+    real_available = mc.available
+    real_cursor_text = mc.cursor_text
+    real_load, real_save = qcfg.load, qcfg.save
+    real_send = qsendkeys.send
+    mc.start = lambda on_select, **kw: calls.append(("start", on_select)) or 1
+    mc.stop = lambda: calls.append(("stop",))
+    mc.available = lambda: True
+    mc.cursor_text = lambda x, y: "text under the cursor"
+    qcfg.load = lambda *a, **k: {
+        "General": {"MouseMode": 2},
+        "Advanced": {"EnableGuiTranslation": True},
+    }
+    qcfg.save = lambda cfg, *a, **k: saved.update(cfg)
+    qsendkeys.send = lambda *a, **k: None
+    spoken = []
+    app._speak = lambda text: spoken.append(text)
+    try:
+        from qtranslate.qt.tray import MOUSE_MODES
+        ck("the mouse modes are native's own names",
+           MOUSE_MODES == ("Show icon", "Show translation",
+                           "Show translation and read"), str(MOUSE_MODES))
+        app.set_mouse_mode(MOUSE_MODES[1])
+        ck("the mouse mode starts the capture hook",
+           any(c[0] == "start" for c in calls), str(calls))
+        ck("the mouse mode is written to the config",
+           saved.get("General", {}).get("MouseMode") == 1, str(saved))
+        ck("the mouse mode's 'on' flag follows the mode",
+           saved.get("General", {}).get("MouseModeOn") is True, str(saved))
+        app.set_mouse_mode(MOUSE_MODES[0])
+        ck("the mouse mode 'off' stops the capture hook",
+           any(c[0] == "stop" for c in calls), str(calls))
+        ck("the mouse mode 'off' is written to the config",
+           saved.get("General", {}).get("MouseMode") == 0
+           and saved.get("General", {}).get("MouseModeOn") is False, str(saved))
+
+        # The gate: native's GUI-translation setting (DAT_005494e4) is
+        # closed, so the capture does nothing.
+        qcfg.load = lambda *a, **k: {"General": {"MouseMode": 2},
+                                     "Advanced": {"EnableGuiTranslation": False}}
+        ck("the GUI-translation setting gates the capture",
+           app._capture_selection(10, 20) == "",
+           app._capture_selection(10, 20))
+        qcfg.load = lambda *a, **k: {
+            "General": {"MouseMode": 2},
+            "Advanced": {"EnableGuiTranslation": True},
+        }
+
+        # Mode 1 ("Show translation"): the click copies the selection
+        # and the clipboard's text is translated.
+        app.set_mouse_mode(MOUSE_MODES[1])
+        app._clipboard_text = lambda: "text from the clipboard"
+        shown.clear()
+        popup_mod.PopupWindow = _Popup
+        try:
+            engine.translate = fake_translate
+            try:
+                app._mouse_work(10, 20)
+            finally:
+                engine.translate = real_translate
+        finally:
+            popup_mod.PopupWindow = real_popup.PopupWindow
+        ck("the selection click captures the clipboard's text",
+           "text from the clipboard" in app.win.src.toPlainText(),
+           app.win.src.toPlainText()[:40])
+        ck("the selection click shows the translation in the popup",
+           shown.get("popup") == "Xin chào", str(shown))
+
+        # Mode 2 ("Show translation and read"): the text under the
+        # cursor (OLEACC) is captured, and it is spoken as well.
+        app.set_mouse_mode(MOUSE_MODES[2])
+        shown.clear()
+        spoken.clear()
+        popup_mod.PopupWindow = _Popup
+        try:
+            engine.translate = fake_translate
+            try:
+                app._mouse_work(10, 20)
+            finally:
+                engine.translate = real_translate
+        finally:
+            popup_mod.PopupWindow = real_popup.PopupWindow
+        ck("the third mode captures the text under the cursor",
+           "text under the cursor" in app.win.src.toPlainText(),
+           app.win.src.toPlainText()[:40])
+        ck("the third mode speaks the selected text",
+           spoken == ["text under the cursor"], str(spoken))
+
+        # The hook's proc runs on a worker thread: the translation is
+        # handed over to the UI thread by the bridge, not shown there.
+        shown.clear()
+        import threading
+        engine.translate = fake_translate
+        try:
+            worker = threading.Thread(target=app._mouse_work, args=(10, 20))
+            worker.start()
+            worker.join()
+        finally:
+            engine.translate = real_translate
+        ck("the worker's result waits for the UI thread",
+           shown.get("popup") is None, str(shown))
+        app.qapp.processEvents()
+        ck("the popup shows the translation in the UI thread",
+           shown.get("popup") == "Xin chào", str(shown))
+    finally:
+        mc.start, mc.stop = real_start, real_stop
+        mc.available = real_available
+        mc.cursor_text = real_cursor_text
+        qcfg.load, qcfg.save = real_load, real_save
+        qsendkeys.send = real_send
+
+    # --- 8. the tray -----------------------------------------------------
     try:
         from qtranslate.qt.tray import Tray
         tray = Tray(app)

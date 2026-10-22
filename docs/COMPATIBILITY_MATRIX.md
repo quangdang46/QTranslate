@@ -4,8 +4,8 @@
 > The port now has a **PySide6 view** (`qtranslate/qt/`) beside the tkinter
 > one, on the same core. Its windows are drawn on the geometry measured off
 > native's own captures and compared with them pixel by pixel
-> (`tools/render_qt.py --compare`): the mean difference over ten screens is
-> **0.0189** of the pixels, measured as the TOTAL INK, which is the
+> (`tools/render_qt.py --compare`): the mean difference over twelve screens is
+> **0.0037** of the pixels, measured as the TOTAL INK, which is the
 > ClearType-invariant measure (the plain RGB difference counts the
 > sub-pixel fringes, and the spec says to ignore them).
 >
@@ -92,7 +92,7 @@ platforms it claims. Evidence column cites `file:line` where available.
 | Feature | Native evidence | Python today | Must keep | Platforms | Test | Status |
 |---|---|---|---|---|---|---|
 | Mode 3 clipboard capture | viewer `FUN_0043EBE0` | `app.py:3407` monitor | yes | Win+mac | copy→hotkey→translate | `ported` |
-| Mode 2 mouse (OLEACC) | `FUN_00404901` | `mouse_capture.cursor_text()` `app.py:3871` via `_translate_text` | yes (native core UX) | Win | OLEACC contract suite | `ported` |
+| Mode 2 mouse (OLEACC) | `FUN_00404901` | `mouse_capture.cursor_text()` via `_translate_text` (Tk) / `_capture_selection` (`qtranslate/qt/app.py:429`) | yes (native core UX) | Win | OLEACC contract suite + `tests/regress_qt_features.py` (the Qt mouse mode: hook, gate, capture, speak) | `ported` |
 | Mode 1 reuse-text | `FUN_004052E4` | partial | yes | Win+mac | — | `ported` |
 | SendInput synth (Ctrl+C) | `FUN_0043BD5C` | `keyboard.send` `app.py:3598` | yes | Win / mac perm | — | `ported` |
 | Replace-selection write-back | `FUN_0043BE56`, `NATIVE_ARCH.md:650` | `_replace` `app.py:3592` | yes | Win / mac perm | — | `ported` |

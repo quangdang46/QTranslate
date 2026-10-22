@@ -62,8 +62,10 @@ numbers.
 | Language packs (36 files) | `locale.py` | ported | `regress_locale*.py` |
 | OCR | `services/ocr.py` | ported (needs an API key) | `regress_ocr.py` |
 | Speech (SAPI) | `sapi.py` | ported (Windows) | `regress_sapi.py` |
-| Virtual keyboard | 2134 | ported (Tk), Qt pending | `regress_vk_*` |
-| Tray icon + menu | `FUN_00463xxx` | ported (Tk) | `regress_tray_menu.py` |
+| Virtual keyboard | 2134 | ported (Tk + Qt) | `regress_vk_*`, `regress_qt_features.py` |
+| Tray icon + menu | `FUN_00463xxx` | ported (Tk + Qt, native's own mouse-mode names) | `regress_tray_menu.py`, `regress_qt_features.py` |
+| Qt front end's mouse mode + Ctrl+Q | the English lang.json (ids 60/70/71), `DAT_005493F8` | ported | `regress_qt_features.py` (71 assertions: the hook, the gate, both capture paths, the read-aloud half) |
+| Qt front end's twelve windows | captures 2126, 2131-2141 | ported (mean ink diff 0.0037) | `render_qt.py --compare`, `BASELINE_RESULTS.md` |
 
 ## 4. The reverse engineering
 

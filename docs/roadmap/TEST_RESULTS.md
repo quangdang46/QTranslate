@@ -11,10 +11,10 @@ python -I tools/run_suites.py
 ```
 
 ```
-133 suites, 0 failed, 67.0s
+134 suites, 0 failed, 41.8s
 ```
 
-**133 suites, 0 failed.** The suite files are 135; two of them
+**134 suites, 0 failed.** The suite files are 136; two of them
 (`live_bass.py`, `live_providers.py`) hit real endpoints and are run
 separately, so the runner does not count them.
 
@@ -23,6 +23,19 @@ and asserts 96 behaviours, from the strip's service order to the
 history's structure to the hotkey codec. It is the suite that would
 catch a regression in the UI itself, and it is the one that found the
 strip's two-dot short names.
+
+`regress_qt_features.py` is the Qt front end's behaviour suite: it
+builds the PySide6 app with the engine stubbed and asserts 71 things,
+offline. That translating fills the result pane and writes the
+history, that New clears the source, that Swap exchanges the language
+pair, that all nine Options pages build with the native's client
+sizes, that the sidebar opens another page and closes the one it came
+from, that the History, Dictionary and Keyboard windows open, that the
+popup takes its text, that the tray builds its menu, that the hotkeys
+install, that every recovered asset loads, that the app's font is
+Tahoma at 11px, and that the OCR region grab returns PNG bytes. The
+pixels have their own measure (`tools/render_qt.py`); this suite pins
+the behaviour.
 
 ## 2. The pixel comparison
 
@@ -38,22 +51,40 @@ window, cropped to the client area. The method and the numbers are in
 
 | Screen | ink diff |
 |---|---|
+| exceptions | 0.0009 |
+| services | 0.0009 |
+| kbd | 0.0010 |
+| languages | 0.0018 |
+| updates | 0.0022 |
 | dict | 0.0028 |
-| updates | 0.0060 |
-| internet | 0.0088 |
-| services | 0.0135 |
-| main | 0.0144 |
-| exceptions | 0.0212 |
-| appearance | 0.0263 |
-| advanced | 0.0309 |
-| languages | 0.0352 |
-| hotkeys | 0.0391 |
-| **mean** | **0.0198** |
+| internet | 0.0039 |
+| appearance | 0.0045 |
+| hist | 0.0046 |
+| hotkeys | 0.0047 |
+| advanced | 0.0065 |
+| main | 0.0107 |
+| **mean** | **0.0037** |
 
-The residual is the ClearType sub-pixel phase and the icon edges, not
-the layout: the rectangles, the borders, the colours and the positions
-are verifiable with `tools/ui_measure.py` and are shown to be right in
-the diff images in `docs/review/ui_compare/`.
+The residual is the ClearType sub-pixel phase and the last pixel of
+the window borders, the icon edges, the OS's drop shadow tail in the
+Hotkeys capture and the native's own pointer (which is in all twelve
+captures and accounts for about a twentieth of the residual), not the
+layout. The rectangles, the borders, the colours and the positions are
+verifiable and are shown to be right in the diff images in
+`docs/review/ui_compare/`.
+
+Three tools do the verifying, and each answers a different question:
+
+- `tools/inkalign.py`: WHERE the render's ink sits against the
+  native's, as the ink sum in each column and row, which ClearType
+  cannot fool. It prints the offset that best aligns the two and how
+  much matches there. This is the tool the corrections were made on.
+- `tools/rows.py`: the text rows of a capture and a render side by
+  side, as (first, last) bands with the dy and dx of each, so a page's
+  coordinates are corrected in one pass instead of one row at a time.
+- `tools/hotspots.py`: the remaining difference as a character map,
+  cell by cell, so the next fix is aimed at the biggest patch instead
+  of the first thing that catches the eye.
 
 ## 3. The live provider suite
 

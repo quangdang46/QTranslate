@@ -107,6 +107,8 @@ def main():
             elif kind == "popup":
                 from qtranslate.qt.popup import PopupWindow
                 window = PopupWindow(app)
+                window.set_text("hello", "Xin chào",
+                                "English -> Vietnamese")
             elif kind == "tray":
                 # The tray is a QSystemTrayIcon; what the picture shows
                 # is its MENU, which is what the native's capture shows

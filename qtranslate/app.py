@@ -1359,11 +1359,16 @@ def _translate_text(app, text):
         app.push_hist(svc, text[:120], res.text[:200])
     except Exception:
         pass
-    # native mode 2 = popup + read aloud; the read-aloud half needs a provider
-    # TTS sink we do not have, so only the popup is emitted here.
+    # native mode 2 = popup + read aloud. The popup is shown and the
+    # SELECTED text is spoken (the port's TTS sink: the online mp3
+    # first, the offline SAPI voice when that fails).
     try:
         app.root.after(0, lambda: show_popup(text[:300], res.text, svc, tgt,
                                              res.source_language_code or src))
+    except Exception:
+        pass
+    try:
+        speak(text, res.source_language_code or src)
     except Exception:
         pass
 

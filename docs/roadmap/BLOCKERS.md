@@ -24,7 +24,7 @@ not make that call.
 
 **What unblocks it.** A human opens the three images and writes the
 verdict. The pixel measurement this project CAN do is already done: the
-mean ink difference is 0.0194 over ten screens, and the per-screen
+mean ink difference is 0.0037 over twelve screens, and the per-screen
 numbers are in `BASELINE_RESULTS.md`.
 
 ## B2 -- G9's waiver needs a human to write it

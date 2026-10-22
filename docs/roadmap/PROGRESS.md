@@ -3,6 +3,54 @@
 The running log. Newest first. Every entry names what changed and what
 was run to show it.
 
+## 2026-10-22 -- the mouse mode and Ctrl+Q in the Qt front end
+
+Native's mouse mode is the one that lets you BÔI ĐEN: select text in
+another program, click, and the selection is captured and translated.
+The Qt front end only had a LABEL for it -- the hook was never started,
+so "bôi đen" did nothing. Ctrl+Q (the popup hotkey) DID work: it
+translates the clipboard's text and shows the popup.
+
+The wiring: `qtranslate/qt/app.py` now starts and stops the Win32
+low-level mouse hook (`qtranslate/mouse_capture`) with the mode, and a
+selection click captures the text and translates it through the same
+`show_translation` step Ctrl+Q uses (the panes, the history, the popup).
+The work runs on a worker thread and the result crosses to the UI thread
+through a queued signal (`_MouseBridge`), because the hook's proc has to
+return fast and the widgets belong to the UI thread.
+
+Three things were wrong on the first pass, and each one was evidence:
+
+- The mode names were the port's invention ("Translate in popup
+  window", "Translate in main window"). The native's OWN strings are in
+  the shipped English lang.json, ids 60/70/71: "Show icon", "Show
+  translation", "Show translation and read". Corrected, with the source
+  in the comment.
+- The config write was missing: native keeps the mode in
+  General.MouseMode (DAT_005493F8) and General.MouseModeOn, and the Tk
+  front end writes both. The Qt front end wrote neither, so a restart
+  lost the mode. Now it writes both, and the session restore reads them
+  back -- the two front ends and the core share one state.
+- The gate was half of native's. Native's order is EnableGuiTranslation
+  (DAT_005494e4) -> EnableMouseModeOnCtrl -> exclusions -> the mode-2
+  OLEACC capture -> the clipboard fallback. The port had folded
+  `mouse_capture.available()` INTO the gate's try block, so a missing
+  hook looked like a closed gate. Now the gate is its own function,
+  `_mouse_gate_ok()`, in native's order.
+
+Native's third mode speaks the selected text, and the Tk port had the
+same half missing (its comment said "we do not have a TTS sink" -- but
+the port HAS one: `player.play_text`, online mp3 first, offline SAPI
+when that fails). Fixed in both: the mode's selection is now spoken
+through the TTS chain in the Qt front end (`_speak`) and the Tk one
+(`speak`).
+
+The suite: `tests/regress_qt_features.py` now has 71 assertions (was
+55), covering Ctrl+Q, the hook start/stop, the mode's config write, the
+gate, both capture paths, the read-aloud half, and the worker-to-UI
+handoff. `tools/render_qt.py --compare` is unchanged (the pixels did not
+move): mean 0.0037 over twelve screens.
+
 ## 2026-10-22 -- the PySide6 parity programme, part two
 
 **The font was wrong, and it was measurable.** The spec said Segoe UI

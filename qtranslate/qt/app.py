@@ -14,13 +14,35 @@ from __future__ import annotations
 import os
 import sys
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QObject, Qt, Signal, Slot
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QApplication, QMenu, QMessageBox
 
 from qtranslate_style import apply_style
 
 from .main_window import MainWindow, default_source_text
+
+
+class _MouseBridge(QObject):
+    """Hands the mouse hook's work over to the UI thread.
+
+    The Win32 low-level mouse hook's callback runs on the thread that
+    installed it, and the port installs it on a worker so the proc
+    returns fast. The panes and the popup belong to the UI thread, so
+    the translation is handed over by a QUEUED signal: the slot below
+    runs in the thread that owns this object.
+    """
+
+    translated = Signal(str, str)
+
+    def __init__(self, app):
+        super().__init__()
+        self.app = app
+        self.translated.connect(self.show)
+
+    @Slot(str, str)
+    def show(self, text, result):
+        self.app.show_translation(text, result)
 
 
 class QtApp:
@@ -43,6 +65,8 @@ class QtApp:
         self.hotkeys_on = True
         self.hotkeys = []
         self.mouse_mode = "Show icon"
+        self._mouse_hook = False
+        self._bridge = _MouseBridge(self)
 
     # ------------------------------------------------------------- the core
     @staticmethod
@@ -72,6 +96,16 @@ class QtApp:
             table = list(SUPPORTED_LANGS)
             self.target = table[general.get("LanguageTo", 57)]
             self.source = table[general.get("LanguageFrom", 1)]
+        except Exception:
+            pass
+        # The mouse mode the last session left on (native's
+        # General.MouseMode, DAT_005493F8). The capture hook itself is
+        # started by main(), when the app is fully alive.
+        try:
+            from .tray import MOUSE_MODES
+            idx = int(general.get("MouseMode", 0) or 0)
+            if 0 <= idx < len(MOUSE_MODES):
+                self.mouse_mode = MOUSE_MODES[idx]
         except Exception:
             pass
 
@@ -286,8 +320,176 @@ class QtApp:
         except Exception:
             pass
 
+    # ------------------------------------------------------- the mouse mode
     def set_mouse_mode(self, mode):
+        """The mouse mode, and the hook that goes with it.
+
+        Native's mouse mode is the one that lets you BOI DEN: select
+        text in another program, click, and the selection is captured
+        and translated. The three modes carry native's own names (the
+        English lang.json, ids 60/70/71) and their index is native's
+        General.MouseMode (DAT_005493F8) -- the key the Tk front end
+        writes too, so the core and both front ends share one state.
+
+        Mode 0 ("Show icon") is native's "an icon appears next to the
+        cursor and you click it". The port cannot draw that icon (the
+        native capture chain has no SetCursor of its own -- checklist
+        row C10), so mode 0 is the port's off state, the same way the
+        Tk front end treats it.
+        """
         self.mouse_mode = mode
+        self._persist_mouse_mode()
+        self._sync_mouse_hook()
+        if self.tray is not None:
+            try:
+                self.tray.set_mouse_mode(mode)
+            except Exception:
+                pass
+
+    def _mouse_mode_index(self) -> int:
+        """The mode's number: native's General.MouseMode (DAT_005493F8)."""
+        try:
+            from .tray import MOUSE_MODES
+            return MOUSE_MODES.index(self.mouse_mode)
+        except Exception:
+            return 0
+
+    def _persist_mouse_mode(self):
+        """Write the mode to the config, the way native's tray does.
+
+        Native keeps the mode in General.MouseMode and the "is it on"
+        flag in General.MouseModeOn. The Tk front end writes the same
+        two keys (tests/regress_mouse_capture.py pins that), so the two
+        front ends and the core read one state.
+        """
+        idx = self._mouse_mode_index()
+        try:
+            config, _engine, _registry = self._core()
+            cfg = config.load()
+            general = cfg.setdefault("General", {})
+            general["MouseMode"] = idx
+            general["MouseModeOn"] = idx != 0
+            config.save(cfg)
+        except Exception:
+            pass
+
+    def _mouse_mode_off(self) -> bool:
+        """True when the mode is native's "Show icon" one, which the
+        port cannot draw, so it is the port's off state."""
+        return self._mouse_mode_index() == 0
+
+    def _sync_mouse_hook(self):
+        """Start or stop the Win32 low-level mouse hook, the way the Tk
+        front end does: live unless the mode is off."""
+        try:
+            from qtranslate import mouse_capture as mc
+        except Exception:
+            return
+        try:
+            if self._mouse_mode_off():
+                if self._mouse_hook:
+                    mc.stop()
+                    self._mouse_hook = False
+                return
+            if not self._mouse_hook:
+                mc.start(self._mouse_selected)
+                self._mouse_hook = True
+        except Exception:
+            self._mouse_hook = False
+
+    def _mouse_selected(self, x, y):
+        """The hook's callback: a selection click arrived at (x, y).
+
+        The hook proc must return fast, so the capture and the
+        translation run on a worker thread and the result comes back
+        through the bridge.
+        """
+        import threading
+        threading.Thread(target=self._mouse_work, args=(x, y),
+                         daemon=True).start()
+
+    def _mouse_work(self, x, y):
+        """Capture the text under the cursor and translate it.
+
+        It runs on the worker's thread: the hook's proc has to return
+        fast. The panes and the popup belong to the UI thread, so the
+        result comes back through the bridge.
+        """
+        try:
+            text = self._capture_selection(x, y)
+            if not text:
+                return
+            res = self._translate(text)
+            self._bridge.translated.emit(text, res.text)
+            if self._mouse_mode_index() == 2:
+                # native's third mode, "Show translation and read": the
+                # same as the second one, plus speaking the selected
+                # text aloud.
+                self._speak(text)
+        except Exception:
+            pass
+
+    def _mouse_gate_ok(self) -> bool:
+        """Native's gates for the mouse capture, in native's order.
+
+        The order is the one the Advanced-page audit recorded:
+        Advanced.EnableGuiTranslation (DAT_005494e4) ->
+        Advanced.EnableMouseModeOnCtrl (Ctrl held) -> the excluded
+        applications. A setting that cannot be read is not a gate.
+        """
+        try:
+            from qtranslate import mouse_capture as mc
+            if not mc.available():
+                return False
+        except Exception:
+            pass
+        try:
+            from qtranslate import config as cfg
+            adv = (cfg.load() or {}).get("Advanced", {}) or {}
+        except Exception:
+            adv = {}
+        if not bool(adv.get("EnableGuiTranslation", True)):
+            return False
+        if bool(adv.get("EnableMouseModeOnCtrl", False)):
+            try:
+                import keyboard
+                if not keyboard.is_pressed("ctrl"):
+                    return False
+            except Exception:
+                pass
+        try:
+            from qtranslate import exclusions
+            if exclusions.foreground_excluded():
+                return False
+        except Exception:
+            pass
+        return True
+
+    def _capture_selection(self, x, y) -> str:
+        """The text of the selection the click ended.
+
+        Native's third mode reads the text under the CURSOR (OLEACC);
+        the other modes copy the selection with Ctrl+C and read the
+        clipboard. The gates are native's (see _mouse_gate_ok).
+        """
+        if not self._mouse_gate_ok():
+            return ""
+        if self._mouse_mode_index() == 2:
+            try:
+                from qtranslate import mouse_capture as mc
+                text = (mc.cursor_text(x, y) or "").strip()
+            except Exception:
+                text = ""
+            if text:
+                return text
+        try:
+            from qtranslate import sendkeys
+            sendkeys.send("ctrl+c")
+            import time
+            time.sleep(0.15)
+        except Exception:
+            pass
+        return self._clipboard_text()
 
     def quit(self):
         self.qapp.quit()
@@ -307,6 +509,24 @@ class QtApp:
                                self.source)
         return res
 
+    def show_translation(self, text, result):
+        """Show one translation: the panes, the history and the popup.
+
+        This is the step the popup hotkey and the mouse mode share, and
+        it runs in the UI thread.
+        """
+        if self.win is not None:
+            self.win.src.setPlainText(text[:2000])
+            self.win.render(result)
+        self.push_hist(self.service, text[:120], result[:200])
+        try:
+            from .popup import PopupWindow
+            self._popup = PopupWindow(self)
+            self._popup.set_text(text[:300], result)
+            self._popup.show()
+        except Exception:
+            pass
+
     def hotkey_popup(self):
         """Native's Ctrl+Q: translate what is on the clipboard and show
         it in the popup."""
@@ -314,16 +534,7 @@ class QtApp:
         if not text:
             return
         res = self._translate(text)
-        self.win.src.setPlainText(text[:2000])
-        self.win.render(res.text)
-        self.push_hist(self.service, text[:120], res.text[:200])
-        try:
-            from .popup import PopupWindow
-            self._popup = PopupWindow(self)
-            self._popup.set_text(text[:300], res.text)
-            self._popup.show()
-        except Exception:
-            pass
+        self.show_translation(text, res.text)
 
     def hotkey_translate_clipboard(self):
         text = self._clipboard_text()
@@ -527,6 +738,9 @@ def main(argv=None):
         # A machine with no system tray must not stop the app from
         # starting; the main window is the whole of the UI then.
         app.tray = None
+    # The mouse-mode capture hook: native's mouse selection. It is
+    # live only when the mode that needs it is on.
+    app._sync_mouse_hook()
     # The global hotkeys, the ones the settings file binds. A machine
     # without the `keyboard` package simply has none.
     try:
