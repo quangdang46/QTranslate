@@ -18,6 +18,7 @@ from PySide6.QtCore import QObject, Qt, Signal, Slot
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QApplication, QMenu, QMessageBox
 
+from qtranslate.platforms import keyboard_module
 from qtranslate_style import apply_style
 
 from .main_window import MainWindow, default_source_text
@@ -377,16 +378,14 @@ class QtApp:
         """The tray's checkable item: the hotkeys are UNREGISTERED and
         the setting is written, the way native's does it."""
         self.hotkeys_on = bool(on)
-        try:
-            import keyboard
+        keyboard = keyboard_module()
+        if keyboard is not None:
             for _name, _combo in list(self.hotkeys):
                 try:
                     keyboard.remove_hotkey(_combo)
                 except Exception:
                     pass
-            self.hotkeys = []
-        except Exception:
-            pass
+        self.hotkeys = []
         if self.hotkeys_on:
             try:
                 from .hotkeys import install
@@ -532,12 +531,13 @@ class QtApp:
         if not bool(adv.get("EnableGuiTranslation", True)):
             return False
         if bool(adv.get("EnableMouseModeOnCtrl", False)):
-            try:
-                import keyboard
-                if not keyboard.is_pressed("ctrl"):
-                    return False
-            except Exception:
-                pass
+            keyboard = keyboard_module()
+            if keyboard is not None:
+                try:
+                    if not keyboard.is_pressed("ctrl"):
+                        return False
+                except Exception:
+                    pass
         try:
             from qtranslate import exclusions
             if exclusions.foreground_excluded():
@@ -632,11 +632,12 @@ class QtApp:
         if not text:
             return
         res = self._translate(text)
-        try:
-            import keyboard
-            keyboard.write(res.text)
-        except Exception:
-            pass
+        keyboard = keyboard_module()
+        if keyboard is not None:
+            try:
+                keyboard.write(res.text)
+            except Exception:
+                pass
         self.push_hist(self.service, text[:120], res.text[:200])
 
     def hotkey_copy_translation(self):

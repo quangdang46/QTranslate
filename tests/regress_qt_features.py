@@ -412,24 +412,37 @@ try:
     # The registration itself must wrap the handler: the callback that
     # `keyboard` keeps is not the raw app method but one that goes
     # through _on_ui.
+    #
+    # Where the platform has no global-hotkey hook there is nothing to
+    # register, and the `keyboard` package must NOT be imported at all:
+    # on macOS importing it aborts the process (SIGABRT inside
+    # CoreText) when the Accessibility permission is missing, so a
+    # "try: import keyboard" does not raise there -- it kills the app.
+    from qtranslate import platforms
     from qtranslate.qt import hotkeys as _hk
-    import keyboard as _kbd
-    registered_cb = []
-    real_add = _kbd.add_hotkey
+    if platforms.current().capability("hotkey") == platforms.Capability.AVAILABLE:
+        import keyboard as _kbd
+        registered_cb = []
+        real_add = _kbd.add_hotkey
 
-    def _fake_add(combo, cb, *a, **kw):
-        registered_cb.append((combo, cb))
-        return real_add(combo, cb, *a, **kw)
-    _kbd.add_hotkey = _fake_add
-    try:
-        _hk.install(app)
-    finally:
-        _kbd.add_hotkey = real_add
-    ck("the hotkeys are registered", bool(registered_cb), str(registered_cb))
-    ck("the registered callback is not the raw app method",
-       all(cb.__code__.co_name != "hotkey_popup"
-           for _c, cb in registered_cb),
-       str([cb.__code__.co_name for _c, cb in registered_cb]))
+        def _fake_add(combo, cb, *a, **kw):
+            registered_cb.append((combo, cb))
+            return real_add(combo, cb, *a, **kw)
+        _kbd.add_hotkey = _fake_add
+        try:
+            _hk.install(app)
+        finally:
+            _kbd.add_hotkey = real_add
+        ck("the hotkeys are registered", bool(registered_cb), str(registered_cb))
+        ck("the registered callback is not the raw app method",
+           all(cb.__code__.co_name != "hotkey_popup"
+               for _c, cb in registered_cb),
+           str([cb.__code__.co_name for _c, cb in registered_cb]))
+    else:
+        ck("the hotkey package is not imported where it cannot work",
+           platforms.keyboard_module() is None)
+        ck("install() registers nothing where there is no hotkey hook",
+           _hk.install(app) == [])
 
     # --- 9. the assets ---------------------------------------------------
     try:

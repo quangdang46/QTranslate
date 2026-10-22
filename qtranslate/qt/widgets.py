@@ -17,10 +17,11 @@ apart.
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QEvent, QObject, Qt
 from PySide6.QtGui import QColor, QFont, QFontMetrics
-from PySide6.QtWidgets import (QCheckBox, QComboBox, QFrame, QLabel,
-                               QLineEdit, QPushButton, QWidget)
+from PySide6.QtWidgets import (QAbstractButton, QAbstractItemView, QCheckBox,
+                               QComboBox, QFrame, QLabel, QLineEdit, QListView,
+                               QPushButton, QWidget)
 
 from qtranslate_style import (ACCENT, BORDER, BTN_SHADOW, COLSEP, DIM,
                               FACE, POPUP_BG, POPUP_BORDER, POPUP_ICON,
@@ -29,6 +30,26 @@ from qtranslate_style import (ACCENT, BORDER, BTN_SHADOW, COLSEP, DIM,
 from . import icons
 
 LINK = "#0066cc"
+
+# How tall a combo's drop-down list may get.
+#
+# MEASURED off the native's own dialog resources: DLG129's two language
+# combos (ids 1001 and 1002) are 120 DIALOG UNITS tall, and for a
+# CBS_DROPDOWNLIST the template's cy IS the height of the dropped-down
+# list. The dialog's font is "MS Shell Dlg" 8pt, whose average
+# character height (plus leading) is 15px, so one vertical DLU is
+# 15/8 px and the list is 120 * 15/8 = 225px. (The tool that reads the
+# resources is ``tools/dlg_parse.py``; the conversion is the Windows
+# one, ``px_y = du_y * avg_char_h / 8``.)
+#
+# It matters because the Qt combo draws its drop-down as tall as the
+# LIST, not as tall as the list may be: with the 74 languages of the
+# native's own table the drop-down came out 1266px tall -- taller than
+# the screen, with the languages past the fold reachable only by
+# scrolling with the wheel and no scroll bar to show that they were
+# there. The native's list is 225px and scrolls.
+DROPDOWN_H = 225
+
 # The section headings of the Services page, MEASURED off the native
 # capture 2136: the text is #003399 and the rule that runs beside it is
 # #b2c1e0. The headings are Tahoma 9pt (12px), not the 8pt of the body.
@@ -98,8 +119,74 @@ def button(parent, l, t, w, text, h=21, enabled=True, shadow=False):
     return put(parent, b, l, t, w, h)
 
 
-def combo(parent, l, t, w, text, h=20, enabled=True, values=None):
+class _ComboView(QListView):
+    """The list inside a combo's drop-down.
+
+    NOT the default ``QComboBoxListView``. With the app's stylesheet the
+    default one paints the CURRENT item with the background the combo's
+    own rule gives it -- and that rule carries a GRADIENT (the Win32
+    button face), which Qt cannot use for an item, so the current
+    language came out as a black bar with black text on it: the row the
+    user is standing on was unreadable. A plain ``QListView`` draws the
+    current item with the palette's Highlight (the accent) and
+    HighlightedText (white), which is what the native's Win32 drop-down
+    shows.
+    """
+
+
+class _HideScrollers(QObject):
+    """Keeps the drop-down's up/down buttons out of sight.
+
+    The Qt container draws those two buttons when the style emulates a
+    popup-menu combo -- Fusion does -- and shows them again whenever the
+    list scrolls. The native's Win32 drop-down has a scroll bar and no
+    buttons, so every show is turned into a hide.
+    """
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Type.Show:
+            obj.hide()
+            return True
+        return False
+
+
+def combo(parent, l, t, w, text, h=20, enabled=True, values=None,
+          dropdown_h=DROPDOWN_H):
+    """A combo box, with the drop-down the native's has.
+
+    The drop-down is the part the user sees when the list opens, and it
+    had three faults, all of them measured rather than guessed (see
+    ``tests/regress_qt_combo_popup.py``):
+
+    * it was as tall as the whole list -- 1266px for the 74 languages
+      of the native's own table -- so it ran off the screen; it is now
+      bounded by the native's own drop-down height,
+    * it had no scroll bar, so the languages past the fold could not be
+      reached, and
+    * its current row was painted black on black.
+
+    ``dropdown_h`` is that bound in pixels; a list shorter than the
+    bound still opens at its own height.
+    """
     c = QComboBox()
+    view = _ComboView()
+    c.setView(view)
+    # AFTER setView(): the container forces the vertical scroll bar off
+    # (it emulates the old-style combo, which has no scroll bar), and a
+    # Win32 drop-down scrolls.
+    view.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+    view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+    view.setUniformItemSizes(True)
+    view.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+    container = c.view().parentWidget()
+    container.setMaximumHeight(dropdown_h)
+    hider = _HideScrollers()
+    hider.setParent(container)
+    for child in container.children():
+        # The container's other children are the two up/down scroller
+        # buttons it draws when the style emulates a popup-menu combo.
+        if child is not view:
+            child.installEventFilter(hider)
     for v in (values if values is not None else [text]):
         c.addItem(v)
     if text and values is None:

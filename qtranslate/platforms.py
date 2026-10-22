@@ -200,3 +200,27 @@ def current():
     except Exception:
         pass
     return UnavailableAdapter()
+
+
+def keyboard_module():
+    """The ``keyboard`` package, or ``None`` where it cannot work.
+
+    Importing ``keyboard`` on macOS does not raise: it ABORTS the
+    process (SIGABRT inside CoreText) when the Accessibility permission
+    has not been granted, so a caller that imports it "inside a try"
+    does not get an exception -- it gets a dead process. The platform
+    adapter already reports the global-hotkey hook as unavailable off
+    Windows, so that is what decides, and nothing imports the package
+    where it cannot run.
+
+    The package is a pure-python wrapper over the Win32 keyboard hook
+    on Windows and over the macOS event tap on macOS; the mouse hook
+    and the clipboard sequence counter are the other Win32-only pieces.
+    """
+    if current().capability("hotkey") != Capability.AVAILABLE:
+        return None
+    try:
+        import keyboard
+    except Exception:
+        return None
+    return keyboard

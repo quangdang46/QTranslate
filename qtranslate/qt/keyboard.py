@@ -25,6 +25,7 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QComboBox
 
+from qtranslate.platforms import keyboard_module
 from qtranslate_style import BTN_HL, BTN_SHADE, BTN_TOP
 
 from .widgets import Base, button, put
@@ -249,8 +250,9 @@ class KeyboardWindow(Base):
         # the arrows move the caret, BkSp deletes, and so on. The names
         # are the ones the `keyboard` package uses.
         name = SPECIAL.get((text, x))
-        try:
-            import keyboard
-            keyboard.press(name if name else text)
-        except Exception:
-            pass
+        keyboard = keyboard_module()
+        if keyboard is not None:
+            try:
+                keyboard.press(name if name else text)
+            except Exception:
+                pass

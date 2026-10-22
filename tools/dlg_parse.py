@@ -169,8 +169,26 @@ def _dialogs(blob: bytes):
     return out, raw, rva_base
 
 
+def parse_dialog(exe_path: str, did: int):
+    """One dialog out of a recovered executable -> (header, controls).
+
+    The public door into the walker: the tests that pin a number the
+    native's own resource carries read it through here, so the number
+    is re-derived from the artifact instead of copied out of a document.
+    """
+    with open(exe_path, "rb") as fh:
+        blob = fh.read()
+    dialogs, raw, rva_base = _dialogs(blob)
+    if did not in dialogs:
+        raise KeyError("no dialog %d in %s" % (did, exe_path))
+    rva, _size = dialogs[did]
+    cur = _Cursor(blob[raw:raw + 0x13600], rva_base)
+    return parse_template(cur, rva - rva_base)
+
+
 def _class_or_atom(cur, o):
     """A control's class: 'atom:0x0084' for a predefined class, or a name."""
+
     if cur.u16(o) == 0xFFFF:
         atom = cur.u16(o + 2)
         return CLASS_ATOMS.get(atom, "atom:0x%04X" % atom), o + 4

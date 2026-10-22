@@ -16,6 +16,8 @@ two front ends cannot disagree about which key a binding is.
 """
 from __future__ import annotations
 
+from qtranslate.platforms import keyboard_module as _keyboard
+
 # The actions the settings file can bind, and what each one does. The
 # value is the name of the QtApp method.
 ACTIONS = {
@@ -47,12 +49,13 @@ def install(app) -> list:
     is not registered at all -- native does not register it either, and
     an unbound key that fires is worse than one that does nothing.
     """
-    try:
-        import keyboard
-    except Exception:
+    keyboard = _keyboard()
+    if keyboard is None:
         # `keyboard` needs a desktop session (and admin rights on
         # Windows); without it there are no global hotkeys, which is
-        # the same degradation native's own code path has.
+        # the same degradation native's own code path has. Off Windows
+        # it is not even imported: on macOS the import aborts the
+        # process when the Accessibility permission is missing.
         return []
 
     from qtranslate import config
