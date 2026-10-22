@@ -291,7 +291,19 @@ try:
 except Exception as e:
     ck("stop() never raises", False, repr(e))
 
-ck_eq("cursor_text returns '' off Windows", M.cursor_text(0, 0), "")
+if M.available():
+    # On Windows the call is LIVE: it asks OLEACC for the accessible name
+    # under the pointer, and (0, 0) is the top-left corner of the screen,
+    # where whatever window happens to be maximized lives. So the result
+    # is that window's name -- "Chrome Legacy Window" on this host -- and
+    # asserting "" here was asserting a property of the desktop, not of
+    # the code. The sibling suite (regress_mouse_capture.py) already
+    # branches on available() for exactly this reason.
+    _live_text = M.cursor_text(0, 0)
+    ck_eq("cursor_text returns a string on Windows (live OLEACC)",
+          isinstance(_live_text, str), True)
+else:
+    ck_eq("cursor_text returns '' off Windows", M.cursor_text(0, 0), "")
 
 
 if fail:

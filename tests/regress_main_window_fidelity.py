@@ -146,10 +146,24 @@ ck("the main window has no empty suggestion band",
 src = (getattr(app, "_panes", {}) or {}).get("src")
 ck("the source pane is reachable", src is not None)
 if src is not None:
+    # The root is WITHDRAWN (so the suite never puts a window on the
+    # user's desktop), and a widget inside an unmapped toplevel is itself
+    # unmapped -- so `winfo_height()` reports 1 for every child,
+    # whatever the code did. The requested height is the value the pane
+    # will occupy once the window is shown, and for a frame whose
+    # propagation is switched off it IS the allocated height.
     ck("the source pane is native's height",
-       src.winfo_height() == _src_pane_px(),
-       f"{src.winfo_height()}px, native's is {_src_pane_px()}px "
+       src.winfo_reqheight() == _src_pane_px(),
+       f"{src.winfo_reqheight()}px, native's is {_src_pane_px()}px "
        f"(10.5 lines of the app's font)")
+    # ...and it is the REQUESTED height only because the frame does not
+    # take the size of its children. With propagation on, the Text's own
+    # request would decide the pane's height and the check above would
+    # pass for the wrong reason.
+    ck("the source pane does not take its children's height",
+       not src.pack_propagate(),
+       "pack_propagate is on: the pane's height is the Text's, not "
+       "native's 10.5 lines")
 
 aux = (getattr(app, "_panes", {}) or {}).get("aux")
 ck("the third pane (1018) exists", aux is not None)

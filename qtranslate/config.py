@@ -199,6 +199,82 @@ def format_hotkey(code: int) -> str:
     return " + ".join(parts)
 
 
+def default_config() -> dict:
+    """The settings a fresh install starts from.
+
+    Native's own file has 20 sections (NATIVE_ARCH.md, "File layout (from
+    a real install, 20 sections)"), and the first-run wizard
+    (``FUN_00419DA6``) writes exactly that shape. The port has no wizard,
+    so this is the file a fresh install gets instead -- the same sections
+    with the same defaults, so every ``cfg.get("Section", {})`` in the app
+    finds the section it expects.
+
+    The values are the module's own ``DEFAULT_*`` constants, so there is
+    one source of truth for each default.
+    """
+    return {
+        "Application": {
+            "OptionsPageIndex": 0,
+        },
+        "Exceptions": {
+            "Disabled": [], "Enabled": [], "DisabledMode": True,
+        },
+        "Contents": {
+            "EditSource": "", "EditTranslation": "", "EditBackTranslation": "",
+        },
+        "Advanced": dict(DEFAULT_ADVANCED),
+        "Appearance": dict(DEFAULT_APPEARANCE),
+        "Internet": dict(DEFAULT_INTERNET),
+        "HotKeys": {
+            "EnableHotKeys": True,
+            "HotKeyMainWindow": 343,
+            "HotKeyPopupWindow": 593,
+        },
+        "OfflineDictionaries": [],
+        "Ocr": {
+            "OcrApiKey": "", "OcrLanguage": 0,
+        },
+        "Update": {
+            "CheckForUpdates": False,
+        },
+        "DisabledServices": [],
+        "Proxy": dict(DEFAULT_PROXY),
+        "DictionariesOrder": list(DEFAULT_DICTIONARIES_ORDER),
+        "DisabledLanguages": [],
+        "DisabledDictionaries": [],
+        "Dictionary": {
+            "LanguageDictionary": 17,
+            "DictionaryExactSearch": False,
+            "DictionaryZoom": 100,
+        },
+        "LanguagePairs": [[57, 17], [17, 57]],
+        "General": {
+            "LocaleFoderName": "English",
+            "EnableHistory": True,
+            "ClearHistoryOnExit": True,
+            "ExpandHistoryItems": True,
+            "MainWindowShowOnLoad": True,
+            "MainWindowStartupAction": 0,
+            "MinimizeToTrayOnClose": False,
+            "MinimizeToTrayOnMinimize": False,
+            "ShowTopPane": True,
+            "ShowMiddlePane": True,
+            "ShowServicesPane": True,
+            "FontName": "",
+            "TextSize": 9,
+        },
+        "ServicesOrder": list(DEFAULT_SERVICES_ORDER),
+        "AutoDetection": {
+            # The three keys FUN_0045869F reads, at +0x188/+0x18C/+0x190
+            # (RE_COVERAGE_CHECKLIST.md, row M21). The values are indices
+            # into the shared SupportedLanguages table: 57 = vi, 17 = en.
+            "LanguageFirst": 57,
+            "LanguageSecond": 17,
+            "LanguageSpeechRecognition": 57,
+        },
+    }
+
+
 def load(path: str | None = None) -> dict:
     """Read the settings file.
 
@@ -207,11 +283,35 @@ def load(path: str | None = None) -> dict:
     defined, so a caller that points ``DEFAULT_PATH`` somewhere else --
     the tests do, and so does the pane toggle -- would still read the
     original file.
+
+    **A missing file is not an error.** It is the state of a fresh
+    install, and native reaches it on every first run. The port used to
+    raise ``FileNotFoundError`` here, and that broke the app in a way
+    nothing else showed: the app persists a setting from ~38 places, and
+    each one reads the file first and writes it back, so on a machine
+    with no ``Options.json`` yet EVERY write raised on the read and the
+    setting was discarded -- the app could not remember anything, and
+    the failure was invisible because each write sat inside a ``try``
+    that swallowed it. So a missing file now yields the defaults, and a
+    corrupt one is moved aside and also yields the defaults (the caller
+    is then free to write a good file over it).
     """
     if path is None:
         path = DEFAULT_PATH
-    with open(path, encoding="utf-8-sig") as f:
-        return json.load(f)
+    try:
+        with open(path, encoding="utf-8-sig") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return default_config()
+    except (OSError, ValueError):
+        # A corrupt file must not take the app down, and must not be
+        # silently overwritten either: it is moved aside first, so the
+        # user's old settings are still there to look at.
+        try:
+            os.replace(path, path + ".corrupt")
+        except Exception:
+            pass
+        return default_config()
 
 
 def save(cfg: dict, path: str | None = None) -> None:

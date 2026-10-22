@@ -128,32 +128,61 @@ def _src_pane_px():
     return int(round(SRC_PANE_LINES * pitch))
 
 
-# The bundled native icons, cached for the life of the process. A
-# PhotoImage that goes out of scope is freed by Tk, and a button whose
-# image was freed draws NOTHING -- an empty box.
-_ICON_CACHE = {}
-
-
-def _bundle_icon(name, folder="ui_icons"):
+# The bundled native icons, cached per Tk INTERPRETER. A PhotoImage that
+# goes out of scope is freed by Tk, and a button whose image was freed
+# draws NOTHING -- an empty box.
+#
+# The cache belongs to the interpreter, not to the process, because a
+# PhotoImage belongs to the interpreter that created it: Tk frees every
+# image when that interpreter is destroyed, so an image cached for
+# interpreter #1 is DEAD in interpreter #2. A process-global cache
+# therefore handed the second window a freed image, and Tk raised
+# `image "pyimage16" doesn't exist` while building it -- which is how a
+# second App in one process (a test, or a relaunch that reuses the
+# interpreter) failed to draw at all.
+#
+# The cache hangs off the interpreter's TOPLEVEL widget, so it is
+# collected with the window it belongs to and can never outlive the
+# images it holds.
+def _bundle_icon(name, folder="ui_icons", master=None):
     """A bundled native icon (``qtranslate/assets/<folder>/``) or None.
 
     ``ui_icons`` holds the EXE's own RT_ICON groups (the microphone, the
     headphone, the nav arrows, the stars); ``service_icons`` holds the
     per-service logos recovered from the installer payload.
+
+    ``master`` is the widget the image will be drawn on. It decides which
+    interpreter the image belongs to, so it must be the same interpreter
+    as the widget that will use the image.
     """
+    if master is None:
+        master = getattr(tk, "_default_root", None)
+    if master is None:
+        return None
+    try:
+        root = master.winfo_toplevel()
+    except Exception:
+        root = master
+    cache = getattr(root, "_qt_icon_cache", None)
+    if cache is None:
+        cache = {}
+        try:
+            root._qt_icon_cache = cache
+        except Exception:
+            pass
     key = folder + "/" + name
-    if key in _ICON_CACHE:
-        return _ICON_CACHE[key]
+    if key in cache:
+        return cache[key]
     photo = None
     try:
         import os as _os
         _path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)),
                               "assets", folder, name + ".png")
         if _os.path.exists(_path):
-            photo = tk.PhotoImage(file=_path)
+            photo = tk.PhotoImage(master=root, file=_path)
     except Exception:
         photo = None
-    _ICON_CACHE[key] = photo
+    cache[key] = photo
     return photo
 
 
@@ -235,8 +264,8 @@ class HistoryView:
         # `insert(image=...)` is garbage-collected and the image
         # disappears from the tree.
         _imgs = []
-        _star_on = _bundle_icon("star")
-        _star_off = _bundle_icon("star_off")
+        _star_on = _bundle_icon("star", master=w)
+        _star_off = _bundle_icon("star_off", master=w)
         # The service icons are named after the service DIRECTORY
         # (Papago is Naver's translator), as on the Services page.
         _icon_alias = {"papago": "naver"}
@@ -249,7 +278,7 @@ class HistoryView:
 
         def _svc_icon(svc):
             img = _bundle_icon(_icon_alias.get(svc, str(svc)),
-                               "service_icons")
+                               "service_icons", master=w)
             if img is None:
                 return ""
             if img not in _imgs:
@@ -445,8 +474,8 @@ class HistoryView:
         tk.Button(frm, text=_Cw(3, 1160, "Save as..."),
                   command=self.app.on_export_history).pack(side="left",
                                                            padx=4)
-        _fav_on = _bundle_icon("star")
-        _fav_off = _bundle_icon("star_off")
+        _fav_on = _bundle_icon("star", master=w)
+        _fav_off = _bundle_icon("star_off", master=w)
         _fav_btn = tk.Button(frm, image=(_fav_on or ""), width=15, height=15,
                              relief="flat", bd=0, highlightthickness=0,
                              bg=_COLORS["back"], command=toggle_fav)
@@ -891,7 +920,20 @@ class DictionaryView:
         for _sid in _dorder:
             _name = _disp.get(_sid, "id:%s" % _sid)
             _cell = tk.Frame(_strip, bg=_COLORS["back"])
-            _cell.pack(side="left", padx=1)
+            _cell.pack(side="left")
+            # Native's strip is a row of 42-pixel cells separated by a 1px
+            # divider, and the icon sits FOUR pixels inside the cell's
+            # left edge. Measured off the capture 2132: the dividers are
+            # the full-height dark columns at x = 87, 129, 171, 213, 255,
+            # 297, 339, 381, 423 and the 16-pixel icons at x = 175, 217,
+            # 259, 301, 343 -- a pitch of exactly 42, and four pixels
+            # between a divider and the icon that follows it. The port
+            # drew a plain frame per cell with a 1px gap, which put the
+            # cells 40 pixels apart and lost the dividers entirely.
+            #
+            # 1 (divider) + 3 (gap) + 16 (icon) + 22 (label) = 42.
+            _div = tk.Frame(_cell, bg="#7e7e7e", width=1)
+            _div.pack(side="left", fill="y")
             _icon = None
             _stem = _DICT_ICON_FILES.get(_name, "")
             if _stem:
@@ -900,7 +942,7 @@ class DictionaryView:
                         _os.path.abspath(__file__)), "assets", "dict_icons",
                         _stem + ".png")
                     if _os.path.exists(_p):
-                        _ph = tk.PhotoImage(file=_p)
+                        _ph = tk.PhotoImage(master=w, file=_p)
                         _imgs.append(_ph)
                         _icon = _ph
                 except Exception:
@@ -914,7 +956,8 @@ class DictionaryView:
                 _b = tk.Button(_cell, width=16, height=16, relief="flat",
                                bd=0, highlightthickness=0,
                                bg=_COLORS["back"])
-            _b.pack(side="left")
+            # The 3px gap between the divider and the icon.
+            _b.pack(side="left", padx=(3, 0))
             _cv = tk.Canvas(_cell, width=22, height=16, bg=_COLORS["back"],
                             highlightthickness=0, bd=0)
             _cv.create_text(1, 8, text=_name[:1] + "...", anchor="w",
@@ -1491,13 +1534,41 @@ class OptionsDialog:
                 pass
             w.destroy()
 
-        # DLG 154's button row: OK / Cancel / Apply in a full-width
-        # strip along the BOTTOM, right-aligned (x 267 / 321 / 375 of a
-        # 429 DU dialog). The port packed it after the nav and the body,
-        # so the body had already taken the width and the row was
-        # pushed off the right-hand edge of the window.
+        # --- the SHELL, measured off the native captures -------------------
+        #
+        # Every number below is measured from the native Options window
+        # (docs/review/native_screens/2140.png and 2141.png, both 646x389)
+        # with a pixel scan, not estimated, and is a CLIENT coordinate --
+        # the native's title bar is 26 pixels tall, so its client area
+        # starts at y = 26 and the measurements below have that offset
+        # removed:
+        #
+        #   * the nav list is a SUNKEN FRAME whose border columns are 4
+        #     and 145, with a horizontal line at client y = 3 (the image
+        #     row 29) and one at client y = 326 (the image row 352);
+        #   * the page body starts at client x = 152 -- the group box's
+        #     own left edge is the column 152 -- and ends at x = 635;
+        #   * the OK / Cancel / Apply row's top edge is the image row
+        #     358, i.e. client y = 332.
+        #
+        # The port drew the list at x = 10 with 8px of padding around
+        # it, which pushed the body to x = 162 and left every group 10
+        # pixels to the right of where native draws it.
+        #
+        # The nav list is a Listbox, and a Listbox draws its own sunken
+        # border, so it needs no extra frame: `place` puts it exactly
+        # where the measurement says.
+        _SHELL = {
+            "list_x": 4, "list_w": 141, "list_y": 3, "list_h": 323,
+            "body_x": 152, "body_w": 483, "body_y": 3,
+            "btn_y": 332, "btn_h": 25,
+        }
+        # DLG 154's button row: OK / Cancel / Apply in a strip along the
+        # BOTTOM, right-aligned. The port packed the row after the nav
+        # and the body, so the body had already taken the width and the
+        # row was pushed off the right-hand edge of the window.
         frm = tk.Frame(w, bg=_COLORS["back"])
-        frm.pack(side="bottom", fill="x", pady=(0, 8))
+        frm.pack(side="bottom", fill="x")
         # Packed right-to-left, so the LAST one packed is the leftmost:
         # DLG154's order is OK (x 267), Cancel (321), Apply (375).
         tk.Button(frm, text="Apply",
@@ -1506,11 +1577,13 @@ class OptionsDialog:
                   command=_cancel).pack(side="right", padx=4)
         tk.Button(frm, text="OK",
                   command=w.destroy).pack(side="right", padx=4)
-        # DLG 154's nav list (1078) is 96 DU wide == 168 px; 14
-        # characters was 128 px, which left the page too narrow.
-        left = tk.Listbox(w, width=22, height=20, bg=_COLORS["back"],
-                          fg=_COLORS["text"])
-        left.pack(side="left", fill="y", padx=8, pady=8)
+        # The nav list: 141 px wide, 323 tall, at (4, 29).
+        left = tk.Listbox(w, width=20, height=20, bg=_COLORS["back"],
+                          fg=_COLORS["text"], borderwidth=1,
+                          highlightthickness=0, relief="sunken",
+                          activestyle="none")
+        left.place(x=_SHELL["list_x"], y=_SHELL["list_y"],
+                   width=_SHELL["list_w"], height=_SHELL["list_h"])
         # Page order = Windows Ids 10-18, labels localized via _W.
         # _PAGE_IDS maps listbox index.
         #
@@ -1519,12 +1592,11 @@ class OptionsDialog:
         #   Basics, Hotkeys, Internet, Services, Languages, Appearance,
         #   Exceptions, Advanced, Updates
         # -- Hotkeys is SECOND, not seventh. Measured off the native
-        # capture (docs/review/native_screens/2135.png, whose body is the
-        # Internet page and whose third nav row is the selected one); the
-        # id -> name mapping is the locale pack's (English lang.json:
-        # 10=Basics, 11=Internet, 12=Services, 13=Languages,
-        # 14=Appearance, 15=Exceptions, 16=Hotkeys, 17=Advanced,
-        # 18=Updates).
+        # capture (docs/review/native_screens/2140.png, whose eighth nav
+        # row is the selected one); the id -> name mapping is the locale
+        # pack's (English lang.json: 10=Basics, 11=Internet, 12=Services,
+        # 13=Languages, 14=Appearance, 15=Exceptions, 16=Hotkeys,
+        # 17=Advanced, 18=Updates).
         _PAGES = [("Basics", 10), ("Hotkeys", 16), ("Internet", 11),
                   ("Services", 12), ("Languages", 13), ("Appearance", 14),
                   ("Exceptions", 15), ("Advanced", 17), ("Updates", 18)]
@@ -1533,7 +1605,9 @@ class OptionsDialog:
         for p, wid in _PAGES:
             left.insert("end", _W(wid, p))
         body = tk.Frame(w, bg=_COLORS["back"])
-        body.pack(side="left", fill="both", expand=True, padx=8, pady=8)
+        body.place(x=_SHELL["body_x"], y=_SHELL["body_y"],
+                   width=_SHELL["body_w"],
+                   height=_SHELL["list_h"])
 
         def _combo_items(page, cid, default):
             """A combo's ITEMS from the language pack.
@@ -1554,47 +1628,176 @@ class OptionsDialog:
                 return _out
             return [str(_raw)]
 
-        def _group(parent, page, cid, default):
-            """A native GROUP BOX as a LabelFrame.
+        # Native's ComboBoxes on the Advanced page are 175 px wide and
+        # their right edge is x = 629 -- i.e. 6 px inside the group's
+        # right edge at 635 (measured off the capture 2140: the sunken
+        # border columns are 455 and 629). A ttk.Combobox's width is in
+        # CHARACTERS, so the pixel width is what has to be requested;
+        # at the dialog's own font that is 25 characters.
+        _ADV_COMBO_CHARS = 25
+
+        def _labelframe(parent, page, cid, default, height=None):
+            """A native GROUP BOX.
 
             Native's groups are DLGITEMTEMPLATEEX `Button(AUTORADIOBUTTON)`
             -- a Win32 group box: a sunken frame with the caption inset
             into its top edge. The Tk equivalent is a LabelFrame, and the
             port's bold Label was the wrong control (it drew a caption
             with no frame at all).
+
+            The port's LabelFrame then drew the caption in BOLD, which is
+            not what native draws either. Measured on the native capture
+            2140:
+
+              * the frame is a full rectangle -- the columns 152 and 635
+                run the group's whole height, and the top and bottom
+                edges are horizontal lines across the group's width;
+              * the caption sits IN the top edge, at the group's left
+                plus 9 px, in the SAME regular weight as the rest of the
+                dialog's text (native's "Advanced" is not bold);
+              * the group is 483 px wide, i.e. the full body width.
             """
             lf = tk.LabelFrame(parent, text=_Cw(page, cid, default),
                                bg=_COLORS["back"], fg=_COLORS["text"],
-                               font=("Segoe UI", 9, "bold"),
+                               font=("MS Shell Dlg", 8),
                                highlightthickness=1, borderwidth=1)
             lf.pack(fill="x", pady=(6, 2))
+            if height:
+                lf.pack_propagate(False)
+                lf.configure(height=height)
             return lf
 
+        def _groupbox(parent, page, cid, default, height=None):
+            """A native GROUP BOX, drawn the way native draws it.
+
+            Native's group box is a Win32 `BS_GROUPBOX`: a 1-pixel
+            sunken frame in #7e7e7e around a WHITE interior, with the
+            caption sitting ON the top edge (the edge is broken where the
+            caption is). Measured on the capture 2140:
+
+              * the frame's left edge is the column 152, its right edge
+                the column 635, its top edge the row 35 and its bottom
+                edge the row 214 -- all of them a single #7e7e7e pixel;
+              * the interior just inside the frame is WHITE, not the
+                dialog's #f0f0f0 face;
+              * the caption starts 9 pixels inside the frame's left edge
+                and sits ON the top edge, in the regular dialog font;
+              * the first content row starts 11 pixels below the frame's
+                top edge, so it clears the caption.
+
+            A Tk LabelFrame cannot do this: it paints a border the theme
+            chooses, keeps the parent's face colour inside, and puts the
+            caption in a title strip. So the frame is drawn by hand --
+            four 1-pixel edges plus a caption label that overlaps the
+            top edge -- which is also what the native pixel comparison
+            needs.
+
+            The CONTENT goes into an inner frame, whose background is the
+            group's white interior; the row and checkbox helpers take
+            their background from their parent, so they come out white
+            too.
+            """
+            caption = _Cw(page, cid, default)
+            # The box's own face is WHITE: the strip above the content
+            # (where the caption sits) must not show the frame colour.
+            box = tk.Frame(parent, bg="#ffffff")
+            box.pack(fill="x", pady=(6, 2), padx=(0, 0))
+            if height:
+                box.pack_propagate(False)
+                box.configure(height=height)
+            inner = tk.Frame(box, bg="#ffffff")
+            inner.pack(fill="both", expand=True, pady=(11, 2))
+            edges = []
+
+            def _draw_edges():
+                for e in edges:
+                    e.destroy()
+                edges.clear()
+                w = box.winfo_width()
+                h = box.winfo_height()
+                if w <= 1 or h <= 1:
+                    return
+                for ex, ey, ew, eh in ((0, 0, w, 1), (0, h - 1, w, 1),
+                                       (0, 0, 1, h), (w - 1, 0, 1, h)):
+                    f = tk.Frame(box, bg="#7e7e7e")
+                    f.place(x=ex, y=ey, width=ew, height=eh)
+                    f.lift()
+                    edges.append(f)
+                # The caption breaks the top edge: a white patch the
+                # caption's width, then the caption itself.
+                lab = tk.Label(box, text=caption, bg="#ffffff",
+                               fg=_COLORS["text"], font=("MS Shell Dlg", 8))
+                lab.place(x=9, y=-6)
+                lab.lift()
+                edges.append(lab)
+                # the rest of the top edge, after the caption
+                gap = tk.Frame(box, bg="#ffffff")
+                gap.place(x=9 + lab.winfo_reqwidth() + 2, y=0,
+                          width=max(1, w - 11 - lab.winfo_reqwidth()),
+                          height=1)
+                gap.lift()
+                edges.append(gap)
+                # ...and the part BEFORE the caption, which the caption
+                # overlaps: the top edge is BROKEN where the caption
+                # sits, exactly as native draws it.
+                lead = tk.Frame(box, bg="#ffffff")
+                lead.place(x=0, y=0, width=9, height=1)
+                lead.lift()
+                edges.append(lead)
+
+            box.after_idle(_draw_edges)
+            box.bind("<Configure>", lambda _e: _draw_edges())
+            return inner
+
+        def _group(parent, page, cid, default, height=None):
+            """The native group box (see `_groupbox` for the drawing)."""
+            return _groupbox(parent, page, cid, default, height=height)
+
         def _row(parent, page, cid, default, value="", width=22,
-                 values=None, label_width=22):
+                 values=None, label_width=22, combo_width=None):
             """One label + control row, the shape native uses throughout:
-            a fixed-width Static on the left, the control on the right."""
-            r = tk.Frame(parent, bg=_COLORS["back"])
+            a fixed-width Static on the left, the control on the right.
+
+            Native's controls are RIGHT-ALIGNED: on the Advanced page the
+            four ComboBoxes all end at x = 629, with their left edge at
+            x = 455 (measured off 2140). The port packed the control
+            immediately after the label, so its combos sat in the middle
+            of the page and their width followed the label's.
+            """
+            # The background comes from the PARENT, so a row inside a
+            # group box takes the group's white interior and a row on
+            # the page face takes the face colour.
+            _bg = parent.cget("bg")
+            r = tk.Frame(parent, bg=_bg)
             r.pack(fill="x", pady=1)
             tk.Label(r, text=_Cw(page, cid, default), width=label_width,
-                     anchor="w", bg=_COLORS["back"],
+                     anchor="w", bg=_bg,
                      fg=_COLORS["text"]).pack(side="left")
             if values is not None:
                 w = ttk.Combobox(r, values=values, width=width,
                                  state="readonly")
-                w.pack(side="left")
+                if combo_width:
+                    w.pack(side="right")
+                    w.configure(width=combo_width)
+                else:
+                    w.pack(side="left")
                 if value:
                     w.set(str(value))
             else:
                 w = tk.Entry(r, width=width)
-                w.pack(side="left")
+                if combo_width:
+                    w.pack(side="right")
+                    w.configure(width=combo_width)
+                else:
+                    w.pack(side="left")
                 w.insert(0, "" if value is None else str(value))
             return w
 
         def _check(parent, page, cid, default, var, command=None):
+            _bg = parent.cget("bg")
             tk.Checkbutton(parent, text=_Cw(page, cid, default),
-                           variable=var, bg=_COLORS["back"],
-                           fg=_COLORS["text"], selectcolor=_COLORS["back"],
+                           variable=var, bg=_bg,
+                           fg=_COLORS["text"], selectcolor=_bg,
                            command=command).pack(anchor="w")
 
         def show_basics():
@@ -1903,7 +2106,7 @@ class OptionsDialog:
                     _os.path.abspath(__file__)), "assets", "ui_icons",
                     "headphone.png")
                 if _os.path.exists(_p):
-                    _doc_icon = tk.PhotoImage(file=_p)
+                    _doc_icon = tk.PhotoImage(master=body, file=_p)
                     _keep.append(_doc_icon)
             except Exception:
                 _doc_icon = ""
@@ -2199,7 +2402,7 @@ class OptionsDialog:
                         "service_icons", _name + ".png")
                     if not _os.path.exists(_p):
                         return ""
-                    _ph = tk.PhotoImage(file=_p)
+                    _ph = tk.PhotoImage(master=body, file=_p)
                     _imgs.append(_ph)
                     return _ph
                 except Exception:
@@ -2862,7 +3065,8 @@ class OptionsDialog:
                 else:
                     _shown = _cur if _cur in vals else vals[0]
                 _w = _row(adv, 17, cid, "", value=_shown, width=18,
-                          values=vals, label_width=20)
+                          values=vals, label_width=20,
+                          combo_width=_ADV_COMBO_CHARS)
 
                 def _pick(e=None, k=key, w=_w, v=vals, ix=indexed):
                     if ix:
@@ -3675,6 +3879,13 @@ class MainWindow:
         ``qtranslate/assets/ui_icons/`` — the same 16x16 bitmaps the native
         main window draws. The result is cached on the app so the
         PhotoImage is not rebuilt per button.
+
+        The PhotoImage is created against the app's OWN root: a
+        PhotoImage belongs to the interpreter that made it, and Tk frees
+        every image of an interpreter when it is destroyed. Building the
+        image on the default root while drawing it on a second App's
+        window handed Tk an image it had already deleted, and it raised
+        `image "pyimage16" doesn't exist` while building the window.
         """
         cache = getattr(self.app, "_ui_icons", None)
         if cache is None:
@@ -3688,7 +3899,7 @@ class MainWindow:
             path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 "assets", "ui_icons", name + ".png")
             if os.path.exists(path):
-                photo = tk.PhotoImage(file=path)
+                photo = tk.PhotoImage(master=self.app.root, file=path)
                 if (photo.width() != SVC_ICON_PX
                         or photo.height() != SVC_ICON_PX):
                     photo = photo.subsample(
@@ -3726,7 +3937,7 @@ class MainWindow:
                                     "microsoft.png")
         try:
             if os.path.exists(bundled):
-                photo = tk.PhotoImage(file=bundled)
+                photo = tk.PhotoImage(master=self.app.root, file=bundled)
                 if photo.width() != SVC_ICON_PX or photo.height() != SVC_ICON_PX:
                     photo = photo.subsample(
                         max(1, photo.width() // SVC_ICON_PX),
@@ -3754,7 +3965,7 @@ class MainWindow:
                                                     Image.LANCZOS)
                     photo = ImageTk.PhotoImage(im)
                 except Exception:
-                    photo = tk.PhotoImage(file=ico)
+                    photo = tk.PhotoImage(master=self.app.root, file=ico)
                     w, h = photo.width(), photo.height()
                     if w > 24 or h > 24:
                         photo = photo.subsample(max(1, w // SVC_ICON_PX),

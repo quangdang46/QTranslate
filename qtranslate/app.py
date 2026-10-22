@@ -27,6 +27,7 @@ Requires: pip install keyboard pyperclip
   python -I qtranslate/app.py [service] [target_lang] [theme]
   (or: python -I start_app.py ...)
 """
+import os
 import sys
 import threading
 import tkinter as tk
@@ -1689,6 +1690,27 @@ def _register_native_hotkeys(app) -> list:
     return bound
 
 
+def _write_default_options_if_missing():
+    """Write the default Options.json on a fresh install.
+
+    Native's first run shows a setup wizard and writes the file
+    (``FUN_00419DA6``). The port has no wizard, so it writes the same
+    20-section shape straight away -- otherwise the file only ever
+    appears as a side effect of the user changing a setting, and the
+    settings the app has already read are nowhere to be found.
+
+    An existing file is left exactly as it is: this is a first-run
+    seed, not a migration.
+    """
+    try:
+        from qtranslate import config as _C
+        if os.path.exists(_C.DEFAULT_PATH):
+            return
+        _C.save(_C.default_config())
+    except Exception:
+        pass
+
+
 def _seed_service_options():
     """Seed the JS-runtime Options store (common.Options) from
     Options.json: Advanced.PreferredDomain + locale LanguageCode.
@@ -1924,6 +1946,7 @@ def main():
     # graph the real startup uses and nothing else.
     if "--selftest" in sys.argv[1:]:
         return _frozen_selftest()
+    _write_default_options_if_missing()
     _seed_service_options()
     # User extensions (D16): load from the per-user folder, fail-open, and
     # commit the winners into the live dispatch table so a provider/override
