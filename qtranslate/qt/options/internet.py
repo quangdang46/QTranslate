@@ -12,7 +12,7 @@ class InternetPage(OptionsBase):
 
     def build(self):
         group(self, 152, 35, 484, 45, "Connection")
-        label(self, 157, 59, "Timeout, sec:")
+        label(self, 158, 59, "Timeout, sec:")
         combo(self, 455, 50, 175, "10")
         group(self, 152, 91, 484, 101, "Proxy")
         combo(self, 157, 105, 470, "Use system proxy settings")

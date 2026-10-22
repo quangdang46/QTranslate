@@ -16,7 +16,7 @@ class AdvancedPage(OptionsBase):
                          (80, "Copy action:", "Ctrl + C"),
                          (104, "Keyboard layout indicator:", "None"),
                          (128, "Preferred domain:", "com")]:
-            label(self, 157, cy, t)
+            label(self, 158, cy, t)
             combo(self, 455, cy - 10, 175, v)
         check(self, 160, 154, "Enable GUI translation")
         check(self, 160, 177, "Enable listening to the same text at a slower speed", True)
@@ -25,7 +25,7 @@ class AdvancedPage(OptionsBase):
         check(self, 160, 244, "Enable mouse mode only when Ctrl is pressed")
         check(self, 160, 268, "Click on system tray icon switches mouse mode", True)
         group(self, 152, 295, 484, 55, "API keys")
-        label(self, 157, 315, "OCR API key:")
+        label(self, 158, 315, "OCR API key:")
         field(self, 387, 304, 243, 22)
-        label(self, 157, 338, "Register here for free OCR API key",
+        label(self, 158, 338, "Register here for free OCR API key",
               color=LINK, underline=True)

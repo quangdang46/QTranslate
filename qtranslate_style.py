@@ -99,13 +99,18 @@ QLineEdit:disabled {{ background: {FACE}; color: {DIM}; border-color: {DIM}; }}
 QListWidget::item {{ padding: 0 2px; }}
 QListWidget::item:selected {{ background: {ACCENT}; color: #ffffff; }}
 QHeaderView::section {{ background: {WINDOW}; border: none; border-right: 1px solid {COLSEP}; padding: 0 6px; }}
-QCheckBox::indicator {{ width: 13px; height: 13px; border: 1px solid {BORDER};
+QCheckBox::indicator {{ width: 12px; height: 12px; border: 1px solid {BORDER};
   background: qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 {CB_TOP},stop:1 {CB_BOT}); }}
 QCheckBox::indicator:checked {{ image: url({tick_k}); }}
 QCheckBox::indicator:disabled {{ border-color: {DIM}; }}
 /* checkboxes INSIDE list views (Services, Languages) are blue with a white tick */
 QListView::indicator {{ width: 13px; height: 13px; border: 1px solid {BORDER}; background: {WINDOW}; }}
 QListView::indicator:checked {{ background: {CHECK}; border: 1px solid {CHECK}; image: url({tick_w}); }}
+/* The port draws the Services and Languages checklists as QCheckBox widgets
+   with the "blue" property set rather than as a QListView, so the rule
+   that makes them blue has to name the property. */
+QCheckBox[blue="true"]::indicator {{ width: 13px; height: 13px; border: 1px solid {BORDER}; background: {WINDOW}; }}
+QCheckBox[blue="true"]::indicator:checked {{ background: {CHECK}; border: 1px solid {CHECK}; image: url({tick_w}); }}
 QGroupBox {{ border: none; margin-top: 7px; }}
 QGroupBox::title {{ subcontrol-origin: margin; subcontrol-position: top left; left: 9px; padding: 0 2px; background: {FACE}; }}
 QScrollBar:vertical {{ background: {FACE}; width: 14px; margin: 0; }}
@@ -140,22 +145,34 @@ class EtchedGroupBox(QGroupBox):
     QSS cannot draw the white offset, so everything is painted here (children stay normal widgets).
 
     MEASURED off the native Options capture 2140: the frame's top line is on
-    the widget's own top edge, and the title's text is centred on that line
-    (its baseline sits a few pixels BELOW the line, so the letters straddle
-    it). The title's background clears the frame line -- and the white
-    offset under it -- for the width of the text plus 2px on each side.
+    the widget's own top edge (y=35 for the Advanced group, whose border
+    runs x=152..635), and the title STRADDLES that line -- "Advanced" has
+    its cap-top 4px above the line and its baseline 4px below it. The
+    title's background clears the frame line for the width of the text
+    plus 2px on each side (the native's line is broken from x=160 to
+    x=214, and the ink starts at x=167).
     """
+    # The title's text starts 9px inside the frame, its baseline 4px
+    # below the frame's top line (so the letters straddle the line), and
+    # it cuts a gap in that line from 8px inside the frame to 8px past
+    # the end of the text. The title also reaches 4px ABOVE the frame's
+    # top line, so the widget is that much taller at the top and the
+    # frame is drawn 4px down (see `qtranslate.qt.widgets.group`).
+    TITLE_X, TITLE_BASE, GAP_PAD = 9, 4, 8
+    FRAME_TOP = 4
+
     def paintEvent(self, e):
         p = QPainter(self)
         fm = self.fontMetrics()
         p.fillRect(self.rect(), QColor(FACE))
-        r = QRect(0, 0, self.width() - 1, self.height() - 1)
+        top = self.FRAME_TOP
+        r = QRect(0, top, self.width() - 1, self.height() - top - 1)
         p.setPen(QPen(QColor("#ffffff"), 1)); p.drawRect(r.translated(1, 1))
         p.setPen(QPen(QColor(BORDER), 1));    p.drawRect(r)
         t = self.title()
         if t:
-            w = fm.horizontalAdvance(t) + 4
-            p.fillRect(QRect(9, 0, w, 2), QColor(FACE))
+            w = fm.horizontalAdvance(t) + self.GAP_PAD
+            p.fillRect(QRect(self.TITLE_X - 1, top, w, 2), QColor(FACE))
             p.setPen(QColor(DIM if not self.isEnabled() else TEXT))
-            p.drawText(6, fm.ascent() - fm.height() // 2 + 3, t)
+            p.drawText(self.TITLE_X, top + self.TITLE_BASE, t)
         p.end()

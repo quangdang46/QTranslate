@@ -93,8 +93,15 @@ def check(parent, l, cy, text, on=False, blue=False):
 
 
 def group(parent, l, t, w, h, title):
-    """Native's Win32 group box (see ``qtranslate_style.EtchedGroupBox``)."""
-    return put(parent, EtchedGroupBox(title), l, t, w, h)
+    """Native's Win32 group box (see ``qtranslate_style.EtchedGroupBox``).
+
+    ``l, t`` is where the FRAME is: the native draws the title so that
+    it straddles the frame's top line, which puts the top of the title
+    4px above it. The widget is that much taller at the top, so the
+    frame lands where the measurement says it does.
+    """
+    top = EtchedGroupBox.FRAME_TOP
+    return put(parent, EtchedGroupBox(title), l, t - top, w, h + top)
 
 
 def field(parent, l, t, w, h, text="", enabled=True):

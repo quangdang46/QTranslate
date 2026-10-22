@@ -12,8 +12,12 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import faulthandler
 import os
 import sys
+
+# A segfault inside Qt leaves no traceback; this one does.
+faulthandler.enable()
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
@@ -85,6 +89,11 @@ def render(out_dir=OUT):
     app = QtApp([sys.argv[0]])
     app._load_session()
     done = 0
+    # Keep every window alive until the end. A window that is garbage
+    # collected while Qt still has a paint event queued for it is an
+    # access violation in the painter, and the render died on the
+    # window after the one before it.
+    alive = []
     for name, (mod, cls) in sorted(WINDOWS.items()):
         try:
             module = importlib.import_module("qtranslate.qt." + mod)
@@ -105,6 +114,7 @@ def render(out_dir=OUT):
             edit.setCursorWidth(0)
         app.qapp.processEvents()
         window.grab().save(os.path.join(out_dir, name + ".png"))
+        alive.append(window)
         done += 1
         print("rendered %-12s -> %s" % (name, out_dir))
     print("rendered %d windows" % done)
