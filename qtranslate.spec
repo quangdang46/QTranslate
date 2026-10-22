@@ -4,9 +4,12 @@
 Do not hand-edit: regenerate with `python -I tools/build_bundle.py --spec`
 so the tool and the spec cannot drift.
 
-Entry point: start_app.py (the dep-checking launcher), which imports
-qtranslate.app.main. One directory output (dist/QTranslate/) with the
-Python runtime inside `_internal`.
+Two entry points, TWO front ends over the same core:
+  start_app.py  the tkinter front end (the app that has shipped)
+  start_qt.py   the PySide6 front end (the parity port)
+One directory output (dist/QTranslate/) with the Python runtime inside
+`_internal`, and two executables in it: QTranslate.exe and
+QTranslate-Qt.exe.
 """
 import os
 
@@ -92,6 +95,96 @@ a = Analysis(
 )
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
+
+# The PySide6 front end. Its own Analysis, because its dependency tree
+# is its own: PySide6, the Qt stylesheet module (qtranslate_style) and
+# the qtranslate.qt package. The two executables share one _internal
+# tree, so the bundle carries the runtime and the assets once.
+aq = Analysis(
+    [os.path.join(REPO, 'start_qt.py')],
+    pathex=[REPO],
+    binaries=[],
+    datas=[('qtranslate/assets', 'qtranslate/assets')],
+    hiddenimports=[
+        # The Qt toolkit. PyInstaller's own PySide6 hook collects the
+        # plugins and the Qt translations.
+        'PySide6',
+        'PySide6.QtCore',
+        'PySide6.QtGui',
+        'PySide6.QtWidgets',
+        # The style module lives at the repo root, not in the package,
+        # and every qtranslate.qt window imports it.
+        'qtranslate_style',
+        # The front end's own package, named here so the set is
+        # reviewable in the spec rather than left to the import walk.
+        'qtranslate.qt.app',
+        'qtranslate.qt.widgets',
+        'qtranslate.qt.icons',
+        'qtranslate.qt.main_window',
+        'qtranslate.qt.options',
+        'qtranslate.qt.dictionary',
+        'qtranslate.qt.history_window',
+        'qtranslate.qt.keyboard',
+        'qtranslate.qt.popup',
+        # The same optional runtime deps the tkinter front end uses.
+        'keyboard',
+        'pyperclip',
+    ],
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=[
+        'pytest',
+        'PyInstaller',
+        'setuptools',
+        'pip',
+        'distutils',
+        'ensurepip',
+        'idlelib',
+        'turtledemo',
+        'tkinter.test',
+        'lib2to3',
+    ],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
+    noarchive=False,
+)
+pyzq = PYZ(aq.pure, aq.zipped_data, cipher=block_cipher)
+
+exeq = EXE(
+    pyzq,
+    aq.scripts,
+    [],
+    exclude_binaries=True,
+    name='QTranslate-Qt',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=False,
+    console=False,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    version='C:\\Users\\ADMIN\\qtranslate-re\\build\\assets\\version_info.txt',
+    icon=['C:\\Users\\ADMIN\\qtranslate-re\\build\\assets\\QTranslate.ico'],
+)
+
+coll = COLLECT(
+    exe,
+    exeq,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=False,
+    upx_exclude=[],
+    name='QTranslate',
+)
+
+
 exe = EXE(
     pyz,
     a.scripts,
@@ -108,8 +201,8 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    version='/Users/tranquangdang21/Projects/QTranslate/build/assets/version_info.txt',
-    icon=['/Users/tranquangdang21/Projects/QTranslate/build/assets/QTranslate.ico'],
+    version='C:\\Users\\ADMIN\\qtranslate-re\\build\\assets\\version_info.txt',
+    icon=['C:\\Users\\ADMIN\\qtranslate-re\\build\\assets\\QTranslate.ico'],
 )
 
 coll = COLLECT(

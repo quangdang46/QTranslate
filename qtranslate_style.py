@@ -157,5 +157,5 @@ class EtchedGroupBox(QGroupBox):
             w = fm.horizontalAdvance(t) + 4
             p.fillRect(QRect(9, 0, w, 2), QColor(FACE))
             p.setPen(QColor(DIM if not self.isEnabled() else TEXT))
-            p.drawText(11, fm.ascent() - fm.height() // 2, t)
+            p.drawText(6, fm.ascent() - fm.height() // 2 + 3, t)
         p.end()

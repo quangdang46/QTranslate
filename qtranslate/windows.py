@@ -480,7 +480,7 @@ class HistoryView:
                              relief="flat", bd=0, highlightthickness=0,
                              bg=_COLORS["back"], command=toggle_fav)
         if _fav_on is None:
-            _fav_btn.config(text=_T("Strings", 201, "Favorite"), width=8)
+            _fav_btn.config(text=_T("Strings", 201, "Add to favorites"), width=8)
         _fav_btn.pack(side="left", padx=4)
         # OK closes the window the way the X does -- through the
         # WM_DELETE_WINDOW handler, which is what saves the placement.
@@ -2161,7 +2161,7 @@ class OptionsDialog:
                 def _pick(k=key, w=_sw, d=default):
                     try:
                         from tkinter import colorchooser as _cc
-                        _rgb = _cc.askcolor(title=_Cw(14, 1092, "Color"))
+                        _rgb = _cc.askcolor(title=_Cw(14, 1092, "Background color:"))
                     except Exception:
                         return
                     if not _rgb or _rgb[0] is None:
@@ -2201,7 +2201,7 @@ class OptionsDialog:
                 except Exception:
                     pass
 
-            tk.Checkbutton(body, text=_Cw(16, 1118, "Enable hot keys"),
+            tk.Checkbutton(body, text=_Cw(16, 1118, "Enable hotkeys"),
                            variable=v, command=_toggle_enable_hotkeys,
                            bg=_COLORS["back"], fg=_COLORS["text"],
                            selectcolor=_COLORS["back"]).pack(anchor="w")
@@ -2721,9 +2721,9 @@ class OptionsDialog:
             except Exception:
                 _pt.set(_pt_vals[1])
             _entries = {}
-            for lab, key in ((_Cw(11, 1034, "Host:"), "Host"), (_Cw(11, 1035, "Port:"), "Port"),
-                             (_Cw(11, 1036, "Username:"), "Username"),
-                             (_Cw(11, 1037, "Password:"), "Password")):
+            for lab, key in ((_Cw(11, 1034, "Host"), "Host"), (_Cw(11, 1035, "Port"), "Port"),
+                             (_Cw(11, 1036, "Username"), "Username"),
+                             (_Cw(11, 1037, "Password"), "Password")):
                 rr = tk.Frame(px, bg=_COLORS["back"])
                 rr.pack(fill="x", pady=1)
                 tk.Label(rr, text=lab, width=18, anchor="w",
@@ -2926,7 +2926,7 @@ class OptionsDialog:
                 return _out.get("value")
 
             def _add():
-                _v = _entry_dialog(_W(5, "Exception"), "", "")
+                _v = _entry_dialog(_W(5, "Dictionary"), "", "")
                 if not _v:
                     return
                 _pairs().append([_v[0], _v[1]])
@@ -2938,7 +2938,7 @@ class OptionsDialog:
                 if not _s:
                     return
                 _i = _s[0]
-                _v = _entry_dialog(_W(5, "Exception"), _pairs()[_i][0],
+                _v = _entry_dialog(_W(5, "Dictionary"), _pairs()[_i][0],
                                    _pairs()[_i][1])
                 if not _v:
                     return

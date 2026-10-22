@@ -109,7 +109,8 @@ def main(argv):
         md_paths.add("docs/" + rel)
         md_paths.add(rel)
     # docs outside docs/ that are legitimately citable
-    for extra in ("CHANGELOG.md", "README.md", "LICENSE"):
+    for extra in ("CHANGELOG.md", "README.md", "LICENSE",
+                  "qtranslate-pyside6-spec.md"):
         if os.path.exists(os.path.join(REPO, extra)):
             md_names.add(extra)
             md_paths.add(extra)

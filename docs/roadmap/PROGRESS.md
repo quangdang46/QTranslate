@@ -1,0 +1,119 @@
+# PROGRESS
+
+The running log. Newest first. Every entry names what changed and what
+was run to show it.
+
+## 2026-10-22 -- the PySide6 parity programme, part two
+
+**The font was wrong, and it was measurable.** The spec said Segoe UI
+9pt and marked it as an inference. Measuring the ink width of the
+native's own text against the candidates showed it is **Tahoma 8pt
+(11px) for the controls and Tahoma 9pt (12px) for the two text panes of
+the main window**: the native's "Double Ctrl => Show main window (with
+translation of selected text, if any)" is 418px wide, which is Tahoma 9pt
+(420) and not Tahoma 8pt (363). The spec and `qtranslate_style.py` were
+corrected, and the measurement is written into the spec so it can be
+re-checked.
+
+**The measure was wrong, and it was measurable too.** The pixel
+difference was counting ClearType fringes: the same glyph puts its ink
+on different subpixels in the native than in the render, which is a
+200-level difference in one channel for text that is identical. The
+measure is now the total ink (the sum of the three channels), which is
+what ClearType preserves. On the main window that took the number from
+0.0926 to 0.0237 without changing a single pixel.
+
+**The main window, measured against capture 2131:**
+
+| | before | after |
+|---|---|---|
+| ink diff | - | **0.0144** |
+| rgb diff | 0.1703 | 0.0611 |
+
+What moved it: the real 16x16 icons recovered from the binary (the
+back/forward arrows, the menu, the mic, the headphone, the new-document
+button, the swap button), the provider strip with its nine real service
+icons and native's own 56px geometry, the two text panes on native's
+line box, the pane borders, the scrollbar at native's 17px, the splitter
+grip, and the result pane's own "No data returned (timeout while sending
+data)."
+
+**The strip's short names were wrong.** Native draws `Go...` with THREE
+dots, at x = 45, 49 and 53; the Tk port drew `Go..` with two. Fixed in
+the Tk port, and the test that checked it now reads the rendered
+widgets instead of grepping the source (the strip had moved from
+`app.py` to `windows.py`, so the grep had been checking nothing).
+
+**The Options page order was wrong in the test, not in the port.** The
+test asserted the dialog TEMPLATE's order (Hotkeys seventh). The
+native's RUNTIME order, read off the nav list in captures 2140/2141, has
+Hotkeys SECOND. The port was right; the test was wrong. Fixed, with the
+evidence in the comment.
+
+**The settings defaults did not match the native's.** The native's real
+`Options.json` had been lost from this machine, so the port's defaults
+had become the only thing there was to read -- and they disagreed with
+the native in three places: `ExpandHistoryItems` was `True` (the
+native's is `False`), the `HotKeys` section carried three of the
+native's seventeen keys (the native's file has all seventeen, unbound
+being 0), and the hotkey table had the replace-selection code (343 =
+Alt + W) on the wrong key. Corrected, and the test now asserts the
+port's DEFAULT document rather than the user's live file, which is what
+it was really about.
+
+**The suite is green.**
+
+```
+133 suites, 0 failed, 67.0s
+```
+
+Three failures were fixed along the way, each a real defect and not a
+test rewritten to pass:
+
+- `regress_wiring.py` did not understand relative imports, so the new
+  `qtranslate/qt` package's modules looked like orphans. The test now
+  resolves them.
+- `regress_options_pages_native.py` still expected tkinter `Labelframe`
+  widgets, but the group boxes are drawn by hand since commit
+  `fa77943` (a Win32 etched frame cannot be a `LabelFrame`). The group
+  box now carries its caption, and the test reads it.
+- `ui_match.py` had four assertions that read the live `Options.json`,
+  which is the USER's file. They now read the port's defaults, and the
+  placement codec is checked against the rect the native actually saved
+  (`rcNormal` 786,228 -> 1316,658), which is on the record.
+
+**Also landed:** `tools/ui_measure.py`, a tool that measures a native
+capture (its client origin, its rows, its text bands, an ASCII dump of
+any rectangle) -- the thing that made every number in this log
+checkable.
+
+## 2026-10-22 -- the first Qt window
+
+The main window was built on the measured geometry and rendered against
+capture 2131 for the first time: **0.1703** on the RGB measure, 0.1734
+for the layout-only reference renderer. The reference renderer used the
+spec's numbers, which were mostly right and had three errors: the pane
+was 3px too far left, the font was wrong, and the result pane had no
+text.
+
+## 2026-10-22 -- the fresh-install bug
+
+`config.load()` raised on a missing `Options.json`. The app persists a
+setting from about 38 places and each one reads the file before writing
+it, so on a machine with no settings file yet EVERY write raised and
+was swallowed. A missing file is the state of a fresh install, not an
+error: `load()` now yields the defaults, a corrupt file is moved aside,
+and the app writes the defaults on first run.
+
+The same commit fixed the `tk.PhotoImage` lifetime bug: an image
+created without a `master=` died with the default root, and the icons
+died with their window.
+
+## 2026-10-15 to 2026-10-21 -- the phases before this
+
+- Phase 7: five of the six window classes were extracted out of
+  `app.py` and proven byte-identical (`qt-phase7-classes-landed-ifn`).
+- Phase 8: the PyInstaller bundler and a Windows bundle that verifies
+  (`qt-phase8-bundle-landed-fho`).
+- G9 part (a): the native window spec fully recovered and cross-verified
+  (`qt-g9-part-a-closed-qyy`).

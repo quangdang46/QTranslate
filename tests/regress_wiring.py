@@ -48,6 +48,13 @@ for f in prod_files:
         ck("parses: %s" % os.path.basename(f), False, str(e))
         continue
     this = os.path.splitext(os.path.basename(f))[0]
+    if this == "__init__":
+        # A package's __init__.py (qtranslate/qt/options/__init__.py)
+        # re-exporting its siblings is REAL wiring -- options/base.py's
+        # PAGES table, filled in by __init__.py, is what the sidebar
+        # click-through uses -- so its imports count as the PACKAGE's,
+        # not as a nameless "__init__" that the orphan check discards.
+        this = os.path.basename(os.path.dirname(f))
     for node in ast.walk(tree):
         cand = []
         if isinstance(node, ast.Import):
@@ -113,6 +120,16 @@ KNOWN_DEAD = {"speech_input"}
 # build. `providers` is not an orphan concern here: only
 # tests/regress_provider_contract.py imports it, and the packaging tool
 # freezes it deliberately (see tools/build_bundle.py's hiddenimports).
+# 2026-10-22: the PySide6 front end's Options dialog was split into one
+# module per page (qtranslate/qt/options/*.py). Each page module WAS
+# missing from `options/__init__.py`'s imports when this orphan set was
+# first measured, which is a real gap: `qtranslate.qt.app.open_options`
+# called `from .options import OptionsDialog`, a name that did not
+# exist, so the Options dialog could not open at all. `__init__.py` now
+# imports and re-exports all nine page classes (and fills the sidebar's
+# PAGES click-through table from them), so every page module is reached
+# the normal way -- a package's `__init__.py` imports now count as the
+# PACKAGE's own, not as a nameless "__init__" the scanner discarded.
 KNOWN_UNWIRED = {"sdk"}
 
 expected = sorted(ENTRY_POINTS | KNOWN_DEAD | KNOWN_UNWIRED)
