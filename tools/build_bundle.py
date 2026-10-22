@@ -8,11 +8,10 @@ here, and why:
   * *Why PyInstaller:* it is the only bundler whose output can be verified
     **in this repo, on this host, without opening a window** — the built
     `_internal` tree can be imported and inspected headlessly, and the `.exe`
-    can be launched with `--headless-selftest` to prove the frozen
-    qtranslate package works. Nuitka needs a C toolchain (and its output
-    cannot be inspected as Python), and cx_Freeze has no in-tree presence.
-    A choice that cannot be checked is not a choice this project can make
-    honestly.
+    can be launched with `--selftest` to prove the frozen qtranslate package
+    works. Nuitka needs a C toolchain (and its output cannot be inspected as
+    Python), and cx_Freeze has no in-tree presence. A choice that cannot be
+    checked is not a choice this project can make honestly.
   * *Why onedir:* the native app is a tray app that stays resident. Onefile
     extracts to a temp dir on every launch (slow start, AV heuristic
     friction, and a per-run cleanup window). Onedir unpacks once.
@@ -20,6 +19,11 @@ here, and why:
     "day one" — but a macOS bundle cannot be produced *or verified* here, so
     claiming one would be a claim with no artifact. Windows-only is recorded,
     and macOS is marked as an open item rather than silently dropped.
+
+One front end, one exe. The tkinter front end was removed on 2026-10-22
+after the PySide6 view was verified to match the native app on Windows;
+`start_qt.py` is the only entry point and the bundle ships one
+executable: QTranslate.exe.
 
 Commercial vs GPL is deliberately not re-litigated; this repo is a clean-room
 port and PyInstaller is the packaging tool.
@@ -31,7 +35,7 @@ against it.
 Usage (all paths relative to the repo root; run `python -I`):
   python tools/build_bundle.py --spec     # write qtranslate.spec only
   python tools/build_bundle.py            # write spec + build (needs pyinstaller)
-  python tools/build_bundle.py --verify-only dist/...  # verify a built tree
+  python tools/build_bundle.py --verify-only dist/QTranslate  # verify a tree
 
 Nothing here touches the network, and it never runs the built GUI.
 """
@@ -57,12 +61,10 @@ SPEC = '''# -*- mode: python ; coding: utf-8 -*-
 Do not hand-edit: regenerate with `python -I tools/build_bundle.py --spec`
 so the tool and the spec cannot drift.
 
-Two entry points, TWO front ends over the same core:
-  start_app.py  the tkinter front end (the app that has shipped)
-  start_qt.py   the PySide6 front end (the parity port)
+One entry point, ONE front end over the core:
+  start_qt.py  the PySide6 front end (the tkinter one is retired)
 One directory output (dist/QTranslate/) with the Python runtime inside
-`_internal`, and two executables in it: QTranslate.exe and
-QTranslate-Qt.exe.
+`_internal`, and one executable in it: QTranslate.exe.
 """
 import os
 
@@ -71,21 +73,43 @@ block_cipher = None
 REPO = os.path.abspath(os.getcwd())
 
 a = Analysis(
-    [os.path.join(REPO, 'start_app.py')],
+    [os.path.join(REPO, 'start_qt.py')],
     pathex=[REPO],
     binaries=[],
     # The recovered native assets ARE committed and bundled: the 35 UI
-    # locale packs, the service strip icons and the main window's
-    # microphone/headphone icons, all recovered from the QTranslate 6.10.0
-    # installer payload / EXE resources. User data is still not bundled
-    # (D16 never loads extensions from the install dir).
-    datas=[('qtranslate/assets', 'qtranslate/assets')],
+    # locale packs, the service strip icons, the main window's
+    # microphone/headphone icons and the app icon -- all recovered from
+    # the QTranslate 6.10.0 installer payload / EXE resources. The dict
+    # shell template rides along: dict_render reads it from its own
+    # package directory, which in a frozen build is `_internal`/qtranslate.
+    # User data is still not bundled (D16 never loads extensions from the
+    # install dir).
+    datas=[('qtranslate/assets', 'qtranslate/assets'),
+           ('qtranslate/dict_template.html', 'qtranslate')],
     hiddenimports=[
-        # tkinter submodules imported lazily inside widgets/filedialog use.
-        'tkinter',
-        'tkinter.ttk',
-        'tkinter.filedialog',
-        'tkinter.messagebox',
+        # The Qt toolkit. PyInstaller's own PySide6 hook collects the
+        # plugins and the Qt translations.
+        'PySide6',
+        'PySide6.QtCore',
+        'PySide6.QtGui',
+        'PySide6.QtWidgets',
+        # The style module lives at the repo root, not in the package,
+        # and every qtranslate.qt window imports it.
+        'qtranslate_style',
+        # The front end's own package, named here so the set is
+        # reviewable in the spec rather than left to the import walk.
+        'qtranslate.qt.app',
+        'qtranslate.qt.widgets',
+        'qtranslate.qt.icons',
+        'qtranslate.qt.main_window',
+        'qtranslate.qt.options',
+        'qtranslate.qt.dictionary',
+        'qtranslate.qt.history_window',
+        'qtranslate.qt.hotkeys',
+        'qtranslate.qt.keyboard',
+        'qtranslate.qt.popup',
+        'qtranslate.qt.tray',
+        'qtranslate.qt.ocr_pick',
         # Platform/provider modules the registry resolves by NAME at runtime,
         # so a static import walk never sees them.
         'qtranslate.registry',
@@ -93,35 +117,38 @@ a = Analysis(
         # (every capability reports unavailable off-Windows); the registry
         # resolves adapters by name at runtime, so Analysis never sees them.
         'qtranslate.platforms',
-        # `qtranslate.screens` and `qtranslate.win32app` are standalone
-        # entry points (`python -m qtranslate.screens`, the pywin32
-        # variant) reached only via `__main__`, which Analysis never
-        # follows. They are user-invocable from a bundled install, so they
-        # are frozen.
-        'qtranslate.screens',
+        # `qtranslate.win32app` is a standalone entry point (`python
+        # qtranslate/win32app.py`, the pywin32 variant) reached only via
+        # `__main__`, which Analysis never follows. It is user-invocable
+        # from a bundled install, so it is frozen.
         'qtranslate.win32app',
         # `sdk` is the published SDK surface (D19 names the provisional
         # `qtranslate-sdk` pip package; this is the in-tree module the
         # bundle's own demo extensions import).
         'qtranslate.sdk',
         # `providers` holds the Provider contract + `build_adapters()`.
-        # Nothing in the app imports it yet (only
-        # tests/regress_provider_contract.py does), but it is the contract
-        # the Phase 2/3 migration is built on and it is importable and
-        # working -- an extension may legitimately reach for it, so it ships.
+        # The translation path routes through it via the reliability
+        # layer; the explicit name keeps the contract ship-or-fail, and
+        # it is importable for the bundle's demo extensions either way.
         'qtranslate.providers',
-        # The tray/window layer imports keyboard and pyperclip inside a
-        # try/except at module scope (they are runtime deps per
-        # requirements.txt). PyInstaller's Analysis follows the real import,
-        # but an optional-but-expected dep that raises on the *user's*
-        # machine is a support ticket: list them so the bundle carries them.
+        # The core surfaces the Qt view calls by lazy import. Each lives
+        # behind a `try: from qtranslate import X` at its call site, and
+        # a module PyInstaller never followed dies in front of the user:
+        # the selftest and this list are the two halves of the fix.
+        'qtranslate.engine',
+        'qtranslate.config',
+        'qtranslate.theme',
+        'qtranslate.extensions',
+        'qtranslate.tray_state',
+        'qtranslate.ui_slots',
+        'qtranslate.history',
+        'qtranslate.sendkeys',
+        # The optional runtime deps (requirements.txt). PyInstaller's
+        # Analysis follows the real import, but an optional-but-expected
+        # dep that raises on the *user's* machine is a support ticket:
+        # list them so the bundle carries them.
         'keyboard',
         'pyperclip',
-        # Pillow backs the service-icon strip, the tray glyphs, and the OCR
-        # region capture.
-        'PIL',
-        'PIL.Image',
-        'PIL.ImageTk',
     ],
     hookspath=[],
     hooksconfig={},
@@ -168,99 +195,11 @@ exe = EXE(
     icon=['QTranslate.ico'],
 )
 
-
-# The PySide6 front end. Its own Analysis, because its dependency tree
-# is its own: PySide6, the Qt stylesheet module (qtranslate_style) and
-# the qtranslate.qt package. The two executables share one _internal
-# tree, so the bundle carries the runtime and the assets once.
-aq = Analysis(
-    [os.path.join(REPO, 'start_qt.py')],
-    pathex=[REPO],
-    binaries=[],
-    # No datas of its own: the assets are the SAME files the tkinter
-    # front end ships, and the COLLECT puts them in the one shared
-    # _internal tree. Listing them twice would be two sources for one
-    # destination.
-    datas=[],
-    hiddenimports=[
-        # The Qt toolkit. PyInstaller's own PySide6 hook collects the
-        # plugins and the Qt translations.
-        'PySide6',
-        'PySide6.QtCore',
-        'PySide6.QtGui',
-        'PySide6.QtWidgets',
-        # The style module lives at the repo root, not in the package,
-        # and every qtranslate.qt window imports it.
-        'qtranslate_style',
-        # The front end's own package, named here so the set is
-        # reviewable in the spec rather than left to the import walk.
-        'qtranslate.qt.app',
-        'qtranslate.qt.widgets',
-        'qtranslate.qt.icons',
-        'qtranslate.qt.main_window',
-        'qtranslate.qt.options',
-        'qtranslate.qt.dictionary',
-        'qtranslate.qt.history_window',
-        'qtranslate.qt.keyboard',
-        'qtranslate.qt.popup',
-        # The same optional runtime deps the tkinter front end uses.
-        'keyboard',
-        'pyperclip',
-    ],
-    hookspath=[],
-    hooksconfig={},
-    runtime_hooks=[],
-    excludes=[
-        'pytest',
-        'PyInstaller',
-        'setuptools',
-        'pip',
-        'distutils',
-        'ensurepip',
-        'idlelib',
-        'turtledemo',
-        'tkinter.test',
-        'lib2to3',
-    ],
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
-    cipher=block_cipher,
-    noarchive=False,
-)
-pyzq = PYZ(aq.pure, aq.zipped_data, cipher=block_cipher)
-
-exeq = EXE(
-    pyzq,
-    aq.scripts,
-    [],
-    exclude_binaries=True,
-    name='%(name)s-Qt',
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=False,
-    console=False,
-    disable_windowed_traceback=False,
-    argv_emulation=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-    version='version_info.txt',
-    icon=['QTranslate.ico'],
-)
-
-
 coll = COLLECT(
     exe,
-    exeq,
     a.binaries,
     a.zipfiles,
     a.datas,
-    # The Qt analysis' own binaries: the PySide6 DLLs, the platform
-    # plugin and the Qt translations. Without them the second
-    # executable is not collected at all.
-    aq.binaries,
-    aq.zipfiles,
     strip=False,
     upx=False,
     upx_exclude=[],
@@ -275,10 +214,9 @@ def spec_path():
 
 # Where the native install lives and the icon the bundle ships. The port
 # already reads Services/<Name>/Service.ico from the installed native copy
-# at runtime (`app.py` `_load_svc_icon`); the bundle needs its own icon, so
-# the Google Translate service icon — the default service, and a real asset
-# from the shipped product rather than a generated placeholder — is copied
-# out and frozen.
+# at runtime; the bundle needs its own icon, so the Google Translate
+# service icon — the default service, and a real asset from the shipped
+# product rather than a generated placeholder — is copied out and frozen.
 INSTALL_DIR = os.environ.get("QTRANSLATE_DIR",
                              r"C:\Program Files (x86)\QTranslate")
 ICON_SRC = os.path.join(INSTALL_DIR, "Services", "Google Translate",
@@ -434,8 +372,8 @@ def _pyinstaller_argv():
 
       1. `uv tool install pyinstaller` resolves its **own** Python (3.13),
          which lacks this project's deps (`keyboard`, `pyperclip`,
-         `Pillow`) — the build silently drops them and the shipped app
-         starts with no hotkeys and no icons.
+         `PySide6`) — the build silently drops them and the shipped app
+         starts with no hotkeys and no widgets.
       2. `uv tool run` is **isolated**, so even matching the Python version
          with `--python 3.12` hides the deps that live in the *repo
          interpreter's* site-packages.
@@ -453,25 +391,11 @@ def _pyinstaller_argv():
     want = "%d.%d" % sys.version_info[:2]
     # The deps that MUST be in the bundle. pyperclip ships on every platform;
     # keyboard is Windows-only (it aborts the process on macOS Cocoa), so it
-    # is only bundled on Windows. Pillow ships on every platform (service
-    # strip, tray glyphs, OCR region capture). The optional ones (pystray,
-    # comtypes, playwright) are deliberately absent -- the app explains each
-    # when it is missing.
-    deps = ["--with", "pillow", "--with", "pyperclip"]
+    # is only bundled on Windows. PySide6 is listed with `--with` explicitly
+    # below so it cannot be dropped either.
+    deps = ["--with", "pyperclip", "--with", "PySide6"]
     if sys.platform == "win32":
         deps.append("--with keyboard==0.13.5")
-    req = os.path.join(HERE, "requirements.txt")
-    if os.path.exists(req):
-        for line in open(req, encoding="utf-8"):
-            line = line.strip()
-            if line and not line.startswith("#") and "==" in line:
-                mod = line.split("==")[0].strip()
-                if mod == "pyperclip":
-                    # already injected above with the exact version
-                    pass
-                elif mod == "keyboard" and sys.platform == "win32":
-                    # already injected above
-                    pass
     argv = ["uv", "tool", "run", "--python", want]
     argv += deps
     argv += ["--from", "pyinstaller", "pyinstaller"]
@@ -538,8 +462,8 @@ def _frozen_gap(workpath: str):
     }
     toc_dir = os.path.join(workpath, "qtranslate")
     frozen = set()
-    # BOTH front ends are read: the spec has two Analysis objects, and
-    # each writes its own numbered TOC.
+    # The spec has ONE Analysis; both numbered TOC names are tried so a
+    # future second Analysis is caught rather than silently unnoticed.
     for name in ("Analysis-00.toc", "Analysis-01.toc",
                  "PYZ-00.toc", "PYZ-01.toc"):
         p = os.path.join(toc_dir, name)
@@ -549,7 +473,7 @@ def _frozen_gap(workpath: str):
         frozen.update(re.findall(r"\('(qtranslate(?:\.[A-Za-z0-9_]+)*)'", text))
     on_disk = set()
     for sub in ("qtranslate", "qtranslate/services", "qtranslate/providers",
-                "qtranslate/qt"):
+                "qtranslate/qt", "qtranslate/qt/options"):
         if not os.path.isdir(sub):
             continue
         for f in os.listdir(sub):
@@ -570,18 +494,18 @@ def verify(dist_dir: str) -> int:
 
       1. The expected files exist (exe + `_internal` runtime root + the
          frozen stdlib).
-      2. **The frozen executable itself** runs `main()`'s `--selftest`
-         branch and reports its import graph intact. This is the only test
-         that can see a module PyInstaller's Analysis never followed: the
-         app would otherwise start for the user, hit a lazy `import`, and
-         die. Importing from `_internal` directly is NOT equivalent — the
-         pure modules live inside the compressed PYZ, so a sys.path probe
-         reports "missing" for a perfectly good bundle.
+      2. **The frozen executable itself** runs `main()`'s
+         `--selftest` branch and reports its import graph intact. This is
+         the only test that can see a module PyInstaller's Analysis never
+         followed: the app would otherwise start for the user, hit a lazy
+         `import`, and die. Importing from `_internal` directly is NOT
+         equivalent — the pure modules live inside the compressed PYZ, so
+         a sys.path probe reports "missing" for a perfectly good bundle.
 
-    No window is opened: `--selftest` returns before any Tk call.
+    No window is opened: `--selftest` returns before any widget is shown
+    (`qtranslate.qt.app._frozen_selftest` builds a QApplication, never a
+    visible one).
     """
-    import json
-
     problems = []
     exe = os.path.join(dist_dir, EXE_NAME + ".exe")
     internal = os.path.join(dist_dir, "_internal")
@@ -597,7 +521,7 @@ def verify(dist_dir: str) -> int:
             print("  -", p)
         return 1
 
-    # 2: run the real exe with the selftest flag.
+    # Run the real exe with the selftest flag.
     proc = run([exe, "--selftest"], capture_output=True, timeout=180)
     out = (proc.stdout or b"").decode("utf-8", "replace")
     err = (proc.stderr or b"").decode("utf-8", "replace")
@@ -616,39 +540,11 @@ def verify(dist_dir: str) -> int:
         problems.append("frozen exe exited %s without a failing selftest"
                         % proc.returncode)
 
-    # 2b: the SAME probe for the PySide6 front end. It is a separate
-    # executable with a separate dependency tree (PySide6, the Qt
-    # platform plugin, qtranslate_style), so the tkinter selftest says
-    # nothing about it.
-    qtexe = os.path.join(dist_dir, EXE_NAME + "-Qt.exe")
-    if not os.path.exists(qtexe):
-        problems.append("missing the PySide6 executable: %s" % qtexe)
-    else:
-        proc = run([qtexe, "--selftest"], capture_output=True, timeout=300)
-        out = (proc.stdout or b"").decode("utf-8", "replace")
-        err = (proc.stderr or b"").decode("utf-8", "replace")
-        print(out.rstrip())
-        if err.strip():
-            print("stderr:", err.strip()[-1500:])
-        marker = next((l for l in out.split("
-")
-                       if l.startswith("SELFTEST ")), None)
-        if marker is None:
-            problems.append("the frozen Qt exe produced no SELFTEST marker "
-                            "(rc=%s) -- it did not reach the selftest branch"
-                            % proc.returncode)
-        elif "FAIL" in marker:
-            problems.append("frozen Qt selftest failed: %s" % marker.strip())
-        if proc.returncode != 0 and not problems:
-            problems.append("frozen Qt exe exited %s without a failing "
-                            "selftest" % proc.returncode)
-
     if problems:
         print("VERIFY FAILED:")
         for p in problems:
             print("  -", p)
         return 1
-    return 0
     print("verify: the bundle imports and resolves providers from "
           "_internal with the repo off sys.path")
     return 0

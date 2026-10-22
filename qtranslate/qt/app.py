@@ -453,6 +453,7 @@ class QtApp:
         self.mouse_mode = mode
         self._persist_mouse_mode()
         self._sync_mouse_hook()
+        self._sync_tray_state()
         if self.tray is not None:
             try:
                 self.tray.set_mouse_mode(mode)
@@ -492,8 +493,8 @@ class QtApp:
         return self._mouse_mode_index() == 0
 
     def _sync_mouse_hook(self):
-        """Start or stop the Win32 low-level mouse hook, the way the Tk
-        front end does: live unless the mode is off."""
+        """Start or stop the Win32 low-level mouse hook the way native
+        does: live unless the mode is off."""
         try:
             from qtranslate import mouse_capture as mc
         except Exception:
@@ -509,6 +510,23 @@ class QtApp:
                 self._mouse_hook = True
         except Exception:
             self._mouse_hook = False
+        self._sync_tray_state()
+
+    def _sync_tray_state(self):
+        """The tray reflects the mouse-capture state, native's rule.
+
+        The Tk controller owned this until the front end's removal (the
+        rule lives in ``tray_state.select_state`` port of FUN_00418DA0:
+        arm flag + hook-installed bit, not HotKeys). The Qt tray has the
+        half that is host-independent: the state name and the tooltip.
+        """
+        if self.tray is None:
+            return
+        try:
+            self.tray.sync_state(not self._mouse_mode_off(),
+                                 bool(self._mouse_hook))
+        except Exception:
+            pass
 
     def _mouse_selected(self, x, y):
         """The hook's callback: a selection click arrived at (x, y).
@@ -777,11 +795,11 @@ class QtApp:
 def _frozen_selftest():
     """``--selftest``: prove the frozen import graph, open no window.
 
-    The tkinter front end has one of these (`qtranslate.app._frozen_selftest`)
-    and `tools/build_bundle.py` runs it against the built `.exe`. This is
-    the same probe for the PySide6 front end: the failure it exists to
-    catch is a module PyInstaller's Analysis never followed, which would
-    otherwise show up as a crash in front of the user.
+    `tools/build_bundle.py` runs this against the built `.exe`. The failure
+    it exists to catch is a module PyInstaller's Analysis never followed,
+    which would otherwise show up as a crash in front of the user; the view
+    reaches several core modules by lazy import inside a ``try``, so they
+    are probed here explicitly rather than trusted to the import walk.
 
     Returns the process exit code; raises nothing. Prints one machine
     marker line (``SELFTEST ...``) so a tool can parse it.
@@ -807,8 +825,16 @@ def _frozen_selftest():
         _ck("import qtranslate.qt.%s" % _mod,
             lambda m=_mod: __import__("qtranslate.qt." + m, fromlist=["*"]))
 
-    # The Qt toolkit itself, and the asset files the icons come from.
-    for _dep in ("PySide6.QtCore", "PySide6.QtGui", "PySide6.QtWidgets"):
+    # The toolkit itself, and the core modules the view reaches by lazy
+    # import at its call sites (a cold `Engine`, the extension manager,
+    # the tray-state rule, the settings writer and the hotkey writer).
+    for _dep in ("PySide6.QtCore", "PySide6.QtGui", "PySide6.QtWidgets",
+                 "qtranslate.engine", "qtranslate.config", "qtranslate.theme",
+                 "qtranslate.extensions", "qtranslate.registry",
+                 "qtranslate.providers", "qtranslate.tray_state",
+                 "qtranslate.ui_slots", "qtranslate.history",
+                 "qtranslate.sendkeys", "qtranslate.sdk",
+                 "qtranslate.platforms"):
         _ck("bundled dep %s" % _dep, lambda d=_dep: __import__(d))
 
     def _assets():

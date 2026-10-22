@@ -194,7 +194,7 @@ class MainWindow:
         return raw.rstrip("\x00")
 
     def _translate(self):
-        from qtranslate.app import do_translate
+        from qtranslate import engine
         n = win32gui.GetWindowTextLength(self.src)
         buf = win32gui.PyMakeBuffer(n + 1)
         win32gui.GetWindowText(self.src, buf, n + 1)
@@ -205,7 +205,7 @@ class MainWindow:
         src = _code.get(self._combo_text(self.src_lang), "auto")
         tgt = _code.get(self._combo_text(self.tgt), "vi")
         try:
-            out_text = do_translate("google", text, tgt, src=src).text
+            out_text = engine.translate("google", text, tgt, src=src).text
         except Exception as e:
             out_text = f"[error] {e}"
         win32gui.SetWindowText(self.out, out_text)

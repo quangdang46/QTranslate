@@ -327,20 +327,30 @@ def _window_from_point(x: int, y: int):
 def _own_window():
     """Our own toplevel's handle (native ``this+0x1280``), or None.
 
-    Resolved once and cached: the hook proc must not call into Tk (it runs
-    on the thread that installed the hook and Tk is not thread-safe), and
-    the previous implementation created a throwaway ``tk.Tk()`` whose handle
-    was destroyed again immediately — a handle that can never match.
+    Resolved once and cached: the hook proc must not call into the window
+    manager (it runs on the thread that installed the hook). The Qt
+    app's main window is looked up through the toolkit instead of the
+    throwaway ``tk.Tk()`` handle the tkinter front end used -- a handle
+    that can never match once the front end is gone.
     """
     global _own_hwnd
     if _own_hwnd:
         return _own_hwnd
     try:
-        import tkinter as tk
-        root = getattr(tk, "_default_root", None)
-        if root is None:
-            return None
-        _own_hwnd = int(root.winfo_id())
+        try:
+            from PySide6.QtWidgets import QApplication  # noqa: F401
+            from qtranslate.qt.app import QtApp  # noqa: F401
+            from qtranslate.qt.main_window import MainWindow  # noqa: F401
+            _app = QApplication.instance()
+            _main = getattr(_app, "_topLevelWindows", [])
+            for _w in _main:
+                if _w.metaObject().className() == b"MainWindow":
+                    _own_hwnd = int(_w.winId())
+                    break
+            if _own_hwnd:
+                return _own_hwnd
+        except Exception:
+            pass
     except Exception:
         return None
     return _own_hwnd

@@ -1,60 +1,78 @@
-"""Override-conflict UI (D18): pick the winner when extensions collide.
+"""The override-conflict dialog (D18: the user picks the winner, never
+auto-resolve).
 
-tkinter-based; the dialog only opens when the user invokes it from the app.
-The *policy* (who wins, what is saved) lives in ``extensions.py`` and is
-headless-testable; this module is only the interface. Importing it opens no
-window (pinned by ``tests/regress_override_persistence.py``).
+``conflicts`` is ``{base_id: [ext_id, ...]}`` (see
+``ExtensionManager.override_conflicts``). Returns ``{base_id: ext_id}``
+for the user's choices, or ``{}`` when the dialog is cancelled.
+
+The host calls it when user extensions claim the same provider; nothing
+runs on import, so loading this module anywhere is safe.
 """
-import tkinter as tk
+from __future__ import annotations
 
 
-def pick_override_winners(root, conflicts):
+def pick_override_winners(parent, conflicts):
     """Open the override-conflict dialog; return the winner selection.
 
-    ``conflicts`` is ``{base_id: [ext_id, ...]}`` (see
-    ``ExtensionManager.override_conflicts``). Returns ``{base_id: ext_id}``
-    for the user's choices, or ``{}`` when the dialog is cancelled.
+    ``parent`` is the calling window (owned by the view that opens the
+    dialog) or None for a standalone frame -- the dialog is modal
+    either way.
     """
-    if not conflicts:
-        return {}
-    top = tk.Toplevel(root)
-    top.title("Extension conflicts")
-    top.transient(root)
-    top.resizable(False, False)
+    from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QGroupBox,
+                                   QHBoxLayout, QLabel, QPushButton,
+                                   QRadioButton, QVBoxLayout)
 
-    frame = tk.Frame(top, padx=12, pady=12)
-    frame.pack(fill="both", expand=True)
+    class _Dialog(QDialog):
+        def __init__(self, dlg_parent):
+            super().__init__(dlg_parent)
+            self.setWindowTitle("Extension conflicts")
+            self.setModal(True)
+            outer = QVBoxLayout(self)
+            self._choices = {}
+            outer.addWidget(QLabel(
+                "These extensions override the same provider. "
+                "Pick the winner for each."))
+            for base, exts in sorted(conflicts.items()):
+                grp = QGroupBox(base)
+                h = QHBoxLayout(grp)
+                var = _Choice(exts[0])
+                self._choices[base] = var
+                for ext in exts:
+                    rb = QRadioButton(ext)
+                    rb.setChecked(ext == exts[0])
+                    rb.toggled.connect(
+                        lambda on, _c=False, v=var, e=ext: v.set(e)
+                        if on else None)
+                    h.addWidget(rb)
+                h.addStretch(1)
+                outer.addWidget(grp)
 
-    tk.Label(frame, text="These extensions override the same provider. "
-             "Pick the winner for each.").grid(
-                 row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
+            btns = QDialogButtonBox()
+            ok = QPushButton("OK")
+            cancel = QPushButton("Cancel")
+            btns.addButton(ok, QDialogButtonBox.AcceptRole)
+            btns.addButton(cancel, QDialogButtonBox.RejectRole)
+            ok.clicked.connect(self.accept)
+            cancel.clicked.connect(self.reject)
+            outer.addWidget(btns)
 
-    choices = {}
-    row = 1
-    for base, exts in sorted(conflicts.items()):
-        tk.Label(frame, text=base).grid(row=row, column=0, sticky="w")
-        var = tk.StringVar(value=exts[0])
-        choices[base] = var
-        for ext in exts:
-            tk.Radiobutton(frame, text=ext, variable=var,
-                           value=ext).grid(row=row, column=1, sticky="w")
-        row += 1
+        def result_choice(self):
+            return {b: v.get() for b, v in self._choices.items()}
 
-    done = []
+    dlg = _Dialog(parent)
+    if dlg.exec() == QDialog.Accepted:
+        return dlg.result_choice()
+    return {}
 
-    def _ok():
-        done.append({b: v.get() for b, v in choices.items()})
-        top.destroy()
 
-    def _cancel():
-        top.destroy()
+class _Choice:
+    """One conflict row's selection (the tk `StringVar`'s role)."""
 
-    btns = tk.Frame(frame)
-    btns.grid(row=row, column=0, columnspan=2, pady=(12, 0), sticky="e")
-    tk.Button(btns, text="OK", width=10, command=_ok).pack(side="left", padx=4)
-    tk.Button(btns, text="Cancel", width=10,
-              command=_cancel).pack(side="left")
+    def __init__(self, initial):
+        self._v = initial
 
-    top.grab_set()
-    top.wait_window()
-    return done[0] if done else {}
+    def set(self, value):
+        self._v = value
+
+    def get(self):
+        return self._v

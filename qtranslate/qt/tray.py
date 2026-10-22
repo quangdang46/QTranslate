@@ -142,6 +142,26 @@ class Tray:
     def hide(self):
         self.icon.hide()
 
+    def sync_state(self, armed, hook_installed):
+        """The tray's state follows native's rule (FUN_00418DA0), via
+        ``tray_state.select_state``: the flag is the MOUSE-CAPTURE arm
+        state and the other bit is whether the hook actually installed --
+        NOT the HotKeys list (which was the port-side guess this module
+        replaced). The tooltip carries the state off-Windows too, where
+        the old pystray colour glyphs never existed.
+        """
+        try:
+            from qtranslate import tray_state as _TS
+            _idx = _TS.select_state(bool(armed), bool(hook_installed))
+            self._state = _TS.state_name(_idx)
+        except Exception:
+            self._state = "off"
+        try:
+            self.icon.setToolTip(
+                "QTranslate (mouse mode: %s)" % ("on" if armed else "off"))
+        except Exception:
+            pass
+
     def set_hotkeys(self, on):
         self._hotkeys_on = bool(on)
         self.act_hotkeys.setChecked(self._hotkeys_on)
