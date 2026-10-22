@@ -88,6 +88,11 @@ def render(out_dir=OUT, only=None):
 
     app = QtApp([sys.argv[0]])
     app._load_session()
+    # The native's history capture shows a history with one entry in it
+    # ("person_record" -> "nguoi_record", through Google). The render is
+    # given the same entry, so the two pictures show the same list and
+    # the difference is the drawing, not the data.
+    app.history = [("google", "person_record", "nguười_record")]
     done = 0
     # Keep every window alive until the end. A window that is garbage
     # collected while Qt still has a paint event queued for it is an
@@ -137,6 +142,14 @@ def render(out_dir=OUT, only=None):
     return 0
 
 
+# The native's hotkeys capture (2126) is the window's BOUNDING RECT, and
+# the OS's drop shadow falls inside it on the left: seven columns of
+# near-black that are not the app's pixels at all. The client starts
+# after them, so they are left out of the measure -- the same rule the
+# spec sets for the title bar and the ClearType fringes.
+IGNORE_LEFT = {"hotkeys": 7}
+
+
 def compare(out_dir=OUT):
     """Compare the rendered windows with the native captures.
 
@@ -172,14 +185,20 @@ def compare(out_dir=OUT):
         w, h = min(nat.width, oth.width), min(nat.height, oth.height)
         nat = nat.crop((0, 0, w, h))
         oth = oth.crop((0, 0, w, h))
+        full_w, full_h = w, h
+        skip = IGNORE_LEFT.get(name, 0)
+        if skip:
+            nat = nat.crop((skip, 0, nat.width, nat.height))
+            oth = oth.crop((skip, 0, oth.width, oth.height))
+            full_w, full_h = full_w - skip, full_h
         diff = ImageChops.difference(ink(nat), ink(oth))
         mask = diff.point(lambda v: 255 if v > 8 else 0)
         n = sum(mask.histogram()[255:])
-        ratio = n / max(1, w * h)
+        ratio = n / max(1, full_w * full_h)
         ratios.append(ratio)
         rgb = ImageChops.difference(nat, oth).convert("L")
         rmask = rgb.point(lambda v: 255 if v > 8 else 0)
-        rgb_ratio = sum(rmask.histogram()[255:]) / max(1, w * h)
+        rgb_ratio = sum(rmask.histogram()[255:]) / max(1, full_w * full_h)
         rgb_ratios.append(rgb_ratio)
         out = Image.new("RGB", (w, h), (255, 255, 255))
         out.paste((255, 0, 0), (0, 0), mask)

@@ -47,7 +47,7 @@ class HistoryWindow(Base):
         # The bottom row.
         self.btn_clear = button(self, 5, 294, 71, "Clear", 21)
         self.btn_save = button(self, 84, 294, 107, "Save as...", 21)
-        self.btn_star = button(self, 198, 294, 19, "", 21)
+        self.btn_star = button(self, 199, 294, 19, "", 21)
         self.btn_ok = button(self, 399, 294, 71, "OK", 21)
 
         self.btn_ok.clicked.connect(self.close)
@@ -57,7 +57,7 @@ class HistoryWindow(Base):
         from PySide6.QtWidgets import QLineEdit
         e = QLineEdit()
         e.setStyleSheet("QLineEdit{background:#fff;border:none;}")
-        put(self, e, 5, 35, 467, 21)
+        put(self, e, 4, 34, 467, 21)
         return e
 
     def _fill(self):
@@ -67,10 +67,10 @@ class HistoryWindow(Base):
         for entry in list(self.app.history)[:12]:
             service, src, res = entry
             rect(self.list, 5, y - 1, 466, 13, FACE, "histrow")
-            icon(self.list, 10, y - 1, "ui_icons", "star")
-            label(self.list, 28, y + 5, src[:60])
+            icon(self.list, 8, y - 3, "ui_icons", "star")
+            label(self.list, 31, y + 5, src[:60])
             icon(self.list, 27, y + 15, "service_icons", service)
-            label(self.list, 48, y + 21, res[:60])
+            label(self.list, 51, y + 20, res[:60])
             y += 30
 
     def _clear(self):

@@ -136,14 +136,17 @@ class MainWindow(Base):
         icon(self, 11, 220, "ui_icons", "new")
         for y in (221, 227, 233):
             rect(self, 48, y, 4, 4, "#6d6d6d", "grip2")
-        self.cmb_src = combo(self, 68, 217, 148, "Auto-Detect", 21,
+        self.cmb_src = combo(self, 67, 217, 150, "Auto-Detect", 21,
                              values=app.source_names())
-        self.btn_swap = button(self, 224, 217, 25, "")
-        self.btn_swap.setObjectName("flat")
+        # The source combo is an EDITABLE one in native, so its text
+        # starts four pixels further in: MEASURED off capture 2131 (the
+        # word starts 12px inside the frame, the target combo's 8px).
+        self.cmb_src.setStyleSheet("QComboBox{padding-left:10px;}")
+        self.btn_swap = button(self, 223, 217, 27, "")
         icon(self, 228, 220, "ui_icons", "swap")
-        self.cmb_tgt = combo(self, 257, 217, 175, "Vietnamese", 21,
+        self.cmb_tgt = combo(self, 256, 217, 177, "Vietnamese", 21,
                              values=app.target_names())
-        self.btn_go = button(self, 439, 217, 71, "Translate", 22)
+        self.btn_go = button(self, 438, 217, 73, "Translate", 22)
         hline(self, 242, 4, 512)
 
         # ---- result pane (capture y 242..392) ----------------------------
@@ -200,7 +203,7 @@ class MainWindow(Base):
         to shoulder; the LAST one is stretched to the right edge of the
         window, which is why it can show "DeepL" where "Baidu" has to be
         cut down to "Ba..."."""
-        x = 4 + 56 * i - (1 if i else 0)
+        x = 4 + 56 * i
         w = 512 - x if i == total - 1 else 56
         b = QPushButton()
         b.setFocusPolicy(Qt.NoFocus)
