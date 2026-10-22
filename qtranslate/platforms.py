@@ -136,6 +136,50 @@ class WindowsAdapter:
         return getattr(self, name, Capability.UNAVAILABLE)
 
 
+class MacOSAdapter:
+    """The platform pieces that need no Win32: clipboard, paths.
+
+    The Win32-only halves (the global-hotkey hook, the low-level mouse
+    hook, the clipboard sequence counter, SAPI speech) stay unavailable
+    honestly -- a caller that asks for one still gets the
+    ``NotImplementedError``, the same as before. But the two pieces that
+    are pure Python work everywhere: ``pyperclip`` reads and writes the
+    clipboard on macOS too, and the per-user folder is
+    ``~/.config/QTranslate`` (what ``app_data_dir()`` already resolves
+    to off Windows). Extensions therefore resolve and load on macOS;
+    only the Win32 capture hooks do not.
+    """
+
+    clipboard = Capability.AVAILABLE
+    paths = Capability.AVAILABLE
+
+    def read_text(self):
+        try:
+            import pyperclip
+            return pyperclip.paste() or ""
+        except Exception:
+            return ""
+
+    def write_text(self, text):
+        try:
+            import pyperclip
+            pyperclip.copy(text)
+            return True
+        except Exception:
+            return False
+
+    def app_data(self):
+        return app_data_dir()
+
+    def extensions_dir(self):
+        """``~/.config/QTranslate/extensions`` (see ``app_data_dir``)."""
+        import os
+        return os.path.join(self.app_data(), "extensions")
+
+    def capability(self, name):
+        return getattr(self, name, Capability.UNAVAILABLE)
+
+
 class UnavailableAdapter:
     """Honest fallback: every capability reports unavailable."""
 
@@ -146,11 +190,13 @@ class UnavailableAdapter:
 
 
 def current():
-    """The adapter for this machine (Windows behavior today)."""
+    """The adapter for this machine."""
     try:
         import sys
         if sys.platform == "win32":
             return WindowsAdapter()
+        if sys.platform == "darwin":
+            return MacOSAdapter()
     except Exception:
         pass
     return UnavailableAdapter()

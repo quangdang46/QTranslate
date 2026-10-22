@@ -27,74 +27,155 @@ from ..widgets import (Base, LINK, button, check, combo, field, group,
 SIDEBAR = ["Basics", "Hotkeys", "Internet", "Services", "Languages",
            "Appearance", "Exceptions", "Advanced", "Updates"]
 
-# The four columns of the Languages checklist, transcribed from the
-# native capture 2137.
-
 
 class OptionsBase(Base):
     """The Options shell: the page list on the left, the page's body on
-    the right, and the three buttons at the bottom."""
+    the right, and the three buttons at the bottom.
+
+    The shell is a SINGLE window: clicking a page in the list rebuilds
+    the body in place rather than opening a new window. Each page module
+    still owns its own ``build`` (its own numbers, its own file); the
+    shell calls it with ``self`` after pointing the instance's ORIGIN
+    and SIZE at the page's own.
+
+    The shell's own chrome -- the sidebar panel, its rows, the rule and
+    the three buttons -- is described by ``CHROME``, because the
+    Hotkeys page's capture is a different size and its chrome sits at
+    different coordinates. Everything is rebuilt on each swap, so a page
+    with a different chrome gets it.
+    """
 
     ORIGIN, SIZE = (1, 26), (644, 362)
     SEL = 0
 
+    # The shell's chrome, in the page's own coordinates.
+    #   panel      -- the bordered area the page list sits in
+    #   row        -- x, y, width of one page-list row (the pitch is 13)
+    #   face_row   -- the list view's empty first row (face colour)
+    #   shadow_row -- the sunken frame's 1px white shadow
+    #   rule       -- the etched line above the buttons: y, x0, x1
+    #   buttons    -- each button's x, y, width, and whether it casts the
+    #                 1px light shadow under itself
+    CHROME = {
+        "panel": (4, 29, 142, 324),
+        "row": (7, 31, 139),
+        "face_row": (5, 30, 140, 1),
+        "shadow_row": (3, 353, 144, 1),
+        "rule": (358, 3, 638),
+        "buttons": {
+            "OK": (403, 363, 73, True),
+            "Cancel": (484, 363, 73, True),
+            "Apply": (565, 363, 73, True),
+        },
+    }
+
     def __init__(self, app):
         super().__init__()
         self.app = app
+        self._page_name = SIDEBAR[self.SEL]
+        self._rows = []
         self.setWindowTitle("Options")
-        self._shell()
-        self.build()
+        self._show_page(self._page_name, first=True)
 
     # ---------------------------------------------------------------- shell
-    def _shell(self):
-        # The page list: a bordered panel with one 13px row per page,
-        # the current one filled in the accent colour. Clicking another
-        # row opens that page's own window in the same spot and closes
-        # this one -- each page is its own top-level window (its own
-        # module, its own ORIGIN), not a panel swapped inside one shell.
-        panel(self, 4, 29, 142, 324)
-        # The list view's first row is empty, so the face shows there, and
-        # the sunken frame casts a 1px white shadow under itself. Both
-        # MEASURED off the capture.
-        rect(self, 5, 30, 140, 1, FACE)
-        rect(self, 3, 353, 144, 1, WINDOW)
+    def _build_chrome(self):
+        """The sidebar, the rule and the three buttons, in this page's
+        own coordinates."""
+        ch = self.CHROME
+        panel(self, *ch["panel"])
+        face_row = ch.get("face_row")
+        if face_row:
+            rect(self, *face_row, FACE)
+        shadow_row = ch.get("shadow_row")
+        if shadow_row:
+            rect(self, *shadow_row, WINDOW)
+        self._rows = []
+        rx, ry, rw = ch["row"]
         for i, name in enumerate(SIDEBAR):
-            sel = i == self.SEL
             q = QLabel(name)
             q.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
             # No left padding: the text has to start one pixel inside the
             # row, the way native's does (MEASURED off the capture).
+            put(self, q, rx, ry + 13 * i, rw, 13)
+            q.mousePressEvent = (lambda _e, n=name: self._goto(n))
+            self._rows.append(q)
+        ry, x0, x1 = ch["rule"]
+        hline(self, ry, x0, x1)
+        hline(self, ry + 1, x0, x1 - 1, WINDOW)
+        for text, (bx, by, bw, shadow) in ch["buttons"].items():
+            b = button(self, bx, by, bw, text, shadow=shadow)
+            if text in ("OK", "Cancel"):
+                b.clicked.connect(self.close)
+            else:
+                # Apply is drawn like the others but its label is grey:
+                # the native greys the label, not the whole button.
+                b.setStyleSheet("color:%s" % DIM)
+
+    def _paint_rows(self):
+        """Repaint the sidebar highlight for the current page."""
+        for q in self._rows:
+            sel = q.text() == self._page_name
             q.setStyleSheet("QLabel{background:%s;color:%s;}"
                             % (ACCENT if sel else "transparent",
                                "#ffffff" if sel else TEXT))
-            put(self, q, 7, 31 + 13 * i, 139, 13)
-            if not sel:
-                q.mousePressEvent = (lambda _e, n=name: self._goto(n))
-        # The rule above the buttons: an etched line, a dark one and a
-        # white one under it. MEASURED off the capture.
-        hline(self, 358, 3, 638)
-        hline(self, 359, 3, 638, WINDOW)
-        button(self, 403, 363, 73, "OK", shadow=True).clicked.connect(self.close)
-        button(self, 484, 363, 73, "Cancel", shadow=True).clicked.connect(self.close)
-        # Apply is drawn like the others but its label is grey: the
-        # native greys the label, not the whole button.
-        ap = button(self, 565, 363, 73, "Apply", shadow=True)
-        ap.setStyleSheet("color:%s" % DIM)
 
-    def _goto(self, page_name):
-        """Switch to another page: open it at this window's position,
-        close this one. Each page keeps its own geometry (the Hotkeys
-        page is a different size), so the pages are separate windows
-        rather than one shell with a swapped-in body."""
+    def _clear(self):
+        """Take down every widget the previous page built.
+
+        The widgets are hidden and unparented, NOT deleted. A Qt widget
+        that is deleted while a paint event for it is still queued is an
+        access violation in the painter, and the Options dialog can
+        have one queued for a page that is being swapped out. Hiding
+        and unparenting removes them from the paint queue without
+        destroying the object, and the next event loop pass frees them.
+        """
+        for w in list(self.findChildren(object)):
+            if w is self:
+                continue
+            try:
+                w.hide()
+                w.setParent(None)
+            except Exception:
+                pass
+
+    def _show_page(self, page_name, first=False):
+        """Rebuild a page's body in place, without a new window."""
         cls = PAGES.get(page_name)
         if cls is None:
             return
-        geo = self.geometry()
-        nxt = cls(self.app)
-        nxt.move(geo.topLeft())
-        nxt.show()
-        self.app._opts = nxt
-        self.close()
+        if not first and page_name == self._page_name:
+            return
+        self._page_name = page_name
+        self._clear()
+        # The pages' numbers are written against each page class's own
+        # ORIGIN/SIZE. Run the SAME build code with the shell as self,
+        # after pointing the instance's ORIGIN/SIZE at the page's own.
+        # The only page that differs is Hotkeys (ORIGIN (1,24) against
+        # the shell's (1,26), SIZE 650 wide against 644): its rows are
+        # shifted two screenshot pixels, and the window widens by 6.
+        saved_origin, saved_size = self.ORIGIN, self.SIZE
+        saved_chrome = self.CHROME
+        try:
+            self.ORIGIN, self.SIZE = cls.ORIGIN, cls.SIZE
+            self.CHROME = cls.CHROME
+            # The Languages page reads its column layout off the class
+            # (BOX_X, COL_STEP, ...); same trick covers those.
+            for attr in ("BOX_X", "BOX_Y", "COL_STEP", "ROW_STEP",
+                         "TEXT_DX", "TEXT_DY"):
+                if hasattr(cls, attr) and not hasattr(self, attr):
+                    setattr(self, attr, getattr(cls, attr))
+            if (self.width(), self.height()) != cls.SIZE:
+                self.setFixedSize(*cls.SIZE)
+            self._build_chrome()
+            cls.build(self)
+        finally:
+            self.ORIGIN, self.SIZE = saved_origin, saved_size
+            self.CHROME = saved_chrome
+        self._paint_rows()
+
+    def _goto(self, page_name):
+        """Switch to another page: rebuild the body in place."""
+        self._show_page(page_name)
 
     def build(self):
         """The page's own body. Subclasses fill it in."""

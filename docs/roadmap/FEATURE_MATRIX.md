@@ -64,8 +64,10 @@ numbers.
 | Speech (SAPI) | `sapi.py` | ported (Windows) | `regress_sapi.py` |
 | Virtual keyboard | 2134 | ported (Tk + Qt) | `regress_vk_*`, `regress_qt_features.py` |
 | Tray icon + menu | `FUN_00463xxx` | ported (Tk + Qt, native's own mouse-mode names) | `regress_tray_menu.py`, `regress_qt_features.py` |
-| Qt front end's mouse mode + Ctrl+Q | the English lang.json (ids 60/70/71), `DAT_005493F8` | ported | `regress_qt_features.py` (71 assertions: the hook, the gate, both capture paths, the read-aloud half) |
+| Qt front end's mouse mode + Ctrl+Q | the English lang.json (ids 60/70/71), `DAT_005493F8` | ported | `regress_qt_features.py` (81 assertions: the hook, the gate, both capture paths, the read-aloud half, the UI-thread marshalling) |
 | Qt front end's twelve windows | captures 2126, 2131-2141 | ported (mean ink diff 0.0037) | `render_qt.py --compare`, `BASELINE_RESULTS.md` |
+| Extension UI reaching the RUNNING app | `EXTENSION_SDK.md` §8, `ui_slots.py` | behaviour-verified (the tray menu, the theme's palette, the panel strip) | `regress_qt_extension_ui.py` (16 assertions) |
+| The macOS platform adapter | `platforms.py` | behaviour-verified (the per-user folder, the clipboard; the Win32-only pieces stay unavailable) | `regress_platforms.py` (31) |
 
 ## 4. The reverse engineering
 

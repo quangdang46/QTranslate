@@ -133,7 +133,7 @@ evidence.
 **Gate:** `tools/run_suites.py` exits 0, and every document's claims
 point at a run.
 
-**State:** the suite is green (134 suites, 0 failed). The final
+**State:** the suite is green (135 suites, 0 failed). The final
 acceptance waits on the two blocked gates (see `BLOCKERS.md`); it needs
 a human, and so does the G9 screenshot review.
 

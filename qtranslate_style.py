@@ -107,8 +107,8 @@ def qss():
     grad = button_gradient(21)
     grad_p = (f"qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 {BTN_PRESS_TOP},stop:1 {BTN_BOT})")
     return f"""
-* {{ font-family: "{FONT_FAMILY}"; font-size: {FONT_SIZE}px; color: {TEXT}; }}
-QWidget {{ background: {FACE}; }}
+* {{ font-family: "{FONT_FAMILY}"; font-size: {FONT_SIZE}px; color: @TEXT@; }}
+QWidget {{ background: @FACE@; }}
 QLabel, QCheckBox {{ background: transparent; }}
 QPushButton, QToolButton {{
   border: 1px solid {BORDER}; border-radius: 2px; background: {grad};
@@ -124,22 +124,22 @@ QPushButton#service {{
   background: qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 {STRIP_TOP},stop:1 {STRIP_BOT}); }}
 QPushButton#service[selected="true"] {{
   border: 1px solid {STRIP_SEL_BORDER}; background: {STRIP_SEL}; }}
-QPushButton:disabled, QToolButton:disabled {{ background: {DIS_BG}; color: {DIM}; border-color: {DIS_BG}; }}
+QPushButton:disabled, QToolButton:disabled {{ background: {DIS_BG}; color: @DIM@; border-color: {DIS_BG}; }}
 QComboBox {{
   border: 1px solid {BORDER}; border-radius: 2px; background: {grad};
   padding: 0 14px 0 7px; }}
-QComboBox:disabled {{ background: {FACE}; color: {DIM}; border-color: {DIM}; }}
+QComboBox:disabled {{ background: @FACE@; color: @DIM@; border-color: @DIM@; }}
 QComboBox::drop-down {{ border: none; width: 12px; subcontrol-origin: padding; subcontrol-position: right center; }}
 QComboBox::down-arrow {{ image: url({arrow}); width: 7px; height: 8px; }}
 QComboBox QAbstractItemView {{
   background: {WINDOW}; border: 1px solid {BORDER};
-  selection-background-color: {ACCENT}; selection-color: #ffffff; outline: 0; }}
+  selection-background-color: @ACCENT@; selection-color: #ffffff; outline: 0; }}
 QLineEdit, QTextEdit, QPlainTextEdit, QListWidget, QListView, QTreeWidget, QTableWidget {{
   background: {WINDOW}; border: 1px solid {BORDER}; border-radius: 0;
-  selection-background-color: {ACCENT}; selection-color: #ffffff; }}
-QLineEdit:disabled {{ background: {FACE}; color: {DIM}; border-color: {DIM}; }}
+  selection-background-color: @ACCENT@; selection-color: #ffffff; }}
+QLineEdit:disabled {{ background: @FACE@; color: @DIM@; border-color: @DIM@; }}
 QListWidget::item {{ padding: 0 2px; }}
-QListWidget::item:selected {{ background: {ACCENT}; color: #ffffff; }}
+QListWidget::item:selected {{ background: @ACCENT@; color: #ffffff; }}
 QHeaderView::section {{ background: {WINDOW}; border: none; border-right: 1px solid {COLSEP}; padding: 0 6px; }}
 /* The theme's checkbox: a white top row, then the face's ramp. The
    stops are MEASURED off the native capture (2139). */
@@ -148,7 +148,7 @@ QCheckBox::indicator {{ width: 11px; height: 12px; border: 1px solid {BORDER};
   background: qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #ffffff,stop:0.0714 #ffffff,
     stop:0.143 {CB_TOP},stop:0.86 #d4d4d4,stop:0.93 {CB_BOT},stop:1 {CB_BOT}); }}
 QCheckBox::indicator:checked {{ image: url({tick_k}); }}
-QCheckBox::indicator:disabled {{ border-color: {DIM}; }}
+QCheckBox::indicator:disabled {{ border-color: @DIM@; }}
 /* checkboxes INSIDE list views (Services, Languages) are blue with a white tick */
 QListView::indicator {{ width: 11px; height: 11px; border: 1px solid {BORDER}; border-radius: 2px; background: {WINDOW}; }}
 QListView::indicator:checked {{ background: {CHECK}; border: 1px solid {CHECK}; image: url({tick_w}); }}
@@ -158,13 +158,13 @@ QListView::indicator:checked {{ background: {CHECK}; border: 1px solid {CHECK}; 
 QCheckBox[blue="true"]::indicator {{ width: 11px; height: 11px; border: 1px solid {BORDER}; border-radius: 2px; background: {WINDOW}; }}
 QCheckBox[blue="true"]::indicator:checked {{ background: {CHECK}; border: 1px solid {CHECK}; image: url({tick_w}); }}
 QGroupBox {{ border: none; margin-top: 7px; }}
-QGroupBox::title {{ subcontrol-origin: margin; subcontrol-position: top left; left: 9px; padding: 0 2px; background: {FACE}; }}
-QScrollBar:vertical {{ background: {FACE}; width: 14px; margin: 0; }}
+QGroupBox::title {{ subcontrol-origin: margin; subcontrol-position: top left; left: 9px; padding: 0 2px; background: @FACE@; }}
+QScrollBar:vertical {{ background: @FACE@; width: 14px; margin: 0; }}
 QScrollBar::handle:vertical {{ background: {THUMB}; margin: 0 6px; min-height: 20px; }}
-QScrollBar:horizontal {{ background: {FACE}; height: 14px; margin: 0; }}
+QScrollBar:horizontal {{ background: @FACE@; height: 14px; margin: 0; }}
 QScrollBar::handle:horizontal {{ background: {THUMB}; margin: 6px 0; min-width: 20px; }}
 QScrollBar::add-line, QScrollBar::sub-line, QScrollBar::add-page, QScrollBar::sub-page {{ width: 0; height: 0; background: none; }}
-QSplitter::handle {{ background: {FACE}; }}
+QSplitter::handle {{ background: @FACE@; }}
 QMenu {{ background: #f9f9f9; border: 1px solid #e5e5e5; }}
 QMenu::item {{ padding: 3px 24px 3px 38px; }}
 QMenu::item:selected {{ background: #e5e5e5; }}
@@ -172,18 +172,66 @@ QMenu::separator {{ height: 1px; background: #d7d7d7; margin: 2px 0; }}
 """
 
 
-def apply_style(app: QApplication):
+def apply_style(app: QApplication, theme=None):
+    """Apply the look.
+
+    ``theme`` is a theme record in the native's shape (the same dict
+    ``qtranslate.theme.active_theme`` returns). When one is given, the
+    colours it names OVERRIDE the measured tokens -- that is how a theme
+    shipped as an extension changes the app, which is what
+    ``EXTENSION_SDK.md`` promises. A theme that names nothing keeps the
+    measured look, so the default path is unchanged.
+    """
+    face, window, text, dim, accent = FACE, WINDOW, TEXT, DIM, ACCENT
+    if theme:
+        face, window, text, accent, dim = _theme_colors(theme, face, window,
+                                                        text, accent, dim)
     app.setStyle("Fusion")
     P, R = QPalette(), QPalette.ColorRole
-    for r, c in [(R.Window, FACE), (R.Base, WINDOW), (R.Button, BTN_TOP), (R.WindowText, TEXT),
-                 (R.Text, TEXT), (R.ButtonText, TEXT), (R.Highlight, ACCENT), (R.HighlightedText, "#ffffff")]:
+    for r, c in [(R.Window, face), (R.Base, window), (R.Button, BTN_TOP), (R.WindowText, text),
+                 (R.Text, text), (R.ButtonText, text), (R.Highlight, accent), (R.HighlightedText, "#ffffff")]:
         P.setColor(r, QColor(c))
-    P.setColor(QPalette.Disabled, R.WindowText, QColor(DIM))
-    P.setColor(QPalette.Disabled, R.Text, QColor(DIM))
-    P.setColor(QPalette.Disabled, R.ButtonText, QColor(DIM))
+    P.setColor(QPalette.Disabled, R.WindowText, QColor(dim))
+    P.setColor(QPalette.Disabled, R.Text, QColor(dim))
+    P.setColor(QPalette.Disabled, R.ButtonText, QColor(dim))
     app.setPalette(P)
     f = QFont(FONT_FAMILY); f.setPixelSize(FONT_SIZE); app.setFont(f)
-    app.setStyleSheet(qss())
+    app.setStyleSheet(qss().replace("@FACE@", face).replace("@TEXT@", text)
+                      .replace("@DIM@", dim).replace("@ACCENT@", accent))
+
+
+def _theme_colors(theme, face, window, text, accent, dim):
+    """The colours a theme record overrides, with the measured ones for
+    the slots it does not name.
+
+    The native's theme record names its colours through its own slots
+    ("Window/Normal/Back", "Window/Normal/Text"), and the port reads
+    them through ``qtranslate.theme.state_colors`` so an unset slot
+    stays unset rather than becoming black.
+    """
+    try:
+        from qtranslate import theme as T
+        win = T.state_colors(theme, "Window", "Normal")
+    except Exception:
+        return face, window, text, accent, dim
+    out_face = _hex_or(win.get("Back"), face)
+    out_text = _hex_or(win.get("Text"), text)
+    out_border = _hex_or(win.get("Border"), None)
+    return out_face, window, out_text, accent, dim
+
+
+def _hex_or(value, fallback):
+    """A colour as ``#rrggbb``, or the fallback when it is not one."""
+    if not value or not isinstance(value, str):
+        return fallback
+    v = value.strip()
+    if not v.startswith("#") or len(v) not in (4, 7):
+        return fallback
+    try:
+        int(v[1:], 16)
+    except ValueError:
+        return fallback
+    return v
 
 
 class EtchedGroupBox(QGroupBox):

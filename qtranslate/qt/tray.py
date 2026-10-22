@@ -73,9 +73,47 @@ class Tray:
             self._mode_actions[mode] = act
 
         menu.addSeparator()
+        # The extension UI slot: the native's tray menu is id 5 in the
+        # locale packs, and an extension may contribute an entry to it
+        # (``ui_slots.MENU_SLOT_IDS``). The contribution is anything the
+        # host can call; its result is shown in a message box, so the
+        # example extension's answer is observable without a network.
+        self._add_extension_entries(menu)
+        menu.addSeparator()
         act = menu.addAction("Exit")
         act.triggered.connect(self.quit)
         return menu
+
+    def _add_extension_entries(self, menu):
+        """Add the entries an extension contributed to the tray menu."""
+        manager = getattr(self.app, "ext_manager", None)
+        if manager is None:
+            return
+        slots = getattr(manager, "ui_slots", None)
+        if slots is None:
+            return
+        try:
+            entries = slots.entries("menu", "tray")
+        except Exception:
+            return
+        for entry in entries:
+            label = entry.get("label") or "Extension"
+            contrib = entry.get("contribution")
+            act = menu.addAction(label)
+            act.triggered.connect(
+                lambda _c=False, f=contrib: self._run_contribution(f))
+
+    def _run_contribution(self, contrib):
+        """Run an extension's contribution and show what it returned."""
+        if not callable(contrib):
+            return
+        try:
+            result = contrib()
+        except Exception as exc:                # noqa: BLE001
+            result = "Extension failed: %s" % exc
+        from PySide6.QtWidgets import QMessageBox
+        QMessageBox.information(None, "QTranslate",
+                                str(result) if result is not None else "")
 
     # -------------------------------------------------------------- actions
     def _toggle_hotkeys(self, checked):

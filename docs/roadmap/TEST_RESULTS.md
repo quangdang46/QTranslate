@@ -11,10 +11,10 @@ python -I tools/run_suites.py
 ```
 
 ```
-134 suites, 0 failed, 41.8s
+135 suites, 0 failed, 48.4s
 ```
 
-**134 suites, 0 failed.** The suite files are 136; two of them
+**135 suites, 0 failed.** The suite files are 137; two of them
 (`live_bass.py`, `live_providers.py`) hit real endpoints and are run
 separately, so the runner does not count them.
 
@@ -24,8 +24,16 @@ history's structure to the hotkey codec. It is the suite that would
 catch a regression in the UI itself, and it is the one that found the
 strip's two-dot short names.
 
+`regress_qt_extension_ui.py` is the suite that proves an extension
+reaches the RUNNING app: it installs an extension in a folder, loads
+it through the shared loader, and asserts that the tray menu shows its
+menu contribution, that the theme resolver returns its theme AND that
+the theme reaches the app's palette, and that a contributed panel is
+docked in the main window -- and that a window with no extension has
+no panel at all, so the pixels stay the native's.
+
 `regress_qt_features.py` is the Qt front end's behaviour suite: it
-builds the PySide6 app with the engine stubbed and asserts 71 things,
+builds the PySide6 app with the engine stubbed and asserts 81 things,
 offline. That translating fills the result pane and writes the
 history, that New clears the source, that Swap exchanges the language
 pair, that all nine Options pages build with the native's client

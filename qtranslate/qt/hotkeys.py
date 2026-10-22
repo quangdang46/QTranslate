@@ -71,8 +71,14 @@ def install(app) -> list:
         fn = getattr(app, method, None)
         if fn is None:
             continue
+        # ``keyboard`` fires the callback on ITS OWN listener thread,
+        # not Qt's. Running it straight would let the handler touch
+        # widgets from the wrong thread, which crashes the process
+        # outright (access violation, not a catchable exception).
+        # ``app._on_ui`` re-runs the handler on the UI thread instead.
+        safe = (lambda f: (lambda: app._on_ui(f)))(fn)
         try:
-            keyboard.add_hotkey(combo, fn)
+            keyboard.add_hotkey(combo, safe)
             bound.append("%s=%s" % (name, combo))
         except Exception:
             continue

@@ -3,6 +3,58 @@
 The running log. Newest first. Every entry names what changed and what
 was run to show it.
 
+## 2026-10-22 -- the user ran the app, and found four bugs
+
+The PySide6 front end was handed to the user to try. Four things came
+back, and all four were real defects rather than cosmetic ones.
+
+**Ctrl+Q crashed the process.** The `keyboard` package fires a global
+hotkey on its OWN listener thread, and the handler went straight to the
+widgets from there. Qt does not guard cross-thread widget access: it is
+an access violation, not a catchable exception, so the app died. The
+fix is `_UiInvoker` and `QtApp._on_ui` in `qtranslate/qt/app.py`, and
+`qtranslate/qt/hotkeys.py` wraps every registered callback in it. The
+suite pins the marshalling (`regress_qt_features.py`, 81 assertions).
+
+**The Options dialog opened a new window per page.** `OptionsBase._goto`
+built a fresh page window and closed the old one. The shell is now ONE
+window: the page's own `build()` is called again with the shell as
+`self`, after pointing the instance's ORIGIN, SIZE and CHROME at the
+page's own (the Hotkeys page's capture is a different size and its
+chrome sits elsewhere). The measure is unchanged -- **0.0037** over
+twelve screens -- because the chrome is described per page and the
+widgets are hidden rather than deleted (deleting one with a paint event
+still queued is the same access violation).
+
+**The mouse mode did nothing.** The Qt front end had a label for it and
+never started the hook; only the tkinter front end ever did. The hook,
+the capture (OLEACC in the third mode, Ctrl+C + clipboard otherwise),
+native's gate order and the mode's own names (the English lang.json,
+ids 60/70/71) are all in place now, and native's third mode speaks the
+selected text in BOTH front ends.
+
+**The language combo's list ran off the screen.** NOT fixed; it is the
+first item in `HANDOFF.md`. The combo lists all 75 provider languages;
+native's lists a fixed set from its locale pack.
+
+**The extension platform reached the UI.** The audit was right: the
+registry existed, was tested, and nothing in the running app ever read
+it. The Qt front end now loads the user extensions through the SAME
+shared loader, keeps the manager (`extensions.last_manager()`), and the
+tray menu, the theme's palette and the main window's panes read the UI
+and theme slots. `tests/regress_qt_extension_ui.py` (16 assertions)
+proves each of them, including that a window with no extension has no
+panel strip, so the pixels stay the native's.
+
+Also: the language table moved out of the tkinter module into
+`qtranslate/languages.py` (Core), so the Qt view no longer imports
+tkinter for two constants, and `qtranslate/platforms.py` gained a macOS
+adapter whose per-user folder the extension loader can resolve.
+
+```
+135 suites, 0 failed, 48.4s
+```
+
 ## 2026-10-22 -- the mouse mode and Ctrl+Q in the Qt front end
 
 Native's mouse mode is the one that lets you BÔI ĐEN: select text in

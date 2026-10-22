@@ -55,7 +55,7 @@
 > (`ExpandHistoryItems`, the seventeen `HotKeys` keys), and the strip's
 > short names were cut to two dots where native cuts them to three. The
 > Qt front end translates, opens every page and window, and carries the
-> mouse mode (`tests/regress_qt_features.py`, 71 assertions). The
+> mouse mode (`tests/regress_qt_features.py`, 81 assertions). The
 > bundle now ships both front ends (`QTranslate.exe` and
 > `QTranslate-Qt.exe`, one shared `_internal`). See
 > `docs/review/PYSIDE6_PARITY_2026-10-22.md` and

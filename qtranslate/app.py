@@ -126,43 +126,12 @@ BACKTR_MARKER = "--- back-translation ---"
 # that from being re-broken by a well-meaning change.
 SVC_ICON_PX = 16
 
-# Full language table from Services/Google Translate/Service.js
-# SupportedLanguages (75 codes; index 1=auto .. 57=vi). Display names
-# are ISO English names (native combo shows localized names from its
-# .mui resources; English mapping is equivalent for selection).
-_ISO_NAMES = {
-    "auto": "Auto-Detect", "af": "Afrikaans", "az": "Azerbaijani",
-    "sq": "Albanian", "ar": "Arabic", "hy": "Armenian", "eu": "Basque",
-    "be": "Belarusian", "bg": "Bulgarian", "ca": "Catalan",
-    "zh-CN": "Chinese (Simplified)", "zh-TW": "Chinese (Traditional)",
-    "hr": "Croatian", "cs": "Czech", "da": "Danish", "nl": "Dutch",
-    "en": "English", "et": "Estonian", "fi": "Finnish", "tl": "Filipino",
-    "fr": "French", "gl": "Galician", "de": "German", "el": "Greek",
-    "ht": "Haitian Creole", "iw": "Hebrew", "hi": "Hindi",
-    "hu": "Hungarian", "is": "Icelandic", "id": "Indonesian",
-    "it": "Italian", "ga": "Irish", "ja": "Japanese", "ka": "Georgian",
-    "ko": "Korean", "lv": "Latvian", "lt": "Lithuanian",
-    "mk": "Macedonian", "ms": "Malay", "mt": "Maltese",
-    "no": "Norwegian", "fa": "Persian", "pl": "Polish", "pt": "Portuguese",
-    "ro": "Romanian", "ru": "Russian", "sr": "Serbian", "sk": "Slovak",
-    "sl": "Slovenian", "es": "Spanish", "sw": "Swahili",
-    "sv": "Swedish", "th": "Thai", "tr": "Turkish", "uk": "Ukrainian",
-    "ur": "Urdu", "vi": "Vietnamese", "cy": "Welsh", "yi": "Yiddish",
-    "eo": "Esperanto", "hmn": "Hmong", "la": "Latin", "lo": "Lao",
-    "kk": "Kazakh", "uz": "Uzbek", "si": "Sinhala", "tg": "Tajik",
-    "te": "Telugu", "km": "Khmer", "mn": "Mongolian", "kn": "Kannada",
-    "ta": "Tamil", "mr": "Marathi", "bn": "Bengali", "tt": "Tatar",
-    "zh-CHS": "Chinese (Simplified)",
-}
-try:
-    from qtranslate.services.google_translate import SUPPORTED_LANGS \
-        as _SL
-    LANGS = [c for c in _SL if c != -1]
-except Exception:
-    LANGS = list(_ISO_NAMES)
-TO_LANGS = [c for c in LANGS if c != "auto"]
-LANG_DISPLAY = {c: _ISO_NAMES.get(c, c) for c in LANGS}
-LANG_CODES = {v: k for k, v in LANG_DISPLAY.items()}
+# The language table lives in Core now (``qtranslate.languages``): the
+# PySide6 front end needs the same names, and it must not have to
+# import the tkinter module for two constants.
+from qtranslate.languages import (  # noqa: E402
+    LANG_CODES, LANG_DISPLAY, LANGS, TO_LANGS,
+)
 
 
 def _disabled_lang_indices() -> set:

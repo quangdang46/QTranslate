@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import os
 import sys
+import threading
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
@@ -32,7 +33,7 @@ def ck(name, cond, detail=""):
 
 # --- the toolkit has to be there at all ---------------------------------
 try:
-    from PySide6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication, QCheckBox, QLabel
 except Exception as exc:                       # noqa: BLE001
     print("SKIP regress_qt_features: PySide6 is not importable (%s)" % exc)
     raise SystemExit(0)
@@ -127,14 +128,34 @@ try:
     ck("the other pages share the Options size",
        opt.AppearancePage.SIZE == (644, 362), str(opt.AppearancePage.SIZE))
 
-    # the sidebar switches page and closes the one it came from
+    # The sidebar swaps the body IN PLACE: the same window, the same
+    # sidebar, the page's own widgets replaced. (It used to open a new
+    # window and close the old one, which flickered.)
     basics = opt.BasicsPage(app)
     windows.append(basics)
+    basics.show()
+    app.qapp.processEvents()
+    win_id = basics.winId()
     basics._goto("Languages")
     app.qapp.processEvents()
-    ck("clicking a page in the list opens that page",
-       isinstance(app._opts, opt.LanguagesPage), type(app._opts).__name__)
-    ck("the page it came from is closed", not basics.isVisible())
+    ck("clicking a page in the list swaps the body in place",
+       basics.winId() == win_id, "%s vs %s" % (basics.winId(), win_id))
+    ck("the new page's body is the one on show",
+       basics._page_name == "Languages", basics._page_name)
+    ck("the old page's widgets are gone",
+       not any("Start with Windows" in c.text()
+               for c in basics.findChildren(QCheckBox)))
+    ck("the new page's widgets are there",
+       any("Vietnamese" in c.text()
+           for c in basics.findChildren(QCheckBox))
+       or bool(basics.findChildren(QLabel)))
+    basics._goto("Basics")
+    app.qapp.processEvents()
+    ck("the page can be swapped back", basics._page_name == "Basics",
+       basics._page_name)
+    ck("the window keeps the shared Options size after the swap",
+       (basics.width(), basics.height()) == (644, 362),
+       "%dx%d" % (basics.width(), basics.height()))
 
     # --- 5. the other windows -------------------------------------------
     try:
@@ -359,6 +380,56 @@ try:
         # a failure, but a crash in our own code is a failure.
         ck("the hotkeys install", "keyboard" not in str(exc).lower(),
            "%s: %s" % (type(exc).__name__, exc))
+
+    # A hotkey fires on the `keyboard` package's OWN listener thread, not
+    # Qt's. Running the handler there touches widgets from the wrong
+    # thread, which crashed the process outright (an access violation,
+    # not a catchable exception) the first time a user pressed Ctrl+Q.
+    # The handler must therefore be re-run on the UI thread.
+    ck("the app can hand a call to the UI thread",
+       callable(getattr(app, "_on_ui", None)))
+    from PySide6.QtCore import QThread
+    ran = []
+    app._on_ui(lambda: ran.append(QThread.currentThread() is app.qapp.thread()))
+    ck("a call from the UI thread runs there",
+       ran == [True], str(ran))
+    # The same call from ANOTHER thread must land on the UI thread too,
+    # which is what the hotkey path does.
+    ran2 = []
+
+    def _from_worker():
+        app._on_ui(lambda: ran2.append(QThread.currentThread()
+                                       is app.qapp.thread()))
+    worker = threading.Thread(target=_from_worker)
+    worker.start()
+    worker.join()
+    ck("a call from another thread is marshalled to the UI thread",
+       ran2 == [], "the queued call must not have run on the worker")
+    app.qapp.processEvents()
+    ck("the marshalled call runs on the UI thread",
+       ran2 == [True], str(ran2))
+
+    # The registration itself must wrap the handler: the callback that
+    # `keyboard` keeps is not the raw app method but one that goes
+    # through _on_ui.
+    from qtranslate.qt import hotkeys as _hk
+    import keyboard as _kbd
+    registered_cb = []
+    real_add = _kbd.add_hotkey
+
+    def _fake_add(combo, cb, *a, **kw):
+        registered_cb.append((combo, cb))
+        return real_add(combo, cb, *a, **kw)
+    _kbd.add_hotkey = _fake_add
+    try:
+        _hk.install(app)
+    finally:
+        _kbd.add_hotkey = real_add
+    ck("the hotkeys are registered", bool(registered_cb), str(registered_cb))
+    ck("the registered callback is not the raw app method",
+       all(cb.__code__.co_name != "hotkey_popup"
+           for _c, cb in registered_cb),
+       str([cb.__code__.co_name for _c, cb in registered_cb]))
 
     # --- 9. the assets ---------------------------------------------------
     try:

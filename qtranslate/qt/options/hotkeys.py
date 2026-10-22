@@ -3,43 +3,44 @@
 The geometry was measured off the native capture; see
 ``qtranslate-pyside6-spec.md`` section 5.
 
-This page is its own shell: the native's capture (2126) is a 663x388
-shot, a different size from the other pages', so the page does not use
-the shared one. Its list is a LISTVIEW with two scrollbars, and the
-tracks are the face colour over the white list -- the port draws the
-same, as flat rectangles, because the measure is the pixels.
+Its capture (2126) is a 663x388 shot, a different size from the other
+pages'. When this page is shown the shell resizes to it, and the rows
+are shifted two screenshot pixels so they land where the capture says
+they do. Its list is a LISTVIEW with two scrollbars, and the tracks
+are the face colour over the white list -- the port draws the same, as
+flat rectangles, because the measure is the pixels.
 """
 
-from .base import SIDEBAR
-from ..widgets import Base, button, check, hline, label, panel, put, rect
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QLabel
+from .base import OptionsBase
+from ..widgets import check, label, panel, rect
 
-from qtranslate_style import ACCENT, DIM, FACE, TEXT, THUMB, WINDOW
+from qtranslate_style import FACE, THUMB
 
 
-class HotkeysPage(Base):
-    """The Hotkeys page. Its capture is 663x388, a different size from
-    the other pages, so it does not use the shared shell."""
+class HotkeysPage(OptionsBase):
+    """The Hotkeys page."""
 
     ORIGIN, SIZE = (1, 24), (650, 362)
     SEL = 1
 
-    def __init__(self, app):
-        super().__init__()
-        self.app = app
-        self.setWindowTitle("Options")
-        panel(self, 10, 27, 142, 323)
-        for i, name in enumerate(SIDEBAR):
-            sel = i == self.SEL
-            q = QLabel(name)
-            q.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-            # No left padding: the text has to start one pixel inside the
-            # row, the way native's does (MEASURED off the capture).
-            q.setStyleSheet("QLabel{background:%s;color:%s;}"
-                            % (ACCENT if sel else "transparent",
-                               "#ffffff" if sel else TEXT))
-            put(self, q, 13, 29 + 13 * i, 140, 13)
+    # The chrome of THIS page, measured off capture 2126: the window is
+    # 6px wider, its sidebar sits 6px further right and 2px higher, its
+    # list view has no empty first row, and its three buttons are 6px
+    # further right and 2px higher (and cast no shadow).
+    CHROME = {
+        "panel": (10, 27, 142, 323),
+        "row": (13, 29, 140),
+        "face_row": None,
+        "shadow_row": None,
+        "rule": (356, 9, 645),
+        "buttons": {
+            "OK": (409, 361, 73, False),
+            "Cancel": (490, 361, 73, False),
+            "Apply": (571, 361, 73, False),
+        },
+    }
+
+    def build(self):
         check(self, 159, 41, "Enable hotkeys", True)
         # The list: 481 wide, 267 tall, with the vertical scrollbar's
         # track down the right and the horizontal one's along the
@@ -68,13 +69,3 @@ class HotkeysPage(Base):
             label(t, 166, 92 + 17 * i, a)
             if k:
                 label(t, 484, 92 + 17 * i, k)
-        # The rule above the buttons: an etched line, a dark one and a
-        # white one under it. MEASURED off the capture.
-        hline(self, 356, 9, 645)
-        hline(self, 357, 9, 644, WINDOW)
-        button(self, 409, 361, 73, "OK")
-        button(self, 490, 361, 73, "Cancel")
-        # Apply is drawn like the others but its label is grey: the
-        # native greys the label, not the whole button.
-        ap = button(self, 571, 361, 73, "Apply")
-        ap.setStyleSheet("color:%s" % DIM)

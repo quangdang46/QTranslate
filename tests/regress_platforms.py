@@ -51,6 +51,34 @@ cur = P.current()
 ck("current() returns an adapter with capability()",
    callable(getattr(cur, "capability", None)))
 
+# --- the macOS branch resolves the per-user folder -----------------------
+# The extension loader resolves its folder through the Paths adapter, so
+# on macOS it has to be a real path -- not the UnavailableAdapter's
+# NotImplementedError, which made the loader return [] silently.
+_mac = P.MacOSAdapter()
+ck("the macOS adapter resolves the app-data dir",
+   _mac.app_data() == P.app_data_dir(), _mac.app_data())
+ck("the macOS adapter resolves the extensions dir",
+   _mac.extensions_dir() == os.path.join(P.app_data_dir(), "extensions"),
+   _mac.extensions_dir())
+ck("the macOS extensions dir is absolute",
+   os.path.isabs(_mac.extensions_dir()), _mac.extensions_dir())
+ck("the macOS adapter reports the clipboard available",
+   _mac.capability("clipboard") == P.Capability.AVAILABLE)
+ck("the macOS adapter reports the Win32-only pieces unavailable",
+   _mac.capability("hotkey") == P.Capability.UNAVAILABLE
+   and _mac.capability("capture") == P.Capability.UNAVAILABLE)
+_threw = False
+try:
+    _mac.sequence()  # noqa: SLF001 -- probing the interface contract
+except (NotImplementedError, AttributeError):
+    _threw = True
+ck("the macOS adapter does not fake the Win32 clipboard counter",
+   _threw)
+_src_cur = io.open("qtranslate/platforms.py", encoding="utf-8").read()
+ck("current() picks the macOS adapter on darwin",
+   re.search(r'sys\.platform\s*==\s*"darwin"', _src_cur) is not None)
+
 # --- tkinter-free ------------------------------------------------------
 _src = io.open("qtranslate/platforms.py", encoding="utf-8").read()
 ck("platforms module imports no tkinter",

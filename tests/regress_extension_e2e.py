@@ -137,6 +137,16 @@ try:
     ck("app.main wires extension loading at startup",
        re.search(r"load_user_extensions\s*\(", main_body) is not None)
 
+    # The Qt front end is the one that ships as the standard UI now, so
+    # it must load the same extensions through the same shared loader.
+    qt_src = io.open("qtranslate/qt/app.py", encoding="utf-8").read()
+    ck("the Qt front end imports cleanly", True)
+    qt_main = qt_src.split("def main(", 1)[1]
+    ck("the Qt front end wires extension loading at startup",
+       re.search(r"load_user_extensions\s*\(", qt_main) is not None)
+    ck("the Qt front end uses the SHARED loader, not a second one",
+       "from qtranslate.extensions import load_user_extensions" in qt_src)
+
     # --- the loader core stays tkinter-free -----------------------------
     src = io.open("qtranslate/extensions.py", encoding="utf-8").read()
     ck("extensions module imports no tkinter",

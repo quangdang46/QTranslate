@@ -212,11 +212,23 @@ def default_theme() -> dict:
     }
 
 
-def active_theme(name: str, themes_dir: str = THEMES_DIR) -> dict:
+def active_theme(name: str, themes_dir: str = THEMES_DIR, manager=None) -> dict:
     """Theme file if one loads, `DefaultColorTheme` otherwise (`FUN_0044b44f`).
 
     Never returns `None`: native always has an active colour theme object.
+
+    ``manager`` is the extension manager, when the caller has one. An
+    extension theme with that name wins over the built-in file, and an
+    extension that declares ``replaces=<name>`` wins over the built-in
+    ``name`` -- the same resolution order the manager documents. Without
+    a manager this is exactly the built-in behaviour, so a headless
+    caller and the Tk front end are unaffected.
     """
+    if manager is not None:
+        try:
+            return manager.active_theme(name)
+        except Exception:
+            pass
     theme = load_theme_native(name, themes_dir)
     return default_theme() if theme is None else theme
 

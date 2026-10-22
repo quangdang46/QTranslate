@@ -187,6 +187,54 @@ class MainWindow(Base):
         self.btn_back.clicked.connect(app.on_back)
         self.btn_fwd.clicked.connect(app.on_forward)
 
+        # ---- the extension panels --------------------------------------
+        # An extension may contribute a panel to one of the native's
+        # three panes (the "Show*Pane" toggles on the Options/Basics
+        # page). The contribution is a callable; its answer is shown in
+        # a strip docked at the bottom of the pane it claimed. With no
+        # extension there is no strip at all, so the window is exactly
+        # the native's pixels.
+        self.panels = self._build_panels()
+
+    # The panel strips: pane slot -> the rect the strip is docked at, in
+    # the window's client coordinates. The top pane's strip stops short
+    # of the microphone and headphone icons (capture 2131, x 451 and
+    # 473); the middle pane's stops short of its headphone (x 473).
+    PANEL_STRIPS = {
+        "top": (7, 195, 440, 16),
+        "middle": (8, 376, 460, 16),
+    }
+
+    def _build_panels(self):
+        """Show the panels an extension contributed, one per pane slot."""
+        manager = getattr(self.app, "ext_manager", None)
+        slots = getattr(manager, "ui_slots", None) if manager else None
+        if slots is None:
+            return {}
+        out = {}
+        for name, box in self.PANEL_STRIPS.items():
+            try:
+                entries = slots.entries("panel", name)
+            except Exception:
+                continue
+            if not entries:
+                continue
+            contrib = entries[-1].get("contribution")
+            if not callable(contrib):
+                continue
+            try:
+                text = str(contrib() or "")
+            except Exception as exc:            # noqa: BLE001
+                text = "Extension failed: %s" % exc
+            if not text:
+                continue
+            lbl = QLabel(text)
+            lbl.setStyleSheet("background:#f0f0f0;color:#000000;"
+                              "border:1px solid #7e7e7e;")
+            put(self, lbl, *box)
+            out[name] = lbl
+        return out
+
     # ------------------------------------------------------------- helpers
     def _nav_button(self, x, y, w, name):
         """One half of the joined back/forward button."""

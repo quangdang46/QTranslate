@@ -113,7 +113,7 @@ smoke files.
 The naming is the contract: `regress_<area>_<thing>.py`. The suite
 runner prints `ok`/`FAIL` per file and a summary line.
 
-`regress_qt_features.py` (71 assertions) covers the Qt front
+`regress_qt_features.py` (81 assertions) covers the Qt front
 end's FEATURES, not its pixels: it builds the PySide6 app, stubs the
 engine so nothing goes on the wire, and asserts that the front end
 behaves (translate, new, swap, the nine Options pages, the sidebar, the
@@ -124,7 +124,7 @@ the assets, the font, the OCR region grab).
 **Current state (2026-10-22, measured):**
 
 ```
-134 suites, 0 failed, 42.0s
+135 suites, 0 failed, 48.4s
 ```
 
 (`ui_match.py` is counted as a suite and is a live-GUI suite: 96 checks.)

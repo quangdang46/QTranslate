@@ -822,8 +822,16 @@ def load_user_extensions(manager=None, extensions_dir=None, registry=None,
 
     Wiring point for ``app.main``; kept here, not in ``app``, so it stays
     tkinter-free and testable headless.
+
+    The manager the extensions were loaded into is available afterwards
+    through ``last_manager()`` -- a host that renders UI contributions
+    needs the registry the contributions live in, and the manager is
+    created here. It is a module-level "last one loaded" handle, which
+    is enough for a single front end per process.
     """
     manager = manager if manager is not None else ExtensionManager(registry)
+    global _LAST_MANAGER
+    _LAST_MANAGER = manager
     if extensions_dir is None:
         try:
             from qtranslate import platforms as _P
@@ -843,3 +851,18 @@ def load_user_extensions(manager=None, extensions_dir=None, registry=None,
     if valid != saved:
         write_saved_overrides(valid)
     return report
+
+
+# The manager the last ``load_user_extensions`` call loaded into. A host
+# that renders UI contributions reads ``manager.ui_slots`` from it.
+_LAST_MANAGER = None
+
+
+def last_manager():
+    """The ExtensionManager the last load used, or None.
+
+    A host needs it for the UI and theme slots: the contributions live
+    in the manager's own registry, so without a handle to the manager
+    the host cannot show what an extension registered.
+    """
+    return _LAST_MANAGER

@@ -45,6 +45,35 @@ class _MouseBridge(QObject):
         self.app.show_translation(text, result)
 
 
+class _UiInvoker(QObject):
+    """Runs a callable on the UI thread, from any other thread.
+
+    The ``keyboard`` package's global hotkeys fire on ITS OWN listener
+    thread, not Qt's. A hotkey handler that touches a widget from there
+    (``setPlainText``, opening a window) is a cross-thread access to Qt
+    objects, which Qt does not guard against -- it crashes the process
+    outright (an access violation) rather than raising a catchable
+    exception. ``invoke`` is a QUEUED signal, so connecting to a slot on
+    an object that lives on the UI thread (this one, built in
+    ``QtApp.__init__``, before any thread but the UI one exists) marshals
+    the call there, the same pattern ``_MouseBridge`` already uses for
+    the mouse hook.
+    """
+
+    invoke = Signal(object)
+
+    def __init__(self):
+        super().__init__()
+        self.invoke.connect(self._run)
+
+    @Slot(object)
+    def _run(self, fn):
+        try:
+            fn()
+        except Exception:
+            pass
+
+
 class QtApp:
     """The application's state and behaviour, independent of the widgets.
 
@@ -67,6 +96,58 @@ class QtApp:
         self.mouse_mode = "Show icon"
         self._mouse_hook = False
         self._bridge = _MouseBridge(self)
+        self._ui = _UiInvoker()
+        # The extension manager, once the user extensions are loaded.
+        # It carries the UI and theme contributions.
+        self.ext_manager = None
+
+    def apply_theme(self, name=None):
+        """Apply the active theme, including one an extension registered.
+
+        The theme is resolved through the extension manager when there is
+        one, so an extension's theme wins over the built-in file with the
+        same name -- the resolution order the manager documents. Without
+        an extension the built-in theme is used, and an empty theme name
+        leaves the measured look alone.
+
+        ``name`` defaults to the theme the settings file names
+        (Appearance.ThemeName), which is what the Appearance page writes
+        when the user picks one. It can be given explicitly, so a caller
+        (and a test) can apply a theme without touching the settings.
+        """
+        try:
+            from qtranslate import theme as T
+            if name is None:
+                from qtranslate import config as C
+                name = (C.load() or {}).get("Appearance", {}).get(
+                    "ThemeName", "")
+        except Exception:
+            name = name or ""
+        if not name:
+            return
+        try:
+            record = T.active_theme(name, manager=self.ext_manager)
+        except Exception:
+            return
+        try:
+            apply_style(self.qapp, theme=record)
+        except Exception:
+            pass
+
+    def _on_ui(self, fn):
+        """Run ``fn`` on the UI thread.
+
+        A no-op call (same thread as the caller) when the caller already
+        IS the UI thread, so this is safe to wrap every hotkey handler
+        in without a performance cost on the common path; it only
+        crosses threads when a Qt-unaware caller (``keyboard``'s
+        listener thread) actually needs it to.
+        """
+        from PySide6.QtCore import QThread
+        if QThread.currentThread() is self.qapp.thread():
+            fn()
+        else:
+            self._ui.invoke.emit(fn)
 
     # ------------------------------------------------------------- the core
     @staticmethod
@@ -162,11 +243,11 @@ class QtApp:
             return ["auto", "en", "vi"]
 
     def _display(self, code):
-        from qtranslate.app import LANG_DISPLAY
+        from qtranslate.languages import LANG_DISPLAY
         return LANG_DISPLAY.get(code, code)
 
     def _code_of(self, name):
-        from qtranslate.app import LANG_CODES
+        from qtranslate.languages import LANG_CODES
         return LANG_CODES.get(name, "auto")
 
     # ----------------------------------------------------------- behaviour
@@ -726,6 +807,27 @@ def main(argv=None):
         return _frozen_selftest()
     app = QtApp(argv)
     app._load_session()
+    # User extensions (D16), the same shared loader the Tk front end
+    # uses: the per-user folder is scanned, manifests are validated,
+    # the winners are committed into the live dispatch table, and a
+    # bad extension never blocks startup. The loader is toolkit-free
+    # by design (it lives in qtranslate.extensions, not in a view), so
+    # both front ends share one mechanism.
+    try:
+        from qtranslate.extensions import load_user_extensions, last_manager
+        _ext = load_user_extensions()
+        if _ext:
+            _loaded = sum(1 for r in _ext if r["status"] == "loaded")
+            _disabled = sum(1 for r in _ext if r["status"] == "disabled")
+            print("extensions: %d loaded, %d disabled" % (_loaded, _disabled))
+        # The manager holds the UI and theme contributions, so the view
+        # can actually show what an extension registered.
+        app.ext_manager = last_manager()
+    except Exception:
+        app.ext_manager = None
+    # The theme, now that the extension themes are known: an extension's
+    # theme may override the built-in one the settings name.
+    app.apply_theme()
     app.win = MainWindow(app)
     app.win.show()
     # The tray: native is a tray app, and its tray menu is the real
