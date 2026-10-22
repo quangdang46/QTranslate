@@ -62,7 +62,7 @@ class OptionsBase(Base):
             q.setStyleSheet("QLabel{background:%s;color:%s;}"
                             % (ACCENT if sel else "transparent",
                                "#ffffff" if sel else TEXT))
-            put(self, q, 6, 31 + 13 * i, 139, 13)
+            put(self, q, 7, 31 + 13 * i, 139, 13)
             if not sel:
                 q.mousePressEvent = (lambda _e, n=name: self._goto(n))
         # The rule above the buttons, and the buttons.

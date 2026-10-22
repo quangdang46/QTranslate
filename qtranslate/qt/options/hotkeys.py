@@ -16,14 +16,14 @@ class HotkeysPage(Base):
     """The Hotkeys page. Its capture is 663x388, a different size from
     the other pages, so it does not use the shared shell."""
 
-    ORIGIN, SIZE = (1, 24), (661, 363)
+    ORIGIN, SIZE = (1, 24), (650, 362)
     SEL = 1
 
     def __init__(self, app):
         super().__init__()
         self.app = app
         self.setWindowTitle("Options")
-        panel(self, 10, 28, 142, 323)
+        panel(self, 10, 27, 142, 323)
         for i, name in enumerate(SIDEBAR):
             sel = i == self.SEL
             q = QLabel(name)
@@ -33,7 +33,7 @@ class HotkeysPage(Base):
             q.setStyleSheet("QLabel{background:%s;color:%s;}"
                             % (ACCENT if sel else "transparent",
                                "#ffffff" if sel else TEXT))
-            put(self, q, 11, 28 + 13 * i, 140, 13)
+            put(self, q, 12, 29 + 13 * i, 140, 13)
         check(self, 159, 41, "Enable hotkeys", True)
         t = panel(self, 159, 60, 465, 251)
         label(t, 166, 71, "Action")
