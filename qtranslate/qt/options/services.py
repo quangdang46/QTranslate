@@ -56,7 +56,7 @@ class ServicesPage(OptionsBase):
         # The section heading and the rule that runs beside it, both at
         # the heading's own mid height. The heading is Tahoma 9pt.
         label(lst, 167, 42, "Translation", color=HEADING, size=12)
-        hline(lst, 42, 230, 607, HEADING_LINE)
+        hline(lst, 42, 230, 608, HEADING_LINE)
         for i, name in enumerate(self.app.ordered_services()):
             icon(lst, 176, 54 + 18 * i, "service_icons",
                  SERVICE_ICON_BY_NAME.get(self.app.service_display(name), "google"))
@@ -66,7 +66,7 @@ class ServicesPage(OptionsBase):
             check(lst, 160, 61 + 18 * i, "", True, blue=True)
             label(lst, 194, 62 + 18 * i, self.app.service_display(name))
         label(lst, 168, 228, "Dictionary", color=HEADING, size=12)
-        hline(lst, 228, 226, 607, HEADING_LINE)
+        hline(lst, 228, 226, 608, HEADING_LINE)
         for i, name in enumerate(self.app.dictionary_names()):
             icon(lst, 176, 240 + 18 * i, "dict_icons",
                  DICT_ICONS.get(name, "wikipedia"))

@@ -127,7 +127,7 @@ QPushButton#service[selected="true"] {{
 QPushButton:disabled, QToolButton:disabled {{ background: {DIS_BG}; color: {DIM}; border-color: {DIS_BG}; }}
 QComboBox {{
   border: 1px solid {BORDER}; border-radius: 2px; background: {grad};
-  padding: 0 14px 0 5px; }}
+  padding: 0 14px 0 7px; }}
 QComboBox:disabled {{ background: {FACE}; color: {DIM}; border-color: {DIM}; }}
 QComboBox::drop-down {{ border: none; width: 11px; subcontrol-origin: padding; subcontrol-position: right center; }}
 QComboBox::down-arrow {{ image: url({arrow}); width: 7px; height: 8px; }}
@@ -141,17 +141,21 @@ QLineEdit:disabled {{ background: {FACE}; color: {DIM}; border-color: {DIM}; }}
 QListWidget::item {{ padding: 0 2px; }}
 QListWidget::item:selected {{ background: {ACCENT}; color: #ffffff; }}
 QHeaderView::section {{ background: {WINDOW}; border: none; border-right: 1px solid {COLSEP}; padding: 0 6px; }}
-QCheckBox::indicator {{ width: 12px; height: 12px; border: 1px solid {BORDER};
-  background: qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 {CB_TOP},stop:1 {CB_BOT}); }}
+/* The theme's checkbox: a white top row, then the face's ramp. The
+   stops are MEASURED off the native capture (2139). */
+QCheckBox::indicator {{ width: 11px; height: 12px; border: 1px solid {BORDER};
+  border-radius: 2px;
+  background: qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #ffffff,stop:0.0714 #ffffff,
+    stop:0.143 {CB_TOP},stop:0.86 #d4d4d4,stop:0.93 {CB_BOT},stop:1 {CB_BOT}); }}
 QCheckBox::indicator:checked {{ image: url({tick_k}); }}
 QCheckBox::indicator:disabled {{ border-color: {DIM}; }}
 /* checkboxes INSIDE list views (Services, Languages) are blue with a white tick */
-QListView::indicator {{ width: 11px; height: 11px; border: 1px solid {BORDER}; background: {WINDOW}; }}
+QListView::indicator {{ width: 11px; height: 11px; border: 1px solid {BORDER}; border-radius: 2px; background: {WINDOW}; }}
 QListView::indicator:checked {{ background: {CHECK}; border: 1px solid {CHECK}; image: url({tick_w}); }}
 /* The port draws the Services and Languages checklists as QCheckBox widgets
    with the "blue" property set rather than as a QListView, so the rule
    that makes them blue has to name the property. */
-QCheckBox[blue="true"]::indicator {{ width: 11px; height: 11px; border: 1px solid {BORDER}; background: {WINDOW}; }}
+QCheckBox[blue="true"]::indicator {{ width: 11px; height: 11px; border: 1px solid {BORDER}; border-radius: 2px; background: {WINDOW}; }}
 QCheckBox[blue="true"]::indicator:checked {{ background: {CHECK}; border: 1px solid {CHECK}; image: url({tick_w}); }}
 QGroupBox {{ border: none; margin-top: 7px; }}
 QGroupBox::title {{ subcontrol-origin: margin; subcontrol-position: top left; left: 9px; padding: 0 2px; background: {FACE}; }}

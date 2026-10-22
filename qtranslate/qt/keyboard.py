@@ -9,7 +9,8 @@ horizontal runs of the key's top border and once from the vertical runs
 of its side borders -- and the two agree:
 
   * the six rows start at capture y 38, 59, 80, 101, 122 and 143, and
-    each key is 18 tall, so there is a 3px gap between the rows;
+    the first five rows' keys are 18 tall (the bottom row's are 19),
+    so there is a 3px gap between the rows;
   * the number row starts with the backtick and steps by 31;
   * the language combo is at the bottom left, x 8, y 170, 168x19, and
     it is FOCUSED in the capture (the dotted rectangle), so this one is
@@ -26,7 +27,7 @@ from PySide6.QtWidgets import QComboBox
 
 from qtranslate_style import BTN_HL, BTN_SHADE, BTN_TOP
 
-from .widgets import Base, button, combo, put
+from .widgets import Base, button, put
 
 # The key labels are in a DIFFERENT face from the rest of the app:
 # MEASURED off capture 2134, the native's "Esc" is 15x9, "Tab" 18x9,
@@ -88,22 +89,45 @@ ROWS = [
      (",", 297, 28), (".", 328, 28), ("/", 359, 28), ("Shift", 390, 66)],
     # y = 143
     [("Ctrl", 8, 42), ("Win", 53, 31), ("Alt", 87, 37), ("", 127, 121),
-     ("AltGr", 251, 40), ("Apps", 294, 38), ("∧", 335, 28),
-     ("∨", 366, 28), ("<", 397, 28), (">", 428, 28)],
+     ("AltGr", 251, 40), ("Apps", 294, 38), ("^", 335, 28),
+     ("v", 366, 28), ("<", 397, 28), (">", 428, 28)],
 ]
 
 # The row each ROWS entry sits at.
 ROW_Y = [38, 59, 80, 101, 122, 143]
 
-# The key's height. The rows are 21 apart and each key is 18 tall, so
-# there is a 3px band of window face between the rows.
-KEY_H = 18
+# The height of each row's keys. MEASURED off the capture's border
+# rows: the first five rows are 18 tall (38..55, 59..76, 80..97,
+# 101..118, 122..139) and the bottom row is 19 (143..161) -- which is
+# why its labels sit a pixel lower.
+ROW_H = [18, 18, 18, 18, 18, 19]
 
 # The 1px line the Win32 theme draws under every control it draws
 # (measured: #fcfcfc at capture y 56, below the first row's border at
 # y 55; and at y 189, below the combo's border at 188). It is outside
 # the control's own rectangle, so it is painted by the window.
 SOFT_EDGE = "#fcfcfc"
+
+# The keys that press a key rather than type a character, by (label,
+# x) -- the two "v"s and the two "Shift"s are different keys. The
+# names are the ones the `keyboard` package uses.
+SPECIAL = {
+    ("BkSp", 411): "backspace",
+    ("Tab", 8): "tab",
+    ("Caps", 8): "caps lock",
+    ("Shift", 8): "shift",
+    ("Shift", 390): "shift",
+    ("Enter", 405): "enter",
+    ("Ctrl", 8): "ctrl",
+    ("Win", 53): "win",
+    ("Alt", 87): "alt",
+    ("AltGr", 251): "alt gr",
+    ("Apps", 294): "menu",
+    ("^", 335): "up",
+    ("v", 366): "down",
+    ("<", 397): "left",
+    (">", 428): "right",
+}
 
 
 class LanguageCombo(QComboBox):
@@ -112,11 +136,22 @@ class LanguageCombo(QComboBox):
     Native's is a Win32 combo box, and when it has the focus Windows
     draws the dotted focus rectangle around the text -- the capture
     shows it. Qt's Fusion combo does not, so this one draws it: a 1px
-    black dot every other pixel, from the capture's x 14..156 and
-    y 172..186, i.e. 6..148 and 2..16 inside the widget.
+    dot every other pixel, from the capture's x 14..156 and
+    y 172..186, i.e. 6..148 and 2..16 inside the widget. The corners
+    belong to the top and bottom edges (the native's dots there are at
+    x 15, 17, ... and the side edges start one row lower), so the
+    sides are drawn from y0+1 and the top and bottom from x0+1.
     """
 
     FOCUS_RECT = (6, 2, 148, 16)
+
+    # The background under the focus rectangle, measured off the
+    # capture. Windows draws the rectangle by XORing white with the
+    # background, so its dots are not black: they read 255 XOR bg --
+    # 28 on the combo's 227 grey, 43 on its 212. The keys are the
+    # widget's rows.
+    BG = {2: 227, 3: 225, 5: 224, 7: 221, 9: 219, 11: 217, 13: 215,
+          15: 212, 16: 212}
 
     def paintEvent(self, e):
         super().paintEvent(e)
@@ -124,11 +159,14 @@ class LanguageCombo(QComboBox):
             return
         x0, y0, x1, y1 = self.FOCUS_RECT
         p = QPainter(self)
-        p.setPen(QColor("#000000"))
-        for x in range(x0, x1, 2):
-            p.drawPoint(x, y0)
-            p.drawPoint(x, y1)
-        for y in range(y0, y1, 2):
+        for x in range(x0 + 1, x1, 2):
+            for y in (y0, y1):
+                v = 255 ^ self.BG[y]
+                p.setPen(QColor(v, v, v))
+                p.drawPoint(x, y)
+        for y in range(y0 + 1, y1, 2):
+            v = 255 ^ self.BG[y]
+            p.setPen(QColor(v, v, v))
             p.drawPoint(x0, y)
             p.drawPoint(x1, y)
         p.end()
@@ -148,31 +186,35 @@ class KeyboardWindow(Base):
     def _build(self):
         self.keys = {}
         self.edges = []           # the 1px soft edges under the controls
-        for row, y in zip(ROWS, ROW_Y):
+        for row, y, h in zip(ROWS, ROW_Y, ROW_H):
             for text, x, w in row:
-                b = button(self, x, y, w, text, KEY_H)
+                b = button(self, x, y, w, text, h)
                 b.setObjectName("key")
                 # The face is the themed button's own gradient, and the
                 # gradient's stops move with the height -- an 18px key
                 # is not the 22px button the app's stylesheet carries.
-                # The corner is a 3px radius here, not the 2px of the
-                # ordinary buttons. The label's size has to be set in
-                # the stylesheet, not with setFont(): the app's QSS
-                # sets the font size on every widget and would win.
+                # The label's size has to be set in the stylesheet, not
+                # with setFont(): the app's QSS sets the font size on
+                # every widget and would win. The 2px bottom padding
+                # lifts the label by the one pixel that native's is
+                # higher than the centre.
                 b.setStyleSheet(
                     "QPushButton{font-family:%s;font-size:%dpx;"
-                    "border-radius:3px;background:%s;padding:0 0 2px 0;}"
-                    % (KEY_FONT_FAMILY, KEY_FONT_SIZE, _face_gradient(KEY_H)))
-                b.clicked.connect(lambda _=False, t=text: self._key_pressed(t))
+                    "border-radius:2px;background:%s;padding:0 0 2px 0;}"
+                    % (KEY_FONT_FAMILY, KEY_FONT_SIZE, _face_gradient(h)))
+                b.clicked.connect(
+                    lambda _=False, t=text, k=x: self._key_pressed(t, k))
                 self.keys[(text, x)] = b
-                self.edges.append((x, y + KEY_H, w))
+                self.edges.append((x, y + h, w))
         # The language combo at the bottom left. Native's capture has it
         # focused, so this one takes the focus when the window opens.
         self.cmb_lang = LanguageCombo()
         self.cmb_lang.addItem("English")
         self.cmb_lang.setFocusPolicy(Qt.StrongFocus)
         self.cmb_lang.setStyleSheet(
-            "QComboBox{background:%s;}" % _face_gradient(19))
+            "QComboBox{background:%s;padding:0 14px 0 7px;}"
+            "QComboBox::drop-down{width:13px;}"
+            % _face_gradient(19))
         put(self, self.cmb_lang, 8, 170, 168, 19)
         self.edges.append((8, 189, 168))
 
@@ -198,13 +240,17 @@ class KeyboardWindow(Base):
         QTimer.singleShot(0, lambda: self.cmb_lang.setFocus(
             Qt.OtherFocusReason))
 
-    def _key_pressed(self, text):
+    def _key_pressed(self, text, x):
         """Type a key into the focused window, the way the virtual
         keyboard does."""
         if not text:
             return
+        # The keys that are not letters press the key they stand for:
+        # the arrows move the caret, BkSp deletes, and so on. The names
+        # are the ones the `keyboard` package uses.
+        name = SPECIAL.get((text, x))
         try:
             import keyboard
-            keyboard.press(text)
+            keyboard.press(name if name else text)
         except Exception:
             pass

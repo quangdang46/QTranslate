@@ -83,7 +83,7 @@ def main():
             if kind == "main":
                 from qtranslate.qt.main_window import MainWindow
                 window = MainWindow(app)
-            elif kind in ("options",) or kind.startswith("options_"):
+            elif name == "options" or name.startswith("options_"):
                 cls = {"options": "BasicsPage",
                        "options_basics": "BasicsPage",
                        "options_hotkeys": "HotkeysPage",
@@ -108,8 +108,12 @@ def main():
                 from qtranslate.qt.popup import PopupWindow
                 window = PopupWindow(app)
             elif kind == "tray":
-                from qtranslate.qt.tray import TrayMenu
-                window = TrayMenu(app)
+                # The tray is a QSystemTrayIcon; what the picture shows
+                # is its MENU, which is what the native's capture shows
+                # too (the real taskbar menu, drawn by the OS).
+                from qtranslate.qt.tray import Tray
+                tray = Tray(app)
+                window = tray.menu
             else:
                 continue
         except (ImportError, AttributeError) as e:
