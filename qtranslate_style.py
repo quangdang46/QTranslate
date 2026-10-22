@@ -129,7 +129,7 @@ QComboBox {{
   border: 1px solid {BORDER}; border-radius: 2px; background: {grad};
   padding: 0 14px 0 7px; }}
 QComboBox:disabled {{ background: {FACE}; color: {DIM}; border-color: {DIM}; }}
-QComboBox::drop-down {{ border: none; width: 11px; subcontrol-origin: padding; subcontrol-position: right center; }}
+QComboBox::drop-down {{ border: none; width: 12px; subcontrol-origin: padding; subcontrol-position: right center; }}
 QComboBox::down-arrow {{ image: url({arrow}); width: 7px; height: 8px; }}
 QComboBox QAbstractItemView {{
   background: {WINDOW}; border: 1px solid {BORDER};
@@ -204,7 +204,7 @@ class EtchedGroupBox(QGroupBox):
     # the end of the text. The title also reaches 4px ABOVE the frame's
     # top line, so the widget is that much taller at the top and the
     # frame is drawn 4px down (see `qtranslate.qt.widgets.group`).
-    TITLE_X, TITLE_BASE, GAP_PAD = 9, 4, 8
+    TITLE_X, TITLE_BASE, GAP_PAD = 9, 5, 8
     FRAME_TOP = 4
 
     def paintEvent(self, e):

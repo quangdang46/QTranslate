@@ -113,7 +113,7 @@ class MainWindow(Base):
         # pane -- native's pane has no border of its own, only the frame
         # drawn around it.
         self.src.setStyleSheet(
-            "#pane{background:transparent;border:none;color:#000;"
+            "QTextEdit#pane{background:transparent;border:none;color:#000;"
             'font-family:"Tahoma";font-size:12px;'
             "QScrollBar:vertical{background:#f0f0f0;width:16px;margin:0;}"
             "QScrollBar::handle:vertical{background:%s;margin:0 7px;"
