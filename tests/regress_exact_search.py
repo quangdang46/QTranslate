@@ -72,28 +72,25 @@ finally:
 
 # app wiring: the flag is read and threaded into the offline lookup.
 # Phase 7 (2026-10-16): the Dictionary window moved to `qtranslate/windows.py`
-# as `DictionaryView`, so the wiring is searched across BOTH modules. A pin
-# that reads only `app` would go red for a legitimate move -- or, worse, be
-# narrowed to the delegator and stop covering the wiring at all.
+# as `DictionaryView`. The tkinter view is gone (2026-10-22): the lookup and
+# its flag live in `qtranslate/dictionary_search.py` (Core) and the Qt
+# window reads the option and passes it in.
 import inspect  # noqa: E402
 
 try:
-    import qtranslate.app as app  # noqa: E402
-    import qtranslate.windows as _win  # noqa: E402
-    src = inspect.getsource(app) + "\n" + inspect.getsource(_win)
-    _winsrc = inspect.getsource(_win)
+    from qtranslate import dictionary_search as DS  # noqa: E402
+    from qtranslate.qt import dictionary as _dic  # noqa: E402
+    src = inspect.getsource(DS) + "\n" + inspect.getsource(_dic)
     check("the exact-search flag is threaded into xdxf.lookup "
           "(no dead branch)",
-          "_X.lookup(word_q, _xp, exact=exact)" in src
-          and "if _exact_v.get():\n                word_q = word" not in src)
-    check("the toggle persists DictionaryExactSearch",
-          '"DictionaryExactSearch"] = bool(_exact_v.get())' in src)
-    check("...and that wiring is in windows.py now (the Phase 7 "
-          "DictionaryView), not a stale copy in app.py",
-          "_X.lookup(word_q, _xp, exact=exact)" in _winsrc,
-          "the pin followed the code to its new home")
+          "_X.lookup(word, path, exact=exact)" in src,
+          "search() passes exact into the lookup")
+    check("search() carries the exact parameter through",
+          'exact: bool = True' in src and 'exact=exact' in src)
+    check("the Qt view reads DictionaryExactSearch and passes it",
+          '"DictionaryExactSearch"' in inspect.getsource(_dic))
 except Exception as e:  # pragma: no cover - headless
-    check("app import for wiring check", False, repr(e))
+    check("source wiring check", False, repr(e))
 
 if failures:
     raise SystemExit("FAIL:\n  " + "\n  ".join(failures))

@@ -17,6 +17,8 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _view_src import view_source
 
 fails = []
 n = [0]
@@ -47,10 +49,10 @@ import re
 m = re.search(r"TRANSLATORS = \{(.*?)\n\}", src, re.S)
 keys = re.findall(r'"([a-z-]+)":', m.group(1))
 ck("TRANSLATORS has 10 entries", len(keys) == 10, str(keys))
-ck("app.TRANSLATORS is a registry alias, not a second literal",
-   re.search(r"from qtranslate\.registry import TRANSLATORS, DICTS",
-             io.open("qtranslate/app.py", encoding="utf-8").read()) is not None,
-   "alias flip regressed: app.py defines its own table again")
+ck("the view holds no dispatch table of its own",
+   re.search(r"^\s*TRANSLATORS = \{", view_source(), re.M) is None
+   and re.search(r"^\s*DICTS = \{", view_source(), re.M) is None,
+   "the view defines its own table again")
 # Slice 1 rule (b) 2026-10-15: router_order() dedupes by callable
 # identity, so the alias "bing" (= microsoft) is NOT a chain entry, but
 # every distinct callable stays reachable.

@@ -43,8 +43,13 @@ def skip(name, reason):
 from qtranslate import registry as _RG  # noqa: E402
 REG_SRC = io.open(os.path.join(ROOT, "qtranslate", "registry.py"),
                   encoding="utf-8").read()
-APP_SRC = io.open(os.path.join(ROOT, "qtranslate", "app.py"),
-                  encoding="utf-8").read()
+# The view is the PySide6 front end now (the tkinter one is gone, and
+# with it the file this used to read). The intent of the checks below
+# is unchanged: the VIEW must use the registry's tables, never its own.
+_QT_DIR = os.path.join(ROOT, "qtranslate", "qt")
+APP_SRC = "\n".join(
+    io.open(os.path.join(_QT_DIR, _f), encoding="utf-8").read()
+    for _f in sorted(os.listdir(_QT_DIR)) if _f.endswith(".py"))
 
 # ===================== half 1: static, always runs =====================
 
@@ -69,50 +74,38 @@ ck("registry owns USES_AUTO_DETECT + uses_auto_detect()",
 ck("registry owns call_with_sink + apply_phonetics",
    "def call_with_sink(" in REG_SRC
    and "def apply_phonetics(" in REG_SRC)
-ck("app.py aliases the two helpers, defines neither",
-   "from qtranslate.registry import call_with_sink as _t_call" in APP_SRC
-   and "from qtranslate.registry import apply_phonetics as _apply_phonetics"
-   in APP_SRC
-   and re.search(r"^def _t_call\(", APP_SRC, re.M) is None
+ck("the view defines neither of the two helpers",
+   re.search(r"^def _t_call\(", APP_SRC, re.M) is None
    and re.search(r"^def _apply_phonetics\(", APP_SRC, re.M) is None)
-ck("app.py holds a capability alias, not a second literal",
-   "from qtranslate.registry import USES_AUTO_DETECT" in APP_SRC
-   and re.search(r"^_USES_AUTO_DETECT\s*=\s*\{", APP_SRC, re.M) is None)
+ck("the view holds no capability table of its own",
+   re.search(r"^_?USES_AUTO_DETECT\s*=\s*\{", APP_SRC, re.M) is None)
 
 # app.py must no LONGER define its own dispatch tables or import providers
 # for dispatch.SUPPORTED_LANGS constant imports stay allowed: that is the
 # shared language-index table, not dispatch.
-ck("app.py aliases the registry tables",
-   "from qtranslate.registry import TRANSLATORS, DICTS" in APP_SRC,
-   "app.py must alias, not re-define")
-ck("app.py has no TRANSLATORS literal",
-   re.search(r"^TRANSLATORS = \{", APP_SRC, re.M) is None,
+ck("the view has no TRANSLATORS literal",
+   re.search(r"^\s*TRANSLATORS = \{", APP_SRC, re.M) is None,
    "second table = second source of truth")
-ck("app.py has no DICTS literal",
-   re.search(r"^DICTS = \{", APP_SRC, re.M) is None)
-ck("app.py defines no _t_* adapter",
-   re.search(r"^def _t_(google|deepl|yandex|baidu|naver|youdao|bing|babylon|promt)\(",
+ck("the view has no DICTS literal",
+   re.search(r"^\s*DICTS = \{", APP_SRC, re.M) is None)
+ck("the view defines no _t_* adapter",
+   re.search(r"^\s*def _t_(google|deepl|yandex|baidu|naver|youdao|bing|babylon|promt)\(",
              APP_SRC, re.M) is None,
    "provider adapters live in registry")
 for _mod in ("deepl", "yandex", "baidu", "naver", "youdao", "microsoft",
              "promt", "babylon", "google_translate", "dictionary", "spell"):
-    ck("app.py does not alias services.%s for dispatch" % _mod,
+    ck("the view does not alias services.%s for dispatch" % _mod,
        ("services import %s as _" % _mod) not in APP_SRC)
-ck("app.py does not import session for dispatch",
+ck("the view does not import session for dispatch",
    "from qtranslate.session import" not in APP_SRC)
-ck("app.py aliases registry.detect_language (no second copy)",
-   "from qtranslate.registry import detect_language" in APP_SRC
-   and re.search(r"^def detect_language\(", APP_SRC, re.M) is None)
+ck("the view has no second copy of detect_language",
+   re.search(r"^\s*def detect_language\(", APP_SRC, re.M) is None)
 ck("registry owns SERVICE_LINKS + service_link()",
    re.search(r"^SERVICE_LINKS = \{", REG_SRC, re.M) is not None
    and "def service_link(" in REG_SRC)
-ck("app.py aliases links, defines neither",
-   "from qtranslate.registry import SERVICE_LINKS as _SERVICE_LINKS"
-   in APP_SRC
-   and "from qtranslate.registry import service_link as _dict_service_link"
-   in APP_SRC
-   and re.search(r"^_SERVICE_LINKS = \{", APP_SRC, re.M) is None
-   and re.search(r"^def _dict_service_link\(", APP_SRC, re.M) is None)
+ck("the view defines neither of the link helpers",
+   re.search(r"^\s*_?SERVICE_LINKS = \{", APP_SRC, re.M) is None
+   and re.search(r"^\s*def _?dict_service_link\(", APP_SRC, re.M) is None)
 ck("SUPPORTED_LANGS constant import is allowed (not dispatch)",
    "SUPPORTED_LANGS" in APP_SRC)
 
@@ -125,27 +118,20 @@ ck("registry does not import app at module level",
    not re.search(r"^from qtranslate\.app import|^import qtranslate\.app",
                  REG_SRC, re.M))
 
-# ===================== half 2: live (needs tkinter) =====================
+# ===================== half 2: live ================================
+# The live half used to be gated on tkinter, because it compared the
+# registry's tables with the tkinter front end's aliases. That view is
+# gone (2026-10-22), so the comparison is with the registry's own
+# tables -- which is what the aliases were checked against anyway.
 
-try:
-    import tkinter  # noqa: F401
-    HAS_TK = True
-except ImportError:
-    HAS_TK = False
+from qtranslate import registry as RG
 
-if not HAS_TK:
-    skip("live table comparison", "no tkinter; app cannot be imported")
-else:
-    from qtranslate import registry as RG
-    from qtranslate import app as A
-
+if True:
     t, d = RG.translators(), RG.dicts()
-    ck("translators() == app.TRANSLATORS", t == A.TRANSLATORS,
-       "%d vs %d keys" % (len(t), len(A.TRANSLATORS)))
-    ck("dicts() == app.DICTS", d == A.DICTS,
-       "%d vs %d keys" % (len(d), len(A.DICTS)))
-    ck("app.TRANSLATORS IS registry.TRANSLATORS (alias, not copy)",
-       A.TRANSLATORS is RG.TRANSLATORS)
+    ck("translators() == registry.TRANSLATORS", t == RG.TRANSLATORS,
+       "%d vs %d keys" % (len(t), len(RG.TRANSLATORS)))
+    ck("dicts() == registry.DICTS", d == RG.DICTS,
+       "%d vs %d keys" % (len(d), len(RG.DICTS)))
     ck("10 translate entries", len(t) == 10, str(sorted(t)))
     # 11, not 10: youdao (id 26) is the one TRANSLATE|DICTIONARY service, and
     # an earlier version of this table omitted it -- so `_ID2FN`'s "youdao"

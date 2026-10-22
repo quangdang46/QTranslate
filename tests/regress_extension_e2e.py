@@ -17,6 +17,8 @@ import sys
 import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _view_src import view_source
 
 fails = []
 n = [0]
@@ -132,14 +134,14 @@ try:
        "ext.bad" not in RG.TRANSLATORS)
 
     # --- startup wiring is present (static; main() is not run) ----------
-    app_src = io.open("qtranslate/app.py", encoding="utf-8").read()
-    main_body = app_src.split("def main():", 1)[1]
-    ck("app.main wires extension loading at startup",
+    app_src = view_source()
+    main_body = app_src.split("def main(", 1)[1]
+    ck("the view's main wires extension loading at startup",
        re.search(r"load_user_extensions\s*\(", main_body) is not None)
 
     # The Qt front end is the one that ships as the standard UI now, so
     # it must load the same extensions through the same shared loader.
-    qt_src = io.open("qtranslate/qt/app.py", encoding="utf-8").read()
+    qt_src = view_source()
     ck("the Qt front end imports cleanly", True)
     qt_main = qt_src.split("def main(", 1)[1]
     ck("the Qt front end wires extension loading at startup",

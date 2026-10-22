@@ -25,6 +25,8 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QComboBox
 
+from qtranslate import languages as L
+from qtranslate.layout import EN2RU
 from qtranslate.platforms import keyboard_module
 from qtranslate_style import BTN_HL, BTN_SHADE, BTN_TOP
 
@@ -209,8 +211,13 @@ class KeyboardWindow(Base):
                 self.edges.append((x, y + h, w))
         # The language combo at the bottom left. Native's capture has it
         # focused, so this one takes the focus when the window opens.
+        # Its entries are the shared language table, the selection is
+        # General.LanguageKeyboard (config.LANG_DEFAULTS defaults to
+        # en, index 17), and picking one re-labels the letter keys (the
+        # JCUKEN map) and persists the choice -- what the tkinter view
+        # did before its removal.
         self.cmb_lang = LanguageCombo()
-        self.cmb_lang.addItem("English")
+        self._kb_names = []
         self.cmb_lang.setFocusPolicy(Qt.StrongFocus)
         self.cmb_lang.setStyleSheet(
             "QComboBox{background:%s;padding:0 14px 0 7px;}"
@@ -218,6 +225,32 @@ class KeyboardWindow(Base):
             % _face_gradient(19))
         put(self, self.cmb_lang, 8, 170, 168, 19)
         self.edges.append((8, 189, 168))
+        self._kb_index = 17
+        try:
+            from qtranslate import config as _C
+            _kb = int((_C.load().get("General", {}) or {}).get(
+                "LanguageKeyboard", _C.LANG_DEFAULTS["LanguageKeyboard"]))
+            self._kb_index = _kb
+        except Exception:
+            self._kb_index = 17
+        try:
+            from qtranslate.services.google_translate import SUPPORTED_LANGS \
+                as _SL
+            self._kb_names = [L.LANG_DISPLAY.get(c, c) for c in _SL]
+        except Exception:
+            self._kb_names = []
+        self.cmb_lang.blockSignals(True)
+        self.cmb_lang.clear()
+        self.cmb_lang.addItems(self._kb_names)
+        try:
+            self.cmb_lang.setCurrentIndex(
+                self._kb_index if 0 <= self._kb_index
+                < len(self._kb_names) else 0)
+        except Exception:
+            pass
+        self.cmb_lang.blockSignals(False)
+        self._ru = (self._kb_index != 17)
+        self.cmb_lang.currentTextChanged.connect(self._on_language)
 
     def paintEvent(self, e):
         super().paintEvent(e)
@@ -230,6 +263,38 @@ class KeyboardWindow(Base):
         for x, y, w in self.edges:
             p.drawLine(x - ox, y - oy, x - ox + w - 1, y - oy)
         p.end()
+
+    def _relabel(self):
+        """Re-label the letter keys for the selected language (the
+        JCUKEN map), what the tkinter view's `_relabel` did."""
+        if not EN2RU or not self._ru:
+            return
+        for (text, _x), b in self.keys.items():
+            if text and len(text) == 1:
+                b.setText(EN2RU.get(text, text))
+
+    def _keyboard_language(self, name, names):
+        """Persist the keyboard's language, the tkinter view's half."""
+        try:
+            from qtranslate import config as _C
+            import json as _j
+            full = _C.load()
+            idx = names.index(name) if name in names else 17
+            full.setdefault("General", {})["LanguageKeyboard"] = idx
+            with open(_C.DEFAULT_PATH, "w", encoding="utf-8") as f:
+                _j.dump(full, f, ensure_ascii=False, indent=1)
+        except Exception:
+            pass
+
+    def _on_language(self, name):
+        try:
+            idx = self._kb_names.index(name)
+        except ValueError:
+            idx = 17
+        self._kb_index = idx
+        self._ru = (idx != 17)
+        self._relabel()
+        self._keyboard_language(name, self._kb_names)
 
     def showEvent(self, e):
         super().showEvent(e)

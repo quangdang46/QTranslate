@@ -134,15 +134,15 @@ ck("an unclassified code exits with 0xC000001D's low byte",
 
 # --- 4. the app routes MemoryError to the fail-fast, NOT to the reporter ---
 # Native's Q-row separates the two: a fail-fast runs nothing, so the
-# crash-report excepthook must not see it. The app's main() installs a
-# wrapper for exactly this.
-from qtranslate import app as _app  # noqa: E402
+# crash-report excepthook must not see it. The Qt app's main() installs a
+# wrapper for exactly this (its own oom hook, after the reporter hook).
+from qtranslate.qt import app as _qtapp  # noqa: E402
 
-_app._install_crash_hook()   # the reporter hook, as main() installs it
+crash.install_crash_hook()   # the reporter hook, as main() installs it
 _prev = sys.excepthook
 _oom = None
 try:
-    # reproduce main()'s wrapper without needing a Tk root
+    # reproduce main()'s wrapper without needing a widget root
     def _oom_hook(typ, val, tb):
         if typ is MemoryError:
             crash.fail_fast(-0x7FF8FFF2)
@@ -154,18 +154,18 @@ finally:
     pass
 ck("the wrapper first checks for MemoryError",
    _oom is not None and "MemoryError" in open(
-       os.path.join(ROOT, "qtranslate", "app.py"),
+       os.path.join(ROOT, "qtranslate", "qt", "app.py"),
        encoding="utf-8").read(),
    "the app does not special-case OOM")
 ck("the reporter hook stays installed for non-OOM crashes",
-   callable(_app._install_crash_hook))
+   callable(crash.install_crash_hook))
 
 # and in a child: MemoryError -> silent 0x17, ValueError -> a real traceback
 child = run_child(
     "import sys; sys.path.insert(0, %r)\n"
     "from qtranslate import crash\n"
-    "from qtranslate import app as A\n"
-    "A._install_crash_hook()\n"
+    "from qtranslate.qt import app as A\n"
+    "crash.install_crash_hook()\n"
     "def _h(typ, val, tb):\n"
     "    if typ is MemoryError:\n"
     "        crash.fail_fast(-0x7FF8FFF2)\n"
@@ -178,7 +178,7 @@ ck("a MemoryError terminates silently with 0x17",
    "rc=%d err=%r" % (child.returncode, child.stderr[-160:]))
 child2 = run_child(
     "import os, sys, tempfile\n"
-    # `_install_crash_hook` writes Exceptions.json next to config.DEFAULT_PATH,
+    # `install_crash_hook` writes Exceptions.json next to config.DEFAULT_PATH,
     # which resolves to the user's REAL %APPDATA%/QTranslate. A headless suite
     # must not leave a file there (the next app launch then prints a fake
     # "[previous crash]" the user never had), so point the config at a temp
@@ -186,10 +186,10 @@ child2 = run_child(
     "sys.path.insert(0, %r)\n"
     "tmp = tempfile.mkdtemp()\n"
     "os.environ['APPDATA'] = tmp\n"
-    "from qtranslate import app as A\n"
+    "from qtranslate import crash as CR\n"
     "from qtranslate import config as _C\n"
     "_C.DEFAULT_PATH = os.path.join(tmp, 'Options.json')\n"
-    "A._install_crash_hook()\n"
+    "CR.install_crash_hook()\n"
     "def _h(typ, val, tb):\n"
     "    if typ is MemoryError:\n"
     "        raise SystemExit(99)\n"

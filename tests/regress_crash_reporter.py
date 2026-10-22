@@ -30,7 +30,7 @@ def ck(name, cond, detail=""):
 
 
 from qtranslate import config as C
-import qtranslate.app as A
+from qtranslate import crash as A
 
 _tmp = tempfile.mkdtemp(prefix="qt_crash_")
 _orig_path = C.DEFAULT_PATH
@@ -51,31 +51,31 @@ def _capture(fn):
 
 # --- no file: nothing happens, no crash ---------------------------------
 ck("no Exceptions.json is a no-op",
-   _capture(A._consume_crash_reports) == "" and not os.path.exists(_exc))
+   _capture(A.consume_crash_reports) == "" and not os.path.exists(_exc))
 
 # --- a type==2 entry is reported once, then the file is deleted ---------
 with open(_exc, "w", encoding="utf-8") as f:
     json.dump([{"type": 2, "path": "boom"}], f)
-out = _capture(A._consume_crash_reports)
+out = _capture(A.consume_crash_reports)
 ck("type==2 entry is reported", "previous crash" in out, repr(out))
 ck("Exceptions.json is deleted after reporting (native DeleteFileW)",
    not os.path.exists(_exc))
 
 # --- second run: already consumed, nothing to report --------------------
-out2 = _capture(A._consume_crash_reports)
+out2 = _capture(A.consume_crash_reports)
 ck("second run reports nothing (reported exactly once)", out2 == "",
    repr(out2))
 
 # --- non-type-2 entries are not reported --------------------------------
 with open(_exc, "w", encoding="utf-8") as f:
     json.dump([{"type": 1, "path": "x"}], f)
-out3 = _capture(A._consume_crash_reports)
+out3 = _capture(A.consume_crash_reports)
 ck("type!=2 entries are silent", out3 == "", repr(out3))
 ck("file is still deleted when only non-type-2 entries exist",
    not os.path.exists(_exc))
 
 # --- the hook appends a type==2 entry -----------------------------------
-A._install_crash_hook()
+A.install_crash_hook()
 _err = io.StringIO()
 _old_err = sys.stderr
 sys.stderr = _err  # __excepthook__ writes the traceback here; keep it quiet

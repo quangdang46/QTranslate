@@ -58,23 +58,20 @@ ck("huge idx -> en", resolve(10**6) == "en", repr(resolve(10**6)))
 ck("negative idx -> en", resolve(-5) == "en", repr(resolve(-5)))
 
 # the call site must read the option, not hardcode "en"
-# Phase 7 (2026-10-16): the Dictionary window moved to `qtranslate/windows.py`
-# as `DictionaryView`, so the call site is read from BOTH files -- whichever
-# one holds it. Reading only app.py would go red for a legitimate move.
+# Phase 7 (2026-10-16): the call site moved to `qtranslate/windows.py`;
+# the tkinter view is gone (2026-10-22), so it lives in
+# `qtranslate/dictionary_search.py` now (Core) and the Qt view calls it
+# through `search()`.
 import os
 _root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-src = (io.open(os.path.join(_root, "qtranslate", "app.py"),
-               encoding="utf-8").read()
-       + io.open(os.path.join(_root, "qtranslate", "windows.py"),
-                 encoding="utf-8").read())
-ck("go_all reads LanguageDictionary",
-   'LanguageDictionary' in src and 'fn(word_q, _dsl' in src,
-   "call site must resolve _dsl from the option")
-ck("...and it is now in windows.py (the Phase 7 DictionaryView)",
-   'fn(word_q, _dsl' in io.open(
-       os.path.join(_root, "qtranslate", "windows.py"),
-       encoding="utf-8").read(),
-   "the call site moved but this pin did not follow it")
+src = io.open(os.path.join(_root, "qtranslate", "dictionary_search.py"),
+              encoding="utf-8").read()
+ck("the resolution reads LanguageDictionary",
+   'LanguageDictionary' in src,
+   "the option must be read, not hardcoded")
+ck("the lookup call carries the resolved dictionary language",
+   'fn(word, dsl, target)' in src,
+   "call site must resolve dsl from the option")
 
 print("regress_dict_lang: %d checks, %d failed" % (n[0], len(fails)))
 for f in fails:

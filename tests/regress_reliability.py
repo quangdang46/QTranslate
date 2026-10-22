@@ -17,7 +17,8 @@ import urllib.error
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import qtranslate.app as app  # noqa: E402
+import qtranslate.engine as engine  # noqa: E402
+import qtranslate.registry as app  # noqa: E402
 import qtranslate.reliability as R  # noqa: E402
 
 failures = []
@@ -467,9 +468,9 @@ def _always_dead(t, s, g):
 
 app.TRANSLATORS.clear()
 app.TRANSLATORS.update({"promt": _always_dead})
-app._ROUTER = None  # force router rebuild with new TRANSLATORS
+app._ROUTER_SINGLETON = None  # force router rebuild with new TRANSLATORS
 try:
-    out = app.do_translate("promt", "hello", "vi", src="en")
+    out = engine.translate("promt", "hello", "vi", src="en")
 finally:
     app.TRANSLATORS.clear()
     app.TRANSLATORS.update(_orig)

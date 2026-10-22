@@ -4,6 +4,8 @@ The geometry was measured off the native capture; see
 ``qtranslate-pyside6-spec.md`` section 5.
 """
 
+from qtranslate.startup import startup_entry
+
 from .base import OptionsBase, check, combo, group, label
 
 
@@ -19,7 +21,12 @@ class BasicsPage(OptionsBase):
         # lang.json), even though the layout has no native capture to
         # measure positions from -- see docs/roadmap/BLOCKERS.md B4.
         group(self, 152, 35, 484, 130, "General")
-        check(self, 160, 55, "Start with Windows", True)
+        # Start-with-Windows: native's HKCU Run entry (row G). The
+        # checkbox reads the real state and writes it back on toggle,
+        # the way the tkinter view did before its removal.
+        present, set_present = startup_entry()
+        box = check(self, 160, 55, "Start with Windows", present)
+        box.toggled.connect(set_present)
         label(self, 158, 77, "Interface language:")
         combo(self, 455, 68, 175, "English")
         label(self, 158, 99, "Font name:")

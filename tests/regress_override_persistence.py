@@ -204,15 +204,15 @@ try:
 finally:
     _C.load, _C.save = _real_load, _real_save
 
-# --- structural: the dialog + the App method -----------------------------
+# --- structural: the dialog + the headless chooser -----------------------
 _ov = io.open("qtranslate/override_ui.py", encoding="utf-8").read()
 ck("override_ui opens no window at import (no top-level tk.Tk call)",
    re.search(r"^tk\.Tk\(", _ov, re.M) is None)
 ck("override_ui defines pick_override_winners",
    "def pick_override_winners" in _ov)
-_app_src = io.open("qtranslate/app.py", encoding="utf-8").read()
-ck("App.show_override_conflicts is wired",
-   re.search(r"def show_override_conflicts\(self\)", _app_src) is not None)
+# The tkinter view had an App.show_override_conflicts delegator; the Qt
+# surface is still to come (HANDOFF 4.3 item 4: the USER choosing a
+# winner), so the wiring pin follows chooser coverage, not a view call.
 
 restore()
 print("regress_override_persistence: %d checks, %d failed" % (n[0], len(fails)))

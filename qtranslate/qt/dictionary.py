@@ -12,13 +12,15 @@ VIEW; it owns no dictionary logic of its own.
 """
 from __future__ import annotations
 
+import threading
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QFrame, QLabel, QTextEdit
 
 from qtranslate_style import DIM
 
-from .widgets import (Base, button, combo, icon, label, panel, put, rect,
-                      vline)
+from .widgets import (Base, button, combo, field, icon, label, panel, put,
+                      rect, vline)
 
 # The dictionary services, in native's strip order, with the icon each
 # one draws. The names are the port's own (``config.DICT_DISPLAY``); the
@@ -89,7 +91,13 @@ class DictionaryWindow(Base):
         for x, arrow in ((168, "◀"), (180, "▶")):
             lab = label(self, x, 45, arrow, color=DIM)
             lab.setAttribute(Qt.WA_TransparentForMouseEvents, True)
-        icon(self, 407, 37, "ui_icons", "search")
+        # The search field: native's row is [language v] [<][>] [field]
+        # [magnifier] [clock] [menu], and the white box the field sits
+        # in is the navbox panel drawn above.
+        self.inp = field(self, 196, 36, 205, 18, "")
+        self.inp.returnPressed.connect(self.do_search)
+        self.lbl_search = icon(self, 407, 37, "ui_icons", "search")
+        self.lbl_search.mousePressEvent = self._search_clicked
         icon(self, 427, 37, "ui_icons", "history")
         self.btn_menu = button(self, 452, 37, 16, "")
         self.btn_menu.setObjectName("flat")
@@ -111,7 +119,6 @@ class DictionaryWindow(Base):
 
         # ---- the service strip (capture y 307..328) ---------------------
         self.strip = []
-        self.cells = []
         for i, name in enumerate(self._services()):
             self.strip.append(self._strip_cell(i, name))
         self.select(self.strip[0] if self.strip else None)
@@ -135,6 +142,7 @@ class DictionaryWindow(Base):
         cell = _Cell(self)
         cell.setObjectName("cell")
         cell.setProperty("service", DICT_ICONS.get(name, ""))
+        cell.setProperty("display", name)
         cell.setStyleSheet("QFrame#cell{background:#dadada;border:none;}")
         put(self, cell, x + 1, STRIP_Y + 1, CELL - 1, STRIP_H - 2)
         vline(self, x, STRIP_Y, STRIP_Y + STRIP_H)
@@ -156,6 +164,51 @@ class DictionaryWindow(Base):
             return
         cell.setStyleSheet("QFrame#cell{background:#b0b0b0;border:none;}")
         self.service = cell.property("service")
+        self.service_display = cell.property("display")
+
+    # ------------------------------------------------------------ the search
+    def _search_clicked(self, _e=None):
+        self.do_search()
+
+    def selected_service(self):
+        """The display name of the selected strip cell."""
+        return getattr(self, "service_display", "")
+
+    def do_search(self):
+        """Look the field's word up, the way native's magnifier does.
+
+        The lookup is Core (``qtranslate.dictionary_search``): it
+        resolves the dictionary language, asks the selected service and
+        renders the cards. It runs on a worker thread -- the services
+        are network calls -- and the answer comes back on the UI
+        thread.
+        """
+        word = self.inp.text().strip()
+        if not word:
+            return
+        from qtranslate import dictionary_search as DS
+        try:
+            from qtranslate import config as _C
+            cfg = _C.load() or {}
+            exact = bool(cfg.get("DictionaryExactSearch", True))
+        except Exception:
+            cfg, exact = {}, True
+        services = [self.selected_service()] if self.selected_service() \
+            else None
+        target = getattr(self.app, "target", "en")
+        self.out.setPlainText("querying %d dictionaries..."
+                              % (len(services) if services else 11))
+
+        def work():
+            try:
+                cards, summary = DS.search(word, exact=exact,
+                                           services=services, target=target,
+                                           cfg=cfg)
+            except Exception as exc:            # noqa: BLE001
+                cards, summary = [], "[error] %s" % exc
+            self.app._on_ui(lambda: self.out.setPlainText(summary))
+
+        threading.Thread(target=work, daemon=True).start()
 
     def lookup(self, word, src="auto", tgt="en"):
         """Look ``word`` up with the selected dictionary and show it."""

@@ -12,6 +12,8 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _view_src import view_source
 
 fails = []
 n = [0]
@@ -47,9 +49,12 @@ ck("None argv is treated as empty", parse_args(None)[:3]
 
 # --- app.py's module-level parse agrees with the helper ----------------
 import io
-_app = io.open("qtranslate/app.py", encoding="utf-8").read()
-ck("app.py asserts its parse matches cli.parse_args",
-   "_parse_args(sys.argv[1:])[:5] ==" in _app)
+_view = view_source()
+ck("the view parses the command line with the shared parse",
+   "parse_args(" in _view, "the view must use qtranslate.cli.parse_args")
+ck("the view applies the positional overrides over the session",
+   "_apply_cli" in _view and "cli_service" in _view,
+   "an explicit launch wins over the remembered session")
 
 if fails:
     print("FAIL %d" % len(fails))

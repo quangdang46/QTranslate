@@ -14,7 +14,8 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(
                        os.path.abspath(__file__))))
 
-import qtranslate.app as app  # noqa: E402
+import qtranslate.engine as engine  # noqa: E402
+import qtranslate.registry as app  # noqa: E402
 from qtranslate.services import promt as _promt  # noqa: E402
 
 failures = []
@@ -48,11 +49,11 @@ finally:
 _orig_t = app.TRANSLATORS.copy()
 app.TRANSLATORS.clear()
 app.TRANSLATORS.update({"promt": _boom})
-app._ROUTER = None  # force router rebuild with new TRANSLATORS
+app._ROUTER_SINGLETON = None  # force router rebuild with new TRANSLATORS
 # 2. do_translate must return the native error string when a provider raises.
 _promt.session = _boom
 try:
-    out = app.do_translate("promt", "hello", "vi", src="en")
+    out = engine.translate("promt", "hello", "vi", src="en")
 finally:
     _promt.session = _orig_session
 out_text = getattr(out, "text", out)

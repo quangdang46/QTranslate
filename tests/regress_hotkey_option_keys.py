@@ -31,6 +31,8 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _view_src import view_source
 
 from qtranslate.config import HOTKEY_NAMES  # noqa: E402
 
@@ -125,11 +127,10 @@ ck("the exact list is pinned", sorted(HOTKEY_NAMES) == sorted(EXPECTED),
    "port=%r" % (HOTKEY_NAMES,))
 
 # --- 4. every bound key has a handler in app.py ----------------------
-APP = io.open(os.path.join(REPO, "qtranslate", "app.py"),
-              encoding="utf-8", errors="replace").read()
+APP = view_source()
 unbound = [k for k in HOTKEY_NAMES
            if ('"%s"' % k) not in APP and ("'%s'" % k) not in APP]
-ck("every hotkey key is referenced by app.py (so it can be bound)",
+ck("every hotkey key is referenced by the view (so it can be bound)",
    not unbound, str(unbound))
 bound = [k for k in HOTKEY_NAMES if '"%s":' % k in APP]
 ck("at least a dozen are actually mapped to handlers",

@@ -30,6 +30,8 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _view_src import view_source
 
 failures = []
 n = [0]
@@ -42,21 +44,16 @@ def ck(name, cond, detail=""):
 
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-APP = open(os.path.join(ROOT, "qtranslate", "app.py"), encoding="utf-8").read()
 SCREENS = open(os.path.join(ROOT, "qtranslate", "screens.py"),
                encoding="utf-8").read()
-# Phase 7 (6/6): the body of `default_source_text` moved to
-# `qtranslate/windows.py` as `MainWindow`; app.py keeps a delegator. The
-# pin follows the body -- reading only app.py would find the delegator and
-# assert against its docstring.
-WIN = open(os.path.join(ROOT, "qtranslate", "windows.py"),
-           encoding="utf-8").read()
-_SRC = WIN if 'lines = ["QTranslate Version' in WIN else APP
+# The body of `default_source_text` lives in the PySide6 view now (the
+# tkinter one is gone); the pin follows the body.
+_SRC = view_source()
 
 # --- 1. the port's header literal, read from the CODE not the runtime ----
 # the function body, cut at the next `def` rather than at the first blank
 # line -- the docstring contains blank lines of its own.
-m = re.search(r'def default_source_text\(self\):(.*?)(?=\n    def )',
+m = re.search(r'def default_source_text\(\)[^:]*:(.*?)(?=\n\ndef |\nclass )',
               _SRC, re.S)
 ck("default_source_text exists", m is not None)
 body = m.group(1) if m else ""

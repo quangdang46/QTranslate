@@ -51,7 +51,7 @@ def ck(name, cond, detail=""):
         fails.append("%s -- %s" % (name, detail))
 
 
-import qtranslate.app as A
+import qtranslate.startup as A
 
 # --- absent entry ------------------------------------------------------
 fr = _FakeReg()

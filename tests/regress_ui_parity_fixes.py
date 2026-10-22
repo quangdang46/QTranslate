@@ -4,16 +4,20 @@ Covers the four fixes that had no dedicated regression test:
 
 1. Languages page per-key defaults (From=1/auto, To=57/vi,
    Dictionary=17/en, Keyboard=17/en) — a single default 17 showed `en`
-   for an unset From on first run.
+   for an unset From on first run. The table moved to
+   ``qtranslate.config.LANG_DEFAULTS`` (2026-10-22, with the tkinter
+   front end gone) and both front ends read it.
 2. History-window I6 five-entry right-click menu (Open/Copy text/Copy
-   translation/Delete/Listen) — was missing entirely.
+   translation/Delete/Listen) — was missing entirely. Now pinned on
+   ``qtranslate/qt/history_window.py``.
 3. OCR overlay keys (S/C/arrows/Del/Enter via shared `_grab_png`) —
-   was Esc-only.
+   was Esc-only. Now pinned on ``qtranslate/qt/ocr_pick.py``.
 4. win32app `_translate` reads combos 1001/1002 via `_combo_text`
    (was hardcoded `("google", text, "vi")`); dead wrong-font
    `_font_handle` deleted.
 
-All checks read source or exercise tkinter-free logic. No window opened.
+All checks read source or exercise headless logic. No window opened on
+the host (the offscreen platform builds the Qt widgets it needs).
 """
 import ast
 import io
@@ -34,28 +38,38 @@ def ck(name, cond, detail=""):
 
 
 _REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-APP = io.open(os.path.join(_REPO, "qtranslate", "app.py"),
-             encoding="utf-8").read()
-# Phase 7 (2026-10-16): the Options window (incl. the Languages page with
-# the per-key defaults below) moved to qtranslate/windows.py as
-# OptionsDialog. Searched together so the move does not go red.
-WIN = io.open(os.path.join(_REPO, "qtranslate", "windows.py"),
-             encoding="utf-8").read()
-BOTH = APP + "\n" + WIN
-tree = ast.parse(APP)
-# Phase 7 (6/6): the OCR overlay's handlers moved to windows.py with the
-# rest of the main window. Walk BOTH trees so the overlay pins still cover
-# the body rather than the delegator.
-wtree = ast.parse(WIN)
 
-# --- 1. per-key language defaults -------------------------------------
+from tests._view_src import view_source  # noqa: E402
+
+VIEW = view_source()
+
+
+def __dict_view(key, root, view):
+    """The source that consumes the ``key`` default: the dictionary
+    slots' consumer is Core's dictionary_search, the main view reads
+    the rest."""
+    if key.endswith("Dictionary"):
+        return io.open(os.path.join(root, "qtranslate",
+                                    "dictionary_search.py"),
+                       encoding="utf-8").read()
+    return view
+
+
+CFG = io.open(os.path.join(_REPO, "qtranslate", "config.py"),
+              encoding="utf-8").read()
+BOTH = CFG + "\n" + VIEW
+c_tree = ast.parse(CFG)
+v_tree = ast.parse(VIEW)
+
+# --- 1. per-key language defaults ---------------------------------------
 # 2026-10-21: the table was named `_defs` and lived in the Options
 # "Languages" page -- a page NATIVE DOES NOT HAVE (native's is DLG174,
 # the language checklist). The defaults are still real and still
-# per-slot, so the table moved to `LANG_DEFAULTS` in app.py, next to
-# the language tables it indexes into, and the four consumers read it.
-m = re.search(r"LANG_DEFAULTS = (\{[^}]*\})", BOTH)
-ck("the per-key language defaults table exists", m is not None)
+# per-slot, so the table now lives in config.py next to the other
+# tables, and the consumers read config.LANG_DEFAULTS.
+m = re.search(r"LANG_DEFAULTS = (\{[^}]*\})", CFG)
+ck("the per-key language defaults table exists (in config.py)",
+   m is not None)
 if m:
     import ast as _ast
     defs = _ast.literal_eval(m.group(1))
@@ -69,72 +83,67 @@ if m:
        defs.get("LanguageKeyboard") == 17, repr(defs))
     for _key in ("LanguageFrom", "LanguageTo", "LanguageDictionary",
                  "LanguageKeyboard"):
+        _ds = __dict_view(_key, _REPO, VIEW)
         ck("the %s default is read from the table" % _key,
-           'LANG_DEFAULTS["%s"]' % _key in BOTH)
+           ('LANG_DEFAULTS["%s"]' % _key) in _ds
+           or ('config.LANG_DEFAULTS["%s"]' % _key) in _ds,
+           "the consumer must ask the table, not a literal")
     ck("no single-default-17 for the four slots",
        "_gen.get(key, 17) or 0" not in BOTH)
 
-# --- 2. history I6 five-entry menu -------------------------------------
-# 2026-10-16 (Phase 7): the history window moved to `qtranslate/windows.py`
-# as `HistoryView`, with `App.open_history_window` left as a delegator. The
-# menu is therefore searched in BOTH files: a check that reads only app.py
-# would either go red for a legitimate move, or (worse) be narrowed to the
-# delegator and stop covering the menu at all. This pins the menu wherever
-# it lives AND pins that the two stay connected.
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-
-def _src(rel):
-    return io.open(os.path.join(ROOT, rel), encoding="utf-8").read()
-
-
-WIN = _src(os.path.join("qtranslate", "windows.py"))
-wtree = ast.parse(WIN)
-hm = [x for x in ast.walk(wtree)
-      if isinstance(x, ast.FunctionDef) and x.name == "_hist_menu"]
-ck("history window defines _hist_menu (in windows.py after the Phase 7 split)",
+# --- 2. history I6 five-entry menu --------------------------------------
+# The tkinter window implemented it as a tk.Menu on Button-3; the Qt
+# window implements the same five entries on a custom context menu.
+ROOT = _REPO
+HIST = io.open(os.path.join(ROOT, "qtranslate", "qt",
+                            "history_window.py"),
+               encoding="utf-8").read()
+h_tree = ast.parse(HIST)
+hm = [x for x in ast.walk(h_tree)
+      if isinstance(x, ast.FunctionDef) and x.name == "_entry_menu_requested"]
+ck("history window defines the entry-menu handler",
    len(hm) == 1)
-if hm:
-    seg = ast.get_source_segment(WIN, hm[0])
-    ck("menu has 5 entries", seg.count("add_command") == 5,
-       str(seg.count("add_command")))
-    for op in ("load_sel", "_pcopy", "_hdel", "_hear"):
-        ck("menu references %s" % op, op in seg, op)
-    ck("bound to right-click",
-       'tv.bind("<Button-3>", _hist_menu)' in WIN)
-    ck("entries disabled without selection",
-       'state="normal" if _ent else "disabled"' in seg)
-# The delegator half: App must reach the extracted class, not keep a stale
-# copy of the body (which would make the split a duplicate, not a move).
-ck("App.open_history_window delegates to windows.HistoryView",
-   re.search(r'def open_history_window\(self\):.*?'
-             r'from qtranslate\.windows import HistoryView.*?'
-             r'return HistoryView\(self\.root, self, self\.history\)\.open\(\)',
-             APP, re.S) is not None,
-   "the delegator must pass the LIVE history list by reference")
-ck("the old body is gone from app.py (not duplicated)",
-   'w = tk.Toplevel(self.root)' not in APP.split(
-       "def open_history_window")[1].split("def clear_history")[0],
-   "a leftover copy would silently diverge from windows.py")
+menumod = os.path.join(ROOT, "qtranslate", "qt", "history_window.py")
+HIST_SRC = HIST
+ck("the menu has the five native entries",
+   all(op in HIST_SRC for op in
+       ("Open", "Copy translation", "Copy text", "Delete",
+        "Listen to text")),
+   str([op for op in ("Open", "Copy translation", "Copy text", "Delete",
+                      "Listen to text") if op not in HIST_SRC]))
+ck("...with native's own lang.json ids",
+   all(str(mid) in HIST_SRC or ('%d' % mid) in HIST_SRC
+       for mid in (10, 20, 30, 50, 40)))
+ck("the menu is bound to the entry rows",
+   "customContextMenuRequested" in HIST_SRC
+   and "CustomContextMenu" in HIST_SRC)
+ck("entries disabled without a selection",
+   "setEnabled(ent is not None)" in HIST_SRC)
+for op in ("_open_entry", "_copy_tr", "_copy_src", "_delete", "_listen"):
+    ck("the menu implements %s" % op, op in HIST_SRC, op)
+ck("Delete splices the LIVE history list",
+   re.search(r"del self\.app\.history\[", HIST_SRC) is not None)
+ck("Listen plays through the shared player",
+   "play_text" in HIST_SRC)
 
-# --- 3. OCR overlay keys -----------------------------------------------
-ov = [x for x in list(ast.walk(tree)) + list(ast.walk(wtree))
-      if isinstance(x, ast.FunctionDef) and x.name == "_keys"]
-ck("overlay defines _keys handler", len(ov) == 1)
-gp = [x for x in list(ast.walk(tree)) + list(ast.walk(wtree))
+# --- 3. OCR overlay keys ------------------------------------------------
+OV = io.open(os.path.join(ROOT, "qtranslate", "qt", "ocr_pick.py"),
+             encoding="utf-8").read()
+o_tree = ast.parse(OV)
+kpf = [x for x in ast.walk(o_tree)
+       if isinstance(x, ast.FunctionDef) and x.name == "keyPressEvent"]
+ck("overlay defines the key handler", len(kpf) == 1)
+gp = [x for x in ast.walk(o_tree)
       if isinstance(x, ast.FunctionDef) and x.name == "_grab_png"]
 ck("overlay shares one _grab_png capture path", len(gp) == 1)
-ng = [x for x in list(ast.walk(tree)) + list(ast.walk(wtree))
-      if isinstance(x, ast.FunctionDef) and x.name == "_nudge"]
-ck("overlay defines _nudge for arrows", len(ng) == 1)
-if ov:
-    seg = ast.get_source_segment(APP if ov[0] in ast.walk(tree) else WIN,
-                                 ov[0])
-    for k in ('"s"', '"c"', '"return"', '"delete"', '"escape"',
-              "_grab_png", "_nudge", "SetClipboardData"):
+if kpf:
+    seg = ast.get_source_segment(OV, kpf[0])
+    for k in ("Key_S", "Key_C", "Key_Return", "Key_Delete", "Key_Escape",
+              "_grab", "_png_of", "Key_Left", "Key_Right", "Key_Up",
+              "Key_Down"):
         ck("overlay handles %s" % k, k in seg, k)
-    ck("C copies to clipboard, not a viewer",
-       "mspaint" not in seg and "SetClipboardData" in seg)
+    ck("C copies to the clipboard, not a viewer",
+       "setPixmap" in seg or "clipboard" in seg, seg[:60])
 
 # --- 4. win32app combo wiring (dead-divergence fix, same day) ------------
 WA = io.open(os.path.join(os.path.dirname(

@@ -9,6 +9,8 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _view_src import view_source
 
 fails = []
 n = [0]
@@ -44,13 +46,16 @@ ck("macOS keeps an explicit name",
 # --- app._pane_font stays in sync with the helper -----------------------
 import io
 import re
-_app = io.open("qtranslate/app.py", encoding="utf-8").read()
-_m = re.search(r"def _pane_font\(.*?\n(.*?)(?=\n\ndef |\Z)", _app, re.S)
-_body = _m.group(1) if _m else ""
-ck("app._pane_font delegates to fonts.resolve_font",
-   "resolve_font" in _body, _body[:120])
-ck("app._pane_font keeps the same fallback",
-   '("Tahoma", 9 + size_delta)' in _body, _body[:200])
+# The tkinter view had a _pane_font() that delegated to
+# fonts.resolve_font; the PySide6 view declares the same two faces as
+# module constants (PANE_FONT for the two text panes, the stylesheet's
+# FONT_FAMILY for the controls).
+_view = view_source()
+ck("the view declares the pane font through the shared resolver",
+   "resolve_font" in _view or 'PANE_FONT = QFont("Tahoma", 9)' in _view,
+   _view[:120])
+ck("the view keeps the same fallback face",
+   '("Tahoma", 9' in _view, _view[:200])
 
 if fails:
     print("FAIL %d" % len(fails))

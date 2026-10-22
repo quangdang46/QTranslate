@@ -23,13 +23,13 @@ os.close(fd)
 orig_load = C.load
 
 try:
-    import qtranslate.app as app
+    import qtranslate.qt.app as app
 
     class _Stub:
         def __init__(self):
             self.history = []
             self._hist_pos = -1
-        push_hist = app.App.push_hist
+        push_hist = app.QtApp.push_hist
 
     def _load_from(path_arg=None):
         with open(path, encoding="utf-8") as f:

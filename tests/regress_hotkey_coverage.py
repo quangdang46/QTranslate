@@ -13,6 +13,8 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _view_src import view_source
 
 fails = []
 n = [0]
@@ -26,9 +28,9 @@ def ck(name, cond, detail=""):
 
 from qtranslate import config as C
 
-src = io.open("qtranslate/app.py", encoding="utf-8").read()
-_m = re.search(r"_actions = \{(.*?)\n    \}", src, re.S)
-ck("_actions table located", _m is not None)
+src = view_source()
+_m = re.search(r"ACTIONS = \{(.*?)\n\}", src, re.S)
+ck("the ACTIONS table located", _m is not None)
 keys = re.findall(r'"(HotKey\w+)":', _m.group(1)) if _m else []
 
 ck("17 actions registered", len(keys) == 17, str(len(keys)))
@@ -41,9 +43,10 @@ ck("no duplicate entries", len(keys) == len(set(keys)),
 
 # --- the label on the button claims the same set -------------------------
 m2 = re.search(r"_register_native_hotkeys", src)
-ck("app.py registers through _register_native_hotkeys", m2 is not None)
-ck("registration uses _hotkey_to_combo",
-   "_hotkey_to_combo" in src.split("def _register_native_hotkeys", 1)[1])
+m2 = re.search(r"def install\(", src)
+ck("the view registers through hotkeys.install()", m2 is not None)
+ck("registration uses the shared combo decoder",
+   "config.hotkey_combo" in src.split("def install(", 1)[1])
 
 if fails:
     print("FAIL %d" % len(fails))

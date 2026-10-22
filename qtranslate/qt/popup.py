@@ -13,7 +13,8 @@ popup.
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import QLabel, QWidget
 
 from qtranslate_style import POPUP_BG, POPUP_BORDER, POPUP_ICON, POPUP_TEXT
@@ -60,3 +61,61 @@ class PopupWindow(QWidget):
         self.lbl_pair.setText(pair or (source or "")[:40])
         self.lbl_text.setText(result or "")
         self.adjustSize()
+
+    # ------------------------------------------------------------- show
+    def place(self):
+        """The Appearance popup settings, native's ShowPopupWindow.
+
+        The tkinter popup did this through `_place_aux`; the bodies it
+        drew are the same three: the saved alpha, the position (near the
+        pointer when PopupAutoPos is on, the remembered blob when not),
+        and the auto-close timer.
+        """
+        try:
+            from qtranslate import config as _C
+            _ap = _C.load().get("Appearance", {})
+        except Exception:
+            _ap = {}
+        # PopupAutoFocus: steal focus only when enabled (default False).
+        if _ap.get("PopupAutoFocus"):
+            try:
+                self.activateWindow()
+                self.setFocus()
+            except Exception:
+                pass
+        # Transparency 0..255 -> window alpha (only when < 255). Native
+        # default 217 (DAT_005494A4), not 255.
+        try:
+            _tr = int(_ap.get("Transparency", 217))
+            self.setWindowOpacity(_tr / 255.0 if 0 < _tr < 255 else 1.0)
+        except Exception:
+            pass
+        # PopupAutoPos: place near the pointer. When off, restore the
+        # remembered geometry (General.WindowPopupPlacement).
+        if _ap.get("PopupAutoPos", True):
+            try:
+                p = QCursor.pos()
+                self.move(p.x() + 12, p.y() + 12)
+            except Exception:
+                pass
+        else:
+            try:
+                from qtranslate.placement import decode_placement
+                rc = decode_placement(
+                    _C.load().get("General", {})
+                    .get("WindowPopupPlacement", ""))
+                if rc:
+                    x, y, _w, _h, _fl = rc
+                    self.move(x, y)
+            except Exception:
+                pass
+        # PopupTimeout (seconds): auto-close; 0/absent = stay.
+        try:
+            _to = int(_ap.get("PopupTimeout", 0))
+        except Exception:
+            _to = 0
+        self._timer = QTimer(self)
+        self._timer.setSingleShot(True)
+        self._timer.timeout.connect(self.hide)
+        if _to > 0:
+            self._timer.start(_to * 1000)

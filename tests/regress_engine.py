@@ -22,23 +22,22 @@ def ck(name, cond, detail=""):
 
 
 from qtranslate import engine as E
-from qtranslate import app as A
 from qtranslate import registry as RG
 
 # --- 1. signature / forwarder -----------------------------------------
 import inspect
-_sig = str(inspect.signature(A.do_translate))
-ck("do_translate signature preserved",
+_sig = str(inspect.signature(E.translate))
+ck("the translate signature is the historical do_translate one",
    _sig == "(service, text, target, src='auto', auto_detect=False, "
    "back_translate=False)", _sig)
 ck("engine.translate signature matches",
    str(inspect.signature(E.translate)) == _sig, str(inspect.signature(E.translate)))
 
 # --- 2. short-circuit branches -----------------------------------------
-_r = A.do_translate("google", "hello", "vi", src="vi")
+_r = E.translate("google", "hello", "vi", src="vi")
 ck("src == target echoes without a provider call",
    _r.ok and _r.text == "hello" and "echo" in _r.note, repr(_r.note))
-_e = A.do_translate("", "  ", "vi")
+_e = E.translate("", "  ", "vi")
 ck("empty text returns empty Result",
    _e.text == "" and "empty" in _e.note, repr(_e.note))
 
@@ -73,7 +72,7 @@ def _patch(table):
 
 _patch({k: _mk(k, fail=(k == "google")) for k in _orig})
 try:
-    res = A.do_translate("google", "hello", "vi", src="auto")
+    res = E.translate("google", "hello", "vi", src="auto")
     ck("route falls back after a failed provider", res.ok, str(res.note))
     ck("only one provider called for a clean first fallback",
        len(_calls) == 2, str(sorted(_calls)))
@@ -88,15 +87,15 @@ _orig_det = RG.detect_language
 RG.detect_language = lambda t, _d=_det_calls: (_d.append(t) or "en")
 try:
     _det_calls.clear()
-    A.do_translate("yandex", "hi", "vi", src="auto")
+    E.translate("yandex", "hi", "vi", src="auto")
     ck("auto source on a non-auto service triggers one detect",
        len(_det_calls) == 1, str(len(_det_calls)))
     _det_calls.clear()
-    A.do_translate("yandex", "hi", "vi", src="en")
+    E.translate("yandex", "hi", "vi", src="en")
     ck("concrete source on a non-auto service triggers no detect",
        len(_det_calls) == 0, str(len(_det_calls)))
     _det_calls.clear()
-    A.do_translate("google", "hi", "vi", src="en", auto_detect=True)
+    E.translate("google", "hi", "vi", src="en", auto_detect=True)
     ck("auto_detect forces detection for a concrete source",
        len(_det_calls) == 1, str(len(_det_calls)))
 finally:
@@ -105,7 +104,7 @@ finally:
 # --- 5. back-translation via the answering provider --------------------
 _patch({"google": _mk("google", fail=True), "yandex": _mk("yandex")})
 try:
-    res2 = A.do_translate("google", "hello", "vi", src="en",
+    res2 = E.translate("google", "hello", "vi", src="en",
                          back_translate=True)
     ck("back-translation appended when enabled",
        "back-translation" in res2.text, repr(res2.text))
@@ -116,21 +115,15 @@ finally:
 # --- 6. native error string on total failure ---------------------------
 _patch({k: _mk(k, fail=True) for k in _orig})
 try:
-    res3 = A.do_translate("google", "hello", "vi", src="en")
+    res3 = E.translate("google", "hello", "vi", src="en")
     ck("total failure yields the native no-data string",
        "No data returned" in res3.text, repr(res3.text))
 finally:
     _patch(_orig)
     RG._ROUTER_SINGLETON = _orig_singleton
 
-# --- 7. app.py does not inline orchestration anymore -------------------
+# --- 7. the orchestration lives in Core, not in a view ------------------
 import re as _re
-_src = io.open("qtranslate/app.py", encoding="utf-8").read()
-_fn = _src.split("def do_translate(", 1)[1].split("\n\n\n", 1)[0]
-ck("app.do_translate is a thin forwarder",
-   "_ENG.translate" in _fn, _fn[:160])
-ck("app.do_translate no longer inlines the router call",
-   "phonetics_sink" not in _fn, _fn[:160])
 _eng_src = io.open("qtranslate/engine.py", encoding="utf-8").read()
 ck("engine module imports no tkinter",
    _re.search(r"^\s*(import|from)\s+tkinter", _eng_src, _re.M) is None)

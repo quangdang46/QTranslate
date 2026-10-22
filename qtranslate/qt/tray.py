@@ -46,7 +46,8 @@ class Tray:
         f.setBold(True)
         head.setFont(f)
 
-        for text, slot in (("Dictionary", app.open_dictionary),
+        for text, slot in (("Show main window", app.show_main_window),
+                           ("Dictionary", app.open_dictionary),
                            ("Text recognition", app.open_ocr),
                            ("History", app.open_history),
                            ("Keyboard", app.open_keyboard),

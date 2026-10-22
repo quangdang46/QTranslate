@@ -66,16 +66,20 @@ ck("send reports False on backend failure",
 ck("write_text reports False on backend failure",
    SK.write_text("x", backend=_Boom()) is False)
 
-# --- the app.py call sites go through the module ------------------------
+# --- the call sites go through the module -------------------------------
+# The tkinter view is gone (2026-10-22); the call sites that used to read
+# app.py are the Qt view (`qtranslate/qt/`) and the Win32 helper. The pins
+# are "no direct synthesis bypasses the module's honest reporting".
 import io
 import re
-_app = io.open("qtranslate/app.py", encoding="utf-8").read()
-ck("no direct keyboard.send left in app.py",
+from tests._view_src import view_source
+_app = view_source() + io.open("qtranslate/win32app.py", encoding="utf-8").read()
+ck("no direct keyboard.send left in the views",
    re.search(r"^\s*keyboard\.send\(", _app, re.M) is None)
-ck("no direct keyboard.write left in app.py",
+ck("no direct keyboard.write left in the views",
    re.search(r"^\s*keyboard\.write\(", _app, re.M) is None)
 ck("sendkeys.send used", "_SK.send(" in _app or "_SK2" in _app
-   or "_SK3.send(" in _app)
+   or "_SK3.send(" in _app or 'sendkeys.send("ctrl+c")' in _app)
 
 if fails:
     print("FAIL %d" % len(fails))

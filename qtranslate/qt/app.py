@@ -88,6 +88,7 @@ class QtApp:
         self.service = "google"
         self.source = "auto"
         self.target = "vi"
+        self.argv = list(argv or [])
         self.history = []
         self.multi_services = set()
         self.win = None
@@ -176,10 +177,16 @@ class QtApp:
         try:
             from qtranslate.services.google_translate import SUPPORTED_LANGS
             table = list(SUPPORTED_LANGS)
-            self.target = table[general.get("LanguageTo", 57)]
-            self.source = table[general.get("LanguageFrom", 1)]
+            # The four slots read the native defaults table
+            # (config.LANG_DEFAULTS), not inlined constants: an unset
+            # From is auto (1), not "en" (17) -- the 2026-10-15 bug.
+            self.target = table[general.get(
+                "LanguageTo", config.LANG_DEFAULTS["LanguageTo"])]
+            self.source = table[general.get(
+                "LanguageFrom", config.LANG_DEFAULTS["LanguageFrom"])]
         except Exception:
             pass
+        self._apply_cli()
         # The mouse mode the last session left on (native's
         # General.MouseMode, DAT_005493F8). The capture hook itself is
         # started by main(), when the app is fully alive.
@@ -190,6 +197,29 @@ class QtApp:
                 self.mouse_mode = MOUSE_MODES[idx]
         except Exception:
             pass
+
+    def _apply_cli(self):
+        """An explicit launch wins over the remembered session.
+
+        Native's ``FUN_0043CD68`` applies the positional overrides
+        (service, target, theme) OVER the restored session, so
+        ``start_qt.py google vi`` selects that pair whatever the
+        settings file remembers. The parse is the shared one
+        (``qtranslate.cli``), so the two front ends cannot disagree
+        about what a positional means.
+        """
+        try:
+            from qtranslate.cli import parse_args
+            service, target, theme, cli_service, cli_target = parse_args(
+                self.argv[1:])
+        except Exception:
+            return
+        if cli_service and service:
+            self.service = service
+        if cli_target and target:
+            self.target = target
+        if theme:
+            self.theme = theme
 
     # ------------------------------------------------------------ the lists
     def service_title(self) -> str:
@@ -357,8 +387,11 @@ class QtApp:
             table = []
         code = table[index] if 0 <= index < len(table) else "en"
         try:
-            from qtranslate.services.ocr import ocr_text
-            text = ocr_text(data, api_key=key, lang=code)
+            from qtranslate.services.ocr import ocr_language, ocr_text
+            # The service takes its OWN 3-letter codes (eng, vie, rus...),
+            # not Google's 2-letter ones: the map is the service's, and
+            # it is the one the native's image carries.
+            text = ocr_text(data, api_key=key, lang=ocr_language(code))
         except Exception as exc:                # noqa: BLE001
             self.win.render("[ocr error] %s" % exc)
             return
@@ -604,6 +637,7 @@ class QtApp:
             from .popup import PopupWindow
             self._popup = PopupWindow(self)
             self._popup.set_text(text[:300], result)
+            self._popup.place()
             self._popup.show()
         except Exception:
             pass
@@ -632,12 +666,10 @@ class QtApp:
         if not text:
             return
         res = self._translate(text)
-        keyboard = keyboard_module()
-        if keyboard is not None:
-            try:
-                keyboard.write(res.text)
-            except Exception:
-                pass
+        # The retype goes through sendkeys: True delivered, False when
+        # there is no synthesizer (off Windows) -- never a raise.
+        from qtranslate import sendkeys as _SK
+        _SK.write_text(res.text)
         self.push_hist(self.service, text[:120], res.text[:200])
 
     def hotkey_copy_translation(self):
@@ -808,6 +840,16 @@ def main(argv=None):
         return _frozen_selftest()
     app = QtApp(argv)
     app._load_session()
+    # The startup steps the app owes the user's machine, in the order
+    # native runs them. They are Core, not view: the settings file is
+    # written on a fresh install, the services' options are seeded from
+    # it, and the crash reporter is armed.
+    try:
+        from qtranslate import config as _C
+        _C.write_default_options_if_missing()
+        _C.seed_service_options()
+    except Exception:
+        pass
     # User extensions (D16), the same shared loader the Tk front end
     # uses: the per-user folder is scanned, manifests are validated,
     # the winners are committed into the live dispatch table, and a
@@ -826,6 +868,37 @@ def main(argv=None):
         app.ext_manager = last_manager()
     except Exception:
         app.ext_manager = None
+    # The once-crash reporter: the previous run's crash is reported now
+    # and its file is deleted, so it is reported exactly once.
+    try:
+        from qtranslate import crash as _CR
+        _CR.consume_crash_reports()
+        _CR.install_crash_hook()
+        # FUN_0040345B's fail-fast: an out-of-memory condition terminates
+        # without unwinding, so it must NOT fall through to the
+        # crash-report excepthook installed just above (native's Q-row
+        # records exactly that separation).
+        _prev_hook = sys.excepthook
+
+        def _oom_hook(typ, val, tb, _prev=_prev_hook):
+            if typ is MemoryError:
+                _CR.fail_fast(-0x7FF8FFF2)   # -> 0xC0000017, never returns
+            return _prev(typ, val, tb)
+        sys.excepthook = _oom_hook
+    except Exception:
+        pass
+    # Single-instance guard (FUN_00435175): an existing instance is
+    # activated and this launch exits.
+    try:
+        from qtranslate import single_instance as _SI
+        if _SI.ensure_single(argv[1:]):
+            print("another QTranslate instance is already running "
+                  "(activated it)")
+            return 0
+    except SystemExit:
+        raise
+    except Exception:
+        pass
     # The theme, now that the extension themes are known: an extension's
     # theme may override the built-in one the settings name.
     app.apply_theme()

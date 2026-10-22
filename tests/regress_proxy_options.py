@@ -70,19 +70,16 @@ ck("Scheme 1 -> https", _px(2, "h", 8080, scheme=1) == "https://h:8080",
 ck("auto-detect (3) -> None", _px(3, "h", 8080) is None)
 
 # --- the Options page lists labels in native order -----------------------
-# Phase 7 (2026-10-16): the Options window moved to qtranslate/windows.py
-# as OptionsDialog; this is searched across both so a legitimate move does
-# not go red.
+# Phase 7 (2026-10-16): the dialog moved to qtranslate/windows.py. The
+# tkinter view is gone (2026-10-22) and the Qt pages are display-only,
+# so the pin follows the view that is left: the default label the proxy
+# combo declares must still be native's system-proxy string.
 import io
-import re
-_app = (io.open("qtranslate/app.py", encoding="utf-8").read()
-       + io.open("qtranslate/windows.py", encoding="utf-8").read())
-_m = re.search(r"_pt_vals = \[(.*?)\]", _app, re.S)
-ck("proxy dropdown lists 4 native labels in order",
-   _m is not None and [s.strip().strip('"') for s in _m.group(1).split(",")]
-   == ["Use system proxy settings", "No proxy",
-       "Manual proxy configuration", "Auto-detect proxy settings"],
-   _m.group(1)[:120] if _m else "not found")
+from tests._view_src import view_source
+_view = view_source()
+ck("the proxy combo defaults to native's system-proxy label",
+   "Use system proxy settings" in _view,
+   "internet.py must carry the native label")
 
 if fails:
     print("FAIL %d" % len(fails))

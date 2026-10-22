@@ -178,52 +178,54 @@ if _reg_ok:
     ck("google's own auto code is 'auto'",
        _RG.auto_detect_code("google") == "auto")
 
-# --- 4. behavioral, when the app module can be imported ------------------
-_tried = False
-try:
-    from qtranslate import app as A
-    _tried = True
-except Exception:
-    pass  # tkinter / win32 absent on this host: source checks above carry it
+# --- 4. behavioral ------------------------------------------------------
+# The orchestration lives in the engine now (the tkinter front end and
+# its do_translate forwarder are gone), so the behavioural half runs
+# against qtranslate.engine.
+from qtranslate import engine as _ENG
+from qtranslate import registry as _RG
 
-if _tried and hasattr(A, "do_translate"):
-    # Alias identity: A._USES_AUTO_DETECT must BE the registry table, or
-    # the two can drift again. When app cannot import, the static alias
-    # check in §2 carries this instead.
-    try:
-        from qtranslate import registry as _RG
-        ck("app alias IS the registry table (no drift possible)",
-           A._USES_AUTO_DETECT is _RG.USES_AUTO_DETECT)
-        ck("capability lookup defaults to native's detect-yourself",
-           _RG.uses_auto_detect("no-such-service") is False)
-    except Exception as e:
-        ck("registry capability importable", False, repr(e))
-    # src == dst must not call the provider: monkeypatch every translator to
-    # raise, and confirm the echo still returns the text.
-    saved = dict(getattr(A, "TRANSLATORS", {}))
-    def _boom(*a, **k):
-        raise AssertionError("provider was called on the src==dst path")
-    try:
-        A.TRANSLATORS = dict((k, _boom) for k in saved)
-        out = A.do_translate("google", "hello", "en", src="en")
-        # do_translate now returns core.Result (step 4), not a bare str.
-        # The echo text lives in .text; provider_used confirms the provider
-        # was not invoked (it would have raised via _boom).
-        out_text = getattr(out, "text", out)
-        out_provider = getattr(out, "provider_used", None)
-        ck("src == dst echoes the text without calling the provider",
-           out_text == "hello" and out_provider == "google",
-           repr(out)[:80])
-    except AssertionError as e:
-        ck("src == dst echoes the text without calling the provider",
-           False, str(e))
-    except Exception:
-        pass  # e.g. needs a config/Tk -- the source checks already cover it
-    finally:
-        A.TRANSLATORS = saved
-else:
-    # can't execute; assert the same rule textually
-    ck("do_translate is defined in app.py", "def do_translate(" in app_src)
+ck("capability lookup defaults to native's detect-yourself",
+   _RG.uses_auto_detect("no-such-service") is False)
+
+# src == dst must not call the provider: monkeypatch every translator to
+# raise, and confirm the echo still returns the text. The patch has to
+# change the registry's table IN PLACE and drop the router singleton,
+# because the router is built from a COPY of that table.
+_saved = dict(_RG.TRANSLATORS)
+_saved_singleton = getattr(_RG, "_ROUTER_SINGLETON", None)
+_saved_google = _RG._t_google
+
+
+def _boom(*a, **k):
+    raise AssertionError("provider was called on the src==dst path")
+
+
+try:
+    _RG.TRANSLATORS.clear()
+    _RG.TRANSLATORS.update({k: _boom for k in _saved})
+    _RG._t_google = _boom
+    _RG._ROUTER_SINGLETON = None
+    out = _ENG.translate("google", "hello", "en", src="en")
+    # translate returns core.Result (step 4), not a bare str. The echo
+    # text lives in .text; provider_used confirms the provider was not
+    # invoked (it would have raised via _boom).
+    out_text = getattr(out, "text", out)
+    out_provider = getattr(out, "provider_used", None)
+    ck("src == dst echoes the text without calling the provider",
+       out_text == "hello" and out_provider == "google",
+       repr(out)[:80])
+except AssertionError as e:
+    ck("src == dst echoes the text without calling the provider",
+       False, str(e))
+except Exception as e:
+    ck("src == dst echoes the text without calling the provider",
+       False, repr(e))
+finally:
+    _RG.TRANSLATORS.clear()
+    _RG.TRANSLATORS.update(_saved)
+    _RG._t_google = _saved_google
+    _RG._ROUTER_SINGLETON = _saved_singleton
 
 
 if fail:
@@ -231,5 +233,4 @@ if fail:
     for f in fail:
         print("  -", f)
     raise SystemExit(1)
-print("regress_source_language: all checks ok (%d assertions, app_import=%s)"
-      % (n[0], _tried))
+print("regress_source_language: all checks ok (%d assertions)" % n[0])

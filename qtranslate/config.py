@@ -98,6 +98,13 @@ DICT_DISPLAY = {
 # table (57=vi, 17=en in the Google ordering used as canonical).
 LANG_INDEX = {57: "vi", 17: "en"}
 
+# The four language slots' defaults, native's own: From = 1 (auto),
+# To = 57 (vi), Dictionary = 17 (en), Keyboard = 17 (en). A single
+# default of 17 for all four was the old bug (a 2026-10-15 fix, pinned):
+# an unset From would show "en" on first run instead of auto.
+LANG_DEFAULTS = {"LanguageFrom": 1, "LanguageTo": 57,
+                 "LanguageDictionary": 17, "LanguageKeyboard": 17}
+
 # Defaults scraped from a real Options.json (Contents/Appearance/Advanced).
 DEFAULT_HOTKEY_DOC = (
     "Double Ctrl => Show main window; Ctrl+Q => popup translate; "
@@ -398,6 +405,46 @@ def services_order(cfg: dict | None = None) -> list:
         except OSError:
             return list(DEFAULT_SERVICES_ORDER)
     return cfg.get("ServicesOrder", list(DEFAULT_SERVICES_ORDER))
+
+
+def write_default_options_if_missing() -> None:
+    """Write the default Options.json on a fresh install.
+
+    Native's first run shows a setup wizard and writes the file
+    (``FUN_00419DA6``). The port has no wizard, so it writes the same
+    20-section shape straight away -- otherwise the file only ever
+    appears as a side effect of the user changing a setting, and the
+    settings the app has already read are nowhere to be found.
+
+    An existing file is left exactly as it is: this is a first-run
+    seed, not a migration.
+    """
+    try:
+        if os.path.exists(DEFAULT_PATH):
+            return
+        save(default_config())
+    except Exception:
+        pass
+
+
+def seed_service_options() -> None:
+    """Seed the JS-runtime Options store (common.Options) from
+    Options.json: Advanced.PreferredDomain + locale LanguageCode.
+
+    Native UtilsDispatch runs addOption() per service at boot; without
+    this the ports fall back to hardcoded defaults.
+    """
+    try:
+        from qtranslate import common as _cm
+        cfg = load()
+        adv = cfg.get("Advanced", {})
+        if adv.get("PreferredDomain"):
+            _cm.add_option("PreferredDomain", adv["PreferredDomain"])
+        loc = cfg.get("General", {}).get("LocaleFoderName", "")
+        if loc:
+            _cm.add_option("LanguageCode", loc[:2].lower())
+    except Exception:
+        pass
 
 
 if __name__ == "__main__":

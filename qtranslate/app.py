@@ -169,9 +169,10 @@ def _lang_names(codes, include_auto=True):
 # Dictionary = 17 (en), Keyboard = 17 (en).
 #
 # These were stated in the Options "Languages" page -- but native has
-# NO such page (native's is DLG174, the language checklist), so the
-# table moved to where its four consumers live: the main window's
-# from/to pair, the dictionary window and the virtual keyboard.
+# NO such page (native's is DLG174, the language checklist). The
+# table itself now lives in qtranslate.config (LANG_DEFAULTS), next to
+# the HOTKEY_NAMES and SERVICE_NAMES tables it belongs with; the four
+# consumers below read config.LANG_DEFAULTS.
 LANG_DEFAULTS = {"LanguageFrom": 1, "LanguageTo": 57,
                  "LanguageDictionary": 17, "LanguageKeyboard": 17}
 

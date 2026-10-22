@@ -11,16 +11,41 @@ real QTranslate 6.10.0 history window, 476x320, client area 474x288 at
     with the translation on an indented white row under it;
   * the bottom row: Clear, Save as..., the star toggle, and OK.
 
-The list is the app's own history -- the same list the tkinter front
-end writes -- so both front ends show the same entries.
+Right-clicking an entry opens native's own history-item menu I6
+(FUN_004287B6, builder FUN_00404055 LoadMenuW): Open, Copy text, Copy
+translation, Delete, Listen to text. Each handler is the same operation
+the window (or the app) already performs elsewhere, so no new semantics
+are invented -- only the menu entry point.
 """
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QAction
+from PySide6.QtWidgets import QMenu
 
-from qtranslate_style import FACE, TEXT
+from qtranslate_style import FACE
 
-from .widgets import (Base, button, hline, icon, label, panel, put, rect)
+from .widgets import Base, button, icon, label, panel, put, rect
+
+# The menu's labels come from the shipped locale packs (menu 3, the
+# history item menu) with native's strings as the fallback for an
+# untranslated id.
+HIST_MENU = (("open", "Open", 10),
+             ("copy_tr", "Copy translation", 20),
+             ("copy_src", "Copy text", 30),
+             ("listen", "Listen to text", 40),
+             ("delete", "Delete", 50))
+
+
+def menu_text(pack, menu_id, idx, default) -> str:
+    try:
+        from qtranslate.locale import menu_labels
+        for k, v in menu_labels(pack, menu_id):
+            if isinstance(k, int) and k == idx:
+                return v
+    except Exception:
+        pass
+    return default
 
 
 class HistoryWindow(Base):
@@ -32,6 +57,7 @@ class HistoryWindow(Base):
         super().__init__()
         self.app = app
         self.setWindowTitle("History")
+        self._sel = -1
         self._build()
 
     def _build(self):
@@ -40,8 +66,11 @@ class HistoryWindow(Base):
         self.btn_clear_search = button(self, 456, 40, 10, "")
         self.btn_clear_search.setObjectName("flat")
 
-        # The list panel.
+        # The list panel. Custom context menu: the I6 entry menu.
         self.list = panel(self, 4, 60, 468, 228)
+        self.list.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.list.customContextMenuRequested.connect(
+            self._entry_menu_requested)
         self._fill()
 
         # The bottom row.
@@ -52,6 +81,100 @@ class HistoryWindow(Base):
 
         self.btn_ok.clicked.connect(self.close)
         self.btn_clear.clicked.connect(self._clear)
+
+    # ------------------------------------------------------- the I6 menu
+    def _entry_menu_requested(self, gpos):
+        """Right-click on an entry: native's I6 menu, with the five
+        entries enabled only on a row that exists."""
+        try:
+            y = self.list.mapFromGlobal(gpos).y()
+        except Exception:
+            return
+        idx = self._entry_at(y)
+        ent = list(self.app.history)[idx] if 0 <= idx < len(
+            self.app.history) else None
+        m = QMenu(self)
+        try:
+            from qtranslate.locale import load_pack
+            pack = load_pack("English")
+        except Exception:
+            pack = {}
+        ops = {"open": self._open_entry, "copy_tr": self._copy_tr,
+               "copy_src": self._copy_src, "listen": self._listen,
+               "delete": self._delete}
+        for key, default, mid in HIST_MENU:
+            text = menu_text(pack, 3, mid, default)
+            act = QAction(text, m)
+            act.setEnabled(ent is not None)
+            act.triggered.connect(lambda _c=False, k=key, i=idx, e=ent:
+                                  ops[k](i, e))
+            m.addAction(act)
+        m.exec(gpos)
+
+    # the five operations (each is the same op elsewhere in the window)
+    def _open_entry(self, idx, ent):
+        """Open = native's load_sel: into the main window's panes."""
+        try:
+            _svc, src, _res = ent[:3]
+            if getattr(self.app, "win", None) is not None:
+                self.app.win.src.setPlainText(src)
+        except Exception:
+            pass
+
+    def _copy(self, text):
+        try:
+            from PySide6.QtWidgets import QApplication as _QA
+            _QA.clipboard().setText((text or "").strip())
+        except Exception:
+            pass
+
+    def _copy_src(self, idx, ent):
+        self._copy(ent[1])
+
+    def _copy_tr(self, idx, ent):
+        self._copy(ent[2])
+
+    def _delete(self, idx, ent):
+        try:
+            del self.app.history[idx]
+            self._fill()
+        except Exception:
+            pass
+
+    def _listen(self, idx, ent):
+        try:
+            _svc, src, _res = ent[:3]
+            import threading as _th
+            _th.Thread(target=self._speak, args=(src,), daemon=True).start()
+        except Exception:
+            pass
+
+    def _speak(self, text):
+        try:
+            from qtranslate import config as _C
+            slow = bool(_C.load().get("Advanced", {})
+                        .get("EnableSlowerListening", False))
+        except Exception:
+            slow = False
+        try:
+            from qtranslate.player import play_text
+            play_text(text[:500], getattr(self.app, "target", "vi") or "vi",
+                      slow=slow)
+        except Exception:
+            pass
+    # ------------------------------------------------------------ the rest
+
+    def _entry_at(self, y):
+        """The history index at the list's ``y`` -- ``_fill``'s own
+        arithmetic (rows start at 65, one row per 30px), so the menu
+        targets the row the user right-clicked. -1 past the last."""
+        try:
+            idx = (int(y) - 65) // 30
+        except Exception:
+            return -1
+        if idx < 0:
+            return -1
+        return idx if idx < len(self.app.history) else -1
 
     def _field(self):
         from PySide6.QtWidgets import QLineEdit
@@ -65,7 +188,7 @@ class HistoryWindow(Base):
         under it."""
         y = 66
         for entry in list(self.app.history)[:12]:
-            service, src, res = entry
+            service, src, res = entry[:3]
             rect(self.list, 5, y - 1, 466, 13, FACE, "histrow")
             icon(self.list, 8, y - 3, "ui_icons", "star")
             label(self.list, 31, y + 5, src[:60])

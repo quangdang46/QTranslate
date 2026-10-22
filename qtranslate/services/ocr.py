@@ -68,6 +68,40 @@ def ocr_space(image_bytes: bytes, api_key: str = "helloworld",
         return json.loads(r.read().decode("utf-8"))
 
 
+# ocr.space's own 3-letter language codes. The native carries them as
+# ONE wide string in the image (measured 2026-10-16 around offset
+# 1215480):
+#
+#     ara bul chs cht hrv cze dan dut eng fin fre ger gre hun ita
+#     jpn kor nor pol por rus spa swe tur
+#
+# -- 24 codes, which is what the service accepts. The port's tables are
+# Google's 2-letter codes, so the request has to be translated; a
+# language the list does not have falls back to "eng", which is what
+# native does for a language it lacks.
+#
+# "vi" and "zh" are the port's own additions (ocr.space does have
+# Vietnamese, under "vie"), so a Vietnamese capture still reads; every
+# other entry is one of the native's own codes.
+OCR_LANGUAGES = {
+    "en": "eng", "fr": "fre", "de": "ger", "es": "spa", "ru": "rus",
+    "ja": "jpn", "ko": "kor", "zh-CN": "chs", "zh-TW": "cht", "zh": "chs",
+    "ar": "ara", "bg": "bul", "hr": "hrv", "cs": "cze", "da": "dan",
+    "nl": "dut", "fi": "fin", "el": "gre", "hu": "hun", "it": "ita",
+    "no": "nor", "pl": "pol", "pt": "por", "sv": "swe", "tr": "tur",
+    "vi": "vie",
+}
+
+
+def ocr_language(code: str) -> str:
+    """The ocr.space language code for a Google language code.
+
+    "eng" for a language the service does not have -- native's own
+    fallback.
+    """
+    return OCR_LANGUAGES.get(code, "eng")
+
+
 def ocr_text(image_bytes: bytes, api_key: str = "helloworld",
              lang: str = "eng") -> str:
     """Convenience: return just the parsed text of the first result."""

@@ -74,38 +74,25 @@ for anchor in ("ParsedResults", "ParsedText", "ErrorMessage"):
        or anchor.encode("ascii") in raw)
 
 # --- 2. the port's map covers all of them ------------------------------
-APP = io.open(os.path.join(REPO, "qtranslate", "app.py"),
-              encoding="utf-8").read()
-# Phase 7 (6/6): the OCR language map moved to `qtranslate/windows.py`
-# with the rest of the main window; app.py keeps a delegator.
-WIN = io.open(os.path.join(REPO, "qtranslate", "windows.py"),
-              encoding="utf-8").read()
-# The map moved to windows.py with the rest of the main window; the pin
-# follows the code.
-_src = WIN if "_lang = {" in WIN else APP
-start = _src.find("_lang = {")
-ck("the port builds the OCR language map", start >= 0)
-if start >= 0:
-    end = _src.find(".get(", start)
-    block = _src[start:end if end > 0 else start + 2000]
-    # Read the literal back as DATA, not with eval -- the point of this
-    # suite is that the map is checked, so the checker must not be able to
-    # execute whatever it finds. ast.literal_eval parses a plain dict.
-    import ast
-    try:
-        _map = ast.literal_eval(
-            "{" + block.split("{", 1)[1].rsplit("}", 1)[0] + "}")
-    except (ValueError, SyntaxError, IndexError) as exc:
-        _map = {}
-        ck("the map literal parses as a dict", False, repr(exc))
-    ck("the map is a dict of >= 20 entries", isinstance(_map, dict)
-       and len(_map) >= 20,
-       "%d entries" % len(_map) if isinstance(_map, dict) else "not a dict")
-    for code in NATIVE_CODES:
-        if code == "eng":            # the fallback is not a map entry
-            continue
-        ck("the port maps to %r" % code, code in _map.values(),
-           "missing from the OCR language map")
+# The map belongs to the OCR SERVICE (it is ocr.space's own language
+# table, and the native carries it in its image), so it lives in
+# qtranslate/services/ocr.py and both views read it from there.
+from qtranslate.services.ocr import OCR_LANGUAGES as _map
+ck("the port builds the OCR language map", bool(_map))
+ck("the map is a dict of >= 20 entries", isinstance(_map, dict)
+   and len(_map) >= 20,
+   "%d entries" % len(_map) if isinstance(_map, dict) else "not a dict")
+for code in NATIVE_CODES:
+    if code == "eng":            # the fallback is not a map entry
+        continue
+    ck("the port maps to %r" % code, code in _map.values(),
+       "missing from the OCR language map")
+# ...and the view sends the service's code, not Google's 2-letter one.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _view_src import view_source
+ck("the view translates the language before the request",
+   "ocr_language(" in view_source(),
+   "the view must not send a 2-letter code to ocr.space")
 
 # Google's own table must actually contain the codes the map keys on,
 # otherwise the lookup can never fire.
