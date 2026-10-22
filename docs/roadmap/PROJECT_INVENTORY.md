@@ -68,9 +68,9 @@ windows existed.
 |---|---|---|
 | `qtranslate/qt/app.py` | 210 | `QtApp`: the state (service, language pair, history) and the behaviour |
 | `qtranslate/qt/main_window.py` | 262 | the main window, on the measured geometry |
-| `qtranslate/qt/widgets.py` | 160 | the ONE implementation of the layout helpers |
+| `qtranslate/qt/widgets.py` | 167 | the ONE implementation of the layout helpers |
 | `qtranslate/qt/icons.py` | 85 | the recovered icons, with the face keyed out |
-| `qtranslate/qt/options.py` | 292 | the Options dialog and its nine pages |
+| `qtranslate/qt/options/` | 12 modules | the Options dialog: `base.py` is the shell, and each of the nine pages is its own module (`advanced.py`, `appearance.py`, `basics.py`, `exceptions.py`, `hotkeys.py`, `internet.py`, `languages.py`, `services.py`, `updates.py`) so one page can be measured and fixed without touching the others |
 | `qtranslate/qt/dictionary.py` | 172 | the Dictionary window |
 
 `qtranslate_style.py` (untracked, the user's file) holds the design tokens

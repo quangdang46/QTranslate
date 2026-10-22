@@ -42,6 +42,24 @@
 > `docs/review/G9_DIFF_DECOMPOSITION_2026-10-21.md`. The RE Gate is still
 > `151 VERIFIED / 1 UNKNOWN (G9)`, `BLOCKED (1)`.
 
+> **SUPERSEDING NOTE (2026-10-22).** The port now has a **second front
+> end**: `qtranslate/qt/`, the PySide6 view, whose windows are drawn on the
+> geometry MEASURED off native's own captures
+> (`docs/review/native_screens/`) and compared with them pixel by pixel
+> (`tools/render_qt.py`). The mean difference over ten screens is **0.0189**
+> of the pixels, measured as the total ink -- the measure that ignores
+> ClearType's sub-pixel fringes, which the plain RGB difference cannot. The
+> core is unchanged and shared: both views sit on the same
+> `engine`/`registry`/`config`. Two of the port's own settings DEFAULTS
+> were wrong against the native's real `Options.json` and were corrected
+> (`ExpandHistoryItems`, the seventeen `HotKeys` keys), and the strip's
+> short names were cut to two dots where native cuts them to three. The
+> bundle now ships both front ends (`QTranslate.exe` and
+> `QTranslate-Qt.exe`, one shared `_internal`). See
+> `docs/review/PYSIDE6_PARITY_2026-10-22.md` and
+> `docs/roadmap/`. The RE Gate is still `151 VERIFIED / 1 UNKNOWN (G9)`,
+> `BLOCKED (1)`.
+>
 > Status: **PLANNING / READ-ONLY AUDIT.** Grounded in direct reads of the
 > repository at commit `0cb0e78` (branch `main`) on 2026-10-09. No files were
 > modified to produce this audit. Claims are tagged **[verified]** (read from

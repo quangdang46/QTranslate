@@ -40,15 +40,15 @@ window, cropped to the client area. The method and the numbers are in
 |---|---|
 | dict | 0.0028 |
 | updates | 0.0060 |
-| internet | 0.0078 |
+| internet | 0.0088 |
 | services | 0.0135 |
 | main | 0.0144 |
 | exceptions | 0.0212 |
-| appearance | 0.0252 |
-| advanced | 0.0286 |
+| appearance | 0.0263 |
+| advanced | 0.0309 |
 | languages | 0.0352 |
 | hotkeys | 0.0391 |
-| **mean** | **0.0194** |
+| **mean** | **0.0198** |
 
 The residual is the ClearType sub-pixel phase and the icon edges, not
 the layout: the rectangles, the borders, the colours and the positions

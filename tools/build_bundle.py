@@ -148,6 +148,26 @@ a = Analysis(
 )
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
+exe = EXE(
+    pyz,
+    a.scripts,
+    [],
+    exclude_binaries=True,
+    name='%(name)s',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=False,
+    console=False,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    version='version_info.txt',
+    icon=['QTranslate.ico'],
+)
+
 
 # The PySide6 front end. Its own Analysis, because its dependency tree
 # is its own: PySide6, the Qt stylesheet module (qtranslate_style) and
@@ -157,7 +177,11 @@ aq = Analysis(
     [os.path.join(REPO, 'start_qt.py')],
     pathex=[REPO],
     binaries=[],
-    datas=[('qtranslate/assets', 'qtranslate/assets')],
+    # No datas of its own: the assets are the SAME files the tkinter
+    # front end ships, and the COLLECT puts them in the one shared
+    # _internal tree. Listing them twice would be two sources for one
+    # destination.
+    datas=[],
     hiddenimports=[
         # The Qt toolkit. PyInstaller's own PySide6 hook collects the
         # plugins and the Qt translations.
@@ -225,44 +249,18 @@ exeq = EXE(
     icon=['QTranslate.ico'],
 )
 
+
 coll = COLLECT(
     exe,
     exeq,
     a.binaries,
     a.zipfiles,
     a.datas,
-    strip=False,
-    upx=False,
-    upx_exclude=[],
-    name='%(name)s',
-)
-
-
-exe = EXE(
-    pyz,
-    a.scripts,
-    [],
-    exclude_binaries=True,
-    name='%(name)s',
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=False,
-    console=False,
-    disable_windowed_traceback=False,
-    argv_emulation=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-    version='version_info.txt',
-    icon=['QTranslate.ico'],
-)
-
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
+    # The Qt analysis' own binaries: the PySide6 DLLs, the platform
+    # plugin and the Qt translations. Without them the second
+    # executable is not collected at all.
+    aq.binaries,
+    aq.zipfiles,
     strip=False,
     upx=False,
     upx_exclude=[],
@@ -617,6 +615,33 @@ def verify(dist_dir: str) -> int:
     if proc.returncode != 0 and not problems:
         problems.append("frozen exe exited %s without a failing selftest"
                         % proc.returncode)
+
+    # 2b: the SAME probe for the PySide6 front end. It is a separate
+    # executable with a separate dependency tree (PySide6, the Qt
+    # platform plugin, qtranslate_style), so the tkinter selftest says
+    # nothing about it.
+    qtexe = os.path.join(dist_dir, EXE_NAME + "-Qt.exe")
+    if not os.path.exists(qtexe):
+        problems.append("missing the PySide6 executable: %s" % qtexe)
+    else:
+        proc = run([qtexe, "--selftest"], capture_output=True, timeout=300)
+        out = (proc.stdout or b"").decode("utf-8", "replace")
+        err = (proc.stderr or b"").decode("utf-8", "replace")
+        print(out.rstrip())
+        if err.strip():
+            print("stderr:", err.strip()[-1500:])
+        marker = next((l for l in out.split("
+")
+                       if l.startswith("SELFTEST ")), None)
+        if marker is None:
+            problems.append("the frozen Qt exe produced no SELFTEST marker "
+                            "(rc=%s) -- it did not reach the selftest branch"
+                            % proc.returncode)
+        elif "FAIL" in marker:
+            problems.append("frozen Qt selftest failed: %s" % marker.strip())
+        if proc.returncode != 0 and not problems:
+            problems.append("frozen Qt exe exited %s without a failing "
+                            "selftest" % proc.returncode)
 
     if problems:
         print("VERIFY FAILED:")

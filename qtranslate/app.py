@@ -1532,32 +1532,13 @@ def on_listen_hotkey(app):
 def _hotkey_to_combo(code: int) -> str:
     """Options.json hotkey dword -> `keyboard` combo string.
 
-    FUN_00405A17 packs vk | (modifiers << 8): bit0=Alt, bit1=Ctrl,
-    bit2=Shift, bit3=Win (matches format_hotkey in config.py).
+    The conversion itself is in the core (``config.hotkey_combo``), so
+    the tkinter front end and the PySide6 one cannot disagree about
+    which key a binding is: a hotkey that fires in one app and not the
+    other is a bug in one of them, and there is only one answer.
     """
-    if not code:
-        return ""
-    vk = code & 0xFF
-    mods = (code >> 8) & 0xF
-    parts = []
-    if mods & 2:
-        parts.append("ctrl")
-    if mods & 4:
-        parts.append("shift")
-    if mods & 1:
-        parts.append("alt")
-    if mods & 8:
-        parts.append("windows")
-    if vk:
-        if vk in (0x08, 0x09, 0x0D, 0x1B, 0x20, 0x2E):
-            parts.append({0x08: "backspace", 0x09: "tab",
-                          0x0D: "enter", 0x1B: "esc", 0x20: "space",
-                          0x2E: "delete"}[vk])
-        elif 0x20 <= vk < 0x7F:
-            parts.append(chr(vk).lower())
-        else:
-            return ""
-    return "+".join(parts)
+    from qtranslate import config as _C
+    return _C.hotkey_combo(code)
 
 
 def _register_native_hotkeys(app) -> list:

@@ -42,15 +42,15 @@ uv tool run --python 3.12 --with PySide6 --with pillow python tools/render_qt.py
 |---|---|---|---|
 | main | 2131 | 0.0144 | 0.0611 |
 | dict | 2132 | 0.0028 | 0.0591 |
-| advanced | 2140 | 0.0286 | 0.0925 |
-| appearance | 2138 | 0.0252 | 0.1094 |
+| advanced | 2140 | 0.0309 | 0.0970 |
+| appearance | 2138 | 0.0263 | 0.1111 |
 | exceptions | 2139 | 0.0212 | 0.0800 |
 | hotkeys | 2126 | 0.0391 | 0.0892 |
-| internet | 2135 | 0.0078 | 0.0735 |
+| internet | 2135 | 0.0088 | 0.0756 |
 | languages | 2137 | 0.0352 | 0.2097 |
 | services | 2136 | 0.0135 | 0.1023 |
 | updates | 2141 | 0.0060 | 0.0290 |
-| **mean** | | **0.0194** | 0.0906 |
+| **mean** | | **0.0198** | 0.0914 |
 
 `hist` (2133) and `kbd` (2134) are not in the table: the History and
 Keyboard windows had not been written when this table was taken. See

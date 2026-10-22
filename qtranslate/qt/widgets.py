@@ -18,7 +18,7 @@ apart.
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QFont, QFontMetrics
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QFrame, QLabel,
                                QLineEdit, QPushButton, QWidget)
 
@@ -28,7 +28,11 @@ from qtranslate_style import (ACCENT, BORDER, COLSEP, DIM, FACE, POPUP_BG,
 
 from . import icons
 
-LINK, HEADING, HEADING_LINE = "#0066cc", "#005eb8", "#b5c9e0"
+LINK = "#0066cc"
+# The section headings of the Services page, MEASURED off the native
+# capture 2136: the text is #003399 and the rule that runs beside it is
+# #b2c1e0. The headings are Tahoma 9pt (12px), not the 8pt of the body.
+HEADING, HEADING_LINE = "#003399", "#b2c1e0"
 
 
 def origin_of(parent):
@@ -46,7 +50,14 @@ def put(parent, w, l, t, ww, hh):
 
 
 def label(parent, l, cy, text, color=None, bold=False, underline=False,
-          w=None, align=Qt.AlignLeft):
+          w=None, align=Qt.AlignLeft, size=None):
+    """A label whose text sits on the row ``cy``.
+
+    ``size`` is the font size in PIXELS: the app's stylesheet asks for
+    11px (Tahoma 8pt) everywhere, and the few labels that the native
+    draws bigger -- the section headings -- have to override it in the
+    widget's own stylesheet, which is the only one that wins.
+    """
     q = QLabel(text)
     q.setAlignment(align | Qt.AlignVCenter)
     st = ""
@@ -56,8 +67,18 @@ def label(parent, l, cy, text, color=None, bold=False, underline=False,
         st += "font-weight:700;"
     if underline:
         st += "text-decoration:underline;"
+    if size:
+        st += f"font-size:{size}px;"
     q.setStyleSheet("QLabel{background:transparent;" + st + "}")
-    width = w or (q.fontMetrics().horizontalAdvance(text) + 6)
+    if w is None:
+        if size:
+            f = QFont(q.font())
+            f.setPixelSize(size)
+            width = QFontMetrics(f).horizontalAdvance(text) + 6
+        else:
+            width = q.fontMetrics().horizontalAdvance(text) + 6
+    else:
+        width = w
     return put(parent, q, l, cy - 8, width, 16)
 
 
@@ -160,6 +181,12 @@ class Base(QWidget):
 
     ORIGIN = (1, 31)
     SIZE = (514, 391)
+
+    # True when the window wants the keyboard focus itself rather than
+    # one of its children. The main window sets it because its source
+    # pane is an edit control: give that the focus and it draws a
+    # blinking caret, which the native's capture does not have.
+    WANTS_FOCUS = False
 
     def __init__(self):
         super().__init__()

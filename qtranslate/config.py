@@ -162,6 +162,45 @@ _VK_NAMES = {0x08: "Backspace", 0x09: "Tab", 0x0D: "Enter", 0x1B: "Esc",
              0x2D: "Insert", 0x6F: "Divide", 0x90: "Num Lock"}
 
 
+def hotkey_combo(code: int) -> str:
+    """Options.json hotkey dword -> the `keyboard` library's combo string.
+
+    FUN_00405A17 packs the binding as ``vk | (modifiers << 8)``:
+    bit0 = Alt, bit1 = Ctrl, bit2 = Shift, bit3 = Win. The same packing
+    as :func:`format_hotkey` reads, but the output is the machine form
+    ("ctrl+shift+q") the `keyboard` library registers, not the display
+    form ("Ctrl + Shift + Q").
+
+    This lives in the core because it is not a UI concern: the tkinter
+    front end registers the hotkeys with it and so does the PySide6 one,
+    and a hotkey that the two disagree about is a hotkey that fires in
+    one app and not the other.
+    """
+    if not code:
+        return ""
+    vk = code & 0xFF
+    mods = (code >> 8) & 0xF
+    parts = []
+    if mods & 2:
+        parts.append("ctrl")
+    if mods & 4:
+        parts.append("shift")
+    if mods & 1:
+        parts.append("alt")
+    if mods & 8:
+        parts.append("windows")
+    if vk:
+        special = {0x08: "backspace", 0x09: "tab", 0x0D: "enter",
+                   0x1B: "esc", 0x20: "space", 0x2E: "delete"}
+        if vk in special:
+            parts.append(special[vk])
+        elif 0x20 <= vk < 0x7F:
+            parts.append(chr(vk).lower())
+        else:
+            return ""
+    return "+".join(parts)
+
+
 def format_hotkey(code: int) -> str:
     """Port of FUN_00403B48: hotkey word -> 'Double Ctrl + Q' display string.
 

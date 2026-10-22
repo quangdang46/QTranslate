@@ -39,21 +39,25 @@ self-assign it. The gate currently reads `BLOCKED (1)`.
 **What unblocks it.** A human writes the token into the document the
 validator reads.
 
-## B3 -- the macOS bundle cannot be produced or verified here
+## B3 -- the macOS bundle: CLOSED, and the premise was wrong
 
-**Bead:** `qt-3ro` (open, priority 2)
+**Bead:** `qt-3ro` -- **closed** 2026-10-21.
 
-**What it is.** The Windows bundle is done (`qt-phase8-bundle-landed-fho`:
-PyInstaller onedir, `tools/build_bundle.py`, a frozen-exe selftest
-18/18). What is left is macOS. A macOS bundle can be neither produced
-(nothing to build it on) nor verified (nothing to run it on) from an
-AMD64 Windows machine. Building it blind and claiming it would be a
-claim with no artifact, which is exactly what this project's honesty
-rules forbid.
+**What it was.** The Windows bundle is done (`qt-phase8-bundle-landed-fho`:
+PyInstaller onedir, `tools/build_bundle.py`, a frozen-exe selftest 18/18).
+What was left was macOS, and the bead claimed that a macOS bundle could
+be neither produced nor verified from an AMD64 Windows machine.
 
-**What unblocks it.** A macOS host, or a hosted macOS runner, that runs
-`tools/build_bundle.py`'s own verify step. That is the agent-tractable
-remainder, and it is a machine, not a decision.
+**How it closed.** The premise was wrong: the machine that did the
+Phase 8 work IS macOS arm64, and the bundle builds and verifies there
+(`dist-mac/QTranslate/QTranslate --selftest PASS 17/17`, commit
+`91d454b`). So the remainder was agent-tractable after all.
+
+**What is left of it here.** The bundle builder now carries the
+PySide6 front end as a second entry point (`start_qt.py` ->
+`QTranslate-Qt.exe` beside `QTranslate.exe`, one shared `_internal`),
+which was done on this Windows host. The macOS side of that change has
+not been rebuilt on a macOS host, because there is no macOS host here.
 
 ## B4 -- the Options "Basics" page has no native capture
 
@@ -88,27 +92,47 @@ window placement is a user setting, so a fresh install has none and the
 codec is checked against the rect the native saved, which is on the
 record in `G9_TEMPLATE_VS_PLACEMENT_2026-10-15.md`.
 
-## B6 -- the Tk `MainWindow` is still one class
+## B6 -- the Tk `MainWindow` split: CLOSED
 
-**Bead:** `qt-o7p` (open, priority 2) -- a SCOPING question, not a
-defect.
+**Bead:** `qt-o7p` -- **closed** 2026-10-21.
 
-**What it is.** Five of the six window classes were extracted out of
-`app.py` (Phase 7). The sixth, `MainWindow`, was deliberately not
-started, and the bead says why: it is not a window hanging off the app,
-it IS the app -- the panes, the translation orchestration, the hotkey
-routing and the clipboard monitor, cross-referenced far more tightly
-than the five extracted windows were. Cutting it out is a large
-restructure of the code the UI is built from.
+**What it was.** Five of the six window classes had been extracted out
+of `app.py` (Phase 7). The sixth, `MainWindow`, was deliberately not
+started: it is not a window hanging off the app, it IS the app -- the
+panes, the translation orchestration, the hotkey routing and the
+clipboard monitor -- and cutting it out was a large restructure of the
+code the UI is built from, with no fidelity signal to verify it by.
 
-**Where it stands now.** The PySide6 front end is a second view over the
-same core, and it is the one the parity programme is driving the UI
-towards. The Tk `MainWindow` is the view that is being replaced, so
-restructuring it is work on the view that is on its way out.
+**How it closed.** The deferral's stated reason was gone: the port's own
+window CAN be captured on the host, so a restructure has a signal. The
+main window's body is now `qtranslate.windows.MainWindow`, with
+`app.py` keeping a thin delegator for each of the 50 moved methods, and
+it was verified behaviour-preserving -- the widget geometry before and
+after the split is identical band for band, with the suite green.
+`docs/review/PHASE7_APP_SPLIT_2026-10-16.md`.
 
-**What unblocks it.** A decision on whether the Tk front end stays
-supported after the Qt one lands, and if it does, whether the split is
-worth the risk. This is a product call, not a technical one.
+**What it means for the Qt port.** The Tk front end is whole again, and
+the PySide6 one is a second view over the same core. The two share the
+core, not the widgets.
+
+## The bead state, as the tracked record has it
+
+`.beads/issues.jsonl` is the git-tracked record (the SQLite database is
+gitignored and, on this host, a schema the installed `bd` cannot open
+-- "historical SQLite workspace detected"). Six of the seven beads are
+closed:
+
+| Bead | State | Closed |
+|---|---|---|
+| `qt-ekh` | the tray X:/Y: readout, verified against native | 2026-10-16 |
+| `qt-phase7-classes-landed-ifn` | 5 of 6 window classes extracted, byte-identical | 2026-10-16 |
+| `qt-phase8-bundle-landed-fho` | the bundler chosen, a Windows bundle that verifies | 2026-10-16 |
+| `qt-g9-part-a-closed-qyy` | the native window spec recovered and cross-verified | 2026-10-16 |
+| `qt-3ro` | the macOS bundle | 2026-10-21 |
+| `qt-o7p` | the MainWindow split (6 of 6) | 2026-10-21 |
+| `qt-fj5` | **open** -- G9 part (b) | -- |
+
+So the one open bead is B1/B2, the human-only gate.
 
 ## Not blockers
 

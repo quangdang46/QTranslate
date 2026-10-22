@@ -59,13 +59,36 @@ def _tick(p, color):                # checkbox tick on the 11x11 interior, pixel
         p.drawRect(x, y, 1, 1)
 
 
+def button_gradient(height):
+    """The Win32 themed button face for a control ``height`` px tall.
+
+    MEASURED off the native captures. The face is a fixed pixel
+    pattern, not a fixed fraction of the height: a 1px white gloss
+    row, then a ramp down one level per row to #d3d3d3, then a
+    #cacaca shadow row, then the 1px border. A 22px button (the main
+    window's Translate button, capture 2131 rows 217..238) reads
+    255, 227..211, 202, border; an 18px key (the virtual keyboard's,
+    capture 2134 rows 38..55) reads 255, 226..212, 202, border.
+
+    A QSS gradient's stops are fractions of the height, so the stops
+    have to move with it -- which is why this is a function and not a
+    constant. The one in ``qss()`` is the 22px one.
+    """
+    gloss = 2.0 / height
+    ramp = (height - 3) / height
+    shade = (height - 2) / height
+    return (f"qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 {BTN_HL},"
+            f"stop:{gloss:.4f} {BTN_HL},stop:{gloss:.4f} {BTN_TOP},"
+            f"stop:{ramp:.4f} #d3d3d3,stop:{shade:.4f} {BTN_SHADE},"
+            f"stop:1 {BTN_SHADE})")
+
+
 def qss():
     arrow = _png("updown.png", 7, 8, _updown)
     tick_k = _png("tick_black.png", 11, 11, lambda p: _tick(p, TICK))
     tick_w = _png("tick_white.png", 11, 11, lambda p: _tick(p, "#ffffff"))
     # 21px control: row0 border, row1 white, rows 2..18 e3->d3, row19 #cacaca, row20 border
-    grad = (f"qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 {BTN_HL},stop:0.094 {BTN_HL},"
-            f"stop:0.095 {BTN_TOP},stop:0.90 #d3d3d3,stop:0.905 {BTN_SHADE},stop:1 {BTN_SHADE})")
+    grad = button_gradient(21)
     grad_p = (f"qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 {BTN_PRESS_TOP},stop:1 {BTN_BOT})")
     return f"""
 * {{ font-family: "{FONT_FAMILY}"; font-size: {FONT_SIZE}px; color: {TEXT}; }}
@@ -75,6 +98,9 @@ QPushButton, QToolButton {{
   border: 1px solid {BORDER}; border-radius: 2px; background: {grad};
   padding: 0 8px; }}
 QPushButton:pressed, QToolButton:pressed {{ background: {grad_p}; }}
+/* The virtual keyboard's keys: 28px wide, so they cannot carry the
+   ordinary buttons' 8px padding -- "BkSp" would be clipped. */
+QPushButton#key {{ border: 1px solid {BORDER}; border-radius: 2px; padding: 0; background: {grad}; }}
 QPushButton#flat {{ border: none; background: transparent; padding: 0; }}
 QPushButton#navmenu {{ border: none; background: transparent; padding: 0; }}
 QPushButton#service {{
@@ -104,12 +130,12 @@ QCheckBox::indicator {{ width: 12px; height: 12px; border: 1px solid {BORDER};
 QCheckBox::indicator:checked {{ image: url({tick_k}); }}
 QCheckBox::indicator:disabled {{ border-color: {DIM}; }}
 /* checkboxes INSIDE list views (Services, Languages) are blue with a white tick */
-QListView::indicator {{ width: 13px; height: 13px; border: 1px solid {BORDER}; background: {WINDOW}; }}
+QListView::indicator {{ width: 11px; height: 11px; border: 1px solid {BORDER}; background: {WINDOW}; }}
 QListView::indicator:checked {{ background: {CHECK}; border: 1px solid {CHECK}; image: url({tick_w}); }}
 /* The port draws the Services and Languages checklists as QCheckBox widgets
    with the "blue" property set rather than as a QListView, so the rule
    that makes them blue has to name the property. */
-QCheckBox[blue="true"]::indicator {{ width: 13px; height: 13px; border: 1px solid {BORDER}; background: {WINDOW}; }}
+QCheckBox[blue="true"]::indicator {{ width: 11px; height: 11px; border: 1px solid {BORDER}; background: {WINDOW}; }}
 QCheckBox[blue="true"]::indicator:checked {{ background: {CHECK}; border: 1px solid {CHECK}; image: url({tick_w}); }}
 QGroupBox {{ border: none; margin-top: 7px; }}
 QGroupBox::title {{ subcontrol-origin: margin; subcontrol-position: top left; left: 9px; padding: 0 2px; background: {FACE}; }}

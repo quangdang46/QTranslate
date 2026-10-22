@@ -1,5 +1,35 @@
 # Compatibility Matrix — QTranslate 6.10.0 → new Core
 
+> **2026-10-22: a second front end, and the pixel evidence it produced.**
+> The port now has a **PySide6 view** (`qtranslate/qt/`) beside the tkinter
+> one, on the same core. Its windows are drawn on the geometry measured off
+> native's own captures and compared with them pixel by pixel
+> (`tools/render_qt.py --compare`): the mean difference over ten screens is
+> **0.0189** of the pixels, measured as the TOTAL INK, which is the
+> ClearType-invariant measure (the plain RGB difference counts the
+> sub-pixel fringes, and the spec says to ignore them).
+>
+> Two rows below change because of it, and both were **wrong before**:
+>
+> - *Main window (DLG129)* -- the port's layout is now measured against
+>   native's capture rather than against the template, and the FONT is
+>   settled: **Tahoma 8pt (11px) for the controls, Tahoma 9pt (12px) for
+>   the two text panes**. The native's own text says which font it is in
+>   pixels ("Double Ctrl => Show main window (with translation of selected
+>   text, if any)" is 418px wide there, which is Tahoma 9pt at 420 and not
+>   Tahoma 8pt at 363), and the line pitch is 14px. The spec's "Segoe UI
+>   9pt" was an inference and it was wrong. See
+>   `docs/review/PYSIDE6_PARITY_2026-10-22.md`.
+> - *Settings defaults* -- the native's real `Options.json` had been lost
+>   from the machine, so the port's defaults were the only thing left to
+>   read, and they disagreed with the native in three places
+>   (`ExpandHistoryItems`, the seventeen `HotKeys` keys, and the
+>   replace-selection code on the wrong key). Corrected.
+>
+> The **port state** vocabulary is unchanged: a row is `behaviour-verified`
+> only when an acceptance test proves it, and every acceptance run in this
+> project is Windows-only, so no row may be called cross-platform verified.
+>
 > Status: **PLANNING.** Decision D10 = preserve **nearly all** behavior
 > (Level A). This matrix is the **acceptance baseline**: each row is a behavior
 > that must be preserved or consciously dropped, with evidence and a test.

@@ -69,9 +69,11 @@ logic, persistence or network calls.
 no provider code. The Tk view's five window classes were extracted from
 `app.py` for the same reason (`qt-phase7-classes-landed-ifn`).
 
-**State:** DONE for the Qt view. The Tk `MainWindow` is still one
-class -- that is bead `qt-o7p`, and it is a scoping question, not a
-defect (see `BLOCKERS.md`).
+**State:** DONE, for both views. The Tk `MainWindow` was split out of
+`app.py` on 2026-10-21 (bead `qt-o7p`, closed): the body is
+`qtranslate.windows.MainWindow` and `app.py` keeps a thin delegator for
+each of the 50 moved methods, verified behaviour-preserving band for
+band.
 
 ## G6 -- Feature parity
 
@@ -99,7 +101,7 @@ behaviour is in the right place.
 
 **Gate:** the ink diff per screen (`BASELINE_RESULTS.md`).
 
-**State:** the mean ink diff is **0.0194** over ten screens. The residual
+**State:** the mean ink diff is **0.0198** over ten screens. The residual
 is ClearType phase and icon edges, not layout.
 
 ## G9 -- Packaging
@@ -109,9 +111,12 @@ is ClearType phase and icon edges, not layout.
 **Gate:** `tools/build_bundle.py`, a PyInstaller onedir bundle, and a
 frozen-exe selftest (18/18).
 
-**State:** DONE for Windows (`qt-phase8-bundle-landed-fho`). The macOS
-bundle is BLOCKED -- see `BLOCKERS.md`. The G9 screenshot review is also
-BLOCKED -- see `BLOCKERS.md`.
+**State:** DONE for Windows (`qt-phase8-bundle-landed-fho`) and for
+macOS (`qt-3ro`, closed 2026-10-21: the host that did the Phase 8 work
+IS macOS arm64, and the bundle builds and verifies there). The bundle
+now carries the PySide6 front end as a second entry point, so the
+distributable ships both views. The G9 screenshot review is still
+BLOCKED on a human -- see `BLOCKERS.md`.
 
 ## G10 -- Final acceptance
 

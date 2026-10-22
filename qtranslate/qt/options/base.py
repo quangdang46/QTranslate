@@ -16,10 +16,10 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QLabel
 
-from qtranslate_style import ACCENT, DIM, TEXT, THUMB
+from qtranslate_style import ACCENT, DIM, FACE, TEXT, THUMB, WINDOW
 
 from ..widgets import (Base, LINK, button, check, combo, field, group,
-                       hline, label, panel, put, rect, vline)
+                       hline, icon, label, panel, put, rect, vline)
 
 # The nine pages, in native's order. The Hotkeys page is the SECOND one
 # (measured off the captures 2140/2141, not the order a reader would
@@ -53,6 +53,11 @@ class OptionsBase(Base):
         # this one -- each page is its own top-level window (its own
         # module, its own ORIGIN), not a panel swapped inside one shell.
         panel(self, 4, 29, 142, 324)
+        # The list view's first row is empty, so the face shows there, and
+        # the sunken frame casts a 1px white shadow under itself. Both
+        # MEASURED off the capture.
+        rect(self, 5, 30, 140, 1, FACE)
+        rect(self, 3, 353, 144, 1, WINDOW)
         for i, name in enumerate(SIDEBAR):
             sel = i == self.SEL
             q = QLabel(name)
@@ -65,11 +70,16 @@ class OptionsBase(Base):
             put(self, q, 7, 31 + 13 * i, 139, 13)
             if not sel:
                 q.mousePressEvent = (lambda _e, n=name: self._goto(n))
-        # The rule above the buttons, and the buttons.
-        hline(self, 358, 3, 639)
+        # The rule above the buttons: an etched line, a dark one and a
+        # white one under it. MEASURED off the capture.
+        hline(self, 358, 3, 638)
+        hline(self, 359, 3, 638, WINDOW)
         button(self, 403, 363, 73, "OK").clicked.connect(self.close)
         button(self, 484, 363, 73, "Cancel").clicked.connect(self.close)
-        button(self, 565, 363, 73, "Apply", enabled=False)
+        # Apply is drawn like the others but its label is grey: the
+        # native greys the label, not the whole button.
+        ap = button(self, 565, 363, 73, "Apply")
+        ap.setStyleSheet("color:%s" % DIM)
 
     def _goto(self, page_name):
         """Switch to another page: open it at this window's position,

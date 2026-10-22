@@ -95,6 +95,26 @@ a = Analysis(
 )
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
+exe = EXE(
+    pyz,
+    a.scripts,
+    [],
+    exclude_binaries=True,
+    name='QTranslate',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=False,
+    console=False,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    version='C:\\Users\\ADMIN\\qtranslate-re\\build\\assets\\version_info.txt',
+    icon=['C:\\Users\\ADMIN\\qtranslate-re\\build\\assets\\QTranslate.ico'],
+)
+
 
 # The PySide6 front end. Its own Analysis, because its dependency tree
 # is its own: PySide6, the Qt stylesheet module (qtranslate_style) and
@@ -104,7 +124,11 @@ aq = Analysis(
     [os.path.join(REPO, 'start_qt.py')],
     pathex=[REPO],
     binaries=[],
-    datas=[('qtranslate/assets', 'qtranslate/assets')],
+    # No datas of its own: the assets are the SAME files the tkinter
+    # front end ships, and the COLLECT puts them in the one shared
+    # _internal tree. Listing them twice would be two sources for one
+    # destination.
+    datas=[],
     hiddenimports=[
         # The Qt toolkit. PyInstaller's own PySide6 hook collects the
         # plugins and the Qt translations.
@@ -172,44 +196,18 @@ exeq = EXE(
     icon=['C:\\Users\\ADMIN\\qtranslate-re\\build\\assets\\QTranslate.ico'],
 )
 
+
 coll = COLLECT(
     exe,
     exeq,
     a.binaries,
     a.zipfiles,
     a.datas,
-    strip=False,
-    upx=False,
-    upx_exclude=[],
-    name='QTranslate',
-)
-
-
-exe = EXE(
-    pyz,
-    a.scripts,
-    [],
-    exclude_binaries=True,
-    name='QTranslate',
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=False,
-    console=False,
-    disable_windowed_traceback=False,
-    argv_emulation=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-    version='C:\\Users\\ADMIN\\qtranslate-re\\build\\assets\\version_info.txt',
-    icon=['C:\\Users\\ADMIN\\qtranslate-re\\build\\assets\\QTranslate.ico'],
-)
-
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
+    # The Qt analysis' own binaries: the PySide6 DLLs, the platform
+    # plugin and the Qt translations. Without them the second
+    # executable is not collected at all.
+    aq.binaries,
+    aq.zipfiles,
     strip=False,
     upx=False,
     upx_exclude=[],

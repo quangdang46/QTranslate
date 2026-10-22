@@ -74,6 +74,7 @@ class MainWindow(Base):
     pane, provider strip."""
 
     ORIGIN, SIZE = (1, 31), (514, 391)
+    WANTS_FOCUS = True
 
     def __init__(self, app):
         super().__init__()

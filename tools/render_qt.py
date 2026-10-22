@@ -23,7 +23,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QTextEdit
+from PySide6.QtWidgets import QLineEdit, QTextEdit
 
 OUT = os.path.join(ROOT, "docs", "review", "ui_qt")
 NATIVE_DIR = os.path.join(ROOT, "docs", "review", "native_screens")
@@ -75,7 +75,7 @@ WINDOWS = {
 }
 
 
-def render(out_dir=OUT):
+def render(out_dir=OUT, only=None):
     """Render every real window to a PNG."""
     os.makedirs(out_dir, exist_ok=True)
     # The OFFSCREEN platform has no font database on this host, so every
@@ -95,6 +95,8 @@ def render(out_dir=OUT):
     # window after the one before it.
     alive = []
     for name, (mod, cls) in sorted(WINDOWS.items()):
+        if only and name not in only:
+            continue
         try:
             module = importlib.import_module("qtranslate.qt." + mod)
             window = getattr(module, cls)(app)
@@ -102,16 +104,30 @@ def render(out_dir=OUT):
             print("%-12s skipped (%s)" % (name, type(e).__name__))
             continue
         window.show()
+        # The native captures were taken with the window in the
+        # foreground, so the render must be too: a focused control draws
+        # its focus indicator, and the keyboard's capture has one
+        # (the dotted rectangle around the language combo's text).
+        window.activateWindow()
+        window.raise_()
         # The native captures have no blinking text cursor (no pane was
         # focused when they were taken), so the render must not have one
-        # either -- give the focus to the window itself.
-        window.setFocusPolicy(Qt.StrongFocus)
-        window.setFocus()
+        # either -- give the focus to the window itself. A window that
+        # wants the focus for one of its own controls (the keyboard's
+        # language combo, which native's capture shows FOCUSED) keeps
+        # it.
+        if getattr(window, "WANTS_FOCUS", False):
+            window.setFocusPolicy(Qt.StrongFocus)
+            window.setFocus()
         # The native captures have no caret in the text panes, and the
         # caret would be drawn at the text origin -- which is where the
-        # port's text starts, so it would be a real difference.
+        # port's text starts, so it would be a real difference. The same
+        # goes for the text fields: the capture was taken with nothing
+        # focused.
         for edit in window.findChildren(QTextEdit):
             edit.setCursorWidth(0)
+        for edit in window.findChildren(QLineEdit):
+            edit.setFocusPolicy(Qt.NoFocus)
         app.qapp.processEvents()
         window.grab().save(os.path.join(out_dir, name + ".png"))
         alive.append(window)
@@ -181,10 +197,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=OUT)
     ap.add_argument("--compare", action="store_true")
+    ap.add_argument("--only", nargs="*", default=None,
+                    help="render only these screens (e.g. --only languages)")
     args = ap.parse_args()
     if args.compare:
         return compare(args.out)
-    return render(args.out)
+    return render(args.out, args.only)
 
 
 if __name__ == "__main__":
