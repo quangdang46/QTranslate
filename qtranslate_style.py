@@ -20,7 +20,9 @@ BTN_HL, BTN_TOP, BTN_BOT, BTN_SHADE = "#ffffff", "#e3e3e3", "#d4d4d4", "#cacaca"
 BTN_PRESS_TOP = "#c9c9c9"          # ESTIMATE: no pressed-state screenshot
 DIS_BG = "#e1e1e1"
 ARROW, TICK = "#191919", "#191919"   # combobox arrows / normal checkbox tick (measured)
-CB_TOP, CB_BOT = "#e1e1e1", "#d8d8d8"  # normal checkbox fill gradient (measured)
+CB_TOP, CB_BOT = "#e1e1e1", "#d8d8d8"
+# The 1px shadow a themed button casts under itself (MEASURED off the capture).
+BTN_SHADOW = "#fcfcfc"
 POPUP_BG, POPUP_BORDER, POPUP_ICON, POPUP_TEXT = "#d0d0d0", "#53606c", "#3a3a3a", "#040404"
 # The provider strip at the bottom of the main window: its nine buttons
 # are flatter than the ordinary ones, and the FIRST one is the selected
@@ -32,6 +34,14 @@ STRIP_SEL, STRIP_SEL_BORDER = "#b0b0b0", "#737373"
 # indicator:" is 125px wide in the native capture, which is Tahoma 8pt
 # (127px) and not Segoe UI 8pt (135px) nor Tahoma 9pt (142px).
 FONT_FAMILY, FONT_SIZE = "Tahoma", 11
+# The virtual keyboard's key labels are in a DIFFERENT face: MEASURED off
+# capture 2134, the native's "Esc" is 15x9, "Tab" 18x9, "Shift" 23x9,
+# "BkSp" 24x12 and "AltGr" 27x9, and only Segoe UI 9pt (12px) has
+# those ink boxes (Tahoma 8pt gives 15x8, 16x9, 21x9, 22x11, 23x9).
+# So the window's own text is the Win32 dialog font and the KEYS are
+# Segoe UI -- the spec's original "Segoe UI 9pt" was right about the
+# keys and wrong about the rest.
+KEY_FONT_FAMILY, KEY_FONT_SIZE = "Segoe UI", 12
 
 _dir = tempfile.mkdtemp(prefix="qtstyle_")
 
@@ -72,14 +82,20 @@ def button_gradient(height):
 
     A QSS gradient's stops are fractions of the height, so the stops
     have to move with it -- which is why this is a function and not a
-    constant. The one in ``qss()`` is the 22px one.
+    constant. The one in ``qss()`` is the 21px one, which reproduces the
+    native's 21px buttons (the History and Options OK buttons) row for
+    row; the 18px keys and the 22px Translate button are within one
+    level of it.
     """
     gloss = 2.0 / height
-    ramp = (height - 3) / height
-    shade = (height - 2) / height
+    ramp = (height - 2) / height
+    shade = (height - 1) / height
+    # The two stops at the gloss must NOT share a position: Qt leaves a
+    # hole (an unpainted pixel) where a gradient has two stops at the
+    # same offset, so the white band is written with a 1/100000 gap.
     return (f"qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 {BTN_HL},"
-            f"stop:{gloss:.4f} {BTN_HL},stop:{gloss:.4f} {BTN_TOP},"
-            f"stop:{ramp:.4f} #d3d3d3,stop:{shade:.4f} {BTN_SHADE},"
+            f"stop:{gloss - 0.00001:.5f} {BTN_HL},stop:{gloss:.5f} {BTN_TOP},"
+            f"stop:{ramp:.5f} #d3d3d3,stop:{shade:.5f} {BTN_SHADE},"
             f"stop:1 {BTN_SHADE})")
 
 

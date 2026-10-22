@@ -22,9 +22,9 @@ from PySide6.QtGui import QColor, QFont, QFontMetrics
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QFrame, QLabel,
                                QLineEdit, QPushButton, QWidget)
 
-from qtranslate_style import (ACCENT, BORDER, COLSEP, DIM, FACE, POPUP_BG,
-                              POPUP_BORDER, POPUP_ICON, POPUP_TEXT, THUMB,
-                              TEXT, EtchedGroupBox)
+from qtranslate_style import (ACCENT, BORDER, BTN_SHADOW, COLSEP, DIM,
+                              FACE, POPUP_BG, POPUP_BORDER, POPUP_ICON,
+                              POPUP_TEXT, THUMB, TEXT, EtchedGroupBox)
 
 from . import icons
 
@@ -82,10 +82,19 @@ def label(parent, l, cy, text, color=None, bold=False, underline=False,
     return put(parent, q, l, cy - 8, width, 16)
 
 
-def button(parent, l, t, w, text, h=21, enabled=True):
+def button(parent, l, t, w, text, h=21, enabled=True, shadow=False):
+    """A themed push button.
+
+    ``shadow`` draws the 1px light line the theme's buttons cast under
+    themselves: MEASURED off the capture (a #fcfcfc row under the
+    button's bottom border). The flat buttons -- the ones with no
+    border -- have none.
+    """
     b = QPushButton(text)
     b.setEnabled(enabled)
     b.setFocusPolicy(Qt.NoFocus)
+    if shadow:
+        rect(parent, l, t + h, w, 1, BTN_SHADOW)
     return put(parent, b, l, t, w, h)
 
 

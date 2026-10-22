@@ -24,9 +24,41 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QComboBox
 
-from qtranslate_style import button_gradient
+from qtranslate_style import BTN_HL, BTN_SHADE, BTN_TOP
 
 from .widgets import Base, button, combo, put
+
+# The key labels are in a DIFFERENT face from the rest of the app:
+# MEASURED off capture 2134, the native's "Esc" is 15x9, "Tab" 18x9,
+# "Shift" 23x9, "BkSp" 24x12 and "AltGr" 27x9, and only Segoe UI 9pt
+# (12px) has those ink boxes (Tahoma 8pt gives 15x8, 16x9, 21x9,
+# 22x11, 23x9). The window's own text is the Win32 dialog font
+# (Tahoma 8pt); the KEYS are Segoe UI.
+KEY_FONT_FAMILY, KEY_FONT_SIZE = "Segoe UI", 12
+
+
+def _face_gradient(height):
+    """The themed button face for a control ``height`` px tall.
+
+    The Win32 face is a fixed PIXEL pattern, not a fixed fraction of
+    the height: a 1px white gloss row, then a ramp down one level per
+    row to #d3d3d3, then a #cacaca shadow row, then the 1px border.
+    An 18px key (capture 2134 rows 38..55) reads 255, 226..212, 202,
+    border; a 21px button (capture 2133 rows 294..314) reads 255,
+    227..211, 202, border.
+
+    A QSS gradient's stops are fractions of the height, so they have to
+    move with it. The two stops at the gloss must NOT share a position:
+    Qt leaves an unpainted hole where a gradient has two stops at the
+    same offset, so the white band is written with a 1/100000 gap.
+    """
+    gloss = 2.0 / height
+    ramp = (height - 2) / height
+    shade = (height - 1) / height
+    return (f"qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 {BTN_HL},"
+            f"stop:{gloss - 0.00001:.5f} {BTN_HL},stop:{gloss:.5f} {BTN_TOP},"
+            f"stop:{ramp:.5f} #d3d3d3,stop:{shade:.5f} {BTN_SHADE},"
+            f"stop:1 {BTN_SHADE})")
 
 # Each row is a list of (label, x, width), measured off the capture.
 ROWS = [
@@ -124,10 +156,13 @@ class KeyboardWindow(Base):
                 # gradient's stops move with the height -- an 18px key
                 # is not the 22px button the app's stylesheet carries.
                 # The corner is a 3px radius here, not the 2px of the
-                # ordinary buttons.
+                # ordinary buttons. The label's size has to be set in
+                # the stylesheet, not with setFont(): the app's QSS
+                # sets the font size on every widget and would win.
                 b.setStyleSheet(
-                    "QPushButton{border-radius:3px;background:%s;}"
-                    % button_gradient(KEY_H))
+                    "QPushButton{font-family:%s;font-size:%dpx;"
+                    "border-radius:3px;background:%s;padding:0 0 2px 0;}"
+                    % (KEY_FONT_FAMILY, KEY_FONT_SIZE, _face_gradient(KEY_H)))
                 b.clicked.connect(lambda _=False, t=text: self._key_pressed(t))
                 self.keys[(text, x)] = b
                 self.edges.append((x, y + KEY_H, w))
@@ -137,7 +172,7 @@ class KeyboardWindow(Base):
         self.cmb_lang.addItem("English")
         self.cmb_lang.setFocusPolicy(Qt.StrongFocus)
         self.cmb_lang.setStyleSheet(
-            "QComboBox{background:%s;}" % button_gradient(19))
+            "QComboBox{background:%s;}" % _face_gradient(19))
         put(self, self.cmb_lang, 8, 170, 168, 19)
         self.edges.append((8, 189, 168))
 

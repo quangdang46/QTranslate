@@ -74,11 +74,11 @@ class OptionsBase(Base):
         # white one under it. MEASURED off the capture.
         hline(self, 358, 3, 638)
         hline(self, 359, 3, 638, WINDOW)
-        button(self, 403, 363, 73, "OK").clicked.connect(self.close)
-        button(self, 484, 363, 73, "Cancel").clicked.connect(self.close)
+        button(self, 403, 363, 73, "OK", shadow=True).clicked.connect(self.close)
+        button(self, 484, 363, 73, "Cancel", shadow=True).clicked.connect(self.close)
         # Apply is drawn like the others but its label is grey: the
         # native greys the label, not the whole button.
-        ap = button(self, 565, 363, 73, "Apply")
+        ap = button(self, 565, 363, 73, "Apply", shadow=True)
         ap.setStyleSheet("color:%s" % DIM)
 
     def _goto(self, page_name):

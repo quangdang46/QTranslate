@@ -55,7 +55,7 @@ class ServicesPage(OptionsBase):
         rect(lst, 156, 32, 463, 1, FACE)
         # The section heading and the rule that runs beside it, both at
         # the heading's own mid height. The heading is Tahoma 9pt.
-        label(lst, 168, 42, "Translation", color=HEADING, size=12)
+        label(lst, 167, 42, "Translation", color=HEADING, size=12)
         hline(lst, 42, 230, 607, HEADING_LINE)
         for i, name in enumerate(self.app.ordered_services()):
             icon(lst, 176, 54 + 18 * i, "service_icons",
@@ -65,7 +65,7 @@ class ServicesPage(OptionsBase):
             # at rows 29..41 while the name's ink is at 32..42).
             check(lst, 160, 61 + 18 * i, "", True, blue=True)
             label(lst, 194, 62 + 18 * i, self.app.service_display(name))
-        label(lst, 169, 228, "Dictionary", color=HEADING, size=12)
+        label(lst, 168, 228, "Dictionary", color=HEADING, size=12)
         hline(lst, 228, 226, 607, HEADING_LINE)
         for i, name in enumerate(self.app.dictionary_names()):
             icon(lst, 176, 240 + 18 * i, "dict_icons",
@@ -76,10 +76,10 @@ class ServicesPage(OptionsBase):
         rect(lst, 626, 51, 2, 153, THUMB)
         # The four buttons, measured off the capture: the two arrows are
         # 25px wide, the two wide ones 118.
-        button(self, 156, 308, 25, "▲", enabled=False)
-        button(self, 186, 308, 25, "▼", enabled=False)
-        button(self, 219, 308, 118, "Add dictionary…")
-        b = button(self, 342, 308, 118, "Remove dictionary")
+        button(self, 156, 308, 25, "▲", enabled=False, shadow=True)
+        button(self, 186, 308, 25, "▼", enabled=False, shadow=True)
+        button(self, 219, 308, 118, "Add dictionary...", shadow=True)
+        b = button(self, 342, 308, 118, "Remove dictionary", shadow=True)
         b.setStyleSheet("color:%s" % DIM)
         # The sunken frame's 1px white shadow, under the list.
         rect(self, 154, 303, 483, 1, WINDOW)
