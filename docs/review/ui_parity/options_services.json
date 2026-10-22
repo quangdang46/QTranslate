@@ -1,0 +1,82 @@
+{
+  "native": "2136.png",
+  "port": "options_services_port.png",
+  "native_size": [
+    646,
+    389
+  ],
+  "port_size": [
+    646,
+    389
+  ],
+  "compared_size": [
+    646,
+    389
+  ],
+  "differing_pixels": 167939,
+  "total_pixels": 251294,
+  "diff_ratio": 0.6683,
+  "bands": [
+    {
+      "y0": 0,
+      "y1": 38,
+      "differing": 5204,
+      "ratio": 0.212
+    },
+    {
+      "y0": 38,
+      "y1": 76,
+      "differing": 23150,
+      "ratio": 0.9431
+    },
+    {
+      "y0": 76,
+      "y1": 114,
+      "differing": 19766,
+      "ratio": 0.8052
+    },
+    {
+      "y0": 114,
+      "y1": 152,
+      "differing": 17394,
+      "ratio": 0.7086
+    },
+    {
+      "y0": 152,
+      "y1": 190,
+      "differing": 21623,
+      "ratio": 0.8808
+    },
+    {
+      "y0": 190,
+      "y1": 228,
+      "differing": 17486,
+      "ratio": 0.7123
+    },
+    {
+      "y0": 228,
+      "y1": 266,
+      "differing": 19470,
+      "ratio": 0.7931
+    },
+    {
+      "y0": 266,
+      "y1": 304,
+      "differing": 23096,
+      "ratio": 0.9409
+    },
+    {
+      "y0": 304,
+      "y1": 342,
+      "differing": 12072,
+      "ratio": 0.4918
+    },
+    {
+      "y0": 342,
+      "y1": 389,
+      "differing": 8678,
+      "ratio": 0.2858
+    }
+  ],
+  "screen": "options_services"
+}

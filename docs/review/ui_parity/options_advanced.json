@@ -1,0 +1,84 @@
+{
+  "native": "2140.png",
+  "port": "options_advanced_port.png",
+  "native_size": [
+    646,
+    389
+  ],
+  "port_size": [
+    648,
+    395
+  ],
+  "native_client_origin_y": 26,
+  "port_client_origin_y": 31,
+  "compared_client_size": [
+    646,
+    363
+  ],
+  "differing_pixels": 188309,
+  "total_pixels": 234498,
+  "diff_ratio": 0.80303,
+  "bands": [
+    {
+      "y0": 0,
+      "y1": 36,
+      "differing": 17233,
+      "ratio": 0.741
+    },
+    {
+      "y0": 36,
+      "y1": 72,
+      "differing": 22062,
+      "ratio": 0.9487
+    },
+    {
+      "y0": 72,
+      "y1": 108,
+      "differing": 22170,
+      "ratio": 0.9533
+    },
+    {
+      "y0": 108,
+      "y1": 144,
+      "differing": 22330,
+      "ratio": 0.9602
+    },
+    {
+      "y0": 144,
+      "y1": 180,
+      "differing": 22520,
+      "ratio": 0.9684
+    },
+    {
+      "y0": 180,
+      "y1": 216,
+      "differing": 18279,
+      "ratio": 0.786
+    },
+    {
+      "y0": 216,
+      "y1": 252,
+      "differing": 22523,
+      "ratio": 0.9685
+    },
+    {
+      "y0": 252,
+      "y1": 288,
+      "differing": 16475,
+      "ratio": 0.7084
+    },
+    {
+      "y0": 288,
+      "y1": 324,
+      "differing": 16799,
+      "ratio": 0.7224
+    },
+    {
+      "y0": 324,
+      "y1": 363,
+      "differing": 7918,
+      "ratio": 0.3143
+    }
+  ],
+  "screen": "options_advanced"
+}

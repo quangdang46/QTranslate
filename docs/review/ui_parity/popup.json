@@ -1,0 +1,82 @@
+{
+  "native": "2130.png",
+  "port": "popup_port.png",
+  "native_size": [
+    265,
+    115
+  ],
+  "port_size": [
+    265,
+    120
+  ],
+  "compared_size": [
+    265,
+    115
+  ],
+  "differing_pixels": 20122,
+  "total_pixels": 30475,
+  "diff_ratio": 0.66028,
+  "bands": [
+    {
+      "y0": 0,
+      "y1": 11,
+      "differing": 2915,
+      "ratio": 1.0
+    },
+    {
+      "y0": 11,
+      "y1": 22,
+      "differing": 2908,
+      "ratio": 0.9976
+    },
+    {
+      "y0": 22,
+      "y1": 33,
+      "differing": 2515,
+      "ratio": 0.8628
+    },
+    {
+      "y0": 33,
+      "y1": 44,
+      "differing": 1267,
+      "ratio": 0.4346
+    },
+    {
+      "y0": 44,
+      "y1": 55,
+      "differing": 1691,
+      "ratio": 0.5801
+    },
+    {
+      "y0": 55,
+      "y1": 66,
+      "differing": 1294,
+      "ratio": 0.4439
+    },
+    {
+      "y0": 66,
+      "y1": 77,
+      "differing": 751,
+      "ratio": 0.2576
+    },
+    {
+      "y0": 77,
+      "y1": 88,
+      "differing": 1055,
+      "ratio": 0.3619
+    },
+    {
+      "y0": 88,
+      "y1": 99,
+      "differing": 1486,
+      "ratio": 0.5098
+    },
+    {
+      "y0": 99,
+      "y1": 115,
+      "differing": 4240,
+      "ratio": 1.0
+    }
+  ],
+  "screen": "popup"
+}

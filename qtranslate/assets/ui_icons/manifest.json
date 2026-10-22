@@ -34,6 +34,11 @@
    "file": "new.png",
    "recovered_from": "ui_06_0_16x16.png"
   },
+  "swap": {
+   "file": "swap.png",
+   "recovered_from": "ui_07_0_16x16.png",
+   "note": "the blue two-arrow icon of the tool row's swap button; matched against the native capture at (228,220) with a mean channel difference of 14.2, the best of all 25 recovered 16x16 resources"
+  },
   "star": {
    "file": "star.png",
    "recovered_from": "ui_21_0_16x16.png"
@@ -41,6 +46,16 @@
   "star_off": {
    "file": "star_off.png",
    "recovered_from": "ui_20_0_16x16.png"
+  },
+  "search": {
+   "file": "search.png",
+   "recovered_from": "ui_14_0_16x16.png",
+   "note": "the magnifier of the Dictionary window's top-right button box; matched against the native capture at (407,37) with a mean channel difference of 11.5"
+  },
+  "history": {
+   "file": "history.png",
+   "recovered_from": "ui_05_0_16x16.png",
+   "note": "the clock of the Dictionary window's top-right button box; matched against the native capture at (427,37) with a mean channel difference of 9.7"
   }
  }
 }

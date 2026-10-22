@@ -1,0 +1,172 @@
+"""The dictionary window on PySide6.
+
+Every number here was MEASURED off ``docs/review/native_screens/2132.png``:
+the geometry in ``qtranslate-pyside6-spec.md`` section 6, and the fonts,
+the colours and the icon positions measured off the same capture. The
+coordinates are the ones in the native capture; ``Base.ORIGIN`` says
+where that capture's client area starts and ``put()`` converts them.
+
+The behaviour is the port's: the same core (``qtranslate.registry``)
+does the looking up, the same settings are persisted. This module is the
+VIEW; it owns no dictionary logic of its own.
+"""
+from __future__ import annotations
+
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QFrame, QLabel, QTextEdit
+
+from qtranslate_style import DIM
+
+from .widgets import (Base, button, combo, icon, label, panel, put, rect,
+                      vline)
+
+# The dictionary services, in native's strip order, with the icon each
+# one draws. The names are the port's own (``config.DICT_DISPLAY``); the
+# icons were recovered from the installer payload and are pixel-identical
+# to the ones native draws.
+DICT_ICONS = {
+    "Google Search": "google-search",
+    "WordReference": "wordreference",
+    "Babylon Dictionary": "babylon",
+    "Wikipedia": "wikipedia",
+    "Multitran": "multitran",
+    "ImTranslator": "imtranslator",
+    "Reverso": "reverso",
+    "Urban Dictionary": "urban",
+    "ABBYY Lingvo Live": "lingvo",
+    "youdao": "youdao",
+    "Oxford Learner Dictionary": "oxford",
+}
+
+# The strip's cell: 42 pixels, of which 1 is the divider that separates
+# it from the cell before, 3 the gap, 16 the icon and 22 the label.
+CELL = 42
+STRIP_Y, STRIP_H = 307, 22
+STRIP_X = 3
+
+
+class _Cell(QFrame):
+    """One cell of the service strip; clicking it selects that
+    dictionary."""
+
+    def __init__(self, window):
+        super().__init__()
+        self.window = window
+
+    def mousePressEvent(self, event):
+        self.window.select(self)
+
+
+class DictionaryWindow(Base):
+    """The dictionary window: the language row, the result area and the
+    strip of dictionary services along the bottom."""
+
+    ORIGIN, SIZE = (1, 31), (474, 301)
+
+    def __init__(self, app):
+        super().__init__()
+        self.app = app
+        self.setWindowTitle("Dictionary")
+        self._build()
+
+    # ---------------------------------------------------------------- build
+    def _build(self):
+        app = self.app
+        # ---- the top row (capture y 31..55) ----------------------------
+        # The language combo, the white box that holds the two navigation
+        # arrows on the left and the search and history buttons on the
+        # right, and the ':' menu.
+        self.cmb_lang = combo(self, 4, 35, 154, "English", 19,
+                              values=app.source_names())
+        # Native's combo puts its text eight pixels inside the frame, not
+        # the five the shared stylesheet gives every other combo.
+        self.cmb_lang.setStyleSheet("QComboBox{padding-left:7px;}")
+        panel(self, 163, 34, 283, 22, "navbox")
+        self.btn_prev = button(self, 168, 38, 12, "")
+        self.btn_next = button(self, 180, 38, 12, "")
+        for b in (self.btn_prev, self.btn_next):
+            b.setStyleSheet("QPushButton{border:none;background:transparent;}")
+        for x, arrow in ((168, "◀"), (180, "▶")):
+            lab = label(self, x, 45, arrow, color=DIM)
+            lab.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        icon(self, 407, 37, "ui_icons", "search")
+        icon(self, 427, 37, "ui_icons", "history")
+        self.btn_menu = button(self, 452, 37, 16, "")
+        self.btn_menu.setObjectName("flat")
+        icon(self, 452, 37, "ui_icons", "menu")
+
+        # ---- the result area (capture y 56..306) ------------------------
+        # Native leaves it empty, and it is the window's own face colour
+        # -- not a white pane -- with the scrollbar down its right side.
+        vline(self, 445, 56, 306)
+        rect(self, 457, 56, 6, 250, "#f9f9f9", "sbtrack")
+        label(self, 460, 55, "⌃", color=DIM)
+        label(self, 460, 248, "⌄", color=DIM)
+        self.out = QTextEdit()
+        self.out.setAcceptRichText(False)
+        self.out.setFrameShape(QTextEdit.NoFrame)
+        self.out.setReadOnly(True)
+        self.out.setStyleSheet("QTextEdit{background:transparent;border:none;}")
+        put(self, self.out, 1, 56, 444, 250)
+
+        # ---- the service strip (capture y 307..328) ---------------------
+        self.strip = []
+        self.cells = []
+        for i, name in enumerate(self._services()):
+            self.strip.append(self._strip_cell(i, name))
+        self.select(self.strip[0] if self.strip else None)
+
+    # ------------------------------------------------------------- helpers
+    def _services(self):
+        """The dictionary services, in the order the port keeps them."""
+        from qtranslate import config
+        try:
+            cfg = config.load()
+            ids = cfg.get("DictionariesOrder") or config.DEFAULT_DICTIONARIES_ORDER
+        except Exception:
+            ids = config.DEFAULT_DICTIONARIES_ORDER
+        return [config.DICT_DISPLAY.get(i, "") for i in ids
+                if i in config.DICT_DISPLAY]
+
+    def _strip_cell(self, i, name):
+        """One cell of the bottom strip: a divider, the service's own
+        icon, and its name cut to the first letter and an ellipsis."""
+        x = STRIP_X + CELL * i
+        cell = _Cell(self)
+        cell.setObjectName("cell")
+        cell.setProperty("service", DICT_ICONS.get(name, ""))
+        cell.setStyleSheet("QFrame#cell{background:#dadada;border:none;}")
+        put(self, cell, x + 1, STRIP_Y + 1, CELL - 1, STRIP_H - 2)
+        vline(self, x, STRIP_Y, STRIP_Y + STRIP_H)
+        icon(self, x + 4, STRIP_Y + 3, "dict_icons", DICT_ICONS.get(name, ""))
+        lab = QLabel(name[:1] + "...")
+        lab.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        lab.setStyleSheet("QLabel{background:transparent;color:#000000;}")
+        lab.setFixedSize(14, 16)
+        lab.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        put(self, lab, x + 28, STRIP_Y + 3, 14, 16)
+        return cell
+
+    # ------------------------------------------------------------ behaviour
+    def select(self, cell):
+        """Make one cell the selected dictionary."""
+        for other in self.strip:
+            other.setStyleSheet("QFrame#cell{background:#dadada;border:none;}")
+        if cell is None:
+            return
+        cell.setStyleSheet("QFrame#cell{background:#b0b0b0;border:none;}")
+        self.service = cell.property("service")
+
+    def lookup(self, word, src="auto", tgt="en"):
+        """Look ``word`` up with the selected dictionary and show it."""
+        from qtranslate import registry
+        fn = registry.DICTS.get(self.service)
+        if not fn or not word:
+            return ""
+        try:
+            res = fn(word, src, tgt)
+        except Exception:
+            return ""
+        text = getattr(res, "text", res) or ""
+        self.out.setPlainText(str(text))
+        return str(text)

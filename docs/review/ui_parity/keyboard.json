@@ -1,0 +1,82 @@
+{
+  "native": "2134.png",
+  "port": "keyboard_port.png",
+  "native_size": [
+    464,
+    198
+  ],
+  "port_size": [
+    464,
+    198
+  ],
+  "compared_size": [
+    464,
+    198
+  ],
+  "differing_pixels": 54968,
+  "total_pixels": 91872,
+  "diff_ratio": 0.59831,
+  "bands": [
+    {
+      "y0": 0,
+      "y1": 19,
+      "differing": 1161,
+      "ratio": 0.1317
+    },
+    {
+      "y0": 19,
+      "y1": 38,
+      "differing": 694,
+      "ratio": 0.0787
+    },
+    {
+      "y0": 38,
+      "y1": 57,
+      "differing": 7195,
+      "ratio": 0.8161
+    },
+    {
+      "y0": 57,
+      "y1": 76,
+      "differing": 7112,
+      "ratio": 0.8067
+    },
+    {
+      "y0": 76,
+      "y1": 95,
+      "differing": 7115,
+      "ratio": 0.8071
+    },
+    {
+      "y0": 95,
+      "y1": 114,
+      "differing": 7261,
+      "ratio": 0.8236
+    },
+    {
+      "y0": 114,
+      "y1": 133,
+      "differing": 7179,
+      "ratio": 0.8143
+    },
+    {
+      "y0": 133,
+      "y1": 152,
+      "differing": 6849,
+      "ratio": 0.7769
+    },
+    {
+      "y0": 152,
+      "y1": 171,
+      "differing": 5792,
+      "ratio": 0.657
+    },
+    {
+      "y0": 171,
+      "y1": 198,
+      "differing": 4610,
+      "ratio": 0.368
+    }
+  ],
+  "screen": "keyboard"
+}

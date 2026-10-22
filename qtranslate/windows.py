@@ -1707,6 +1707,11 @@ class OptionsDialog:
                 box.configure(height=height)
             inner = tk.Frame(box, bg="#ffffff")
             inner.pack(fill="both", expand=True, pady=(11, 2))
+            # The group box is drawn by hand (a Tk LabelFrame cannot do
+            # a Win32 etched frame), so the caption is not a widget a
+            # caller can find by its class. The caption rides along on
+            # the frame, which is what the page's own tests look for.
+            inner.group_caption = caption
             edges = []
 
             def _draw_edges():
@@ -3611,7 +3616,7 @@ class MainWindow:
         # service icon strip at the bottom (icons from Services/*/Service.ico,
         # click = switch + re-translate like FUN_0045CDBA; middle-click =
         # browser, right-click = multi-select per help.txt Actions).
-        # Native shows icon above a short name (Go.., Mi.., Pr.., ...).
+        # Native shows icon above a short name (Go..., Mi..., Pr..., ...).
         strip = tk.Frame(self.app.root, bg=bg)
         strip.pack(fill="x", padx=4, pady=(2, 4))
         # The dict is UPDATED, not replaced. Replacing it dropped "src"
@@ -3623,12 +3628,14 @@ class MainWindow:
             strip.pack_forget()
         self.app.svc_btns = {}
         self.app.svc_icons = {}
-        # short names exactly like native: Go.. Mi.. Pr.. Ba.. Ya..
-        # yo.. Ba.. Pa.. De.. (icon folder names truncated to 2 chars)
-        _SHORT = {"google": "Go..", "microsoft": "Mi..", "promt": "Pr..",
-                  "babylon": "Ba..", "yandex": "Ya..", "youdao": "yo..",
-                  "baidu": "Ba..", "naver": "Pa..", "deepl": "DeepL",
-                  "reverso": "Re.."}
+        # Short names exactly like native: Go... Mi... Pr... Ba... Ya...
+        # yo... Ba... Pa... DeepL. The THREE dots are measured, not
+        # assumed: the native capture's strip label "Go..." has its
+        # three dots at x = 45, 49 and 53, four pixels apart.
+        _SHORT = {"google": "Go...", "microsoft": "Mi...", "promt": "Pr...",
+                  "babylon": "Ba...", "yandex": "Ya...", "youdao": "yo...",
+                  "baidu": "Ba...", "naver": "Pa...", "deepl": "DeepL",
+                  "reverso": "Re..."}
         for name in self.app.ordered_services():
             # native: small icon + short name side-by-side in one row
             cell = tk.Frame(strip, bg=bg)
@@ -3645,7 +3652,7 @@ class MainWindow:
                    lambda e, n=name: self.app.open_service_page_n(n))
             b.bind("<Button-3>",
                    lambda e, n=name: self.app.toggle_multi_service(n))
-            tk.Label(cell, text=_SHORT.get(name, name[:2] + ".."), bg=bg,
+            tk.Label(cell, text=_SHORT.get(name, name[:2] + "..."), bg=bg,
                      fg="black", font=("Tahoma", 8)).pack(side="left",
                                                           padx=(1, 0))
             self.app.svc_btns[name] = b

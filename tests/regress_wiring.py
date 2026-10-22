@@ -53,7 +53,16 @@ for f in prod_files:
         if isinstance(node, ast.Import):
             cand.extend(a.name for a in node.names)
         elif isinstance(node, ast.ImportFrom):
-            if node.module == "qtranslate":
+            if node.level:
+                # A relative import: the module it names is a sibling of
+                # this file (or of one of its parents). The modules are
+                # keyed by their base name here, so the base name is
+                # what counts.
+                if node.module:
+                    cand.append(node.module.split(".")[-1])
+                else:
+                    cand.extend(a.name for a in node.names)
+            elif node.module == "qtranslate":
                 cand.extend("qtranslate." + a.name for a in node.names)
             elif node.module and node.module.startswith("qtranslate."):
                 cand.append(node.module)

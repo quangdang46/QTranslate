@@ -165,14 +165,25 @@ def classes(frame):
     return [cl for (_d, cl, _t, _c) in walk(frame)]
 
 
+def groups(frame):
+    """The group boxes of a page, with their captions.
+
+    The group box is drawn by hand -- a Win32 `BS_GROUPBOX` is a 1px
+    etched frame with the caption ON its top edge, and a Tk LabelFrame
+    can do neither -- so the group is a plain frame that carries its
+    caption. The caption is what the page assertions are about, and it
+    is found through the frame, not through a widget class.
+    """
+    return [w.group_caption for (_d, cl, _t, w) in walk(frame)
+            if hasattr(w, "group_caption")]
+
+
 # --- 2. Basics (DLG171): three group boxes --------------------------------
 b = show("Basics")
-ck("Basics has three group boxes", classes(b).count("Labelframe") == 3,
-   repr(classes(b)))
+ck("Basics has three group boxes", len(groups(b)) == 3, repr(groups(b)))
 ck("Basics' groups are General / Auto-detect languages / History",
-   [t for (_d, cl, t, _c) in walk(b) if cl == "Labelframe"] ==
-   ["General", "Auto-detect languages", "History"],
-   repr([t for (_d, cl, t, _c) in walk(b) if cl == "Labelframe"]))
+   groups(b) == ["General", "Auto-detect languages", "History"],
+   repr(groups(b)))
 ck("Basics keeps Start with Windows", "Start with Windows" in texts(b))
 ck("Basics keeps the three history flags",
    all(x in texts(b) for x in ("Enable history", "Clear history on exit",
@@ -180,12 +191,9 @@ ck("Basics keeps the three history flags",
 
 # --- 3. Internet (DLG172): two group boxes --------------------------------
 b = show("Internet")
-ck("Internet has two group boxes", classes(b).count("Labelframe") == 2,
-   repr(classes(b)))
+ck("Internet has two group boxes", len(groups(b)) == 2, repr(groups(b)))
 ck("Internet's groups are Connection / Proxy",
-   [t for (_d, cl, t, _c) in walk(b) if cl == "Labelframe"] ==
-   ["Connection", "Proxy"],
-   repr([t for (_d, cl, t, _c) in walk(b) if cl == "Labelframe"]))
+   groups(b) == ["Connection", "Proxy"], repr(groups(b)))
 
 # --- 4. Services (DLG173): ONE list, two groups, real services ------------
 b = show("Services")
@@ -246,12 +254,9 @@ ck("Languages has no leftover 'Default languages' page",
 
 # --- 6. Appearance (DLG175): two group boxes, native's controls ----------
 b = show("Appearance")
-ck("Appearance has two group boxes", classes(b).count("Labelframe") == 2,
-   repr(classes(b)))
+ck("Appearance has two group boxes", len(groups(b)) == 2, repr(groups(b)))
 ck("Appearance's groups are General / Popup window",
-   [t for (_d, cl, t, _c) in walk(b) if cl == "Labelframe"] ==
-   ["General", "Popup window"],
-   repr([t for (_d, cl, t, _c) in walk(b) if cl == "Labelframe"]))
+   groups(b) == ["General", "Popup window"], repr(groups(b)))
 ck("Appearance keeps Enable window style in the General group",
    "Enable window style" in texts(b), repr(texts(b)))
 ck("Appearance labels the transparency field natively",
@@ -295,12 +300,9 @@ ck("Exceptions keeps Enable smart detection",
 
 # --- 8. Advanced (DLG185): three group boxes, four combos -----------------
 b = show("Advanced")
-ck("Advanced has three group boxes", classes(b).count("Labelframe") == 3,
-   repr(classes(b)))
+ck("Advanced has three group boxes", len(groups(b)) == 3, repr(groups(b)))
 ck("Advanced's groups are Advanced / Mouse mode / API keys",
-   [t for (_d, cl, t, _c) in walk(b) if cl == "Labelframe"] ==
-   ["Advanced", "Mouse mode", "API keys"],
-   repr([t for (_d, cl, t, _c) in walk(b) if cl == "Labelframe"]))
+   groups(b) == ["Advanced", "Mouse mode", "API keys"], repr(groups(b)))
 ck("Advanced has the four native ComboBoxes",
    len([c for (_d, cl, _t, c) in walk(b) if cl == "TCombobox"]) == 4,
    repr(classes(b)))

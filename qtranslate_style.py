@@ -1,0 +1,161 @@
+"""QTranslate look for PySide6.
+
+Stock Fusion does NOT match the screenshots (Fusion outline is #ababab and its
+checkbox is black-on-white). Measured values differ, so this module keeps Fusion
+as the base and overrides colours/shape with a palette + QSS + small generated PNGs.
+
+Usage:
+    from qtranslate_style import apply_style, EtchedGroupBox
+    app = QApplication(sys.argv); apply_style(app)
+"""
+import os, tempfile
+from PySide6.QtCore import Qt, QRect
+from PySide6.QtGui import QColor, QFont, QPainter, QPalette, QPen, QPixmap
+from PySide6.QtWidgets import QApplication, QGroupBox
+
+# ---- design tokens (measured from screenshots) ------------------------------
+FACE, WINDOW, BORDER, TEXT, DIM = "#f0f0f0", "#ffffff", "#7e7e7e", "#000000", "#6d6d6d"
+ACCENT, CHECK, THUMB, COLSEP = "#0078d7", "#005eb8", "#858585", "#e5e5e5"
+BTN_HL, BTN_TOP, BTN_BOT, BTN_SHADE = "#ffffff", "#e3e3e3", "#d4d4d4", "#cacaca"
+BTN_PRESS_TOP = "#c9c9c9"          # ESTIMATE: no pressed-state screenshot
+DIS_BG = "#e1e1e1"
+ARROW, TICK = "#191919", "#191919"   # combobox arrows / normal checkbox tick (measured)
+CB_TOP, CB_BOT = "#e1e1e1", "#d8d8d8"  # normal checkbox fill gradient (measured)
+POPUP_BG, POPUP_BORDER, POPUP_ICON, POPUP_TEXT = "#d0d0d0", "#53606c", "#3a3a3a", "#040404"
+# The provider strip at the bottom of the main window: its nine buttons
+# are flatter than the ordinary ones, and the FIRST one is the selected
+# service, drawn in a solid grey with a darker border.
+STRIP_TOP, STRIP_BOT = "#dedede", "#dadada"
+STRIP_SEL, STRIP_SEL_BORDER = "#b0b0b0", "#737373"
+# The font: the Win32 dialog font, which is Tahoma 8pt (11px) on this
+# Windows. MEASURED, not guessed: the Options label "Keyboard layout
+# indicator:" is 125px wide in the native capture, which is Tahoma 8pt
+# (127px) and not Segoe UI 8pt (135px) nor Tahoma 9pt (142px).
+FONT_FAMILY, FONT_SIZE = "Tahoma", 11
+
+_dir = tempfile.mkdtemp(prefix="qtstyle_")
+
+
+def _png(name, w, h, draw):
+    pm = QPixmap(w, h); pm.fill(Qt.transparent)
+    p = QPainter(pm); p.setRenderHint(QPainter.Antialiasing, False); draw(p); p.end()
+    path = os.path.join(_dir, name).replace("\\", "/"); pm.save(path); return path
+
+
+def _updown(p):                     # combobox arrows: two filled 5px-wide triangles, 7x8
+    p.setPen(Qt.NoPen); p.setBrush(QColor(ARROW))
+    for x0, x1, y in [(3, 3, 0), (2, 4, 1), (1, 5, 2), (1, 5, 5), (2, 4, 6), (3, 3, 7)]:
+        p.drawRect(x0, y, x1 - x0 + 1, 1)
+
+
+def _tick(p, color):                # checkbox tick on the 11x11 interior, pixel-matched to the screenshots
+    pts = [(2, 4), (3, 5), (4, 6), (5, 5), (6, 4), (7, 3), (8, 2), (9, 1)]
+    p.setPen(Qt.NoPen)
+    halo = QColor(color); halo.setAlpha(120)
+    for x, y in pts:                # soft side pixels (reference has #5e5e5e halos)
+        p.setBrush(halo); p.drawRect(x - 1, y, 1, 1); p.drawRect(x + 1, y, 1, 1)
+    p.setBrush(QColor(color))
+    for x, y in pts:
+        p.drawRect(x, y, 1, 1)
+
+
+def qss():
+    arrow = _png("updown.png", 7, 8, _updown)
+    tick_k = _png("tick_black.png", 11, 11, lambda p: _tick(p, TICK))
+    tick_w = _png("tick_white.png", 11, 11, lambda p: _tick(p, "#ffffff"))
+    # 21px control: row0 border, row1 white, rows 2..18 e3->d3, row19 #cacaca, row20 border
+    grad = (f"qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 {BTN_HL},stop:0.094 {BTN_HL},"
+            f"stop:0.095 {BTN_TOP},stop:0.90 #d3d3d3,stop:0.905 {BTN_SHADE},stop:1 {BTN_SHADE})")
+    grad_p = (f"qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 {BTN_PRESS_TOP},stop:1 {BTN_BOT})")
+    return f"""
+* {{ font-family: "{FONT_FAMILY}"; font-size: {FONT_SIZE}px; color: {TEXT}; }}
+QWidget {{ background: {FACE}; }}
+QLabel, QCheckBox {{ background: transparent; }}
+QPushButton, QToolButton {{
+  border: 1px solid {BORDER}; border-radius: 2px; background: {grad};
+  padding: 0 8px; }}
+QPushButton:pressed, QToolButton:pressed {{ background: {grad_p}; }}
+QPushButton#flat {{ border: none; background: transparent; padding: 0; }}
+QPushButton#navmenu {{ border: none; background: transparent; padding: 0; }}
+QPushButton#service {{
+  border: 1px solid {BORDER}; border-radius: 2px; padding: 0;
+  background: qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 {STRIP_TOP},stop:1 {STRIP_BOT}); }}
+QPushButton#service[selected="true"] {{
+  border: 1px solid {STRIP_SEL_BORDER}; background: {STRIP_SEL}; }}
+QPushButton:disabled, QToolButton:disabled {{ background: {DIS_BG}; color: {DIM}; border-color: {DIS_BG}; }}
+QComboBox {{
+  border: 1px solid {BORDER}; border-radius: 2px; background: {grad};
+  padding: 0 14px 0 5px; }}
+QComboBox:disabled {{ background: {FACE}; color: {DIM}; border-color: {DIM}; }}
+QComboBox::drop-down {{ border: none; width: 11px; subcontrol-origin: padding; subcontrol-position: right center; }}
+QComboBox::down-arrow {{ image: url({arrow}); width: 7px; height: 8px; }}
+QComboBox QAbstractItemView {{
+  background: {WINDOW}; border: 1px solid {BORDER};
+  selection-background-color: {ACCENT}; selection-color: #ffffff; outline: 0; }}
+QLineEdit, QTextEdit, QPlainTextEdit, QListWidget, QListView, QTreeWidget, QTableWidget {{
+  background: {WINDOW}; border: 1px solid {BORDER}; border-radius: 0;
+  selection-background-color: {ACCENT}; selection-color: #ffffff; }}
+QLineEdit:disabled {{ background: {FACE}; color: {DIM}; border-color: {DIM}; }}
+QListWidget::item {{ padding: 0 2px; }}
+QListWidget::item:selected {{ background: {ACCENT}; color: #ffffff; }}
+QHeaderView::section {{ background: {WINDOW}; border: none; border-right: 1px solid {COLSEP}; padding: 0 6px; }}
+QCheckBox::indicator {{ width: 13px; height: 13px; border: 1px solid {BORDER};
+  background: qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 {CB_TOP},stop:1 {CB_BOT}); }}
+QCheckBox::indicator:checked {{ image: url({tick_k}); }}
+QCheckBox::indicator:disabled {{ border-color: {DIM}; }}
+/* checkboxes INSIDE list views (Services, Languages) are blue with a white tick */
+QListView::indicator {{ width: 13px; height: 13px; border: 1px solid {BORDER}; background: {WINDOW}; }}
+QListView::indicator:checked {{ background: {CHECK}; border: 1px solid {CHECK}; image: url({tick_w}); }}
+QGroupBox {{ border: none; margin-top: 7px; }}
+QGroupBox::title {{ subcontrol-origin: margin; subcontrol-position: top left; left: 9px; padding: 0 2px; background: {FACE}; }}
+QScrollBar:vertical {{ background: {FACE}; width: 14px; margin: 0; }}
+QScrollBar::handle:vertical {{ background: {THUMB}; margin: 0 6px; min-height: 20px; }}
+QScrollBar:horizontal {{ background: {FACE}; height: 14px; margin: 0; }}
+QScrollBar::handle:horizontal {{ background: {THUMB}; margin: 6px 0; min-width: 20px; }}
+QScrollBar::add-line, QScrollBar::sub-line, QScrollBar::add-page, QScrollBar::sub-page {{ width: 0; height: 0; background: none; }}
+QSplitter::handle {{ background: {FACE}; }}
+QMenu {{ background: #f9f9f9; border: 1px solid #e5e5e5; }}
+QMenu::item {{ padding: 3px 24px 3px 38px; }}
+QMenu::item:selected {{ background: #e5e5e5; }}
+QMenu::separator {{ height: 1px; background: #d7d7d7; margin: 2px 0; }}
+"""
+
+
+def apply_style(app: QApplication):
+    app.setStyle("Fusion")
+    P, R = QPalette(), QPalette.ColorRole
+    for r, c in [(R.Window, FACE), (R.Base, WINDOW), (R.Button, BTN_TOP), (R.WindowText, TEXT),
+                 (R.Text, TEXT), (R.ButtonText, TEXT), (R.Highlight, ACCENT), (R.HighlightedText, "#ffffff")]:
+        P.setColor(r, QColor(c))
+    P.setColor(QPalette.Disabled, R.WindowText, QColor(DIM))
+    P.setColor(QPalette.Disabled, R.Text, QColor(DIM))
+    P.setColor(QPalette.Disabled, R.ButtonText, QColor(DIM))
+    app.setPalette(P)
+    f = QFont(FONT_FAMILY); f.setPixelSize(FONT_SIZE); app.setFont(f)
+    app.setStyleSheet(qss())
+
+
+class EtchedGroupBox(QGroupBox):
+    """Win32 etched frame: 1px #7e7e7e line + 1px white line offset (+1,+1); title sits ON the top line.
+    QSS cannot draw the white offset, so everything is painted here (children stay normal widgets).
+
+    MEASURED off the native Options capture 2140: the frame's top line is on
+    the widget's own top edge, and the title's text is centred on that line
+    (its baseline sits a few pixels BELOW the line, so the letters straddle
+    it). The title's background clears the frame line -- and the white
+    offset under it -- for the width of the text plus 2px on each side.
+    """
+    def paintEvent(self, e):
+        p = QPainter(self)
+        fm = self.fontMetrics()
+        p.fillRect(self.rect(), QColor(FACE))
+        r = QRect(0, 0, self.width() - 1, self.height() - 1)
+        p.setPen(QPen(QColor("#ffffff"), 1)); p.drawRect(r.translated(1, 1))
+        p.setPen(QPen(QColor(BORDER), 1));    p.drawRect(r)
+        t = self.title()
+        if t:
+            w = fm.horizontalAdvance(t) + 4
+            p.fillRect(QRect(9, 0, w, 2), QColor(FACE))
+            p.setPen(QColor(DIM if not self.isEnabled() else TEXT))
+            p.drawText(11, fm.ascent() - fm.height() // 2, t)
+        p.end()

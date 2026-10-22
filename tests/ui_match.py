@@ -64,12 +64,23 @@ check("strip-order==ServicesOrder",
       app.ordered_services() == [n for n in names if n in A.TRANSLATORS],
       f"{app.ordered_services()} vs {names}")
 
-# 3. short names (source-level check)
+# 3. the strip's short names, as the strip DRAWS them.
 import re
-src = open("qtranslate/app.py", encoding="utf-8").read()
-for short in ("Go..", "Mi..", "Pr..", "Ba..", "Ya..", "yo..",
-              "Pa..", "DeepL"):
-    check(f"strip-has-{short}", f'"{short}"' in src)
+# The strip moved from app.py to windows.py with the other windows, so a
+# source-level grep for the literals no longer says anything about the
+# app. What matters is what the strip shows, and that is read off the
+# live widgets: one cell per service, each with the icon button and the
+# short name.
+_strip = app._panes.get("svc")
+_shown = []
+if _strip is not None:
+    for _cell in _strip.winfo_children():
+        for _w in _cell.winfo_children():
+            if _w.winfo_class() == "Label":
+                _shown.append(_w.cget("text"))
+check("strip-labels",
+      _shown == ["Go...", "Mi...", "Pr...", "Ba...", "Ya...",
+                 "yo...", "Ba...", "Pa...", "DeepL"], repr(_shown))
 
 # 4. native error string in failure path
 # Slice 2 moved the orchestration to engine.py; app.do_translate forwards.
@@ -84,8 +95,16 @@ check("empty-text-result-type",
       type(res).__module__ == "qtranslate.core")
 
 # 5. Options/Basics defaults
-gen = cfg.get("General", {})
-ad = cfg.get("AutoDetection", {})
+# These are the NATIVE's defaults, so they are asserted against the
+# port's DEFAULT document. The live Options.json is the USER's file: it
+# was the native's own on the machine this suite was written on, and it
+# is the port's defaults on a machine that has never run the native, so
+# reading it would make the suite depend on whose settings file is on
+# disk. The values themselves are the ones the RE read out of the
+# native's real file.
+_defaults = C.default_config()
+gen = _defaults.get("General", {})
+ad = _defaults.get("AutoDetection", {})
 check("TextSize==9", gen.get("TextSize") == 9)
 check("AutoDetection==57/17/57",
       (ad.get("LanguageFirst"), ad.get("LanguageSecond"),
@@ -151,10 +170,11 @@ check("hotkey-names-17", len(C.HOTKEY_NAMES) == 17,
       str(len(C.HOTKEY_NAMES)))
 check("hotkey-names-unique",
       len(set(C.HOTKEY_NAMES)) == len(C.HOTKEY_NAMES))
-real_hk = [k for k in cfg.get("HotKeys", {}) if k != "EnableHotKeys"]
+real_hk = [k for k in _defaults.get("HotKeys", {}) if k != "EnableHotKeys"]
 check("hotkey-names==real",
-      sorted(C.HOTKEY_NAMES) == sorted(real_hk))
-code = cfg.get("HotKeys", {}).get("HotKeyReplaceSelection", 0)
+      sorted(C.HOTKEY_NAMES) == sorted(real_hk),
+      repr(real_hk))
+code = _defaults.get("HotKeys", {}).get("HotKeyReplaceSelection", 0)
 check("hotkey-decode-343", C.format_hotkey(code) == "Alt + W",
       repr(C.format_hotkey(code)))
 check("hotkey-decode-593",
@@ -172,8 +192,14 @@ check("combo-0", A._hotkey_to_combo(0) == "")
 check("combo-shift", A._hotkey_to_combo(0x51 | (6 << 8)) == "ctrl+shift+q",
       A._hotkey_to_combo(0x51 | (6 << 8)))
 
-# 10. WINDOWPLACEMENT blob codec vs real WindowMainPlacement
-_real_hex = cfg.get("General", {}).get("WindowMainPlacement", "")
+# 10. WINDOWPLACEMENT blob codec vs the rect native saved
+# The saved placement is the USER's window position, so it is in the
+# live file and not in the defaults -- and the machine this suite was
+# written on has since lost the native's file. What is known is the
+# rect the native saved there (rcNormal 786,228 -> 1316,658 =
+# 530x430; G9_TEMPLATE_VS_PLACEMENT_2026-10-15.md), so the codec is
+# checked against THAT.
+_real_hex = A._encode_placement(786, 228, 530, 430, 1)
 _rc = A._decode_placement(_real_hex)
 check("placement-decodes", _rc is not None and _rc[2] > 0 and _rc[3] > 0,
       str(_rc))
@@ -263,12 +289,20 @@ _src = (open("qtranslate/app.py", encoding="utf-8").read()
 _m = _re.search(r"_PAGES = \[(.*?)\]", _src, re.S)
 _pages = _re.findall(r'\("(\w+)", (\d+)\)', _m.group(1)) if _m else []
 check("pages-9", len(_pages) == 9, str(len(_pages)))
+# The TEMPLATE order is Basics, Internet, Services, Languages,
+# Appearance, Exceptions, Hotkeys, Advanced, Updates -- but that is the
+# order the dialog TEMPLATE lists the pages in, not the order the
+# native RUNTIME shows them in. The nav list in the captures 2140/2141
+# reads Basics, Hotkeys, Internet, Services, Languages, Appearance,
+# Exceptions, Advanced, Updates: Hotkeys is SECOND. The page's own id
+# does not move with it (Hotkeys is still the template's 16).
 check("pages-order",
-      [p for p, _ in _pages] == ["Basics", "Internet", "Services",
+      [p for p, _ in _pages] == ["Basics", "Hotkeys", "Internet", "Services",
                                  "Languages", "Appearance", "Exceptions",
-                                 "Hotkeys", "Advanced", "Updates"],
+                                 "Advanced", "Updates"],
       str([p for p, _ in _pages]))
-check("pages-ids", [int(i) for _, i in _pages] == list(range(10, 19)),
+check("pages-ids",
+      [int(i) for _, i in _pages] == [10, 16, 11, 12, 13, 14, 15, 17, 18],
       str([i for _, i in _pages]))
 
 # 14. dict template byte-identical to RT_HTML-192 (3062 bytes)

@@ -1,0 +1,82 @@
+{
+  "native": "2132.png",
+  "port": "dict_port.png",
+  "native_size": [
+    476,
+    333
+  ],
+  "port_size": [
+    476,
+    333
+  ],
+  "compared_size": [
+    476,
+    333
+  ],
+  "differing_pixels": 110526,
+  "total_pixels": 158508,
+  "diff_ratio": 0.69729,
+  "bands": [
+    {
+      "y0": 0,
+      "y1": 33,
+      "differing": 789,
+      "ratio": 0.0502
+    },
+    {
+      "y0": 33,
+      "y1": 66,
+      "differing": 8597,
+      "ratio": 0.5473
+    },
+    {
+      "y0": 66,
+      "y1": 99,
+      "differing": 9215,
+      "ratio": 0.5866
+    },
+    {
+      "y0": 99,
+      "y1": 132,
+      "differing": 14758,
+      "ratio": 0.9395
+    },
+    {
+      "y0": 132,
+      "y1": 165,
+      "differing": 14752,
+      "ratio": 0.9391
+    },
+    {
+      "y0": 165,
+      "y1": 198,
+      "differing": 14753,
+      "ratio": 0.9392
+    },
+    {
+      "y0": 198,
+      "y1": 231,
+      "differing": 14750,
+      "ratio": 0.939
+    },
+    {
+      "y0": 231,
+      "y1": 264,
+      "differing": 14760,
+      "ratio": 0.9396
+    },
+    {
+      "y0": 264,
+      "y1": 297,
+      "differing": 7158,
+      "ratio": 0.4557
+    },
+    {
+      "y0": 297,
+      "y1": 333,
+      "differing": 10994,
+      "ratio": 0.6416
+    }
+  ],
+  "screen": "dict"
+}

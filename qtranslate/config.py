@@ -227,8 +227,29 @@ def default_config() -> dict:
         "Internet": dict(DEFAULT_INTERNET),
         "HotKeys": {
             "EnableHotKeys": True,
-            "HotKeyMainWindow": 343,
+            # The native's own file carries ALL SEVENTEEN hotkey keys
+            # (EnableHotKeys plus these), and an unbound one is 0. The
+            # two the RE recovered with their codes are the replace-
+            # selection (Alt + W) and the popup (Ctrl + Q); the rest are
+            # unbound in the native's saved file, so they stay 0 rather
+            # than being invented here.
+            "HotKeySpeechInput": 0,
+            "HotKeyDictionaryClipboard": 0,
+            "HotKeyTextRecognition": 0,
+            "HotKeySwitchMouseMode": 0,
+            "HotKeyTranslateClipboardInMainWindow": 0,
+            "HotKeyTranslateClipboard": 0,
+            "HotKeyTranslateClipboardInPopupWindow": 0,
+            "HotKeyCopyTranslation": 0,
+            "HotKeyReplaceSelection": 343,
+            "HotKeyListenTranslation": 0,
+            "HotKeyConvertTextLayout": 0,
+            "HotKeyKeyboard": 0,
+            "HotKeyListenText": 0,
+            "HotKeyDictionary": 0,
+            "HotKeyHistory": 0,
             "HotKeyPopupWindow": 593,
+            "HotKeyMainWindow": 0,
         },
         "OfflineDictionaries": [],
         "Ocr": {
@@ -252,7 +273,9 @@ def default_config() -> dict:
             "LocaleFoderName": "English",
             "EnableHistory": True,
             "ClearHistoryOnExit": True,
-            "ExpandHistoryItems": True,
+            # The native's saved file has this FALSE: the history list
+            # does not expand its items by itself.
+            "ExpandHistoryItems": False,
             "MainWindowShowOnLoad": True,
             "MainWindowStartupAction": 0,
             "MinimizeToTrayOnClose": False,

@@ -1,0 +1,82 @@
+{
+  "native": "2133.png",
+  "port": "history_port.png",
+  "native_size": [
+    476,
+    320
+  ],
+  "port_size": [
+    476,
+    320
+  ],
+  "compared_size": [
+    476,
+    320
+  ],
+  "differing_pixels": 32057,
+  "total_pixels": 152320,
+  "diff_ratio": 0.21046,
+  "bands": [
+    {
+      "y0": 0,
+      "y1": 32,
+      "differing": 955,
+      "ratio": 0.0627
+    },
+    {
+      "y0": 32,
+      "y1": 64,
+      "differing": 9975,
+      "ratio": 0.6549
+    },
+    {
+      "y0": 64,
+      "y1": 96,
+      "differing": 8193,
+      "ratio": 0.5379
+    },
+    {
+      "y0": 96,
+      "y1": 128,
+      "differing": 527,
+      "ratio": 0.0346
+    },
+    {
+      "y0": 128,
+      "y1": 160,
+      "differing": 459,
+      "ratio": 0.0301
+    },
+    {
+      "y0": 160,
+      "y1": 192,
+      "differing": 416,
+      "ratio": 0.0273
+    },
+    {
+      "y0": 192,
+      "y1": 224,
+      "differing": 416,
+      "ratio": 0.0273
+    },
+    {
+      "y0": 224,
+      "y1": 256,
+      "differing": 423,
+      "ratio": 0.0278
+    },
+    {
+      "y0": 256,
+      "y1": 288,
+      "differing": 876,
+      "ratio": 0.0575
+    },
+    {
+      "y0": 288,
+      "y1": 320,
+      "differing": 9817,
+      "ratio": 0.6445
+    }
+  ],
+  "screen": "history"
+}
