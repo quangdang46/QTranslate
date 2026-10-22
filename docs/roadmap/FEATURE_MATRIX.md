@@ -30,13 +30,13 @@ numbers.
 
 | Window | Native capture | Native evidence | Port state | Evidence |
 |---|---|---|---|---|
-| Main window (DLG129) | 2131 | VERIFIED (17 controls parsed, cross-checked against the DLG ids) | behaviour-verified (ink diff 0.0144) | `tools/render_qt.py --compare` |
+| Main window (DLG129) | 2131 | VERIFIED (17 controls parsed, cross-checked against the DLG ids) | behaviour-verified (ink diff 0.0107) | `tools/render_qt.py --compare` |
 | Dictionary (DLG164) | 2132 | VERIFIED | behaviour-verified (ink diff 0.0028) | same |
-| History (DLG178/184) | 2133 | VERIFIED | see `PROGRESS.md` | same |
-| Virtual keyboard | 2134 | VERIFIED | see `PROGRESS.md` | same |
-| Options shell + nine pages | 2126, 2135-2141 | VERIFIED (the nine DLG templates: 171, 179, 172, 173, 174, 175, 176, 185, 205) | behaviour-verified on eight pages | same |
-| Popup window (Ctrl+Q) | none | INFERRED (spec section 4) | ported | the spec's geometry |
-| Tray menu | 2130 | VERIFIED | ported (Tk), Qt pending | `regress_tray_menu.py` |
+| History (DLG178/184) | 2133 | VERIFIED | behaviour-verified (ink diff 0.0046) | same |
+| Virtual keyboard | 2134 | VERIFIED | behaviour-verified (ink diff 0.0010) | same |
+| Options shell + nine pages | 2126, 2135-2141 | VERIFIED (the nine DLG templates: 171, 179, 172, 173, 174, 175, 176, 185, 205) | behaviour-verified on all twelve compared screens (hotkeys 0.0047, internet 0.0039, services 0.0009, languages 0.0018, appearance 0.0045, exceptions 0.0009, advanced 0.0065, updates 0.0022; the Basics page has no capture of its own) | same |
+| Popup window (Ctrl+Q) | 2130 | VERIFIED (the 200x68 window inside the desktop shot: border `#53606c`, interior `#d0d0d0`) | ported (Tk + Qt) | `regress_qt_features.py` (the popup takes its text), `screenshots/screens/popup.png` |
+| Tray menu | none (the native's menu is the OS's own taskbar menu) | VERIFIED (item order read off capture 2126 and the spec's section 9) | ported (Tk + Qt, native's own mouse-mode names) | `regress_tray_menu.py`, `regress_qt_features.py` |
 
 ## 3. The core features
 
