@@ -169,10 +169,20 @@ class MacOSAdapter:
             return False
 
     def app_data(self):
-        return app_data_dir()
+        """macOS's own location, NOT ``app_data_dir()``.
+
+        ``app_data_dir`` reads ``%APPDATA%`` first, which is set on
+        Windows -- so calling it from this adapter returned the WINDOWS
+        path. On a Mac that is invisible, but the adapter is also the
+        only way a non-Windows host is tested here, and a test that
+        asserts a Windows path on a "macOS" adapter proves nothing. The
+        home directory is what macOS has.
+        """
+        import os
+        return os.path.join(os.path.expanduser("~"), ".config", "QTranslate")
 
     def extensions_dir(self):
-        """``~/.config/QTranslate/extensions`` (see ``app_data_dir``)."""
+        """``~/.config/QTranslate/extensions``."""
         import os
         return os.path.join(self.app_data(), "extensions")
 

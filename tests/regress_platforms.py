@@ -56,11 +56,22 @@ ck("current() returns an adapter with capability()",
 # on macOS it has to be a real path -- not the UnavailableAdapter's
 # NotImplementedError, which made the loader return [] silently.
 _mac = P.MacOSAdapter()
-ck("the macOS adapter resolves the app-data dir",
-   _mac.app_data() == P.app_data_dir(), _mac.app_data())
+# NOT P.app_data_dir(): that reads %APPDATA% first, so on a Windows host
+# it returns the WINDOWS path and the adapter would be "passing" a test
+# that proved nothing about macOS. The adapter resolves from the home
+# directory, which is what macOS actually has.
+ck("the macOS adapter resolves the app-data dir from HOME, not APPDATA",
+   _mac.app_data() == os.path.join(os.path.expanduser("~"), ".config",
+                                   "QTranslate"),
+   _mac.app_data())
 ck("the macOS adapter resolves the extensions dir",
-   _mac.extensions_dir() == os.path.join(P.app_data_dir(), "extensions"),
+   _mac.extensions_dir() == os.path.join(_mac.app_data(), "extensions"),
    _mac.extensions_dir())
+_appdata = os.environ.get("APPDATA", "")
+ck("the macOS app-data dir does not come from APPDATA",
+   not _appdata or not _mac.app_data().lower().startswith(
+       _appdata.lower()),
+   _mac.app_data())
 ck("the macOS extensions dir is absolute",
    os.path.isabs(_mac.extensions_dir()), _mac.extensions_dir())
 ck("the macOS adapter reports the clipboard available",

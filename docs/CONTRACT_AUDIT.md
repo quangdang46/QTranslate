@@ -135,7 +135,7 @@ host, which is the same shape as the capability gap above.
 | Claim | State | Why |
 |---|---|---|
 | Windows | **Platform-verified** | every suite and the bundle ran here |
-| macOS - clipboard and paths | **Implemented, not platform-verified** | `MacOSAdapter` exists; no macOS host ran it in this session |
+| macOS - clipboard and paths | **Implemented, not platform-verified** | `MacOSAdapter` exists and now resolves its own home-based path; no macOS host ran it. **A defect was found and fixed here:** the adapter called `app_data_dir()`, which reads `%APPDATA%` first, so on a Windows host it returned the WINDOWS path -- a test asserting it "passed" while proving nothing about macOS. It resolves from `~` now, and the test says so. |
 | macOS - hotkeys, mouse hook, SAPI | **Missing, honestly reported** | the adapter returns `UNAVAILABLE` rather than faking it |
 
 The last row is the right shape: an unavailable capability that reports
