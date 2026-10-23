@@ -19,6 +19,7 @@ from PySide6.QtWidgets import QFrame, QLabel, QTextEdit
 
 from qtranslate_style import DIM
 
+from .context_menus import build as build_menu
 from .widgets import (Base, button, combo, field, icon, label, panel, put,
                       rect, vline)
 
@@ -101,6 +102,7 @@ class DictionaryWindow(Base):
         icon(self, 427, 37, "ui_icons", "history")
         self.btn_menu = button(self, 452, 37, 16, "")
         self.btn_menu.setObjectName("flat")
+        self.btn_menu.clicked.connect(self.show_header_menu)
         icon(self, 452, 37, "ui_icons", "menu")
 
         # ---- the result area (capture y 56..306) ------------------------
@@ -223,3 +225,80 @@ class DictionaryWindow(Base):
         text = getattr(res, "text", res) or ""
         self.out.setPlainText(str(text))
         return str(text)
+
+    # ------------------------------------------------------------ the ':' menu
+    def show_header_menu(self):
+        """Native's menu 7: the dictionary window's own ':' button menu.
+
+        It has exactly one item -- "Show Full History" -- which opens
+        the History window, because that is what the native menu carries.
+        """
+        m = build_menu(
+            self, self.app, "dict_header", 7,
+            [(10, "Show Full History", self.app.open_history)])
+        m.exec(self.btn_menu.mapToGlobal(
+            self.btn_menu.rect().bottomLeft()))
+
+    # ------------------------------------------------- the strip's row menu
+    def show_strip_menu(self, gpos=None):
+        """Native's menu 8: the dictionary strip's own row menu.
+
+        "Show info" reports what the selected cell IS; "Remove
+        dictionary" takes it out of ``DictionariesOrder``, which is the
+        same setting the Services page writes. Native puts this menu on
+        the active strip row, which is why it hangs off the strip rather
+        than the window.
+        """
+        m = build_menu(self, self.app, "dict_header", 8, [
+            (10, "Show info", self._show_info),
+            (20, "Remove dictionary", self._remove_dictionary),
+        ])
+        anchor = self.strip[0] if self.strip else self.btn_menu
+        m.exec(gpos if gpos is not None else anchor.mapToGlobal(
+            anchor.rect().bottomLeft()))
+
+    def _selected_id(self):
+        """The ``DictionariesOrder`` id of the selected cell."""
+        name = self.selected_service()
+        for did, display in self.app._core()[0].DICT_DISPLAY.items():
+            if display == name:
+                return did
+        return None
+
+    def _show_info(self):
+        from PySide6.QtWidgets import QMessageBox
+        name = self.selected_service() or "(none selected)"
+        QMessageBox.information(self, "Dictionary", name)
+
+    def _remove_dictionary(self):
+        """Drop the selected cell from ``DictionariesOrder``."""
+        did = self._selected_id()
+        if did is None:
+            return
+        try:
+            from qtranslate import config as _C
+            cfg = _C.load() or {}
+            order = list(cfg.get("DictionariesOrder")
+                         or _C.DEFAULT_DICTIONARIES_ORDER)
+            cfg["DictionariesOrder"] = [i for i in order if i != did]
+            _C.save(cfg)
+        except Exception:
+            return
+        # Rebuild the strip so the removed cell disappears now, not at
+        # the next start.
+        for cell in self.strip:
+            cell.setParent(None)
+            cell.deleteLater()
+        self.strip = []
+        for i, name in enumerate(self._services()):
+            self.strip.append(self._strip_cell(i, name))
+        if self.strip:
+            self.select(self.strip[0])
+
+    # -------------------------------------------------- right-click the strip
+    def contextMenuEvent(self, event):          # noqa: N802 (Qt name)
+        pos = event.pos()
+        if pos.y() >= STRIP_Y:
+            self.show_strip_menu(event.globalPos())
+            return
+        super().contextMenuEvent(event)

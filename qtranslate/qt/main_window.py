@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (QComboBox, QLabel, QMenu, QPushButton,
 from qtranslate_style import THUMB
 
 from . import icons
+from .context_menus import append_extensions, pack_labels
 from .widgets import (Base, LINK, button, combo, extension_menu_entries,
                       hline, icon, label, put,
                       rect, vline)
@@ -188,6 +189,19 @@ class MainWindow(Base):
         self.btn_back.clicked.connect(app.on_back)
         self.btn_fwd.clicked.connect(app.on_forward)
 
+        # Native's menus 2/3/4: right-click in the panes and on the combos.
+        # Qt draws the standard edit menu for a QTextEdit by itself; the
+        # native menus carry the port's OWN operations (Translate,
+        # Dictionary search, Listen), so the standard menu is replaced and
+        # the extension slot entries appended under a separator.
+        self.src.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.src.customContextMenuRequested.connect(self._src_menu)
+        self.out.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.out.customContextMenuRequested.connect(self._out_menu)
+        for cmb in (self.cmb_src, self.cmb_tgt):
+            cmb.setContextMenuPolicy(Qt.CustomContextMenu)
+            cmb.customContextMenuRequested.connect(self._lang_menu)
+
         # ---- the extension panels --------------------------------------
         # An extension may contribute a panel to one of the native's
         # three panes (the "Show*Pane" toggles on the Options/Basics
@@ -196,6 +210,37 @@ class MainWindow(Base):
         # extension there is no strip at all, so the window is exactly
         # the native's pixels.
         self.panels = self._build_panels()
+        self.apply_pane_visibility()
+
+    def apply_pane_visibility(self):
+        """Honour native's three Show*Pane settings.
+
+        Native's main menu (id 1, items 65/70/80) toggles the top,
+        middle and services panes, and the Settings file carries the
+        same three keys. Before this the port drew all three always, so
+        flipping ShowServicesPane changed nothing -- a setting that
+        saves but does nothing is the exact shape the audit exists to
+        catch. Qt hides the widgets the pane is made of.
+        """
+        try:
+            from qtranslate import config
+            general = (config.load() or {}).get("General", {})
+        except Exception:
+            return
+        top = bool(general.get("ShowTopPane", True))
+        middle = bool(general.get("ShowMiddlePane", True))
+        services = bool(general.get("ShowServicesPane", True))
+        for widget in (self.src, getattr(self, "cmb_src", None),
+                       getattr(self, "cmb_tgt", None),
+                       getattr(self, "btn_new", None),
+                       getattr(self, "btn_swap", None),
+                       getattr(self, "btn_go", None)):
+            if widget is not None:
+                widget.setVisible(top)
+        for widget in (self.out,):
+            widget.setVisible(middle)
+        for widget in getattr(self, "tabs", ()) or ():
+            widget.setVisible(services)
 
     # The panel strips: pane slot -> the rect the strip is docked at, in
     # the window's client coordinates. The top pane's strip stops short
@@ -297,15 +342,102 @@ class MainWindow(Base):
         m.addAction(a)
         # The nav menu is native's menu id 1 (ui_slots "main"): an
         # extension may add entries to it.
-        entries = extension_menu_entries(self, self.app, "main")
-        if entries:
-            m.addSeparator()
-        for label, contrib in entries:
-            act = QAction(label, self)
-            act.triggered.connect(
-                lambda _c=False, f=contrib: self.app.run_ui_contribution(f))
-            m.addAction(act)
+        m = append_extensions(m, self, self.app, "main")
         m.exec(self.btn_nav.mapToGlobal(self.btn_nav.rect().bottomLeft()))
+
+    def _pane_menu(self, which):
+        """Native's pane menus: menu 2 in the source pane, menu 3 in the
+        result. Each item is an operation the port already has; an id
+        with no operation behind it is drawn disabled, not dropped, so
+        the audit's gap stays visible in the UI instead of silent.
+
+        The extension slot entries land under a separator, per
+        ``ui_slots`` -- those slots now have a host instead of a name.
+        """
+        from PySide6.QtWidgets import QMenu
+        from PySide6.QtGui import QAction
+        app = self.app
+        lab = pack_labels(3 if which == "result" else 2)
+        m = QMenu(self)
+        if which == "source":
+            ops = [
+                (10, "Undo", self.src.undo if self.src.isUndoRedoEnabled()
+                 else None),
+                (20, "Cut", lambda: self.src.cut()),
+                (30, "Cut all",
+                 lambda: (self.src.selectAll(), self.src.cut())),
+                (40, "Copy", lambda: self.src.copy()),
+                (50, "Copy all",
+                 lambda: (self.src.selectAll(), self.src.copy())),
+                (60, "Paste", lambda: self.src.paste()),
+                (70, "Select all", lambda: self.src.selectAll()),
+                (75, "Translate", app.on_go),
+                (80, "Dictionary search for",
+                 lambda: app.open_dictionary()),
+                (90, "Listen",
+                 lambda: app._speak(self.src.toPlainText())),
+            ]
+        else:
+            ops = [
+                (10, "Open", app.on_go),
+                (15, "Copy text",
+                 lambda: self.out.selectAll() or self.out.copy()),
+                (20, "Copy translation", lambda: self.out.copy()),
+                (30, "Delete", lambda: self.out.clear()),
+                (40, "Listen",
+                 lambda: app._speak(self.out.toPlainText())),
+            ]
+        for item_id, default, fn in ops:
+            act = QAction(lab.get(item_id, default), self)
+            if fn is None:
+                act.setEnabled(False)
+            else:
+                try:
+                    act.triggered.connect(
+                        lambda _c=False, f=fn: f())
+                except Exception:
+                    act.setEnabled(False)
+            m.addAction(act)
+        m = append_extensions(
+            m, self, app, "result_context" if which == "result"
+            else "source_context")
+        pane = self.out if which == "result" else self.src
+        pos = pane.mapToGlobal(pane.cursorRect().center()
+                               if which == "source"
+                               else pane.viewport().rect().center())
+        m.exec(pos)
+
+    def _src_menu(self, _p):
+        self._pane_menu("source")
+
+    def _out_menu(self, _p):
+        self._pane_menu("result")
+
+    def _lang_menu(self, _p):
+        """Native's menu 4: the language combos' own menu."""
+        from PySide6.QtWidgets import QMenu
+        lab = pack_labels(4)
+        m = QMenu(self)
+        ops = [
+            # Native's Reset puts the combo back to its default; Edit...
+            # opens the Languages page, which is where the native edits
+            # the list. "Always detect language" is a source-side
+            # behaviour with no port-side operation yet, so it is drawn
+            # disabled rather than faked.
+            (10, "Reset", lambda: self.app.set_default_languages()),
+            (20, "Edit...", self.app.open_languages_page),
+            (30, "Always detect language", None),
+        ]
+        for item_id, default, fn in ops:
+            act = QAction(lab.get(item_id, default), self)
+            if fn is None:
+                act.setEnabled(False)
+            else:
+                act.triggered.connect(lambda _c=False, f=fn: f())
+            m.addAction(act)
+        m = append_extensions(m, self, self.app, "language")
+        m.exec(self.cmb_src.mapToGlobal(
+            self.cmb_src.rect().bottomLeft()))
 
     def _service_clicked(self, _e):
         self.app.open_service_page()

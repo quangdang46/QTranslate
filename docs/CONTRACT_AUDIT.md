@@ -31,7 +31,7 @@ Done on 2026-10-23 at `6636686`, on this machine.
 | The bundle builds | yes | `tools/build_bundle.py`, exit 0 |
 | The FROZEN bundle's selftest | `SELFTEST PASS 29/29` | `dist/QTranslate/QTranslate.exe --selftest` |
 | The frozen-module gap check | clean | the build fails on a module Analysis missed |
-| The full suite | **134 suites, 0 failed, 56.1s** | `python -I tools/run_suites.py`, 2026-10-23, on this machine |
+| The full suite | **135 suites, 0 failed** | `python -I tools/run_suites.py`, 2026-10-23, on this machine |
 | Docs consistency | 0 findings | `tools/docs_consistency.py` |
 
 **Two defects the build found, both fixed:**
@@ -88,15 +88,27 @@ names. The host consumes:
 | Kind / slot | Consumer | State |
 |---|---|---|
 | `menu` / `tray` | the Qt tray menu adds one action per contribution | **Behaviour-verified** |
+| `menu` / `main` | the main window's nav-button menu appends entries (separator + actions) | **Behaviour-verified** |
+| `menu` / `source_context` | the source pane's right-click menu (native menu 2: Undo..Listen) | **Behaviour-verified** |
+| `menu` / `result_context` | the result pane's right-click menu (native menu 3: Open..Listen) | **Behaviour-verified** |
+| `menu` / `language` | the language combos' right-click menu (native menu 4: Reset/Edit/Always-detect) | **Behaviour-verified** |
+| `menu` / `history_ctx` | the history entry right-click menu (native menu 6) | **Behaviour-verified** |
+| `menu` / `dict_header` | the dictionary ':' button (menu 7) and the strip row menu (menu 8) | **Behaviour-verified** |
+| `menu` / `history_menu` | the history window's own menu on empty list space (native menu 9) | **Behaviour-verified** |
+| `menu` / `ocr` | the text-recognition result window (native menu 10) | **Behaviour-verified** |
 | `panel` / `top`, `middle` | the main window docks a strip in that pane | **Behaviour-verified** |
-| `popup` / `body` | the popup lets the contribution render its text | **Behaviour-verified** |
-| `menu` / the other eight names | every menu reads its own slot (`extension_menu_entries`) | **Wired** (main and history_ctx pinned; the reader is one function) |
 | `panel` / `services` | the main window docks a strip above the provider buttons | **Behaviour-verified** |
+| `popup` / `body` | the popup lets the contribution render its text | **Behaviour-verified** |
 | `popup` / `icons` | the popup places a contributed label in its icon row | **Behaviour-verified** |
 
-The three that work are the ones with a test
-(`regress_qt_extension_ui.py`). The rest are published names with no
-host, which is the same shape as the capability gap above.
+Every one is proven by `tests/regress_menu_slots.py` (37): each slot
+names its host in the host's source, each host passes its native menu
+id, a contribution registered for ANY of the nine comes back out of
+the widget helper the hosts call, and the strip/window menus' handlers
+write the settings they claim. Closed 2026-10-23: before it, only
+`tray`, `main` and `history_ctx` had a host; the other six were
+published names with no window behind them -- the same shape as the
+capability gap.
 
 ### The SDK package
 

@@ -3,6 +3,51 @@
 The running log. Newest first. Every entry names what changed and what
 was run to show it.
 
+## 2026-10-23 -- every published menu slot now has a window behind it
+
+The audit's P1 closed its last structural gap. `ui_slots` publishes nine
+menu names; only `tray`, `main` and `history_ctx` had a host, so an
+extension targeting `menu`/`ocr` or `menu`/`language` registered without
+error and appeared nowhere -- the same shape as the eight-capability
+lie.
+
+Six hosts built, each drawing NATIVE's menu with native's own ids:
+
+| slot | native menu | what the port now draws |
+|---|---|---|
+| `source_context` | 2 | Undo / Cut / Cut all / Copy / Copy all / Paste / Select all / Translate / Dictionary search for / Listen |
+| `result_context` | 3 | Open / Copy text / Copy translation / Delete / Listen |
+| `language` | 4 | Reset / Edit... / Always detect language |
+| `dict_header` | 7, 8 | the ':' button's Show Full History, plus the strip's Show info / Remove dictionary |
+| `history_menu` | 9 | Clear history / Show services pane / Exact search / Options |
+| `ocr` | 10 | the new `OcrResultWindow`: OCR language / Translate / Copy image / Copy text / Save image / Edit image / Select all / Clear selection / Close |
+
+The labels come from the shipped locale packs by id, so a translated UI
+gets translated menus. An id the port has no operation behind (menu 4's
+"Always detect language", menu 10's "Edit image") is drawn DISABLED,
+never faked. The settings-backed items write the keys they claim:
+"Show services pane" flips `General.ShowServicesPane` and
+`MainWindow.apply_pane_visibility()` now actually hides the panes
+(before, that setting saved and did nothing), and "Remove dictionary"
+rewrites `DictionariesOrder`.
+
+Two defects found while wiring, both real:
+
+1. `open_service_page()` called `open_options()` with no page, so every
+   "go to that page" entry opened Basics. `open_options(page)` takes a
+   page now, and `open_languages_page()` uses it.
+2. The OCR flow wrote the recognised text straight into the main
+   window's result pane, clobbering whatever the user was reading, and
+   menu 10 had no window at all. OCR results go to their own window now.
+
+`tests/regress_menu_slots.py` (37) pins every slot to its host, drives
+the shared reader for all nine, and checks the handlers write the
+settings they claim.
+
+```
+135 suites, 0 failed
+```
+
 ## 2026-10-23 -- Ctrl+Q copies the SELECTION, and the popup matches two captures
 
 `hotkey_popup()` read `pyperclip.paste()` directly: no Ctrl+C, so a user
@@ -42,7 +87,7 @@ the way (mouse-capture's inline `ctrl+c`, sendkeys' direct grep, the
 wiring orphan set's `clipboard` which `selection.py` reaches again).
 
 ```
-134 suites, 0 failed, 56.1s
+135 suites, 0 failed
 ```
 
 Pixel-parity: 0.0037 over the 12 captured screens, docs-consistency: 0.

@@ -336,10 +336,49 @@ class QtApp:
         self._hist = HistoryWindow(self)
         self._hist.show()
 
-    def open_options(self):
-        from .options import OptionsDialog
+    def open_options(self, page: str = ""):
+        """Open Options, optionally straight on one page.
+
+        The pages are one window rebuilt in place (``OptionsBase``), so
+        "open the Languages page" is the same dialog with a starting
+        page -- not a second window, which is what the old per-page
+        widget opened.
+        """
+        from .options import OptionsDialog, PAGES
         self._opts = OptionsDialog(self)
+        if page and page in PAGES:
+            try:
+                self._opts._show_page(page)
+            except Exception:
+                pass
         self._opts.show()
+
+    def open_languages_page(self):
+        """Native's language-combo "Edit..." opens the Languages page."""
+        self.open_options("Languages")
+
+    def set_default_languages(self):
+        """Native's language-combo "Reset": back to the configured pair."""
+        try:
+            from qtranslate import config
+            general = (config.load() or {}).get("General", {})
+        except Exception:
+            general = {}
+        src = general.get("SourceLanguage", "Auto-Detect")
+        tgt = general.get("TargetLanguage", "English")
+        for name, setter in (("cmb_src", self.set_source_by_name),
+                             ("cmb_tgt", self.set_target_by_name)):
+            combo = getattr(self.win, name, None) if self.win else None
+            if combo is None:
+                continue
+            try:
+                combo.blockSignals(True)
+                combo.setCurrentText(src if name == "cmb_src" else tgt)
+                combo.blockSignals(False)
+            except Exception:
+                pass
+        self.set_source_by_name(src)
+        self.set_target_by_name(tgt)
 
     # ------------------------------------------------- override conflicts
     def override_conflicts(self):
@@ -440,7 +479,16 @@ class QtApp:
         except Exception as exc:                # noqa: BLE001
             self.win.render("[ocr error] %s" % exc)
             return
-        self.win.render(text)
+        # The result goes to native's own OCR window (menu 10's host),
+        # which the region picker used to skip by writing straight into
+        # the main result pane. The main pane keeps its old content.
+        try:
+            from .ocr_window import OcrResultWindow
+            self._ocr = OcrResultWindow(self)
+            self._ocr.set_text(text)
+            self._ocr.show()
+        except Exception:
+            self.win.render(text)
 
     def open_keyboard(self):
         from .keyboard import KeyboardWindow

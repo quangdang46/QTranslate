@@ -84,15 +84,23 @@ class HistoryWindow(Base):
 
     # ------------------------------------------------------- the I6 menu
     def _entry_menu_requested(self, gpos):
-        """Right-click on an entry: native's I6 menu, with the five
-        entries enabled only on a row that exists."""
+        """Right-click in the list.
+
+        On an ENTRY: native's I6 menu (menu id 6), with the five entries
+        enabled only on a row that exists. On EMPTY space: native's
+        window menu (menu id 9) -- Clear history, Show services pane,
+        Exact search, Options. They are two different native menus and
+        the port showed only the first, so menu 9 had no host at all.
+        """
         try:
             y = self.list.mapFromGlobal(gpos).y()
         except Exception:
             return
         idx = self._entry_at(y)
-        ent = list(self.app.history)[idx] if 0 <= idx < len(
-            self.app.history) else None
+        if not (0 <= idx < len(self.app.history)):
+            self._window_menu(gpos)
+            return
+        ent = list(self.app.history)[idx]
         m = QMenu(self)
         try:
             from qtranslate.locale import load_pack
@@ -210,3 +218,52 @@ class HistoryWindow(Base):
     def _clear(self):
         self.app.history = []
         self._fill()
+
+    # ------------------------------------------------- native's menu 9
+    def _window_menu(self, gpos=None):
+        """Native's window menu (id 9), shown on empty list space.
+
+        Clear history is the window's own Clear; Show services pane,
+        Exact search and Options are the native entries, with the two
+        settings-backed ones writing the same keys the Settings pages
+        write so the menu is not a decorative copy.
+        """
+        from .context_menus import build as build_menu
+        m = build_menu(self, self.app, "history_menu", 9, [
+            (10, "Clear history", self._clear_and_reload),
+            (20, "Show services pane", self._toggle_services_pane),
+            (30, "Exact search", self._toggle_exact_search),
+            (40, "Options", lambda: self.app.open_options("Advanced")),
+        ])
+        m.exec(gpos if gpos is not None else self.mapToGlobal(
+            self.list.rect().center()))
+
+    def _clear_and_reload(self):
+        self._clear()
+        self.app.history = []
+
+    def _toggle_services_pane(self):
+        """Flip native's ShowServicesPane setting and apply it."""
+        try:
+            from qtranslate import config as _C
+            cfg = _C.load() or {}
+            general = cfg.setdefault("General", {})
+            general["ShowServicesPane"] = not bool(
+                general.get("ShowServicesPane", True))
+            _C.save(cfg)
+            win = getattr(self.app, "win", None)
+            if win is not None and hasattr(win, "apply_pane_visibility"):
+                win.apply_pane_visibility()
+        except Exception:
+            pass
+
+    def _toggle_exact_search(self):
+        """Flip native's DictionaryExactSearch setting."""
+        try:
+            from qtranslate import config as _C
+            cfg = _C.load() or {}
+            cfg["DictionaryExactSearch"] = not bool(
+                cfg.get("DictionaryExactSearch", True))
+            _C.save(cfg)
+        except Exception:
+            pass
