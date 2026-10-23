@@ -1,9 +1,13 @@
 # FEATURE CHECKLIST — kiểm thử thực tế từng feature
 
-Ghi ngày: **2026-10-23**. Commit đã kiểm kê: `e60fc6e` (`main`, working
-tree sạch). Suite tự động: **134 suites, 0 failed** (chạy lại trên đúng
-commit này, 23/10/2026, exit code 0). Pixel-parity: **0.0037 trên 12 màn
-hình**. Docs-consistency: **0 findings**.
+Ghi ngày: **2026-10-23**. Commit đã kiểm kê: **`f8f82c5`** (`main`,
+working tree sạch) — *cập nhật lần 2 cùng ngày; bản đầu ghim `e60fc6e`,
+13 commit sau đó đã đổi một số trạng thái dưới đây, mỗi chỗ đều ghi rõ*.
+Suite tự động: **136 suites, 0 failed** (chạy lại trên đúng commit này,
+23/10/2026, exit code 0 — `tools/run_suites.py`). Pixel-parity:
+**0.0037 trên 12 màn hình** (đo trên `e60fc6e`; `f8f82c5` không đổi
+layout — đổi ở luồng dịch và docs). Docs-consistency: **0 findings**.
+Live providers: **20/21 LIVE-OK** (`tests/LIVE_RESULTS.md`, 2026-10-23).
 
 Quy tắc đọc:
 
@@ -18,7 +22,7 @@ Quy tắc đọc:
 
 ## A. Translation engine
 
-| ID | Feature | Đường code | Test đã chạy | Trạng thái trên `e60fc6e` |
+| ID | Feature | Đường code | Test đã chạy | Trạng thái trên `f8f82c5` |
 |---|---|---|---|---|
 | A01 | Dịch từ cửa sổ chính (Translate) | `qtranslate/qt/app.py` `on_go` | `regress_app_reliability_e2e.py` (10) lái `app.on_go()` với provider rigged | PASS offline |
 | A02 | Chọn ngôn ngữ nguồn | `set_source_by_name`, combo `cmb_src` | `regress_source_language.py` (13) | PASS offline |
@@ -38,23 +42,23 @@ Quy tắc đọc:
 
 ### A17–A25. Providers (mỗi cái kiểm live riêng)
 
-| ID | Provider | Test contract | Trạng thái trên `e60fc6e` |
+| ID | Provider | Test contract | Trạng thái trên `f8f82c5` |
 |---|---|---|---|
-| A17 | Google | `regress_google_tk.py`, `regress_tkk_markers.py`, chain/response suites | Endpoint sống theo audit gần nhất; **NEED** live re-check |
-| A18 | DeepL | `regress_deepl_payload.py` | Endpoint sống theo audit gần nhất; **NEED** live re-check |
-| A19 | Yandex | `regress_yandex_disk.py`, `regress_service_lang_tables.py` | Endpoint sống theo audit gần nhất; **NEED** live re-check |
-| A20 | Baidu | `regress_baidu_sign.py` | PASS offline (sign); **NEED** live |
-| A21 | Naver/Papago | `regress_naver_auth.py` | PASS offline; **NEED** live |
-| A22 | Youdao | `regress_youdao_sign.py` | PASS offline (sign); **NEED** live |
-| A23 | Microsoft/Bing | `regress_microsoft_request.py`, `regress_microsoft_chain.py` | **DEAD BY EVIDENCE** — endpoint trả `{"statusCode":400}` cho đúng request native build; port báo empty thay vì crash (`KeyError: 0` đã sửa) |
-| A24 | PROMT | `regress_promt_hash.py`, `regress_promt_pageload.py` | PASS offline; **NEED** live |
+| A17 | Google | `regress_google_tk.py`, `regress_tkk_markers.py`, chain/response suites | **LIVE-OK 23/10** (translate EN→VI + TTS, `tests/LIVE_RESULTS.md`) |
+| A18 | DeepL | `regress_deepl_payload.py` | **LIVE-OK 23/10** (detect + translate EN→VI) |
+| A19 | Yandex | `regress_yandex_disk.py`, `regress_service_lang_tables.py` | **LIVE-OK 23/10** (translate EN→RU) |
+| A20 | Baidu | `regress_baidu_sign.py` | PASS offline (sign); live: detect + suggest OK, **translate vẫn token-walled** |
+| A21 | Naver/Papago | `regress_naver_auth.py` | **LIVE-OK 23/10** (detect + translate EN→VI + dict + TTS) |
+| A22 | Youdao | `regress_youdao_sign.py` | **LIVE-OK 23/10** (translate_web EN→ZH + dict, không cần key — matrix đã nâng thành `behaviour-verified`) |
+| A23 | Microsoft/Bing | `regress_microsoft_request.py`, `regress_microsoft_chain.py` | **DEAD BY EVIDENCE, xấu hơn** — `statusCode:400` cũ đã thành session scrape fail (`Could not scrape Bing session`, probe 23/10 trên `f8f82c5`); matrix đã hạ thành `ported`. Cần viết lại phần lấy session |
+| A24 | PROMT | `regress_promt_hash.py`, `regress_promt_pageload.py` | PASS offline; live vẫn token-walled (`dead:needs-session-token`) |
 | A25 | Babylon | `regress_dict_uri_native.py` + babylon rows trong `ui_match.py` (`babylon-id/langs/host/error-path`) | **DEAD** theo audit (endpoint chết); trả lỗi rõ ràng |
 
 ---
 
 ## B. Text capture (Bôi đen / Clipboard / Ctrl+Q)
 
-| ID | Feature | Đường code | Test đã chạy | Trạng thái trên `e60fc6e` |
+| ID | Feature | Đường code | Test đã chạy | Trạng thái trên `f8f82c5` |
 |---|---|---|---|---|
 | B01/B03 | Đọc selection qua mouse capture/OLEACC | `qtranslate/mouse_capture.py`, `cursor_text` | `regress_mouse_capture.py` (42), `regress_mouse_capture_c8.py`, `regress_oleacc_contract.py` | PASS offline (contract + stub) |
 | B02 | Đọc qua Clipboard | `clipboard.read_text` | `regress_clipboard.py` | PASS |
@@ -70,7 +74,7 @@ Quy tắc đọc:
 
 ## C. Popup dịch nhanh
 
-| ID | Feature | Đường code | Test đã chạy | Trạng thái trên `e60fc6e` |
+| ID | Feature | Đường code | Test đã chạy | Trạng thái trên `f8f82c5` |
 |---|---|---|---|---|
 | C01 | Mở bằng Ctrl+Q | `hotkey_popup` + `hotkeys.install` (queued `_on_ui`) | `regress_popup_smoke.py` (hotkey→popup chain), `regress_hotkey_coverage.py` | PASS offline |
 | C02 | Hiển thị đúng nguồn + kết quả | `PopupWindow.set_text(src,res,pair)` | `ui_match.py` popup-*, `regress_qt_features.py` popup bounds | PASS offline (layout+text) |
@@ -83,7 +87,7 @@ Quy tắc đọc:
 | C09 | Pin/drag popup | `PopupPinWhenDragging` | — | **NEED** kiểm thủ công |
 | C10 | Icon/header (⭐📖🎧⧉tā — nay là 5 pixmap RT_ICON) | `_header_icons`, manifest `book/copy/translit` | render đối chiếu 2 ảnh native 2162/2163 (xem PROGRESS 23/10) | PASS (visual review, thủ công) |
 | C11 | Double-click header mở main window | `help.txt:33`; `show_popup` wiring | — | **NEED** |
-| C12 | Không treo UI khi mạng chậm | dịch trong `_translate` (sync) | **CHƯA** — còn sync trên UI thread | **NEED** (đo rồi mới sửa; không mù quáng bỏ fallback) |
+| C12 | Không treo UI khi mạng chậm | worker thread + `_on_ui` | `regress_translate_off_ui.py` (6) + `tools/measure_translate.py`: UI thread giữ 1ms thay vì 402ms — **ĐÃ SỬA trên `f8f82c5`** (PROGRESS 23/10, đo trước sửa sau) | PASS (đo được) |
 | C13 | Extension render popup body | `("popup","body")` slot + `_extension_body` | `regress_qt_extension_ui.py` (34) | PASS |
 
 ---
@@ -101,21 +105,21 @@ Quy tắc đọc:
 
 ## E. Dictionary (11 providers)
 
-Contract: `regress_dict_registry_complete.py`, `regress_dict_lang_tables.py`, `regress_dict_response_chain.py`, `regress_dict_uri_native.py`, `regress_dict_card*.py`, `regress_xdxf_*.py`, `smoke_dict.py` — tất cả xanh trên `e60fc6e`.
+Contract: `regress_dict_registry_complete.py`, `regress_dict_lang_tables.py`, `regress_dict_response_chain.py`, `regress_dict_uri_native.py`, `regress_dict_card*.py`, `regress_xdxf_*.py`, `smoke_dict.py` — tất cả xanh trên `f8f82c5`.
 
 | ID | Provider | Trạng thái |
 |---|---|---|
-| E01 Oxford | UI wired | PASS offline; **NEED** live |
-| E02 Lingvo | UI wired | PASS offline; **NEED** live |
-| E03 Urban | UI wired | PASS offline; **NEED** live |
-| E04 Wikipedia | UI wired | PASS offline; **NEED** live |
-| E05 Multitran | UI wired | PASS offline; **NEED** live |
-| E06 WordReference | cần Playwright Chromium (optional) | **BLOCKED** — thiếu dep |
-| E07 Reverso | UI wired | PASS offline; **NEED** live |
+| E01 Oxford | UI wired | PASS offline; **LIVE-OK 23/10** |
+| E02 Lingvo | UI wired | PASS offline; **LIVE-OK 23/10** |
+| E03 Urban | UI wired | PASS offline; **LIVE-OK 23/10** |
+| E04 Wikipedia | UI wired | PASS offline; **LIVE-OK 23/10** |
+| E05 Multitran | UI wired | PASS offline; **LIVE-OK 23/10** |
+| E06 WordReference | cần Playwright Chromium (optional) | **LIVE-OK 23/10** qua headless Chromium (đã có trong venv, beats Anubis wall) |
+| E07 Reverso | UI wired | **LIVE-OK 23/10** — tường Cloudflare 403 cũ đã bỏ, translate EN→FR verify live |
 | E08 Babylon dict | DEAD endpoint (như translator) | **DEAD BY EVIDENCE** |
 | E09 ImTranslator | DEAD endpoint theo audit | **DEAD BY EVIDENCE** |
 | E10 Google Search | DEAD theo audit | **DEAD BY EVIDENCE** |
-| E11 Youdao dict | UI wired | PASS offline; **NEED** live |
+| E11 Youdao dict | UI wired | PASS offline; **LIVE-OK 23/10** |
 
 E12–E23 (mở window, tra từ, HTML render, XDXF offline-first, zoom, entry points từ tray/hotkey): `regress_dict_card_native.py`, `regress_dictionary_html.py`, `regress_xdxf_render.py`, `regress_qt_features.py` — PASS offline; **NEED** thao tác thật cho E16/E17/E22.
 
@@ -149,7 +153,7 @@ E12–E23 (mở window, tra từ, HTML render, XDXF offline-first, zoom, entry p
 
 `regress_sapi_and_keyboard.py` (19): full key grid incl. number row +
 punctuation, pinned vì port tkinter cũ từng thiếu. **PASS trên
-`e60fc6e`.** H03–H08 (gõ thật vào ô nhập, Shift, focus): **NEED**
+`e60fc6e`, chạy lại `f8f82c5` PASS).** H03–H08 (gõ thật vào ô nhập, Shift, focus): **NEED**
 desktop.
 
 ## I. TTS
@@ -244,12 +248,15 @@ Q17 (override picker): PASS. Q19 (dep isolation): PASS.
 `regress_router_order.py`, `regress_translate_errors.py`,
 `regress_request.py`, `regress_net_open.py`, `regress_result_shape.py`,
 `regress_core_result*.py` — **PASS**. R14 (UI không treo khi dịch
-chậm): **NEED** — còn sync, là việc P1 đã nêu. R15 (đo thời gian từng
-giai đoạn): **NOT TESTED** — phải đo trước khi sửa.
+chậm): **ĐÃ SỬA trên `f8f82c5`** — dịch chạy worker thread, đo được
+(1ms UI thread so với 402ms trước đây, `regress_translate_off_ui.py`).
+R15 (đo thời gian từng giai đoạn): **PASS** — `tools/measure_translate.py`
+ghi từng stage; provider chiếm toàn bộ 400ms, overhead port 2.8ms.
 
 ## S. Qt UI parity (12/12 màn hình đã chụp)
 
-`tools/render_qt.py --compare`: **mean 0.0037 trên `e60fc6e`**. S07
+`tools/render_qt.py --compare`: **mean 0.0037 trên `e60fc6e` (12 màn
+hình; `f8f82c5` không đổi layout nên phép đo vẫn đứng)**. S07
 Basics: **BLOCKED** (thiếu ảnh native). S20 (click không ăn, giá trị
 không lưu): S06 tray menu cũng **thiếu ảnh native** (CONTRACT_AUDIT
 P2 — evidence exhausted).
@@ -260,7 +267,7 @@ P2 — evidence exhausted).
 |---|---|---|---|
 | T01–T05 | Entry point, CLI args, headless, crash reporter, single-instance | `regress_startup_entry.py`, `regress_cli_args.py`, `regress_crash_*.py`, `regress_single_instance.py`, `SELFTEST 29/29` | PASS |
 | T06–T08 | Adapters theo OS, không báo nhầm macOS | `regress_platforms.py` (MacOSAdapter ~ paths, Win32-only → UNAVAILABLE) | PASS offline |
-| T09–T13 | Bundle Windows + selftest frozen + đủ module | `tools/build_bundle.py` (frozen-gap check), `regress_startup_entry.py` | PASS lần build gần nhất; **NEED** build lại sau commit `e60fc6e` |
+| T09–T13 | Bundle Windows + selftest frozen + đủ module | `tools/build_bundle.py` (frozen-gap check), `regress_startup_entry.py` | PASS lần build gần nhất; **NEED** build lại sau `f8f82c5` (worker thread + menu hosts là thay đổi lớn nhất từ build trước) |
 | T14 | Bundle macOS | — | **BLOCKED** — cần máy macOS |
 | T15 | Báo rõ unsupported | `UnavailableAdapter` | PASS |
 
@@ -279,33 +286,33 @@ P2 — evidence exhausted).
 |---|---|---|---|
 | 1 | Bấm Ctrl+Q thật ngoài app, nhiều app | NEED | người + desktop |
 | 2 | Popup cạnh chuột/đa màn hình/mép | NEED | người + desktop |
-| 3 | Live providers (Google/DeepL/Yandex/...) | NEED | mạng |
+| ~~3~~ | ~~Live providers~~ | **XONG 23/10** | 20/21 LIVE-OK trên `f8f82c5`; còn Bing cần sửa session scrape, PROMT/Baidu token-wall |
 | 4 | OCR live + API key | NEED | key |
 | 5 | TTS nghe thật / mic thật | NEED | thiết bị âm thanh |
 | 6 | Replace selection thật | NEED | người + desktop |
 | 7 | Settings restart-persistence từng Options page | NEED | người |
 | 8 | Basics + tray menu pixel-compare | BLOCKED | ảnh native (B4) |
-| 9 | Bundle lại sau `e60fc6e` | NEED | chạy `build_bundle.py` |
+| 9 | Bundle lại sau `f8f82c5` | NEED | chạy `build_bundle.py` |
 | 10 | macOS build + run | BLOCKED | máy macOS |
 | 11 | G9 review + waiver | BLOCKED | người duyệt (không tự gán) |
-| 12 | Đo perf từng giai đoạn dịch (R15) rồi mới tối ưu R14 | NEED | chạy đo, không đoán |
+| ~~12~~ | ~~Đo perf từng giai đoạn (R15)~~ | **XONG 23/10** | đo rồi; R14 đã sửa theo số đo (worker thread) |
 
-Đồng bộ docs: `PROJECT_VISION.md` còn câu cũ "giữ Tkinter / chỉ docs
-trong planning" trong khi `HANDOFF.md` đã ghi Qt-only — đã liệt kê ở
-`DOC_DRIFT_REPORT` dưới đây, không dùng dòng cũ làm kết luận.
+Đồng bộ docs: drift ban đầu (Vision/Architecture/Matrix/State/Strategy/
+SDK) đã sửa hết trước `f8f82c5` (PROGRESS 23/10); docs-consistency
+0/120 file trên commit này.
 
 ---
 
 # DOC_DRIFT_REPORT (song hành, không thay code)
 
-1. `PROJECT_VISION.md` — còn yêu cầu giữ Tkinter + "planning chỉ docs".
-   Thực tế: tkinter đã xóa 23/10, Qt là frontend duy nhất. → cần sửa
-   VISION, không phải sửa code.
+1. ~~`PROJECT_VISION.md` — còn yêu cầu giữ Tkinter~~ **ĐÃ SỬA** —
+   Vision/Architecture/Matrix/State/Strategy/SDK đồng bộ Qt-only trước
+   `f8f82c5` (commit `4610fe3`).
 2. `COMPATIBILITY_MATRIX.md` — nhiều hàng còn `ported` ở nghĩa cũ
    (module tồn tại) trong khi `CONTRACT_AUDIT.md` đã nâng một số lên
    `behaviour-verified` kèm suite. → giữ `ported` cho hàng chưa có
    acceptance test thật, không nâng hàng loạt.
 3. `TEST_RESULTS.md` — số suite lịch sử (130/133) là của commit cũ;
-   số đúng cho `e60fc6e` là **134 suites, 0 failed** (đã chạy lại).
+   số đúng cho `f8f82c5` là **136 suites, 0 failed** (đã chạy lại).
 4. `HANDOFF.md` — là log chạy, không phải source of truth cho trạng
    thái gate; gate xem ở `RE_COVERAGE_CHECKLIST` + `BLOCKERS.md`.
