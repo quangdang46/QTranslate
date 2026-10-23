@@ -90,6 +90,17 @@ class Tray:
         manager = getattr(self.app, "ext_manager", None)
         if manager is None:
             return
+        # An unresolved override conflict is the user's to decide (D18).
+        # The entry only appears while there is one, so a normal install
+        # sees the menu it always did.
+        try:
+            conflicted = bool(manager.override_conflicts())
+        except Exception:
+            conflicted = False
+        if conflicted:
+            act = menu.addAction("Choose the winning extensions...")
+            act.triggered.connect(
+                lambda _c=False: self.app.choose_override_winners())
         slots = getattr(manager, "ui_slots", None)
         if slots is None:
             return

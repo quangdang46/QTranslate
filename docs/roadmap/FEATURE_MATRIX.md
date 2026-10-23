@@ -56,6 +56,7 @@ numbers.
 | Extension loading + overrides | `extensions.py` | behaviour-verified | `regress_extension_*` |
 | The extension SDK | `sdk.py` | behaviour-verified (the public surface; a star-import exposes exactly `__all__`) | `regress_sdk.py` (20) |
 | The SDK as an installable package | `docs/EXTENSION_SDK.md` §1 | behaviour-verified (contracts match the host; the wheel installs into a clean virtualenv and pulls in no desktop code) | `regress_sdk_package.py` (22) |
+| Override-conflict UX (D18) | `extensions.override_conflicts` | behaviour-verified (the user picks the winner; the pick is persisted) | `regress_qt_extension_ui.py` |
 | The popup UI slot | `ui_slots.POPUP_SLOTS`, §8 | behaviour-verified (a contribution renders the popup's body) | `regress_qt_extension_ui.py` |
 | History list + its exports | `history.py` | behaviour-verified | `regress_history*.py` |
 | The settings file, 20 sections | `NATIVE_ARCH.md` | behaviour-verified | `regress_options_roundtrip.py` |

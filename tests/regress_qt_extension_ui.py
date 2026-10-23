@@ -207,6 +207,29 @@ try:
         pop.set_text("hi", "Xin chao", "EN->VI")
         ck("the extension renders the popup's body",
            pop.lbl_text.text() == "[EXT] Xin chao", pop.lbl_text.text())
+
+        # --- the override conflict is the user's to decide (D18) --------
+        # Two extensions may replace one provider; the picker must offer
+        # every claimant AND the built-in, preselect what was saved, and
+        # return only the groups the user actually chose.
+        from qtranslate.qt.override_picker import OverridePicker
+        groups = {"google": ["ext.a", "ext.b"], "deepl": ["ext.c"]}
+        dlg = OverridePicker(groups, {"google": "ext.b"})
+        ck("the picker has one row per conflicted provider",
+           len(dlg._boxes) == 2, str(sorted(dlg._boxes)))
+        ck("the picker preselects the saved winner",
+           dlg._boxes["google"].currentData() == "ext.b",
+           str(dlg._boxes["google"].currentData()))
+        ck("an unset group defaults to the built-in",
+           dlg._boxes["deepl"].currentData() == "",
+           str(dlg._boxes["deepl"].currentData()))
+        ck("a built-in choice is not written as a winner",
+           "deepl" not in dlg.selection(), str(dlg.selection()))
+        dlg._boxes["deepl"].setCurrentIndex(
+            dlg._boxes["deepl"].findData("ext.c"))
+        ck("the user's pick is the one returned",
+           dlg.selection() == {"google": "ext.b", "deepl": "ext.c"},
+           str(dlg.selection()))
     finally:
         RG.TRANSLATORS.clear()
         RG.TRANSLATORS.update(_ORIGINAL)

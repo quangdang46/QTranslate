@@ -341,6 +341,51 @@ class QtApp:
         self._opts = OptionsDialog(self)
         self._opts.show()
 
+    # ------------------------------------------------- override conflicts
+    def override_conflicts(self):
+        """The providers more than one loaded extension replaces (D18)."""
+        manager = self.ext_manager
+        if manager is None:
+            return {}
+        try:
+            return manager.override_conflicts() or {}
+        except Exception:
+            return {}
+
+    def choose_override_winners(self):
+        """Ask the user which extension wins a provider conflict (D18).
+
+        Discovery order never decides. The choice is persisted through
+        the core's own writer, which is what ``load_user_extensions``
+        reads at the next start, so the pick survives a restart.
+        """
+        groups = self.override_conflicts()
+        if not groups:
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.information(
+                None, "QTranslate",
+                "No extension replaces a built-in provider, so there is "
+                "nothing to choose.")
+            return
+        from qtranslate import extensions as _ext
+        from .override_picker import OverridePicker
+        try:
+            saved = _ext.read_saved_overrides()
+        except Exception:
+            saved = {}
+        dlg = OverridePicker(groups, saved, parent=None)
+        from PySide6.QtWidgets import QDialog
+        if dlg.exec() != QDialog.Accepted:
+            return
+        try:
+            _ext.write_saved_overrides(dlg.selection())
+        except Exception:
+            pass
+        from PySide6.QtWidgets import QMessageBox
+        QMessageBox.information(
+            None, "QTranslate",
+            "Saved. Restart QTranslate to apply the choice.")
+
     def open_service_page(self):
         self.open_options()
 

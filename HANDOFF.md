@@ -240,10 +240,18 @@ All three of the audit's items were closed on 2026-10-23:
    and that its wheel builds and installs into a CLEAN virtualenv.
    Publishing to PyPI (D19) still needs a human to verify the name.
 
-**Still open: the override-conflict UX** (item 4). The logic and the
-persistence exist (`regress_override_persistence.py`); what is missing
-is the USER choosing a winner in the app (D18 says the user picks,
-never auto-resolved).
+4. **The override-conflict UX** -- also closed on 2026-10-23.
+   `qtranslate/qt/override_picker.py` offers one row per conflicted
+   provider with every claimant AND the built-in (choosing nothing is a
+   real choice), preselects the saved winner, and writes the choice
+   through the core's `write_saved_overrides` -- the same reader
+   `load_user_extensions` uses at startup. The tray menu shows
+   "Choose the winning extensions..." only while a conflict exists.
+   Pinned in `regress_qt_extension_ui.py`.
+
+So the extension platform's audit list is fully closed. What remains
+for the SDK is the RELEASE step, which is a human's: verify the PyPI
+name and its usage rights (D19), then publish.
 
 ### 4.4 The docs that must follow this session's code
 

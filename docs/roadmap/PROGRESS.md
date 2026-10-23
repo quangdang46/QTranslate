@@ -52,8 +52,17 @@ item MENU does have one (menu I6), and adding it broke the grep. The
 widget-level check right above it already tested the thing meant, so
 the redundant grep is gone.
 
+**The override conflict is the user's to decide (D18).** The logic
+and the persistence existed; what was missing was a way for the USER to
+choose. `qtranslate/qt/override_picker.py` shows one row per conflicted
+provider with every claimant and the built-in, preselects the saved
+winner, and writes the choice through the core's own
+`write_saved_overrides`. The tray menu grows a "Choose the winning
+extensions..." entry only while a conflict exists, so a normal install
+sees the menu it always did.
+
 ```
-137 suites, 0 failed, 52.7s
+137 suites, 0 failed, 51.4s
 ```
 
 ## 2026-10-22 -- the user ran the app, and found four bugs
