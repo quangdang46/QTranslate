@@ -1,113 +1,338 @@
 """The translation popup (native's Ctrl+Q window) on PySide6.
 
-Native's popup is a frameless 200x68 window: a grey body with a 1px
-border, a top row with a close button, the language pair, a star and the
-popup's own icons, and the translation below.
+The popup is NOT a fixed 200x68 box. Native sizes it to its content: a
+header strip with the language pair and the icon row, the translation
+body under it, and -- while the pointer is over the window -- a provider
+strip along the bottom. It grows to fit a long translation and shrinks
+for a short one, bounded only by the screen.
 
-The capture is ``docs/review/native_screens/2130.png`` -- the popup
-floating over another application, so the window itself is the 200x68
-rectangle at (28, 30)..(227, 97) of that image, with its interior the
-``#d0d0d0`` popup background and its border ``#53606c``. The rest of
-that image is the application behind it, which is not part of the
-popup.
+MEASURED off the operator's two captures of the native
+(``screenshots`` 2162 and 2163, 2026-10-23), which supersede the older
+2130 reading of a small empty popup:
+
+    2162  the window spans x 24..622 (598 client pixels) for a text that
+          wraps to two lines; the body is the SAME grey as the header,
+          with no white panel behind the text
+    2163  the same window with the pointer over it: the provider strip
+          sits on the bottom row (``#e0e0e0``, the selected cell
+          ``#b0b0b0``), the cells are 65px apart, and the header icons
+          end 5px from the right edge at 17px steps
+
+So the width tracks the text, clamped to a reading range whose UPPER
+bound is the 598px the native itself settled on, and the height is the
+header + the wrapped body + (while hovering) the strip. Nothing is
+hardcoded to a pixel count that assumes a short string.
 """
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QCursor
+from PySide6.QtGui import QCursor, QFont, QGuiApplication, QPalette
 from PySide6.QtWidgets import QLabel, QWidget
 
-from qtranslate_style import POPUP_BG, POPUP_BORDER, POPUP_ICON, POPUP_TEXT
+from qtranslate_style import POPUP_BORDER, POPUP_ICON, POPUP_TEXT
 
-from .widgets import icon
+from . import icons
+
+
+def popup_bg() -> str:
+    """The popup's own background: the platform's ``COLOR_BTNFACE``.
+
+    Native's ``DefaultColorTheme`` leaves ``Window/Normal`` unset and
+    every slot it does not compile comes from ``GetSysColor`` -- so the
+    popup paints with the SYSTEM button face, not with a constant this
+    port picked.
+
+    Both captures confirm it. 2163's field is ``#f0f0f0``, which is this
+    host's ``COLOR_BTNFACE``. 2162's field reads ``#cccccc`` -- 204 --
+    which is the SAME ``#f0f0f0`` seen through the popup's default
+    transparency of 217: ``240 * 217 / 255 = 204.2``. One popup, two
+    pictures, and the only difference is how much of what is behind it
+    shows through.
+
+    A hardcoded ``#d0d0d0`` matched neither. On a host whose button face
+    is a different colour it would not match at all.
+
+    The palette is asked of Win32 directly where it exists. Qt's own
+    ``QPalette.Button`` answers with its own style's colour -- on this
+    host ``#e3e3e3``, which is neither capture -- because the native asks
+    the OS, not a toolkit.
+    """
+    try:
+        import ctypes
+        c = int(ctypes.windll.user32.GetSysColor(15))   # COLOR_BTNFACE
+        return "#%02x%02x%02x" % (c & 255, (c >> 8) & 255, (c >> 16) & 255)
+    except Exception:
+        pass
+    try:
+        pal = QGuiApplication.palette()
+        # QPalette.Button is the button face; asking the platform for it
+        # is what GetSysColor(COLOR_BTNFACE) does in native.
+        c = pal.color(QPalette.Button)
+        if c.isValid():
+            return c.name()
+    except Exception:
+        pass
+    return "#f0f0f0"
+
+# The width range. The lower bound is the narrowest a two-word result
+# still reads at; the upper is the 598 client pixels the native itself
+# settled on (2162: x 24..622) for a long line. Both are bounds, not the
+# size -- the text decides inside them.
+MIN_WIDTH = 220
+MAX_WIDTH = 598
+# The header: the close mark, the pair, the icons on the right.
+# 2162: the client starts at y 23 and the first body line's glyphs start
+# at y 47 -- a 24px header.
+HEADER_H = 24
+# The provider strip, shown only while the pointer is over the window.
+# 2163: the buttons span y 55..76, so 22px.
+STRIP_H = 22
+# The body's left inset. 2162 puts the first glyph at x 26, two pixels
+# inside the frame at x 24.
+PAD = 3
+# The header icons are right-aligned and 17px apart: 2163 has them at
+# x 510, 527, 544, 564, 580 with the frame at 599. The last one keeps a
+# 6px margin.
+ICON_STEP = 17
+ICON_MARGIN = 6
+
+
+def _measure(text: str, width: int, font: QFont) -> int:
+    """The height a wrapped body needs at ``width``.
+
+    Measured with the SAME wrap flag the label uses (``TextWordWrap``)
+    and with the label's own font, so a long translation wraps into more
+    lines and the window grows instead of clipping.
+    """
+    from PySide6.QtGui import QFontMetrics
+    fm = QFontMetrics(font)
+    rect = fm.boundingRect(0, 0, max(1, width - 2 * PAD), 100000,
+                           int(Qt.TextWordWrap), text or "")
+    # boundingRect returns the text block's height; an empty or one-line
+    # body still needs one line's worth.
+    return max(int(rect.height()), int(fm.height()))
+
+
+def _strip_icon_name(name: str) -> str:
+    """The ``service_icons`` asset for a provider, or '' if there is none."""
+    from . import icons as _icons
+    try:
+        if _icons.pixmap("service_icons", name) is not None:
+            return name
+    except Exception:
+        pass
+    return ""
+
+
+def _strip_label(parent, name: str, width: int, app) -> str:
+    """The service's display name, cut to ``xx...`` when it does not fit.
+
+    This is native's own rule, the one the main window's strip applies:
+    a 65px cell leaves 42px for the text, which fits "Google", "Promt",
+    "Baidu" and "DeepL" but not the longer names -- 2163 shows "Mic...",
+    "Bab...", "Yan...", "you..." and "Pap...", so a name that does not
+    fit is cut to THREE characters and an ellipsis.
+    """
+    full = ""
+    try:
+        full = app.service_display(name) if app else name
+    except Exception:
+        full = name
+    from PySide6.QtGui import QFontMetrics
+    fm = QFontMetrics(parent.font())
+    if fm.horizontalAdvance(full) <= width - 23:
+        return full
+    return full[:3] + "..."
 
 
 class PopupWindow(QWidget):
-    """The popup: a frameless tool window that shows one translation."""
+    """The popup: a frameless tool window that sizes itself to its text."""
 
-    ORIGIN, SIZE = (0, 0), (200, 68)
+    ORIGIN, SIZE = (0, 0), (MIN_WIDTH, HEADER_H + 24)
 
     def __init__(self, app=None):
         super().__init__(None, Qt.FramelessWindowHint | Qt.Tool
                          | Qt.WindowStaysOnTopHint)
         self.app = app
-        self.setFixedSize(200, 68)
         self.setStyleSheet("Popup{background:%s;border:1px solid %s;}"
-                           % (POPUP_BG, POPUP_BORDER))
+                           % (popup_bg(), POPUP_BORDER))
         self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setMouseTracking(True)
 
         self.btn_close = QLabel("✕", self)
         self.btn_close.setStyleSheet("background:transparent;color:%s;"
                                      % POPUP_ICON)
-        self.btn_close.setGeometry(7, 4, 12, 16)
 
         self.lbl_pair = QLabel("", self)
         self.lbl_pair.setStyleSheet("background:transparent;color:%s;"
                                     % POPUP_ICON)
-        self.lbl_pair.setGeometry(25, 4, 100, 16)
 
-        self.lbl_star = QLabel("★", self)
-        self.lbl_star.setStyleSheet("background:transparent;color:%s;"
-                                    % POPUP_ICON)
-        self.lbl_star.setGeometry(128, 4, 16, 16)
+        self._header = self._header_icons()
 
-        self._extension_icons()
-
+        # Native draws the translation on the SAME grey as the header --
+        # both captures show one flat ``#cccccc`` / ``#f0f0f0`` field from
+        # the title row to the last line of text, with no white panel
+        # behind it. A white body was the port's own invention.
         self.lbl_text = QLabel("", self)
+        self.lbl_text.setWordWrap(True)
+        self.lbl_text.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         self.lbl_text.setStyleSheet("background:transparent;color:%s;"
-                                     % POPUP_TEXT)
-        self.lbl_text.setGeometry(6, 30, 188, 16)
+                                    "border:none;" % POPUP_TEXT)
+
+        self._strip = self._provider_strip()
+        self._fill("", "", "")
+
+    # ------------------------------------------------------------ pieces
+    def _header_icons(self):
+        """The five marks on the right of the title row.
+
+        Native's row is star, dictionary, listen, copy and the
+        transliteration mark, right-aligned at 17px steps with a 6px
+        margin from the frame (2163: x 510, 527, 544, 564, 580 with the
+        frame at 599).
+
+        All five are pixmaps from the binary's own RT_ICON resources, not
+        glyphs. They were glyphs first, and two of the five came out as
+        tofu boxes: this host's 488 font families have no coverage of
+        U+1F4D6 or U+29C9, so the picture showed empty rectangles where
+        native shows a book and a copy mark. Native draws pixels, so the
+        port does too.
+        """
+        # The star is the OUTLINE one (``star_off``): both captures show
+        # the grey hollow star, which is native's "not in Favorites" mark.
+        # Filling it in would claim a saved entry the user never made.
+        out = []
+        for name in ("star_off", "book", "headphone", "copy", "translit"):
+            q = QLabel("", self)
+            q.setStyleSheet("background:transparent;")
+            q.setPixmap(icons.pixmap("ui_icons", name))
+            out.append(q)
+        out.extend(self._extension_icons())
+        return out
+
+    def _provider_strip(self) -> QWidget:
+        """The strip the native reserves along the bottom.
+
+        Both captures are the same height -- 2162 is 81px, 2163 is 82px
+        -- so the strip's ROW is always there and only its CELLS appear
+        while the pointer is over the window. The port used to add the
+        strip's height on hover, which made the window grow under the
+        cursor. The cells come from the app, so the strip follows
+        whatever services are live rather than a hardcoded list.
+        """
+        w = QWidget(self)
+        w.setStyleSheet("background:#e0e0e0;")
+        self._strip_buttons = []
+        self._strip_icons = []
+        self._strip_labels = []
+        names = []
+        try:
+            names = self.app.ordered_services() if self.app else []
+        except Exception:
+            names = []
+        for i, name in enumerate(names):
+            # 2163's separators sit 65px apart (x 70, 135, 200, ...), and
+            # each cell is an icon then the service's display name, cut
+            # the same way the main window's strip cuts it ("Micro...").
+            b = QLabel(w)
+            b.setStyleSheet(
+                "background:%s;border:none;border-right:1px solid %s;"
+                % ("#b0b0b0" if (self.app is not None
+                                  and name == self.app.service)
+                   else "#e0e0e0", "#7e7e7e"))
+            b.setGeometry(65 * i, 0, 65, STRIP_H)
+
+            ico = QLabel(w)
+            icon_name = _strip_icon_name(name)
+            if icon_name:
+                ico.setPixmap(icons.pixmap("service_icons", icon_name))
+                ico.setGeometry(65 * i + 4, 3, 16, 16)
+
+            lab = QLabel(w)
+            lab.setText(_strip_label(self, name, 65, self.app))
+            lab.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            lab.setStyleSheet("background:transparent;color:#000;border:none;")
+            lab.setGeometry(65 * i + 22, 0, 42, STRIP_H)
+
+            for child in (b, ico, lab):
+                child.hide()
+            self._strip_buttons.append(b)
+            self._strip_icons.append(ico)
+            self._strip_labels.append(lab)
+        return w
 
     def _extension_icons(self):
         """Entries an extension contributed to the popup's icon row.
 
         The slot is ("popup", "icons") -- native's PopupWindowIcons. A
-        contribution is a callable returning a short label; it is placed
-        in the row after the star. With no extension the row is exactly
-        the native's (a close mark, the pair, the star), so the pixels
-        are unchanged.
+        contribution is a callable returning a short label.
         """
         app = getattr(self, "app", None)
         manager = getattr(app, "ext_manager", None)
         slots = getattr(manager, "ui_slots", None) if manager else None
+        labels = []
         if slots is None:
-            return
+            return labels
         try:
             entries = slots.entries("popup", "icons")
         except Exception:
-            return
-        x = 148
+            return labels
         for entry in entries:
             contrib = entry.get("contribution")
             if not callable(contrib):
                 continue
             try:
-                label = str(contrib() or "")
+                text = str(contrib() or "")
             except Exception:
                 continue
-            if not label:
+            if not text:
                 continue
-            q = QLabel(label[:2], self)
+            q = QLabel(text[:2], self)
             q.setStyleSheet("background:transparent;color:%s;" % POPUP_ICON)
-            q.setGeometry(x, 4, 14, 16)
-            x += 16
+            labels.append(q)
+        return labels
 
-    def set_text(self, source: str, result: str, pair: str = ""):
-        """Show one translation."""
+    # ------------------------------------------------------------- layout
+    def _wanted_width(self, source: str, result: str) -> int:
+        """The width the content asks for, clamped to the reading range."""
+        from PySide6.QtGui import QFontMetrics
+        fm = QFontMetrics(self.lbl_text.font())
+        longest = max(
+            [fm.horizontalAdvance(line) for line in (result or "").split("\n")]
+            or [0])
+        pair = QFontMetrics(self.lbl_pair.font()).horizontalAdvance(
+            source or "")
+        want = max(longest, pair) + 2 * PAD + 2
+        return max(MIN_WIDTH, min(MAX_WIDTH, want))
+
+    def _fill(self, source: str, result: str, pair: str):
+        """Place the header, the body and the strip row."""
         self.lbl_pair.setText(pair or (source or "")[:40])
         self.lbl_text.setText(result or "")
-        self.adjustSize()
+        w = self._wanted_width(source, result)
+        body_h = _measure(result or "", w, self.lbl_text.font())
+        # The strip row is reserved whether or not the pointer is on the
+        # window (see ``_provider_strip``), so hovering never resizes it.
+        h = HEADER_H + body_h + 2 * PAD + STRIP_H
+
+        self.setFixedSize(w, h)
+        self.btn_close.setGeometry(PAD, 4, 12, 16)
+        self.lbl_pair.setGeometry(PAD + 16, 4, max(60, w - 190), 16)
+        # Right-aligned, 17px apart, 6px in from the frame.
+        n = len(self._header)
+        x0 = w - ICON_MARGIN - ICON_STEP * n
+        for i, q in enumerate(self._header):
+            q.setGeometry(x0 + ICON_STEP * i, 4, 16, 16)
+        self.lbl_text.setGeometry(PAD, HEADER_H, w - 2 * PAD, body_h)
+        self._strip.setGeometry(1, h - STRIP_H - 1, w - 2, STRIP_H)
+
+    def set_text(self, source: str, result: str, pair: str = ""):
+        """Show one translation, sized to it."""
+        self._fill(source, result, pair)
         self._extension_body(source, result, pair)
 
     def _extension_body(self, source: str, result: str, pair: str):
-        """Let an extension render the popup's body instead.
-
-        The published slot is ``("popup", "body")``: an extension
-        registers anything callable, and it receives the same three
-        pieces the built-in label gets. Its answer replaces the
-        built-in text. With no extension the built-in label is left
-        exactly as it was, so the native's pixels are unchanged.
-        """
+        """Let an extension render the popup's body instead."""
         app = getattr(self, "app", None)
         manager = getattr(app, "ext_manager", None)
         slots = getattr(manager, "ui_slots", None) if manager else None
@@ -125,8 +350,6 @@ class PopupWindow(QWidget):
         try:
             text = contrib(source, result, pair)
         except TypeError:
-            # A contribution may take just the result; the simplest
-            # contract wins rather than failing the popup.
             try:
                 text = contrib(result)
             except Exception:
@@ -135,39 +358,41 @@ class PopupWindow(QWidget):
             return
         if text is None:
             return
-        self.lbl_text.setText(str(text))
-        self.adjustSize()
+        self._fill(source, str(text), pair)
+
+    # --------------------------------------------------------------- hover
+    def enterEvent(self, event):                # noqa: N802 (Qt name)
+        """Show the strip's cells. The row itself is always reserved."""
+        for group in ("_strip_buttons", "_strip_icons", "_strip_labels"):
+            for w in getattr(self, group, None) or ():
+                w.show()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):                # noqa: N802 (Qt name)
+        for group in ("_strip_buttons", "_strip_icons", "_strip_labels"):
+            for w in getattr(self, group, None) or ():
+                w.hide()
+        super().leaveEvent(event)
 
     # ------------------------------------------------------------- show
     def place(self):
-        """The Appearance popup settings, native's ShowPopupWindow.
-
-        The tkinter popup did this through `_place_aux`; the bodies it
-        drew are the same three: the saved alpha, the position (near the
-        pointer when PopupAutoPos is on, the remembered blob when not),
-        and the auto-close timer.
-        """
+        """The Appearance popup settings, native's ShowPopupWindow."""
         try:
             from qtranslate import config as _C
             _ap = _C.load().get("Appearance", {})
         except Exception:
             _ap = {}
-        # PopupAutoFocus: steal focus only when enabled (default False).
         if _ap.get("PopupAutoFocus"):
             try:
                 self.activateWindow()
                 self.setFocus()
             except Exception:
                 pass
-        # Transparency 0..255 -> window alpha (only when < 255). Native
-        # default 217 (DAT_005494A4), not 255.
         try:
             _tr = int(_ap.get("Transparency", 217))
             self.setWindowOpacity(_tr / 255.0 if 0 < _tr < 255 else 1.0)
         except Exception:
             pass
-        # PopupAutoPos: place near the pointer. When off, restore the
-        # remembered geometry (General.WindowPopupPlacement).
         if _ap.get("PopupAutoPos", True):
             try:
                 p = QCursor.pos()
@@ -185,7 +410,6 @@ class PopupWindow(QWidget):
                     self.move(x, y)
             except Exception:
                 pass
-        # PopupTimeout (seconds): auto-close; 0/absent = stay.
         try:
             _to = int(_ap.get("PopupTimeout", 0))
         except Exception:

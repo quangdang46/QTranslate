@@ -142,8 +142,14 @@ if m:
        has_return_after_translate)
     ck("cursor_text is consulted inside _work",
        "cursor_text" in body)
+    # The clipboard-send fallback is still there, but it lives in the
+    # shared capture engine now (qtranslate/selection.py) instead of
+    # inline here -- so this pins the CALL, and the engine pins the send.
+    _sel = open(os.path.join(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))), "qtranslate", "selection.py"),
+        encoding="utf-8", errors="replace").read()
     ck("clipboard send stays as the fallback",
-       'ctrl+c' in body)
+       "copy_selection" in body and 'send("ctrl+c")' in _sel)
 
 
 def _branch(cursor_value, mode):

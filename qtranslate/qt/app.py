@@ -659,14 +659,10 @@ class QtApp:
                 text = ""
             if text:
                 return text
-        try:
-            from qtranslate import sendkeys
-            sendkeys.send("ctrl+c")
-            import time
-            time.sleep(0.15)
-        except Exception:
-            pass
-        return self._clipboard_text()
+        # Same copy-capture as Ctrl+Q: a fixed sleep is a guess, and on a
+        # slow target it read the clipboard BEFORE the copy landed.
+        from qtranslate import selection
+        return (selection.copy_selection() or "").strip()
 
     def quit(self):
         self.qapp.quit()
@@ -686,7 +682,20 @@ class QtApp:
                                self.source)
         return res
 
-    def show_translation(self, text, result):
+    def popup_pair(self, provider: str = "") -> str:
+        """The line native puts in the popup's title row.
+
+        Both captures read ``Vietnamese to English (Google)``: the SOURCE
+        language, the word "to", the TARGET language, then the service
+        that answered in brackets. It is built from the live settings, so
+        it follows the pair the user picked instead of a fixed string.
+        """
+        src = self._display(self.source) if self.source != "auto" else "Auto"
+        tgt = self._display(self.target)
+        name = self.service_display(provider or self.service)
+        return "%s to %s (%s)" % (src, tgt, name)
+
+    def show_translation(self, text, result, provider: str = ""):
         """Show one translation: the panes, the history and the popup.
 
         This is the step the popup hotkey and the mouse mode share, and
@@ -699,7 +708,8 @@ class QtApp:
         try:
             from .popup import PopupWindow
             self._popup = PopupWindow(self)
-            self._popup.set_text(text[:300], result)
+            self._popup.set_text(text[:300], result,
+                                 self.popup_pair(provider))
             self._popup.place()
             self._popup.show()
         except Exception:
@@ -722,9 +732,19 @@ class QtApp:
             pass
 
     def hotkey_popup(self):
-        """Native's Ctrl+Q: translate what is on the clipboard and show
-        it in the popup."""
-        text = self._clipboard_text()
+        """Native's Ctrl+Q: translate the SELECTED text, in the popup.
+
+        ``help.txt`` says "Translate selected text and show it in popup
+        window", so the selection is copied first (``selection.
+        copy_selection``, native's ``FUN_0043BF30`` copy-capture) instead
+        of trusting whatever happened to be on the clipboard. Reading the
+        old clipboard is what a bare ``paste()`` did, and it translated
+        the wrong text whenever the user had selected something new.
+        """
+        from qtranslate import selection
+        text = (selection.copy_selection() or "").strip()
+        if not text:
+            text = self._clipboard_text()
         if not text:
             return
         res = self._translate(text)
@@ -740,8 +760,15 @@ class QtApp:
         self.push_hist(self.service, text[:120], res.text[:200])
 
     def hotkey_replace_selection(self):
-        """Native's Alt+W: translate the selection and type it back."""
-        text = self._clipboard_text()
+        """Native's Alt+W: translate the selection and type it back.
+
+        Reads the SELECTION, not the clipboard -- the whole point of the
+        action is to replace what the user has highlighted.
+        """
+        from qtranslate import selection
+        text = (selection.copy_selection() or "").strip()
+        if not text:
+            text = self._clipboard_text()
         if not text:
             return
         res = self._translate(text)

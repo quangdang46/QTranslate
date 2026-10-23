@@ -106,15 +106,28 @@ ck("PopupAutoPos defaults True (cursor-adjacent)",
 ck("PopupAutoFocus defaults off (do not steal focus)",
    '"PopupAutoFocus": False' in _c)
 
-# 7. the popup, constructed, is the native's 200x68 frameless window
+# 7. the popup, constructed, sizes itself to its content (bounded, not
+#    a fixed pixel count -- measured off two captures, resting 2162 and
+#    hover 2163, 2026-10-23: 650x124 and 600x82 for two DIFFERENT texts,
+#    so there is no one "native size" to pin)
 try:
     from qtranslate.qt import app as _qa
     _app = _qa.QtApp([])
     from PySide6.QtCore import Qt as _Qt
-    from qtranslate.qt.popup import PopupWindow
+    from qtranslate.qt.popup import MAX_WIDTH, MIN_WIDTH, PopupWindow
     p = PopupWindow(None)
-    ck("the popup is the native's size", (p.width(), p.height())
-       == (200, 68), "%dx%d" % (p.width(), p.height()))
+    ck("the empty popup sits at the lower width bound",
+       p.width() == MIN_WIDTH, "%dx%d" % (p.width(), p.height()))
+    p.set_text("hi", "hi", "A to B")
+    short = (p.width(), p.height())
+    p.set_text("a very long result " * 12, "a very long result " * 12,
+               "A to B")
+    long_ = (p.width(), p.height())
+    ck("a long translation grows the popup past a short one",
+       long_[0] >= short[0] and long_[1] >= short[1],
+       "%r vs %r" % (short, long_))
+    ck("the width stays within the reading-range bound",
+       MIN_WIDTH <= long_[0] <= MAX_WIDTH, long_)
     ck("the popup is frameless",
        (_Qt.FramelessWindowHint & p.windowFlags()) != 0,
        str(p.windowFlags()))

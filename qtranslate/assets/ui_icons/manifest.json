@@ -56,6 +56,21 @@
    "file": "history.png",
    "recovered_from": "ui_05_0_16x16.png",
    "note": "the clock of the Dictionary window's top-right button box; matched against the native capture at (427,37) with a mean channel difference of 9.7"
+  },
+  "book": {
+   "file": "book.png",
+   "recovered_from": "ui_13_0_16x16.png",
+   "note": "the dictionary mark of the Ctrl+Q popup's title row; matched against the operator's capture 2163 at (527,3) with a mean channel difference of 40.1, the best of all 24 recovered 16x16 resources"
+  },
+  "copy": {
+   "file": "copy.png",
+   "recovered_from": "ui_10_0_16x16.png",
+   "note": "the two-sheet copy mark of the Ctrl+Q popup's title row; matched against capture 2163 at (562,3) with a mean channel difference of 46.6, the best of all 24"
+  },
+  "translit": {
+   "file": "translit.png",
+   "recovered_from": "ui_16_0_16x16.png",
+   "note": "the transliteration mark of the Ctrl+Q popup's title row; matched against capture 2163 at (578,3) with a mean channel difference of 42.6, the best of all 24"
   }
  }
 }

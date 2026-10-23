@@ -184,6 +184,8 @@ try:
 
     # --- 6. the popup ----------------------------------------------------
     try:
+        from qtranslate.qt.popup import MAX_WIDTH as MAX_W
+        from qtranslate.qt.popup import MIN_WIDTH as MIN_W
         from qtranslate.qt.popup import PopupWindow
         pop = PopupWindow(app)
         windows.append(pop)
@@ -192,8 +194,19 @@ try:
            pop.lbl_text.text() == "Xin chào", pop.lbl_text.text())
         ck("the popup shows the language pair",
            pop.lbl_pair.text() == "English -> Vietnamese", pop.lbl_pair.text())
-        ck("the popup is the native's size", (pop.width(), pop.height()) == (200, 68),
+        # The popup SIZES TO ITS TEXT (native 2162/2163): a fixed size
+        # clips a long translation. The bounds are the reading range; the
+        # text picks the number inside them.
+        ck("the popup keeps its width inside the reading range",
+           MIN_W <= pop.width() <= MAX_W,
            "%dx%d" % (pop.width(), pop.height()))
+        _short = (pop.width(), pop.height())
+        pop.set_text("hello", "x " * 200, "English -> Vietnamese")
+        ck("a long translation makes the popup wider and taller",
+           pop.width() >= _short[0] and pop.height() >= _short[1],
+           "%s -> %dx%d" % (_short, pop.width(), pop.height()))
+        ck("the width is clamped, not unbounded", pop.width() <= MAX_W,
+           str(pop.width()))
     except Exception as exc:                   # noqa: BLE001
         ck("the popup builds and takes text", False,
            "%s: %s" % (type(exc).__name__, exc))
@@ -229,10 +242,15 @@ try:
         def show(self):
             shown["popup"] = self.lbl_text.text
 
+    import qtranslate.selection as _sel
+    _real_copy = _sel.copy_selection
+    _sel.copy_selection = lambda **kw: "xin chao (selected)"
     try:
         popup_mod.PopupWindow = _Popup
         app.win.src.setPlainText("old")
-        app._clipboard_text = lambda: "xin chào"
+        # The clipboard still holds STALE text: the point of the
+        # copy-capture fix is that Ctrl+Q copies the SELECTION, not this.
+        app._clipboard_text = lambda: "STALE clipboard"
         engine.translate = fake_translate
         try:
             app.hotkey_popup()
@@ -240,11 +258,14 @@ try:
             engine.translate = real_translate
         ck("Ctrl+Q shows the translation in the popup",
            shown.get("popup") == "Xin chào", str(shown))
-        ck("Ctrl+Q puts the source in the pane",
-           "xin chào" in app.win.src.toPlainText(), app.win.src.toPlainText()[:40])
+        ck("Ctrl+Q puts the SELECTION in the pane, not the stale clip",
+           "xin chao (selected)" in app.win.src.toPlainText()
+           and "STALE clipboard" not in app.win.src.toPlainText(),
+           app.win.src.toPlainText()[:60])
         ck("Ctrl+Q writes the history", len(app.history) >= 1)
     finally:
         popup_mod.PopupWindow = real_popup.PopupWindow
+        _sel.copy_selection = _real_copy
 
     # The mouse mode: the hook is started when the mode is on and
     # stopped when it is off, the mode is written to the config, and a
@@ -304,9 +325,10 @@ try:
         }
 
         # Mode 1 ("Show translation"): the click copies the selection
-        # and the clipboard's text is translated.
+        # through the same copy-capture the Ctrl+Q hotkey uses.
         app.set_mouse_mode(MOUSE_MODES[1])
         app._clipboard_text = lambda: "text from the clipboard"
+        _sel.copy_selection = lambda **kw: "text from the clipboard"
         shown.clear()
         popup_mod.PopupWindow = _Popup
         try:

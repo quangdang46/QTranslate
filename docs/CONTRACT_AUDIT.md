@@ -31,7 +31,7 @@ Done on 2026-10-23 at `6636686`, on this machine.
 | The bundle builds | yes | `tools/build_bundle.py`, exit 0 |
 | The FROZEN bundle's selftest | `SELFTEST PASS 29/29` | `dist/QTranslate/QTranslate.exe --selftest` |
 | The frozen-module gap check | clean | the build fails on a module Analysis missed |
-| The full suite | **130 suites, 0 failed, 64.4s** | `python -I tools/run_suites.py` |
+| The full suite | **134 suites, 0 failed, 56.1s** | `python -I tools/run_suites.py`, 2026-10-23, on this machine |
 | Docs consistency | 0 findings | `tools/docs_consistency.py` |
 
 **Two defects the build found, both fixed:**
@@ -151,6 +151,26 @@ is not.
 | G10 | the suite is green; final acceptance waits on G9 |
 
 Neither G9 item may be self-assigned. `qt-fj5` is exactly those two.
+
+## P0' -- Ctrl+Q end to end, closed 2026-10-23
+
+The C2C audit's own highest priority: "confirm that Ctrl+Q correctly
+captures the selected text and shows the popup next to the mouse
+cursor, and that the app does not crash" -- ahead of any speed work.
+
+| Claim | State | Evidence |
+|---|---|---|
+| Ctrl+Q does not crash | **Behaviour-verified** | `hotkeys.install()` marshals every callback onto the UI thread via `_UiInvoker`; `regress_qt_features.py`'s Ctrl+Q case constructs and drives the real `QtApp` |
+| Ctrl+Q reads the SELECTION, not a stale clipboard | **Behaviour-verified -- a real gap, now closed** | `hotkey_popup()` called `pyperclip.paste()` directly, no Ctrl+C. `help.txt` line 3 says "Translate **selected** text". Fixed via `qtranslate/selection.copy_selection()`, native's own copy-capture engine (`FUN_0043BF30`): synthesize Ctrl+C, poll the clipboard SEQUENCE NUMBER with the native 8..320ms backoff until it changes -- that change is native's own proof the copy landed, not a guess. `regress_selection_capture.py` (15) drives every seam: the backoff shape, a slow copy, a refused Ctrl+C, no sequence counter at all, a held modifier |
+| The popup appears beside the pointer | **Wired** | `PopupWindow.place()` reads `Appearance.PopupAutoPos` and moves to `QCursor.pos()`; not independently verified on a live desktop session in this audit |
+| The popup matches native's two captures | **Behaviour-verified against the captures, not platform-verified** | measured off the operator's 2162 (resting) and 2163 (hover): both fields are `#f0f0f0` seen at two transparencies, the five title icons are the binary's own `RT_ICON` resources (not glyphs, two of which were tofu boxes on this host's fonts), the provider strip's cells and the `xx...` label rule match. `ui_match.py` and `regress_popup_smoke.py` pin the bounds (content-sized, not a fixed pixel count) |
+
+The remaining honest gap: no automated check drives a REAL global
+hotkey press against a REAL foreground window outside this process (a
+human at the keyboard is what actually proves "no crash" and "beside
+the cursor" on a live desktop). Everything that can be driven offline
+-- the thread marshalling, the copy-capture engine, the popup's layout
+and colours -- is driven and pinned.
 
 ## What this audit changes
 

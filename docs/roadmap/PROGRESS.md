@@ -3,6 +3,50 @@
 The running log. Newest first. Every entry names what changed and what
 was run to show it.
 
+## 2026-10-23 -- Ctrl+Q copies the SELECTION, and the popup matches two captures
+
+`hotkey_popup()` read `pyperclip.paste()` directly: no Ctrl+C, so a user
+who selected new text and pressed Ctrl+Q got the OLD clipboard content
+translated. That was the audit's P0, and `help.txt` line 3 agrees --
+"Ctrl+Q => Translate selected text and show it in popup window". The
+reading is now native's copy-capture (`FUN_0043BF30`, `NATIVE_ARCH.md`
+item 4), as its own module (`qtranslate/selection.py`): snapshot the
+sequence number, synthesize Ctrl+C, poll with the native 8ms..320ms
+backoff until the number CHANGES. `tests/regress_selection_capture.py`
+(15 assertions) pins the backoff, the slow-copy wait, the refused-copy
+fallback, the held-modifier wait, and that Ctrl+Q, Alt+W and the mouse
+modes' `_capture_selection` all go through it.
+
+The same subtree reworked the popup to the operator's two captures:
+
+- 2162 (resting): the window runs x 24..622 with the text on the SAME
+  grey as the header, no white panel;
+- 2163 (hover): the five title icons end 5px from the frame at 17px
+  steps, and the provider strip shows 9 icon+label cells, 65px apart.
+
+What the work found: both fields are `#f0f0f0`, this host's
+`COLOR_BTNFACE` -- 2162's `#cccccc` is the same field seen through the
+default transparency of 217 (`240 * 217/255 = 204.2`). The popup reads
+it from `user32.GetSysColor(15)` where Win32 exists instead of carrying
+a constant. The five title marks are now `RT_ICON` pixmaps recovered
+from the binary (`book`/`copy`/`translit` join `star` and `headphone`
+in the assets manifest with match distances); the two-glyph version
+came out as tofu boxes on all 488 font families here. The header pair
+reads `Vietnamese to English (Google)` from the live settings now,
+and the strip follows the main window's own `xx...` rule.
+
+Because the popup sizes to its text, the two old fixed-size pins
+(`ui_match.py`'s and `regress_popup_smoke.py`'s `(200,68)`) now pin the
+bounds instead -- and the two suites caught the other stale pins along
+the way (mouse-capture's inline `ctrl+c`, sendkeys' direct grep, the
+wiring orphan set's `clipboard` which `selection.py` reaches again).
+
+```
+134 suites, 0 failed, 56.1s
+```
+
+Pixel-parity: 0.0037 over the 12 captured screens, docs-consistency: 0.
+
 ## 2026-10-23 -- all eight extension capabilities are real
 
 The audit's headline finding was that the manifest named eight

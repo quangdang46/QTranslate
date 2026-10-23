@@ -78,8 +78,19 @@ ck("no direct keyboard.send left in the views",
    re.search(r"^\s*keyboard\.send\(", _app, re.M) is None)
 ck("no direct keyboard.write left in the views",
    re.search(r"^\s*keyboard\.write\(", _app, re.M) is None)
-ck("sendkeys.send used", "_SK.send(" in _app or "_SK2" in _app
-   or "_SK3.send(" in _app or 'sendkeys.send("ctrl+c")' in _app)
+# The synthesis call is a fixed string inside `sendkeys.send()`'s own
+# callers -- direct grep for `sendkeys.send("ctrl+c")` breaks whenever a
+# call site moves to the shared capture engine (it did: hotkeys, Alt+W
+# and mouse capture all go through `selection.copy_selection` now). What
+# must stay true is that the only door to the `keyboard` package is the
+# `sendkeys` module wrapper.
+import glob  # noqa: E402
+_used = _app + open("qtranslate/selection.py", encoding="utf-8").read()
+ck("sendkeys.send used",
+   'sendkeys.send(' in _used
+   or "copy_selection" in _app)
+ck("the raw key combo still flows through the sendkeys wrapper",
+   '"ctrl+c"' in _used)
 
 if fails:
     print("FAIL %d" % len(fails))

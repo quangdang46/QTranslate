@@ -136,7 +136,9 @@ KNOWN_UNWIRED = {"sdk"}
 # each is a real Core feature the Qt view has not wired yet -- recorded
 # here rather than silently accepted or silently deleted:
 #   clipboard  -- the Win32 clipboard writer (FUN_0043BE56); the Qt view
-#                 uses pyperclip directly
+#                 uses pyperclip directly, BUT selection.copy_selection
+#                 reaches it for the sequence poll, so it left this set
+#                 2026-10-23 when the copy-capture engine landed.
 #   fonts      -- General.FontName/TextSize resolution; the Qt view uses
 #                 the measured fixed font
 #   history    -- the history EXPORTERS (Save as...); the Qt History
@@ -146,7 +148,7 @@ KNOWN_UNWIRED = {"sdk"}
 #   updater    -- the update-manifest fetch; no view calls it
 #   override_ui and updater have no consumer at all; the other three are
 #   gaps to close in the Qt view, not dead code.
-KNOWN_UNWIRED |= {"clipboard", "fonts", "history", "override_ui", "updater"}
+KNOWN_UNWIRED |= {"fonts", "history", "override_ui", "updater"}
 
 expected = sorted(ENTRY_POINTS | KNOWN_DEAD | KNOWN_UNWIRED)
 ck("orphan set is exactly the known one",

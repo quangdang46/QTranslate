@@ -169,7 +169,7 @@ except Exception as e:
 # flagged the menu.)
 
 # 7. popup structure
-from qtranslate.qt.popup import PopupWindow
+from qtranslate.qt.popup import MAX_WIDTH, MIN_WIDTH, PopupWindow
 from PySide6.QtCore import Qt as _Qt
 p = PopupWindow(None)
 check("popup-exists", p is not None)
@@ -180,7 +180,15 @@ check("popup-no-buttons",
            if isinstance(w, QtWidgets.QPushButton)]) == 0,
       "%d buttons" % len([w for w in p.children()
                           if isinstance(w, QtWidgets.QPushButton)]))
-check("popup-size", (p.width(), p.height()) == (200, 68),
+# The popup sizes to its text: two native captures of the SAME window
+# (2162 resting at 650x124, 2163 hover at 600x82) hold different texts,
+# so a fixed pixel size cannot be the right pin. The bounds are.
+check("popup-size-bounded", MIN_WIDTH <= p.width() <= MAX_WIDTH,
+      f"{p.width()}x{p.height()}")
+p.set_text("x" * 400, "x " * 400, "A to B")
+check("popup-grows-with-text", p.width() > MIN_WIDTH,
+      f"{p.width()}x{p.height()}")
+check("popup-width-clamped", p.width() <= MAX_WIDTH,
       f"{p.width()}x{p.height()}")
 
 # 8. Hotkeys page: 17 real actions, decoded bindings, no duplicates
