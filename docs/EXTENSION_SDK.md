@@ -98,7 +98,12 @@ from qtranslate_sdk import TranslationProvider, TranslationRequest, TranslationR
 
 class MyGoogle(TranslationProvider):
     id = "provider.my_google"
-    capabilities = {"translate", "detect"}
+    # NOTE: the capability vocabulary is the host's, not this sketch's:
+    # {"provider", "workflow", "theme", "ui", "dictionary", "tts",
+    #  "ocr", "spell"}. An old draft of this example said {"translate",
+    # "detect"} -- no such kinds exist in `extensions.KNOWN_CAPABILITIES`
+    # and a manifest declaring them is refused with ManifestError.
+    capabilities = {"provider"}
     languages = ["en", "vi", "ja", ...]
 
     def translate(self, req: TranslationRequest) -> TranslationResult: ...
