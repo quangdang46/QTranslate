@@ -120,20 +120,22 @@ ck("doc records IAccessible::get_accValue fallback",
 
 # --- app.py's mode-2 branch must route cursor text, not the clipboard ---
 app_src = open(os.path.join(os.path.dirname(os.path.dirname(
-    os.path.abspath(__file__))), "qtranslate", "app.py"),
+    os.path.abspath(__file__))), "qtranslate", "qt", "app.py"),
     encoding="utf-8", errors="replace").read()
-ck("app.py reads MouseMode for the branch", 'get("MouseMode"' in app_src)
-ck("app.py calls cursor_text for mode 2", "cursor_text" in app_src)
-ck("app.py has _translate_text", "_translate_text" in app_src)
+ck("the Qt view reads MouseMode for the branch", 'get("MouseMode"' in app_src)
+ck("the Qt view calls cursor_text for mode 2", "cursor_text" in app_src)
+ck("the Qt view has _capture_selection", "_capture_selection" in app_src)
 
 # the branch must be `if mode == 2: ... cursor_text ... return` so mode 1/0
 # still take the clipboard path, and an empty OLEACC read falls through to it.
 import re  # noqa: E402
-m = re.search(r"def _mouse_mode_select\(app, x, y\):.*?\n\n\n", app_src, re.S)
-ck("_mouse_mode_select located", m is not None)
+m = re.search(r"def _capture_selection\(self, x, y\).*?(?=\n    def |\n\nclass )",
+              app_src, re.S)
+ck("the Qt view's capture function is located", m is not None)
 if m:
     body = m.group(0)
-    has_mode_branch = re.search(r"mode\s*==\s*2", body) is not None
+    has_mode_branch = re.search(r"_mouse_mode_index\(\)\s*==\s*2", body) \
+        is not None
     has_return_after_translate = "return" in body
     ck("mode==2 branch present", has_mode_branch)
     ck("mode-2 path returns before the clipboard send",
@@ -175,14 +177,19 @@ ck("cycle 1 -> 2", _cycle(1) == 2)
 ck("cycle 2 -> 0 (wraps)", _cycle(2) == 0)
 # app.py sets MouseModeOn = (mode != 0) after the cycle: on for 1/2, off
 # for 0. Assert the real expression, not a tautology.
-ck("app.py sets MouseModeOn = (mode != 0)",
-   re.search(r'\["MouseModeOn"\]\s*=\s*mode\s*!=\s*0', app_src)
+# The Qt view persists the "on" flag from the mode INDEX: true for the
+# two translate modes, false for "Show icon" (native's General.MouseModeOn).
+ck("the Qt view sets MouseModeOn from the mode index",
+   re.search(r'\["MouseModeOn"\]\s*=\s*idx\s*!=\s*0', app_src)
    is not None,
    "MouseModeOn must be true for modes 1/2 and false for 0")
-# app.py must keep the same wrap expression (no off-by-one drift).
-ck("app.py cycles with (mode+1)%3",
-   re.search(r"\+ 1\) % 3", app_src) is not None,
+# ...and cycles with the same wrap, no off-by-one drift.
+ck("the Qt view cycles the mode with (i+1)%len",
+   re.search(r"\(i \+ 1\) % len\(MOUSE_MODES\)", app_src) is not None,
    "mode-cycle expression changed")
+ck("the Qt view has the mode hook (not just a label)",
+   "_sync_mouse_hook" in app_src and "_capture_selection" in app_src,
+   "the mouse mode is not wired")
 
 
 if fail:

@@ -72,8 +72,8 @@
 
 | Path | Lines/Size | Role |
 |------|-----------|------|
-| `qtranslate/app.py` | 2,088 lines | Tkinter UI + hotkey + clipboard + orchestration (see §3). **All six** window classes Phase 7 names were extracted out of it on 2026-10-16 — see `qtranslate/windows.py` below |
-| `qtranslate/windows.py` | 5,016 lines | The Phase 7 split: `HistoryView`, `DictionaryView`, `TrayController`, `PopupHost`, `OptionsDialog` and `MainWindow` (the 6th, extracted last, on 2026-10-16). Each class is a transcription of the pre-split body, proven identical by `tests/regress_windows.py` (53 assertions, compared against the split commit's *parent*) |
+| ~~`qtranslate/app.py`~~ (deleted 2026-10-23) | 2,088 lines | Tkinter UI + hotkey + clipboard + orchestration (see §3). **All six** window classes Phase 7 names were extracted out of it on 2026-10-16 — see the windows.py row below (that file was deleted with the tkinter front end on 2026-10-23) |
+| ~~`qtranslate/windows.py`~~ (deleted 2026-10-23) | 5,016 lines | The Phase 7 split: `HistoryView`, `DictionaryView`, `TrayController`, `PopupHost`, `OptionsDialog` and `MainWindow` (the 6th, extracted last, on 2026-10-16). Each class is a transcription of the pre-split body, proven identical by `regress_windows.py` (53 assertions, compared against the split commit's *parent*; that suite was retired with the tkinter front end on 2026-10-23) |
 | `qtranslate/common.py` | 356 lines | 1:1 port of `Common.js` (RequestData/ResponseData, capability bitmask, helpers) |
 | `qtranslate/config.py` | 247 lines | `Options.json` model, hotkey decode, service ids/order |
 | `qtranslate/session.py` | 179 lines | Session/token scrape (Bing, Promt), net timeout/proxy |
@@ -162,7 +162,7 @@ Full structural audit (delegated, line-cited):
 - **Orchestration interleaved with widgets:** `on_hotkey` (`:3337`) reads
   `app.current()` then writes `app.src`/render/history; same for the clipboard
   monitor (`:3407`) and `_replace` (`:3592`). `PopupHost.open`'s
-  `_to_main` (`qtranslate/windows.py:902`) builds a **second `tk.Tk()` +
+  `_to_main` (windows.py line 902, a file since deleted) builds a **second `tk.Tk()` +
   `App`** inside a popup callback — noted here again because the extraction
   *moved* that latent problem without fixing it, and `app.py`'s only
   remaining `tk.Tk()` is the legitimate `main()` one (`:2966`).

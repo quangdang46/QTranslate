@@ -162,66 +162,27 @@ in the main window, and a window with no extension has no panel.
 
 In the order it should be picked up.
 
-### 4.1 The language combo's list (the user's 2160.png)
+### 4.1 The language combo's list -- DONE (commit 004e852)
 
-The combo lists all 75 provider languages and overflows the screen.
-Native's combo shows a fixed list from its locale pack. To close it:
+The user's 2160.png: the drop-down ran off the screen. Three faults, all
+fixed and pinned in `tests/regress_qt_combo_popup.py` (15 assertions):
 
-- read the native's own language list and its ORDER out of the shipped
-  `Locales/English/lang.json` (the same file the mouse-mode names came
-  from),
-- measure the native's combo behaviour off a capture (does it scroll? is
-  there a filter box?), and
-- make `qtranslate/qt/main_window.py`'s combo use that list.
+1. the drop-down was as tall as the WHOLE list (1266px for the 74
+   languages) where the native's dialog resource asks for 120 DLUs =
+   225px;
+2. it had no scroll bar, so languages past the fold were unreachable;
+3. the current row was painted black on black.
 
-The list the combo needs is in the locale pack, so this is a
-transcription job, not a measurement job -- but the BEHAVIOUR (scroll
-or filter) needs a capture of native's open combo, which does not exist
-yet.
+### 4.2 Delete the tkinter front end -- DONE (commit a3c372d)
 
-### 4.2 Delete the tkinter front end (the user's explicit request)
+`qtranslate/app.py`, `qtranslate/windows.py` and `start_app.py` are gone;
+the bundle ships one Qt executable. The tests that exercised the
+tkinter view were ported or retired, and `qtranslate/qt/` is the only
+front end.
 
-**Decision taken:** delete tkinter, KEEP the extension platform.
+### 4.3 The extension platform -- DONE
 
-The scope, and what each step costs:
-
-| File | Lines | What depends on it |
-|---|---|---|
-| `qtranslate/app.py` | 2,097 | the tkinter view; 32 files import it |
-| `qtranslate/windows.py` | 5,234 | the six extracted tkinter window classes |
-| `start_app.py` | 47 | the tkinter entry point |
-| `qtranslate.spec` / `tools/build_bundle.py` | -- | package BOTH `QTranslate.exe` (tk) and `QTranslate-Qt.exe` (Qt) |
-
-The tests that exercise the tkinter view and must be ported to Qt or
-dropped (they are the reason the removal is more than a delete):
-
-```
-regress_aux_windows_fidelity.py   regress_main_window_fidelity.py
-regress_core_result_uses.py       regress_options_pages_native.py
-regress_crash_failfast.py         regress_packaging.py
-regress_crash_reporter.py         regress_registry.py
-regress_delegators.py             regress_reliability.py
-regress_dict_window_fidelity.py   regress_source_language.py
-regress_enable_history.py         regress_startup_entry.py
-regress_engine.py                 regress_translate_errors.py
-regress_exact_search.py           regress_tray_menu.py
-                                  regress_windows.py
-                                  ui_match.py          (the live GUI suite)
-tools/ui_parity.py                (the tkinter render-compare tool)
-```
-
-Also `qtranslate/screens.py` and `qtranslate/win32app.py` import
-`qtranslate/app.py` -- check what they take from it before deleting.
-
-The Qt view already covers what those tests cover (the nine Options
-pages, the History/Dictionary/Keyboard windows, the popup, the tray,
-the hotkeys, the strip) -- `tests/regress_qt_features.py` is the
-tkinter suite's successor, and it is where the ported assertions
-should land.
-
-### 4.3 The extension platform -- DONE, except the conflict UX
-
-All three of the audit's items were closed on 2026-10-23:
+All four of the audit's items were closed on 2026-10-23:
 
 1. **The popup slot** -- `qtranslate/qt/popup.py` reads
    `("popup", "body")` and lets a contribution render the body. With no

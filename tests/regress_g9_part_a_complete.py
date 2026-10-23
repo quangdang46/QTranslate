@@ -112,9 +112,12 @@ ck("the checklist row itself still says 17 controls",
    "cDlgItems=17" in G9 or "17 controls" in G9)
 
 # --- 4. the port's main window honours the template's control set ------
-app = io.open(os.path.join(REPO, "qtranslate", "app.py"),
+# The tkinter app.py recorded this; it was deleted on 2026-10-23. The
+# template's own record lives in win32app.py (the Win32 re-creation of
+# DLG 129), which is still the file that transcribes the control set.
+app = io.open(os.path.join(REPO, "qtranslate", "win32app.py"),
               encoding="utf-8", errors="replace").read()
-ck("app.py still records DLG 129 / 340x201 / 17 controls",
+ck("the port still records DLG 129 / 340x201 / 17 controls",
    "DLG 129" in app and "340x201" in app and "17 control" in app)
 
 # --- 5. what is NOT here, stated so it is not quietly assumed ----------

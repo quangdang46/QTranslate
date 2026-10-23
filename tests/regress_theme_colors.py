@@ -610,21 +610,15 @@ else:
     # the four fields independently and nothing resolves a theme file against
     # them for the main window. Measured, so this is a divergence, not a
     # preference argument.
-    src_app = ""
+    # 2026-10-23: the tkinter app.py that carried `_default_colors` was
+    # DELETED, so the contradiction below is gone with it rather than
+    # fixed. The finding stays recorded in the paragraph above, and the
+    # check now asserts the file is gone -- if it ever comes back, the
+    # divergence comes back with it.
     ap = os.path.join(ROOT, "qtranslate", "app.py")
-    if os.path.exists(ap):
-        src_app = open(ap, encoding="utf-8", errors="replace").read()
-    i = src_app.find("def _default_colors")
-    j = src_app.find("def ", i + 10) if i >= 0 else -1
-    fn = src_app[i:j] if i >= 0 and j > i else ""
-    ck("_default_colors' docstring states native's main-window rule",
-       "does NOT use Themes/*.json" in fn,
-       "the docstring is the measured rule and it is correct")
-    ck("...but the body loads a theme file for the main window anyway",
-       "load_theme(THEME)" in fn,
-       "contradiction between the doc and the code: the doc says the main "
-       "window never reads Themes/*.json, the body reads one first whenever "
-       "THEME != 'Blue'")
+    ck("the tkinter module that carried _default_colors is gone",
+       not os.path.exists(ap),
+       "app.py returned; re-check the main-window theme rule")
     ck("and load_theme RAISES rather than returning None, so both sites are "
        "guarded only by a bare except",
        True,

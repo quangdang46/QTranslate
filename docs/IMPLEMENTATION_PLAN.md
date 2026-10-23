@@ -292,7 +292,7 @@ add panel/menu/popup without touching Core.
 > `qtranslate/windows.py` — `HistoryView`, `DictionaryView`,
 > `TrayController`, `PopupHost`, `OptionsDialog` and `MainWindow` — each
 > verified **byte-identical** to the pre-split body by
-> `tests/regress_windows.py` (53 assertions, compared against the parent of
+> `regress_windows.py` (53 assertions then; retired with the tkinter front end on 2026-10-23, compared against the parent of
 > the split commit so the baseline cannot drift). `app.py` keeps a thin
 > delegator for each with the original signature, so every existing suite
 > still exercises the same behavior through the same entry point.
@@ -314,7 +314,7 @@ add panel/menu/popup without touching Core.
 > **RESOLVED 2026-10-16 (slice 6/6):** the sixth class, `MainWindow`,
 > was extracted as a **transcription** rather than a restructure — the
 > mechanical `self.` → `self.app.` substitution and nothing else, proved
-> by `tests/regress_windows.py` (53 assertions) and by a before/after
+> by `regress_windows.py` (53 assertions, since retired) and by a before/after
 > widget-geometry comparison that came out band for band identical. The
 > 2026-10-21 UI-fidelity pass then rebuilt the surfaces against native's
 > own captures (`docs/review/UI_FIDELITY_*.md`).
@@ -376,7 +376,7 @@ happened is recorded here rather than deferred.
 | Bead | Decided | Outcome |
 |---|---|---|
 | **G9 (`qt-fj5`)** | Part (a) is a *binary* question and needs no screenshot. | **CLOSED.** `tools/dlg_parse.py` fixed a field-width bug (the control id is 4 bytes; reading it as 2 shifted every later field, which is where `1342275648` came from — a *style* value read as an id). All three of the 2026-10-10 doc's unresolved items are now resolved: control id `1001` **is** present (the source ComboBox; the checklist was right, the walker was wrong), the six icon buttons are `1021/1022/1029/1030/1027/1028` (not "four owner-draw, ids unknown"), and DLU→px is a **range** (`510×326` … `595×376`), which no candidate metric reduces to `526×366`. Corroborated by all 13 ids in `win32app.py`, written independently. `G9_PART_A_CLOSED_2026-10-16.md`. Part (b) still needs a human reviewer, so **G9 stays `UNKNOWN` and the Gate stays `BLOCKED (1)`** — closing (a) does not promote G9. |
-| **Phase 7 (`qt-o7p`)** | Do the extraction, but as a *transcription* with mechanical proof, not a restructure. | **6 of 6 classes landed** (`MainWindow` was the last, on 2026-10-16). `HistoryView`, `DictionaryView`, `TrayController`, `PopupHost`, `OptionsDialog` moved to `qtranslate/windows.py` (2,209 lines), each proven byte-identical by `tests/regress_windows.py` against the split commit's *parent* — so a rewritten move cannot pass. `App` is down from ~3,400 to 1,789 lines. `MainWindow` (the 6th) is deliberately not started: it *is* the app, not a window hanging off it. See Phase 7's entry for the reasoning and the bug the discipline caught. |
+| **Phase 7 (`qt-o7p`)** | Do the extraction, but as a *transcription* with mechanical proof, not a restructure. | **6 of 6 classes landed** (`MainWindow` was the last, on 2026-10-16). `HistoryView`, `DictionaryView`, `TrayController`, `PopupHost`, `OptionsDialog` moved to `qtranslate/windows.py` (2,209 lines), each proven byte-identical by regress_windows.py (retired with the tkinter front end on 2026-10-23) against the split commit's *parent* — so a rewritten move cannot pass. `App` is down from ~3,400 to 1,789 lines. `MainWindow` (the 6th) is deliberately not started: it *is* the app, not a window hanging off it. See Phase 7's entry for the reasoning and the bug the discipline caught. |
 | **Phase 8 (`qt-3ro`)** | PyInstaller, onedir, Windows-only — the only choice that can be *verified* here. | **Bundle built and verified.** `tools/build_bundle.py` writes the committed spec, builds, then runs the frozen exe's `--selftest` (18/18) — a sys.path probe against `_internal` is not equivalent, since pure modules live in the compressed PYZ. 48 MB onedir. Five real defects found by actually doing it, all fixed: `uv tool install pyinstaller` bundles its **own** Python (3.13) and silently dropped `keyboard`/`pyperclip`/`Pillow`, which would have shipped an app with no hotkeys and no icons; `app.show_override_conflicts` imported `override_ui` from a package that does not export it, and the surrounding `except Exception: return` swallowed the `ImportError` so the D18 dialog never opened (and the same `from X import <submodule>` shape hid it from PyInstaller too); `app._sync_icon` had inlined a *different* tray rule while `tray_state.select_state` held native's and nothing called it; six qtranslate modules existed that the bundle would not have carried (`_frozen_gap()` now fails the build); and `regress_crash_failfast` wrote `Exceptions.json` into the user's real `%APPDATA%`. macOS is recorded as open, not silently dropped — a bundle that cannot be produced *or verified* here must not be claimed. |
 
 | Bead | Status | What is left, and why it is not code |

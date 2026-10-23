@@ -130,16 +130,27 @@ def main(argv):
         # per-document checks below.
         rel = "docs/" + os.path.relpath(path, DOCS).replace("\\", "/")
 
+        # A DATED review note is a record of what was true when it was
+        # written: its citations name the tests and modules that existed
+        # then. A file deleted since does not make the note wrong, so the
+        # dead-citation checks are skipped for docs/review/*_<date>.md --
+        # the same rule that keeps a changelog honest. Living documents
+        # (docs/roadmap/, docs/*.md) are still checked.
+        historical = re.search(
+            r"docs/review/[^/]+_\d{4}-\d{2}-\d{2}\.md$", rel) is not None
+
         # dead test citations
-        for cite in set(TEST_CITE.findall(text)):
-            if cite not in all_tests and \
-                    os.path.basename(cite) not in all_tests:
-                findings.append(("dead-test", rel, cite))
+        if not historical:
+            for cite in set(TEST_CITE.findall(text)):
+                if cite not in all_tests and \
+                        os.path.basename(cite) not in all_tests:
+                    findings.append(("dead-test", rel, cite))
 
         # dead port / test citations
-        for cite in set(PORT_CITE.findall(text)):
-            if cite not in all_ports and cite not in all_tests:
-                findings.append(("dead-port", rel, cite))
+        if not historical:
+            for cite in set(PORT_CITE.findall(text)):
+                if cite not in all_ports and cite not in all_tests:
+                    findings.append(("dead-port", rel, cite))
 
         # dead doc citations. A doc may legitimately cite a file that is
         # NOT in this repo when it is describing someone else's material

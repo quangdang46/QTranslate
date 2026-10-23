@@ -46,7 +46,7 @@ def ck(name, cond, detail=""):
         fail.append(f"{name} -- {detail}")
 
 
-app_src = open(os.path.join(ROOT, "qtranslate", "app.py"),
+app_src = open(os.path.join(ROOT, "qtranslate", "qt", "app.py"),
                encoding="utf-8", errors="replace").read()
 # Slice 2 (2026-10-15) moved the orchestration into engine.py; app.do_translate
 # is a thin forwarder. The src==dst echo lives in the engine body now.
@@ -120,11 +120,14 @@ if _reg_ok:
        re.search(r"_NATIVE_AUTO\s*=\s*\{", app_src) is None
        and re.search(r"_NATIVE_AUTO\s*=\s*\{", reg_src) is None,
        "the hardcoded set is still assigned somewhere")
-    ck("app.py holds an alias, not a second literal",
-       "from qtranslate.registry import USES_AUTO_DETECT" in app_src
-       and re.search(r"^_USES_AUTO_DETECT\s*=\s*\{", app_src,
-                     re.M) is None,
-       "two tables = two sources of truth again")
+    # The Qt view does not carry the table at all: it calls
+    # engine.translate, and the engine consults registry's table. The
+    # old assertion required an alias line in the tkinter app.py; with
+    # that file deleted, the honest check is that no SECOND table exists
+    # anywhere in the view.
+    ck("the Qt view holds no second auto-detect literal",
+       re.search(r"_USES_AUTO_DETECT\s*=\s*\{", app_src) is None,
+       "the view carries its own table = two sources of truth again")
     ck("engine.translate consults the capability",
        "uses_auto_detect(" in (m.group(0) if m else ""))
 

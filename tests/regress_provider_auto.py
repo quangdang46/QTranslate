@@ -98,7 +98,7 @@ for prov in ("yandex", "youdao", "babylon"):
 # Native: DAT_0054941f packed into FUN_004606ba forces detect even for a
 # concrete source; the Options-page byte DAT_005494e6 is RemoveLineBreaks.
 _app_src = _io.open(_os.path.join(_os.path.dirname(_os.path.dirname(
-    _os.path.abspath(__file__))), "qtranslate", "app.py"),
+    _os.path.abspath(__file__))), "qtranslate", "qt", "app.py"),
     encoding="utf-8").read()
 _eng_src = _io.open(_os.path.join(_os.path.dirname(_os.path.dirname(
     _os.path.abspath(__file__))), "qtranslate", "engine.py"),
@@ -109,8 +109,12 @@ check("engine.translate reads auto_detect (not dead wiring)",
       _body.count("auto_detect") >= 2, "refs=%d" % _body.count("auto_detect"))
 check("auto_detect forces detect for concrete src (via the request)",
       "elif req.auto_detect" in _body)
-check("app.do_translate forwards to the engine (no inline branch)",
-      "_ENG.translate" in _app_src.split("def do_translate", 1)[1])
+# The tkinter `do_translate` forwarder no longer exists; the VIEW calls
+# the engine directly, so the check is that the view does not grow a
+# second translation path of its own.
+check("the Qt view translates through the engine (no inline branch)",
+      "_ENG.translate" in _app_src or "engine.translate" in _app_src,
+      "the view does not reach the engine")
 
 if failures:
     raise SystemExit("FAIL:\n  " + "\n  ".join(failures))
