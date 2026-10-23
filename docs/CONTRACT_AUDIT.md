@@ -116,9 +116,9 @@ host, which is the same shape as the capability gap above.
 |---|---|---|
 | The twelve captured native screens are reproduced | **Behaviour-verified** | mean ink diff 0.0037 over twelve screens |
 | Every feature row has a test behind it | **Behaviour-verified** | every row that was `ported` now names a suite that runs; three of those rows (speech, the virtual keyboard, themes) had NO suite at all and one (`regress_sapi.py`) did not exist -- `regress_sapi_and_keyboard.py` and the existing theme/locale/OCR suites back them now |
-| Every native BEHAVIOUR is reproduced | **Missing** | a suite proves the surfaces above; that is not the same as proving native's behaviour on every screen |
+| Every native BEHAVIOUR is reproduced | **partly verified, and the remainder is named** | What IS proven: the twelve windows' pixels (0.0037), the strip's real icons and 56px geometry, the mouse mode's gates in native's order, the hotkeys' 17-key codec, the history's lifecycle, the nine Options pages' control sets, the fallback chain and its error strings. What is NOT proven and is not claimed: native's behaviour on the screens with no capture (the Basics page), the tray menu's live menu (no capture), and every endpoint that is dead by evidence. The audit's job is to keep that list true, not to shorten it by relabelling. |
 | The Basics Options page matches native | **Missing** | no native capture of it exists (BLOCKERS B4) |
-| The tray menu matches native item-for-item | **partial** | the menu is the OS's own; the item list was transcribed, not measured |
+| The tray menu matches native item-for-item | **partial, and the evidence is exhausted** | the menu is the OS's own, and NO native capture of it exists. The 13 captures were checked: 2126/2135-2141/2144 are Options pages, 2130 is the popup, 2131-2134 are the four windows. The item list comes from the locale pack's `Menus[].Id 5` block plus the reference renderer's markup, which is two independent transcriptions but not a picture. Recording it as partial is the honest state; a capture needs a person at the native. |
 | Dead endpoints behave like native's dead endpoints | **missing** | Babylon, ImTranslator, Google Search, Yandex TTS and Baidu TTS are `dead:` by evidence, which is honest, but they are not "working features" |
 
 ### Reliability
