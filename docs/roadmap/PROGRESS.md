@@ -3,6 +3,35 @@
 The running log. Newest first. Every entry names what changed and what
 was run to show it.
 
+## 2026-10-23 -- every matrix-cited suite re-run on f8f82c5; live providers probed
+
+The matrix's own evidence was next. Every `tests/*.py` file the
+COMPATIBILITY_MATRIX cites (39 files) was executed on `f8f82c5`:
+**38 pass, 1 not runnable here** -- `tests/live_bass.py`, which the
+matrix itself marks "manual, audio hardware" and which needs 32-bit
+Python for `bass.dll` (WinError 193 under the 64-bit venv). No row's
+suite failed.
+
+The live probe (`tests/live_providers.py`) hit the real endpoints:
+**20/21 LIVE-OK**. Two rows changed state, both in the matrix now:
+
+1. **Bing broke further** -- the session scrape itself fails now
+   (`Could not scrape Bing session (page layout changed?)`); the row
+   is demoted from `behaviour-verified` to `ported`, because a live
+   pass from 2026-10-08 is not evidence on this commit.
+2. **Youdao needs no session after all** -- `translate_web` EN→ZH and
+   the dictionary path verified live with no key; the row is promoted
+   from `ported` to `behaviour-verified` (Win only).
+
+Also gone: Reverso's Cloudflare wall (translate EN→FR now verifies
+live; it was 403 in the 2026-10-08 record). Recorded in
+`tests/LIVE_RESULTS.md`.
+
+```
+38/39 matrix-cited suites pass (live_bass: needs 32-bit py + hardware)
+20/21 live endpoints OK (bing.translate dead: session scrape)
+```
+
 ## 2026-10-23 -- full suite re-executed on f8f82c5 (verification only)
 
 The prior entries' runs predated the final commits; this entry records a

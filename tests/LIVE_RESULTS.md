@@ -1,3 +1,24 @@
+# Live verification results (2026-10-23, commit f8f82c5)
+
+Run: `.venv/Scripts/python.exe -I tests/live_providers.py` -- 20/21 LIVE-OK.
+
+Changes against the 2026-10-08 record:
+
+| Endpoint | 2026-10-08 | 2026-10-23 |
+|---|---|---|
+| `bing.translate` | LIVE-OK | **DEAD** -- `Could not scrape Bing session (page layout changed?)`; the request-shape defect the docs already recorded (statusCode 400) has become a session-scrape failure |
+| `dict.reverso` / `reverso.translate` | 403 Cloudflare wall | **LIVE-OK** -- the wall is gone (translate EN->FR verified) |
+
+Everything else matches the previous record, live from this commit:
+google (translate+tts), deepl (detect+translate), baidu (detect+suggest;
+translate still token-walled), yandex (translate), youdao
+(translate_web+dictionary), naver (detect+translate+dict+tts), oxford,
+lingvo, urban, wikipedia, multitran, wordreference (headless Chromium).
+
+`tests/live_bass.py` was NOT run to completion here: it needs 32-bit
+Python for `bass.dll` (WinError 193 under the 64-bit venv) and real
+audio hardware -- unchanged, as the matrix records it.
+
 # Live verification results (2026-10-08)
 
 Run: `python -I tests/live_providers.py`
