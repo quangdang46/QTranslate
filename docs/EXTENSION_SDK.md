@@ -240,6 +240,16 @@ All five were resolved and folded into `PROJECT_VISION.md`:
 > poisoning shapes — cross-extension and Core-shadow — are now closed and
 > reported. Pinned by `tests/regress_extension_vendor.py` (10 assertions).
 
+> **`capabilities` is now enforced (landed 2026-10-23).** The schema
+> names eight capabilities; the runtime hosts THREE -- `provider`,
+> `theme`, `ui`, the three with a `register_*` method and a consumer in
+> the app. A manifest declaring `workflow`, `dictionary`, `tts`, `ocr` or
+> `spell` is DISABLED with a defined error naming the hostable set,
+> instead of loading and then being silently ignored. The other five are
+> the target surface this document describes; each moves into
+> `HOSTED_CAPABILITIES` when it gets its `register_*` and its consumer.
+> The audit that measured the gap is `docs/CONTRACT_AUDIT.md`.
+
 > **The slots have hosts (landed 2026-10-23).** A registered contribution
 > is now READ by the running app, which is the half that was missing:
 >

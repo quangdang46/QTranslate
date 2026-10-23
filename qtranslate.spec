@@ -4,12 +4,10 @@
 Do not hand-edit: regenerate with `python -I tools/build_bundle.py --spec`
 so the tool and the spec cannot drift.
 
-Two entry points, TWO front ends over the same core:
-  start_app.py  the tkinter front end (the app that has shipped)
-  start_qt.py   the PySide6 front end (the parity port)
+One entry point, ONE front end over the core:
+  start_qt.py  the PySide6 front end (the tkinter one is retired)
 One directory output (dist/QTranslate/) with the Python runtime inside
-`_internal`, and two executables in it: QTranslate.exe and
-QTranslate-Qt.exe.
+`_internal`, and one executable in it: QTranslate.exe.
 """
 import os
 
@@ -18,21 +16,43 @@ block_cipher = None
 REPO = os.path.abspath(os.getcwd())
 
 a = Analysis(
-    [os.path.join(REPO, 'start_app.py')],
+    [os.path.join(REPO, 'start_qt.py')],
     pathex=[REPO],
     binaries=[],
     # The recovered native assets ARE committed and bundled: the 35 UI
-    # locale packs, the service strip icons and the main window's
-    # microphone/headphone icons, all recovered from the QTranslate 6.10.0
-    # installer payload / EXE resources. User data is still not bundled
-    # (D16 never loads extensions from the install dir).
-    datas=[('qtranslate/assets', 'qtranslate/assets')],
+    # locale packs, the service strip icons, the main window's
+    # microphone/headphone icons and the app icon -- all recovered from
+    # the QTranslate 6.10.0 installer payload / EXE resources. The dict
+    # shell template rides along: dict_render reads it from its own
+    # package directory, which in a frozen build is `_internal`/qtranslate.
+    # User data is still not bundled (D16 never loads extensions from the
+    # install dir).
+    datas=[('qtranslate/assets', 'qtranslate/assets'),
+           ('qtranslate/dict_template.html', 'qtranslate')],
     hiddenimports=[
-        # tkinter submodules imported lazily inside widgets/filedialog use.
-        'tkinter',
-        'tkinter.ttk',
-        'tkinter.filedialog',
-        'tkinter.messagebox',
+        # The Qt toolkit. PyInstaller's own PySide6 hook collects the
+        # plugins and the Qt translations.
+        'PySide6',
+        'PySide6.QtCore',
+        'PySide6.QtGui',
+        'PySide6.QtWidgets',
+        # The style module lives at the repo root, not in the package,
+        # and every qtranslate.qt window imports it.
+        'qtranslate_style',
+        # The front end's own package, named here so the set is
+        # reviewable in the spec rather than left to the import walk.
+        'qtranslate.qt.app',
+        'qtranslate.qt.widgets',
+        'qtranslate.qt.icons',
+        'qtranslate.qt.main_window',
+        'qtranslate.qt.options',
+        'qtranslate.qt.dictionary',
+        'qtranslate.qt.history_window',
+        'qtranslate.qt.hotkeys',
+        'qtranslate.qt.keyboard',
+        'qtranslate.qt.popup',
+        'qtranslate.qt.tray',
+        'qtranslate.qt.ocr_pick',
         # Platform/provider modules the registry resolves by NAME at runtime,
         # so a static import walk never sees them.
         'qtranslate.registry',
@@ -40,35 +60,54 @@ a = Analysis(
         # (every capability reports unavailable off-Windows); the registry
         # resolves adapters by name at runtime, so Analysis never sees them.
         'qtranslate.platforms',
-        # `qtranslate.screens` and `qtranslate.win32app` are standalone
-        # entry points (`python -m qtranslate.screens`, the pywin32
-        # variant) reached only via `__main__`, which Analysis never
-        # follows. They are user-invocable from a bundled install, so they
-        # are frozen.
-        'qtranslate.screens',
+        # `qtranslate.win32app` is a standalone entry point (`python
+        # qtranslate/win32app.py`, the pywin32 variant) reached only via
+        # `__main__`, which Analysis never follows. It is user-invocable
+        # from a bundled install, so it is frozen.
         'qtranslate.win32app',
         # `sdk` is the published SDK surface (D19 names the provisional
         # `qtranslate-sdk` pip package; this is the in-tree module the
         # bundle's own demo extensions import).
         'qtranslate.sdk',
         # `providers` holds the Provider contract + `build_adapters()`.
-        # Nothing in the app imports it yet (only
-        # tests/regress_provider_contract.py does), but it is the contract
-        # the Phase 2/3 migration is built on and it is importable and
-        # working -- an extension may legitimately reach for it, so it ships.
+        # The translation path routes through it via the reliability
+        # layer; the explicit name keeps the contract ship-or-fail, and
+        # it is importable for the bundle's demo extensions either way.
         'qtranslate.providers',
-        # The tray/window layer imports keyboard and pyperclip inside a
-        # try/except at module scope (they are runtime deps per
-        # requirements.txt). PyInstaller's Analysis follows the real import,
-        # but an optional-but-expected dep that raises on the *user's*
-        # machine is a support ticket: list them so the bundle carries them.
+        # The core surfaces the Qt view calls by lazy import. Each lives
+        # behind a `try: from qtranslate import X` at its call site, and
+        # a module PyInstaller never followed dies in front of the user:
+        # the selftest and this list are the two halves of the fix.
+        'qtranslate.engine',
+        'qtranslate.config',
+        'qtranslate.theme',
+        'qtranslate.extensions',
+        'qtranslate.tray_state',
+        'qtranslate.ui_slots',
+        'qtranslate.history',
+        'qtranslate.sendkeys',
+        # 2026-10-23: these five were reached ONLY through the tkinter
+        # modules. With those deleted, Analysis no longer follows them, and
+        # the frozen-gap check caught them missing from the bundle:
+        #   clipboard   -- the Win32 clipboard writer (FUN_0043BE56)
+        #   fonts       -- General.FontName/TextSize resolution
+        #   override_ui -- the conflict picker's Core half
+        #   screens     -- the reference/capture tool (`python -m
+        #                  qtranslate.screens <name>`), user-invocable
+        #   updater     -- the update-manifest fetch
+        # Each is a Core module the Qt view may call by lazy import; a
+        # module PyInstaller never followed dies in front of the user.
+        'qtranslate.clipboard',
+        'qtranslate.fonts',
+        'qtranslate.override_ui',
+        'qtranslate.screens',
+        'qtranslate.updater',
+        # The optional runtime deps (requirements.txt). PyInstaller's
+        # Analysis follows the real import, but an optional-but-expected
+        # dep that raises on the *user's* machine is a support ticket:
+        # list them so the bundle carries them.
         'keyboard',
         'pyperclip',
-        # Pillow backs the service-icon strip, the tray glyphs, and the OCR
-        # region capture.
-        'PIL',
-        'PIL.Image',
-        'PIL.ImageTk',
     ],
     hookspath=[],
     hooksconfig={},
@@ -115,99 +154,11 @@ exe = EXE(
     icon=['C:\\Users\\ADMIN\\qtranslate-re\\build\\assets\\QTranslate.ico'],
 )
 
-
-# The PySide6 front end. Its own Analysis, because its dependency tree
-# is its own: PySide6, the Qt stylesheet module (qtranslate_style) and
-# the qtranslate.qt package. The two executables share one _internal
-# tree, so the bundle carries the runtime and the assets once.
-aq = Analysis(
-    [os.path.join(REPO, 'start_qt.py')],
-    pathex=[REPO],
-    binaries=[],
-    # No datas of its own: the assets are the SAME files the tkinter
-    # front end ships, and the COLLECT puts them in the one shared
-    # _internal tree. Listing them twice would be two sources for one
-    # destination.
-    datas=[],
-    hiddenimports=[
-        # The Qt toolkit. PyInstaller's own PySide6 hook collects the
-        # plugins and the Qt translations.
-        'PySide6',
-        'PySide6.QtCore',
-        'PySide6.QtGui',
-        'PySide6.QtWidgets',
-        # The style module lives at the repo root, not in the package,
-        # and every qtranslate.qt window imports it.
-        'qtranslate_style',
-        # The front end's own package, named here so the set is
-        # reviewable in the spec rather than left to the import walk.
-        'qtranslate.qt.app',
-        'qtranslate.qt.widgets',
-        'qtranslate.qt.icons',
-        'qtranslate.qt.main_window',
-        'qtranslate.qt.options',
-        'qtranslate.qt.dictionary',
-        'qtranslate.qt.history_window',
-        'qtranslate.qt.keyboard',
-        'qtranslate.qt.popup',
-        # The same optional runtime deps the tkinter front end uses.
-        'keyboard',
-        'pyperclip',
-    ],
-    hookspath=[],
-    hooksconfig={},
-    runtime_hooks=[],
-    excludes=[
-        'pytest',
-        'PyInstaller',
-        'setuptools',
-        'pip',
-        'distutils',
-        'ensurepip',
-        'idlelib',
-        'turtledemo',
-        'tkinter.test',
-        'lib2to3',
-    ],
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
-    cipher=block_cipher,
-    noarchive=False,
-)
-pyzq = PYZ(aq.pure, aq.zipped_data, cipher=block_cipher)
-
-exeq = EXE(
-    pyzq,
-    aq.scripts,
-    [],
-    exclude_binaries=True,
-    name='QTranslate-Qt',
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=False,
-    console=False,
-    disable_windowed_traceback=False,
-    argv_emulation=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-    version='C:\\Users\\ADMIN\\qtranslate-re\\build\\assets\\version_info.txt',
-    icon=['C:\\Users\\ADMIN\\qtranslate-re\\build\\assets\\QTranslate.ico'],
-)
-
-
 coll = COLLECT(
     exe,
-    exeq,
     a.binaries,
     a.zipfiles,
     a.datas,
-    # The Qt analysis' own binaries: the PySide6 DLLs, the platform
-    # plugin and the Qt translations. Without them the second
-    # executable is not collected at all.
-    aq.binaries,
-    aq.zipfiles,
     strip=False,
     upx=False,
     upx_exclude=[],

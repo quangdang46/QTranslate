@@ -73,13 +73,25 @@ OVERRIDES_SECTION = "ExtensionOverrides"
 # startup. Empty until the user picks a winner.
 OVERRIDES_SECTION = "ExtensionOverrides"
 
-# Capability kinds an extension may declare (§2). Unknown kinds are
-# rejected: the manifest is a compatibility gate, and silently accepting
-# a kind the runtime cannot host would make ``capabilities`` a lie.
+# Capability kinds the manifest SCHEMA knows (§2). A name here is a word
+# the schema recognises, not a promise that the runtime can host it.
 KNOWN_CAPABILITIES = frozenset((
     "provider", "workflow", "theme", "ui",
     "dictionary", "tts", "ocr", "spell",
 ))
+
+# The subset the runtime can actually HOST: each has a register_* on
+# ExtensionAPI and a consumer in the app. A manifest declaring anything
+# outside this set is disabled with a defined error rather than loaded and
+# then silently ignored -- ``capabilities`` must not be a lie, which is
+# what the comment above has said since the field was added.
+#
+# The other five (workflow, dictionary, tts, ocr, spell) are named in the
+# schema because EXTENSION_SDK.md describes them as the target surface.
+# They are NOT hostable yet; the audit that found this is
+# docs/CONTRACT_AUDIT.md. When one gets its register_* and its consumer,
+# it moves into this set and its test proves it.
+HOSTED_CAPABILITIES = frozenset(("provider", "theme", "ui"))
 
 _REQUIRED_FIELDS = ("id", "name", "version", "sdk_version", "entrypoint",
                     "capabilities")
@@ -132,6 +144,12 @@ def validate(data):
     for capability in capabilities:
         if capability not in KNOWN_CAPABILITIES:
             raise ManifestError("unknown capability %r" % (capability,))
+        if capability not in HOSTED_CAPABILITIES:
+            raise ManifestError(
+                "capability %r is not hostable by this app yet (hostable: "
+                "%s); declaring it would promise behaviour the runtime "
+                "cannot deliver" % (capability,
+                                    ", ".join(sorted(HOSTED_CAPABILITIES))))
 
     replaces = data.get("replaces", [])
     if not isinstance(replaces, list) or any(

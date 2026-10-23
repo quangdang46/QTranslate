@@ -3,6 +3,47 @@
 The running log. Newest first. Every entry names what changed and what
 was run to show it.
 
+## 2026-10-23 -- the C2C contract audit, and the lie it found
+
+`docs/CONTRACT_AUDIT.md` checks every promise in `PROJECT_VISION.md`,
+`COMPATIBILITY_MATRIX.md` and `EXTENSION_SDK.md` against the code, on
+five states that are not interchangeable: Implemented, Wired,
+Behaviour-verified, Platform-verified, Missing.
+
+**What it found is a contract bug, not a missing feature.** The manifest
+schema names EIGHT capabilities; `ExtensionAPI` has THREE `register_*`
+methods. An extension declaring `workflow`, `dictionary`, `tts`, `ocr`
+or `spell` loaded with `status: "loaded"` and was then ignored -- so
+`capabilities` was a lie, which is the exact thing the field's own
+comment said it must not be. Measured, not inferred: all eight loaded.
+
+Fixed the honest way the docs already promised: a capability outside
+`HOSTED_CAPABILITIES` (provider, theme, ui) is REFUSED at manifest
+validation, with an error that names the hostable set, and the extension
+reports `disabled` rather than `loaded`. The other five are the target
+surface; each moves into the set when it gets its `register_*` AND its
+consumer in the app.
+
+**P0 also found two build defects**, both of which had been invisible
+because the build had not been run since the tkinter deletion:
+`build_bundle.py` passed `"--with keyboard==0.13.5"` as one argv entry
+instead of two (`uv` read the value as `" keyboard==0.13.5"` and the
+build died), and five Core modules (`clipboard`, `fonts`, `override_ui`,
+`screens`, `updater`) were reached only through the deleted tkinter code,
+so PyInstaller never bundled them. The frozen-gap check caught the five;
+they are `hiddenimports` now. The bundle builds and its own
+`--selftest` reads **PASS 29/29**.
+
+The audit also records what is still NOT verified and does not dress it
+up: five published UI slots with no host, `ported` rows in the feature
+matrix that are not `behaviour-verified`, the Basics page with no native
+capture, every endpoint that is dead by evidence, and macOS, where only
+the adapter has been written and nothing has been run.
+
+```
+130 suites, 0 failed, 55.8s
+```
+
 ## 2026-10-23 -- the extension platform, closed
 
 The audit's three remaining items, each closed with a test that proves
