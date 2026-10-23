@@ -109,6 +109,17 @@ class HistoryWindow(Base):
             act.triggered.connect(lambda _c=False, k=key, i=idx, e=ent:
                                   ops[k](i, e))
             m.addAction(act)
+        # The history item menu is native's menu id 6 (ui_slots
+        # "history_ctx").
+        from .widgets import extension_menu_entries
+        entries = extension_menu_entries(self, self.app, "history_ctx")
+        if entries:
+            m.addSeparator()
+        for label, contrib in entries:
+            act = QAction(label, m)
+            act.triggered.connect(
+                lambda _c=False, f=contrib: self.app.run_ui_contribution(f))
+            m.addAction(act)
         m.exec(gpos)
 
     # the five operations (each is the same op elsewhere in the window)

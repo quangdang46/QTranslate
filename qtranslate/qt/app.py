@@ -705,6 +705,22 @@ class QtApp:
         except Exception:
             pass
 
+    def run_ui_contribution(self, contrib):
+        """Run a menu contribution an extension registered."""
+        if not callable(contrib):
+            return
+        try:
+            result = contrib()
+        except Exception as exc:                # noqa: BLE001
+            result = "Extension failed: %s" % exc
+        if result is None:
+            return
+        try:
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.information(None, "QTranslate", str(result))
+        except Exception:
+            pass
+
     def hotkey_popup(self):
         """Native's Ctrl+Q: translate what is on the clipboard and show
         it in the popup."""

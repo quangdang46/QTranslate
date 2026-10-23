@@ -24,7 +24,8 @@ from PySide6.QtWidgets import (QComboBox, QLabel, QMenu, QPushButton,
 from qtranslate_style import THUMB
 
 from . import icons
-from .widgets import (Base, LINK, button, combo, hline, icon, label, put,
+from .widgets import (Base, LINK, button, combo, extension_menu_entries,
+                      hline, icon, label, put,
                       rect, vline)
 
 # The two text panes of the main window use a LARGER font than the
@@ -203,6 +204,9 @@ class MainWindow(Base):
     PANEL_STRIPS = {
         "top": (7, 195, 440, 16),
         "middle": (8, 376, 460, 16),
+        # The services pane: the strip sits just above the provider
+        # buttons, which start at y 397 (capture 2131).
+        "services": (7, 381, 500, 15),
     }
 
     def _build_panels(self):
@@ -291,6 +295,16 @@ class MainWindow(Base):
         a = QAction("Options", self)
         a.triggered.connect(self.app.open_options)
         m.addAction(a)
+        # The nav menu is native's menu id 1 (ui_slots "main"): an
+        # extension may add entries to it.
+        entries = extension_menu_entries(self, self.app, "main")
+        if entries:
+            m.addSeparator()
+        for label, contrib in entries:
+            act = QAction(label, self)
+            act.triggered.connect(
+                lambda _c=False, f=contrib: self.app.run_ui_contribution(f))
+            m.addAction(act)
         m.exec(self.btn_nav.mapToGlobal(self.btn_nav.rect().bottomLeft()))
 
     def _service_clicked(self, _e):

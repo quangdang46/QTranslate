@@ -38,7 +38,7 @@ def ck(name, cond, detail=""):
 
 
 try:
-    from PySide6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication, QLabel
 except Exception as exc:                       # noqa: BLE001
     print("SKIP regress_qt_extension_ui: PySide6 is not importable (%s)" % exc)
     raise SystemExit(0)
@@ -268,6 +268,36 @@ try:
                                       manager=_X.ExtensionManager(RG))
         ck("the refused extension is reported as disabled, not loaded",
            rep and rep[0]["status"] == "disabled", str(rep))
+
+        # --- every published slot now has a host ------------------------
+        # The audit found nine menu names, three panels and two popup
+        # slots published with a consumer for only three of them. Each is
+        # wired now; this proves the generic reader reaches the right
+        # slot rather than only the tray.
+        from qtranslate.qt.widgets import extension_menu_entries
+        slots.add("menu", "main", lambda: "main entry")
+        slots.add("menu", "history_ctx", lambda: "history entry")
+        slots.add("menu", "ocr", lambda: "ocr entry")
+        ck("the main menu slot is read",
+           [lab for lab, _f in extension_menu_entries(None, papp, "main")],
+           str(extension_menu_entries(None, papp, "main")))
+        ck("the history context slot is read",
+           bool(extension_menu_entries(None, papp, "history_ctx")))
+        ck("the OCR menu slot is read",
+           bool(extension_menu_entries(None, papp, "ocr")))
+        ck("a slot with no contribution is empty",
+           extension_menu_entries(None, papp, "language") == [])
+
+        slots.add("panel", "services", lambda: "Services panel")
+        swin = MainWindow(papp)
+        ck("the services panel slot is shown",
+           "services" in swin.panels, str(list(swin.panels)))
+
+        slots.add("popup", "icons", lambda: "ok")
+        pop2 = PopupWindow(papp)
+        ck("the popup icon slot is placed",
+           len([w for w in pop2.children() if isinstance(w, QLabel)]) >= 4,
+           str([type(w).__name__ for w in pop2.children()]))
     finally:
         RG.TRANSLATORS.clear()
         RG.TRANSLATORS.update(_ORIGINAL)

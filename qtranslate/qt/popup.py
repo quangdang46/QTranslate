@@ -51,10 +51,46 @@ class PopupWindow(QWidget):
                                     % POPUP_ICON)
         self.lbl_star.setGeometry(128, 4, 16, 16)
 
+        self._extension_icons()
+
         self.lbl_text = QLabel("", self)
         self.lbl_text.setStyleSheet("background:transparent;color:%s;"
                                      % POPUP_TEXT)
         self.lbl_text.setGeometry(6, 30, 188, 16)
+
+    def _extension_icons(self):
+        """Entries an extension contributed to the popup's icon row.
+
+        The slot is ("popup", "icons") -- native's PopupWindowIcons. A
+        contribution is a callable returning a short label; it is placed
+        in the row after the star. With no extension the row is exactly
+        the native's (a close mark, the pair, the star), so the pixels
+        are unchanged.
+        """
+        app = getattr(self, "app", None)
+        manager = getattr(app, "ext_manager", None)
+        slots = getattr(manager, "ui_slots", None) if manager else None
+        if slots is None:
+            return
+        try:
+            entries = slots.entries("popup", "icons")
+        except Exception:
+            return
+        x = 148
+        for entry in entries:
+            contrib = entry.get("contribution")
+            if not callable(contrib):
+                continue
+            try:
+                label = str(contrib() or "")
+            except Exception:
+                continue
+            if not label:
+                continue
+            q = QLabel(label[:2], self)
+            q.setStyleSheet("background:transparent;color:%s;" % POPUP_ICON)
+            q.setGeometry(x, 4, 14, 16)
+            x += 16
 
     def set_text(self, source: str, result: str, pair: str = ""):
         """Show one translation."""

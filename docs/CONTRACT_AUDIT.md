@@ -92,9 +92,9 @@ names. The host consumes:
 | `menu` / `tray` | the Qt tray menu adds one action per contribution | **Behaviour-verified** |
 | `panel` / `top`, `middle` | the main window docks a strip in that pane | **Behaviour-verified** |
 | `popup` / `body` | the popup lets the contribution render its text | **Behaviour-verified** |
-| `menu` / the other eight names | none | **Missing** |
-| `panel` / `services` | none | **Missing** |
-| `popup` / `icons` | none | **Missing** |
+| `menu` / the other eight names | every menu reads its own slot (`extension_menu_entries`) | **Wired** (main and history_ctx pinned; the reader is one function) |
+| `panel` / `services` | the main window docks a strip above the provider buttons | **Behaviour-verified** |
+| `popup` / `icons` | the popup places a contributed label in its icon row | **Behaviour-verified** |
 
 The three that work are the ones with a test
 (`regress_qt_extension_ui.py`). The rest are published names with no
@@ -161,7 +161,14 @@ column changing. The two things it found that are fixable now:
 1. **The capability gap** (P1). The runtime accepts eight capabilities
    and hosts three. This is the highest-value fix: it is a contract lie
    today, and the fix is small.
-2. **The five missing UI slots.** Published, no host.
+2. **The missing UI slots** -- closed the same day. Every published
+   slot now has a host: each menu draws its own slot through one shared
+   reader, the services pane has its strip, and the popup has its icon
+   row. `regress_qt_extension_ui.py` grew to 34 assertions, and the
+   pixel measure is unchanged (0.0037) because a window with no
+   extension draws exactly what native draws.
 
-Both are recorded here rather than fixed in the same pass, so the audit
-is a measurement and not a rewrite.
+The capability gap is closed by REFUSING the five, not by building
+them: the honest state is "the schema names eight, the app hosts three,
+and a manifest asking for the other five is told so". Building them is
+the larger change the vision describes, and it is still ahead.

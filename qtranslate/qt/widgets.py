@@ -268,6 +268,32 @@ def sq(parent, l, t, color, s=14):
     return rect(parent, l, t, s, s, color)
 
 
+def extension_menu_entries(parent, app, slot):
+    """The menu contributions an extension registered for ``slot``.
+
+    Every menu the app draws calls this with its OWN slot name
+    (``ui_slots.MENU_SLOT_IDS``: main, source_context, result_context,
+    language, tray, history_ctx, dict_header, history_menu, ocr), so a
+    contribution lands in the menu its author targeted instead of only in
+    the tray. Returns ``[(label, callable), ...]``; empty when no
+    extension contributes, which leaves the menu exactly as native's.
+    """
+    manager = getattr(app, "ext_manager", None)
+    slots = getattr(manager, "ui_slots", None) if manager else None
+    if slots is None:
+        return []
+    try:
+        entries = slots.entries("menu", slot)
+    except Exception:
+        return []
+    out = []
+    for entry in entries:
+        contrib = entry.get("contribution")
+        if callable(contrib):
+            out.append((entry.get("label") or "Extension", contrib))
+    return out
+
+
 class Base(QWidget):
     """A window whose client area is a fixed size, as native's are.
 
