@@ -59,28 +59,26 @@ A manifest may declare eight capabilities. `ExtensionAPI` has **three**
 | `provider` | `register_provider` | yes -- committed into `registry.TRANSLATORS`, reached by `engine.translate` | **Behaviour-verified** |
 | `theme` | `register_theme` | yes -- `QtApp.apply_theme` resolves through the manager and `apply_style` paints it | **Behaviour-verified** |
 | `ui` | `register_ui` | partly -- the tray menu, the top/middle panels and the popup body | **partial** |
-| `workflow` | none | none | **Missing** |
-| `dictionary` | none | none | **Missing** |
-| `tts` | none | none | **Missing** |
-| `ocr` | none | none | **Missing** |
-| `spell` | none | none | **Missing** |
+| `workflow` | `register_workflow` | yes -- `engine.translate` runs the step on the finished text | **Behaviour-verified** |
+| `dictionary` | `register_dictionary` | yes -- `sdk.dict_lookup` reads `registry.DICT_EXT` | **Behaviour-verified** |
+| `tts` | `register_tts` | yes -- `player.play_text` tries the extension backend first | **Behaviour-verified** |
+| `ocr` | `register_ocr` | yes -- `services.ocr.ocr_text` asks it before the endpoint | **Behaviour-verified** |
+| `spell` | `register_spell` | yes -- `registry.google_suggest` prefers it | **Behaviour-verified** |
 
-**Measured, not inferred.** An extension declaring ANY of the eight loads
-with `status: "loaded"` -- including the five the runtime cannot host.
-`extensions.py`'s own comment says the opposite ("silently accepting a
-kind the runtime cannot host would make `capabilities` a lie"), so the
-code contradicts its comment.
+**Measured, not inferred.** When the audit was written, an extension
+declaring ANY of the eight loaded with `status: "loaded"` -- including
+the five the runtime could not host -- so `capabilities` was a lie.
 
-**This is a contract bug, not a missing feature.** The fix is one of:
-
-- (a) give the five a `register_*` and a host consumer, or
-- (b) reject a manifest whose capabilities include one the runtime cannot
-  host, with a defined error the author can see.
-
-(b) is the smaller, honest change and it is what `EXTENSION_SDK.md`
-already promises; (a) is the bigger one the vision describes. Until one
-of them lands, a manifest's `capabilities` must not be read as a
-statement that the app supports them.
+**Closed the same day, both ways.** A capability outside the hostable
+set is refused at manifest validation with a defined error (so the
+field can never lie again), AND the five now exist: each has its
+`register_*` method, a live table on `registry` (`DICT_EXT`, `TTS_EXT`,
+`OCR_EXT`, `SPELL_EXT`, `WORKFLOW_EXT`), and a call site in the app that
+uses it. `tests/regress_extension_capabilities.py` proves each by
+driving the REAL app path -- `engine.translate`, `sdk.dict_lookup`,
+`player.play_text`, `ocr_text`, `google_suggest` -- and getting the
+extension's own answer back. A capability that raises falls through to
+the built-in instead of taking the call with it.
 
 ### The UI slots: three kinds, not every slot name
 
@@ -168,7 +166,7 @@ column changing. The two things it found that are fixable now:
    pixel measure is unchanged (0.0037) because a window with no
    extension draws exactly what native draws.
 
-The capability gap is closed by REFUSING the five, not by building
-them: the honest state is "the schema names eight, the app hosts three,
-and a manifest asking for the other five is told so". Building them is
-the larger change the vision describes, and it is still ahead.
+The capability gap is closed in both halves: the five are BUILT (each
+with a table and a call site, proven end to end) and the validator still
+refuses a name it does not know, so a manifest cannot claim a capability
+that does not exist.

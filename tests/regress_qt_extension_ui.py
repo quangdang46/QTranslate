@@ -240,18 +240,19 @@ try:
                                            KNOWN_CAPABILITIES, ManifestError,
                                            read_manifest)
         from qtranslate import extensions as _X
-        ck("the schema names more capabilities than the runtime hosts",
-           set(HOSTED_CAPABILITIES) < set(KNOWN_CAPABILITIES),
+        # 2026-10-23: every capability in the schema is hosted now (each
+        # has its register_* and a table the app reads), so the two sets
+        # are equal. The refusal that remains is for a name that is not
+        # in the schema at all.
+        ck("every schema capability is hosted",
+           set(HOSTED_CAPABILITIES) == set(KNOWN_CAPABILITIES),
            "%r vs %r" % (sorted(HOSTED_CAPABILITIES),
                          sorted(KNOWN_CAPABILITIES)))
-        ck("the hosted set is exactly the register_* surface",
-           set(HOSTED_CAPABILITIES) == {"provider", "theme", "ui"},
-           str(sorted(HOSTED_CAPABILITIES)))
         cap_dir = os.path.join(root, "cap")
         os.makedirs(cap_dir, exist_ok=True)
         write_ext(cap_dir, "ext_wf", "ext.wf",
                   "def register(api):\n    pass\n",
-                  capabilities=("workflow",))
+                  capabilities=("not-a-capability",))
         refused = False
         reason = ""
         try:
@@ -261,9 +262,8 @@ try:
             reason = str(exc)
         ck("an unhostable capability is refused at manifest validation",
            refused, "the manifest was accepted")
-        ck("the refusal names the hostable set",
-           "provider" in reason and "theme" in reason and "ui" in reason,
-           reason)
+        ck("the refusal names the offending capability",
+           "not-a-capability" in reason, reason)
         rep = _X.load_user_extensions(extensions_dir=cap_dir,
                                       manager=_X.ExtensionManager(RG))
         ck("the refused extension is reported as disabled, not loaded",

@@ -3,6 +3,52 @@
 The running log. Newest first. Every entry names what changed and what
 was run to show it.
 
+## 2026-10-23 -- all eight extension capabilities are real
+
+The audit's headline finding was that the manifest named eight
+capabilities and the API had three. The day the audit was written, the
+honest fix was to refuse the other five. This closes them the other way:
+they are BUILT.
+
+Each now has a `register_*` method, a live table on `registry`
+(`DICT_EXT`, `TTS_EXT`, `OCR_EXT`, `SPELL_EXT`, `WORKFLOW_EXT`), and a
+call site in the app that uses it:
+
+| capability | the app calls it from |
+|---|---|
+| `dictionary` | `sdk.dict_lookup` |
+| `tts` | `player.play_text` (tries the extension backend first) |
+| `ocr` | `services.ocr.ocr_text` (before the endpoint) |
+| `spell` | `registry.google_suggest` |
+| `workflow` | `engine.translate`, on the finished text |
+
+`tests/regress_extension_capabilities.py` follows the rule the audit
+set: a capability is supported when the APP calls the extension and the
+extension's own answer comes back, not when a manifest is accepted or a
+registration returns. So it drives the real paths -- `engine.translate`,
+`sdk.dict_lookup`, `player.play_text`, `ocr_text`, `google_suggest` --
+and checks the extension's answer at each.
+
+A capability that raises falls through to the built-in, so a broken
+extension cannot take a working translation, lookup or suggestion with
+it. And the validator still refuses a name outside the schema, so
+`capabilities` can never promise something the runtime does not have.
+
+**Two defects found while doing it, both fixed:**
+
+- `_register_in` derived the table name from the capability
+  (`dictExt` -> `DictExt`), which created a NEW attribute the app never
+  read -- registration "succeeded" and the extension was invisible. The
+  table name is now given in full.
+- `regress_qt_features.py` crashed at interpreter exit AFTER printing
+  "all checks ok": it closed the windows and let them be collected while
+  Qt still had queued events for them. The teardown now drains the loop
+  and keeps the references until the end.
+
+```
+131 suites, 0 failed, 49.1s
+```
+
 ## 2026-10-23 -- the C2C contract audit, and the lie it found
 
 `docs/CONTRACT_AUDIT.md` checks every promise in `PROJECT_VISION.md`,

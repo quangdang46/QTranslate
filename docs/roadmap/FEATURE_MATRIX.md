@@ -54,7 +54,7 @@ numbers.
 | Auto-detect, 6 steps | `regress_auto_detect_capability.py` | behaviour-verified | the same |
 | Reliability, fallback router | `reliability.py` | behaviour-verified | `regress_reliability.py` |
 | Extension loading + overrides | `extensions.py` | behaviour-verified | `regress_extension_*` |
-| Capability contract enforcement | `extensions.KNOWN_CAPABILITIES` | behaviour-verified (an unhostable capability is refused, not silently loaded) | `regress_qt_extension_ui.py` (28) |
+| All eight capabilities hosted | `extensions.ExtensionAPI` | behaviour-verified (each register_* reaches a real call site; a raising one falls through) | `regress_extension_capabilities.py` (9) |
 | The extension SDK | `sdk.py` | behaviour-verified (the public surface; a star-import exposes exactly `__all__`) | `regress_sdk.py` (20) |
 | The SDK as an installable package | `docs/EXTENSION_SDK.md` §1 | behaviour-verified (contracts match the host; the wheel installs into a clean virtualenv and pulls in no desktop code) | `regress_sdk_package.py` (22) |
 | Override-conflict UX (D18) | `extensions.override_conflicts` | behaviour-verified (the user picks the winner; the pick is persisted) | `regress_qt_extension_ui.py` |

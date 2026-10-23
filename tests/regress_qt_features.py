@@ -482,12 +482,20 @@ try:
         ck("the OCR region grab works", False, "%s: %s" % (type(exc).__name__, exc))
 
 finally:
+    # Close every window and KEEP the references alive until the event
+    # loop has drained. A widget destroyed while Qt still has a queued
+    # event for it is an access violation at interpreter exit -- the run
+    # printed "all checks ok" and then died, which looked like a failure
+    # in whatever the runner saw last.
     for w in windows:
         try:
             w.close()
+            w.deleteLater()
         except Exception:                      # noqa: BLE001
             pass
     app.qapp.processEvents()
+    app.qapp.processEvents()
+    del windows[:]
 
 if fail:
     print("FAIL %d/%d" % (len(fail), n[0]))

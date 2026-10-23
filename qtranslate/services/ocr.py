@@ -102,9 +102,35 @@ def ocr_language(code: str) -> str:
     return OCR_LANGUAGES.get(code, "eng")
 
 
+def _extension_ocr(image_bytes, lang, api_key):
+    """An extension's recogniser, when one registered.
+
+    ``registry.OCR_EXT`` is the live table (``api.register_ocr``). A
+    backend that raises falls through to the built-in endpoint.
+    """
+    try:
+        from qtranslate import registry as _RG
+    except Exception:
+        return None
+    table = getattr(_RG, "OCR_EXT", None)
+    if not table:
+        return None
+    for name in sorted(table):
+        try:
+            out = table[name](image_bytes, lang, api_key)
+        except Exception:
+            continue
+        if isinstance(out, str) and out.strip():
+            return out.strip()
+    return None
+
+
 def ocr_text(image_bytes: bytes, api_key: str = "helloworld",
              lang: str = "eng") -> str:
     """Convenience: return just the parsed text of the first result."""
+    ext = _extension_ocr(image_bytes, lang, api_key)
+    if ext is not None:
+        return ext
     obj = ocr_space(image_bytes, api_key, lang)
     try:
         return obj["ParsedResults"][0]["ParsedText"].strip()

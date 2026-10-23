@@ -86,12 +86,14 @@ KNOWN_CAPABILITIES = frozenset((
 # then silently ignored -- ``capabilities`` must not be a lie, which is
 # what the comment above has said since the field was added.
 #
-# The other five (workflow, dictionary, tts, ocr, spell) are named in the
-# schema because EXTENSION_SDK.md describes them as the target surface.
-# They are NOT hostable yet; the audit that found this is
-# docs/CONTRACT_AUDIT.md. When one gets its register_* and its consumer,
-# it moves into this set and its test proves it.
-HOSTED_CAPABILITIES = frozenset(("provider", "theme", "ui"))
+# 2026-10-23: the other five (dictionary, tts, ocr, spell, workflow) have
+# their register_* now and a live table the app reads (registry.DICT_EXT
+# and friends), so they moved in here. docs/CONTRACT_AUDIT.md tracks the
+# state of each.
+HOSTED_CAPABILITIES = frozenset((
+    "provider", "theme", "ui", "dictionary", "tts", "ocr", "spell",
+    "workflow",
+))
 
 _REQUIRED_FIELDS = ("id", "name", "version", "sdk_version", "entrypoint",
                     "capabilities")
@@ -399,6 +401,34 @@ class ExtensionAPI:
         return self._manager.register_ui(kind, slot, contribution,
                                          replaces=replaces)
 
+    # ---- the four capability tables -----------------------------------
+    # Each registers into a live table the app reads, the same way
+    # register_provider does. The signatures are the app's own; an
+    # extension that implements one is called with the arguments the app
+    # already passes its built-in equivalent.
+
+    def register_dictionary(self, name, fn, replaces=None):
+        """``fn(word, src, tgt)`` -- a dictionary provider."""
+        return self._manager.register_dictionary(name, fn,
+                                                 replaces=replaces)
+
+    def register_tts(self, name, fn, replaces=None):
+        """``fn(text, lang, slow=False)`` -- a speech backend."""
+        return self._manager.register_tts(name, fn, replaces=replaces)
+
+    def register_ocr(self, name, fn, replaces=None):
+        """``fn(image_bytes, lang, api_key) -> str`` -- a text recogniser."""
+        return self._manager.register_ocr(name, fn, replaces=replaces)
+
+    def register_spell(self, name, fn, replaces=None):
+        """``fn(text, lang) -> list`` -- a spell suggester."""
+        return self._manager.register_spell(name, fn, replaces=replaces)
+
+    def register_workflow(self, name, fn, replaces=None):
+        """``fn(text, src, tgt) -> text`` -- runs after a translation."""
+        return self._manager.register_workflow(name, fn,
+                                               replaces=replaces)
+
 
 class ExtensionManager:
     """Manager over ``registry``: built-ins plus loaded extensions."""
@@ -453,6 +483,45 @@ class ExtensionManager:
         if replaces:
             self._theme_replaces[replaces] = name
         return name
+
+    def _register_in(self, table_name, name, fn):
+        """Put ``fn`` in a live dispatch table and report the winner.
+
+        The table is the module-level dict on ``registry`` (DICT_EXT,
+        SPELL_EXT, OCR_EXT, TTS_EXT, WORKFLOW_EXT), so the app reads the
+        same object the extension wrote -- no copy, no re-import. The
+        name is given in full rather than derived from the capability:
+        the two do not map by a rule (``dictionary`` -> ``DICT_EXT``),
+        and a derived name silently wrote to a NEW attribute the first
+        time this was written.
+        """
+        if not callable(fn):
+            raise TypeError("%s registration needs a callable" % table_name)
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("registration needs a name")
+        table = getattr(self._rg, table_name)
+        table[name] = fn
+        return name
+
+    def register_dictionary(self, name, fn, replaces=None):
+        """A dictionary provider, into ``registry.DICT_EXT``."""
+        return self._register_in("DICT_EXT", name, fn)
+
+    def register_tts(self, name, fn, replaces=None):
+        """A speech backend, into ``registry.TTS_EXT``."""
+        return self._register_in("TTS_EXT", name, fn)
+
+    def register_ocr(self, name, fn, replaces=None):
+        """A text recogniser, into ``registry.OCR_EXT``."""
+        return self._register_in("OCR_EXT", name, fn)
+
+    def register_spell(self, name, fn, replaces=None):
+        """A spell suggester, into ``registry.SPELL_EXT``."""
+        return self._register_in("SPELL_EXT", name, fn)
+
+    def register_workflow(self, name, fn, replaces=None):
+        """A post-translation step, into ``registry.WORKFLOW_EXT``."""
+        return self._register_in("WORKFLOW_EXT", name, fn)
 
     def register_ui(self, kind, slot, contribution, replaces=None):
         """Register a UI contribution into the ``ui_slots`` registry.

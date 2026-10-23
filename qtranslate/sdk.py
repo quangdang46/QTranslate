@@ -46,9 +46,15 @@ def speak(text, lang):
 
 
 def dict_lookup(word, src="en", target="vi", service="google"):
-    """Look up one word through the DICTS table (offline XDXF included)."""
-    from qtranslate.registry import DICTS
-    fn = DICTS.get(service)
+    """Look up one word through the dictionaries.
+
+    The built-in table is ``DICTS``; an extension adds to
+    ``DICT_EXT`` (``api.register_dictionary``). An extension entry wins
+    over a built-in with the same name, which is the same last-wins rule
+    the provider table uses.
+    """
+    from qtranslate import registry as _RG
+    fn = getattr(_RG, "DICT_EXT", {}).get(service) or _RG.DICTS.get(service)
     if fn is None:
         raise KeyError("unknown dictionary: %r" % (service,))
     return fn(word, src, target)

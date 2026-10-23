@@ -240,15 +240,26 @@ All five were resolved and folded into `PROJECT_VISION.md`:
 > poisoning shapes — cross-extension and Core-shadow — are now closed and
 > reported. Pinned by `tests/regress_extension_vendor.py` (10 assertions).
 
-> **`capabilities` is now enforced (landed 2026-10-23).** The schema
-> names eight capabilities; the runtime hosts THREE -- `provider`,
-> `theme`, `ui`, the three with a `register_*` method and a consumer in
-> the app. A manifest declaring `workflow`, `dictionary`, `tts`, `ocr` or
-> `spell` is DISABLED with a defined error naming the hostable set,
-> instead of loading and then being silently ignored. The other five are
-> the target surface this document describes; each moves into
-> `HOSTED_CAPABILITIES` when it gets its `register_*` and its consumer.
-> The audit that measured the gap is `docs/CONTRACT_AUDIT.md`.
+> **All eight capabilities are hosted (landed 2026-10-23).** Each has
+> its `register_*` method on the host API, a live table the app reads,
+> and a call site that uses it:
+>
+> | capability | register | the app calls it from |
+> |---|---|---|
+> | `provider` | `register_provider` | `engine.translate` |
+> | `theme` | `register_theme` | `QtApp.apply_theme` |
+> | `ui` | `register_ui` | the tray menu, the panes, the popup |
+> | `dictionary` | `register_dictionary` | `sdk.dict_lookup` |
+> | `tts` | `register_tts` | `player.play_text` |
+> | `ocr` | `register_ocr` | `services.ocr.ocr_text` |
+> | `spell` | `register_spell` | `registry.google_suggest` |
+> | `workflow` | `register_workflow` | `engine.translate`, on the result |
+>
+> A manifest declaring a name outside the schema is still refused, so
+> `capabilities` cannot promise behaviour the runtime does not have.
+> A capability that raises falls through to the built-in.
+> `tests/regress_extension_capabilities.py` proves each by driving the
+> real app path; `docs/CONTRACT_AUDIT.md` tracks the state.
 
 > **The slots have hosts (landed 2026-10-23).** A registered contribution
 > is now READ by the running app, which is the half that was missing:

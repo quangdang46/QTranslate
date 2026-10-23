@@ -147,6 +147,26 @@ DICTS = {
 }
 
 
+# --- the four other dispatch tables -------------------------------------
+# Each capability the extension API can host needs a live table the app
+# reads, the same shape TRANSLATORS/DICTS have: a name -> callable dict
+# that an extension commits into and the app consumes. Without the table
+# the capability is a word in a manifest; with it the extension's code
+# actually runs.
+#
+# The signatures are the app's, not invented:
+#   DICT_EXT      fn(word, src, tgt) -> the entry (same as DICTS)
+#   SPELL_EXT     fn(text, lang) -> list of suggestions
+#   OCR_EXT       fn(image_bytes, lang, api_key) -> text
+#   TTS_EXT       fn(text, lang, slow) -> None (plays/saves the audio)
+#   WORKFLOW_EXT  fn(text, src, tgt) -> text, run after a translation
+DICT_EXT = {}
+SPELL_EXT = {}
+OCR_EXT = {}
+TTS_EXT = {}
+WORKFLOW_EXT = {}
+
+
 def translators() -> dict:
     """Canonical translate table: name -> fn(text, src, tgt)."""
     return dict(TRANSLATORS)
@@ -165,7 +185,19 @@ def dicts() -> dict:
 
 
 def google_suggest(text: str, lang: str = "en") -> list:
-    """Spell suggestions (used by the main-window suggestion strip)."""
+    """Spell suggestions (used by the main-window suggestion strip).
+
+    ``SPELL_EXT`` is the live table an extension commits into
+    (``api.register_spell``); a backend that raises falls through to the
+    built-in suggester.
+    """
+    for name in sorted(SPELL_EXT):
+        try:
+            out = SPELL_EXT[name](text, lang)
+        except Exception:
+            continue
+        if isinstance(out, list):
+            return out
     return _spell.google_suggest(text, lang)
 
 

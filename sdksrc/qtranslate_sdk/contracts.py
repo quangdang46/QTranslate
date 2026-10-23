@@ -16,7 +16,9 @@ import dataclasses
 MANIFEST_REQUIRED = ("id", "name", "version", "sdk_version", "entrypoint",
                      "capabilities")
 
-# The capability names a manifest may declare.
+# The capability names a manifest may declare. Every one of them has a
+# register_* method on the host API below, so a manifest can only claim
+# something the runtime can host.
 CAPABILITIES = ("provider", "dictionary", "theme", "ui", "workflow",
                 "tts", "ocr", "spell")
 
@@ -100,6 +102,31 @@ class ExtensionAPI:
             "register_ui needs a host; the real ExtensionAPI is "
             "passed to register() at runtime")
 
+    def register_dictionary(self, name, fn, replaces=None):
+        raise ExtensionError(
+            "register_dictionary needs a host; the real ExtensionAPI is "
+            "passed to register() at runtime")
+
+    def register_tts(self, name, fn, replaces=None):
+        raise ExtensionError(
+            "register_tts needs a host; the real ExtensionAPI is "
+            "passed to register() at runtime")
+
+    def register_ocr(self, name, fn, replaces=None):
+        raise ExtensionError(
+            "register_ocr needs a host; the real ExtensionAPI is "
+            "passed to register() at runtime")
+
+    def register_spell(self, name, fn, replaces=None):
+        raise ExtensionError(
+            "register_spell needs a host; the real ExtensionAPI is "
+            "passed to register() at runtime")
+
+    def register_workflow(self, name, fn, replaces=None):
+        raise ExtensionError(
+            "register_workflow needs a host; the real ExtensionAPI is "
+            "passed to register() at runtime")
+
 
 class FakeAPI(ExtensionAPI):
     """A recording host API, for an extension's own tests.
@@ -112,6 +139,11 @@ class FakeAPI(ExtensionAPI):
         self.providers = {}
         self.themes = {}
         self.ui = []
+        self.dictionaries = {}
+        self.tts = {}
+        self.ocr = {}
+        self.spell = {}
+        self.workflows = {}
 
     def register_provider(self, name, fn, replaces=None):
         self.providers[name] = {"fn": fn, "replaces": replaces}
@@ -128,3 +160,23 @@ class FakeAPI(ExtensionAPI):
                         "contribution": contribution,
                         "replaces": replaces})
         return slot
+
+    def register_dictionary(self, name, fn, replaces=None):
+        self.dictionaries[name] = {"fn": fn, "replaces": replaces}
+        return name
+
+    def register_tts(self, name, fn, replaces=None):
+        self.tts[name] = {"fn": fn, "replaces": replaces}
+        return name
+
+    def register_ocr(self, name, fn, replaces=None):
+        self.ocr[name] = {"fn": fn, "replaces": replaces}
+        return name
+
+    def register_spell(self, name, fn, replaces=None):
+        self.spell[name] = {"fn": fn, "replaces": replaces}
+        return name
+
+    def register_workflow(self, name, fn, replaces=None):
+        self.workflows[name] = {"fn": fn, "replaces": replaces}
+        return name

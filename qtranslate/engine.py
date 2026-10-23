@@ -84,6 +84,31 @@ def _detect_source(text):
     return "auto", _REL.detect_failure()
 
 
+def _run_workflows(text, src, target):
+    """Let an extension's workflow step act on a finished translation.
+
+    ``registry.WORKFLOW_EXT`` is the live table an extension commits
+    into (``api.register_workflow``). Each step receives
+    ``(text, src, target)`` and returns the text to show; a step that
+    raises is skipped rather than failing the translation, because a
+    broken extension must not take a successful translation with it.
+    With no extension the table is empty and this is the identity.
+    """
+    from qtranslate import registry as _RG
+    table = getattr(_RG, "WORKFLOW_EXT", None)
+    if not table:
+        return text
+    out = text
+    for name in sorted(table):
+        try:
+            result = table[name](out, src, target)
+        except Exception:
+            continue
+        if isinstance(result, str):
+            out = result
+    return out
+
+
 def translate(service, text, target, src="auto", auto_detect=False,
               back_translate=False):
     """Port of ``FUN_00404A12``: pick → execute → fallbacks.
@@ -249,6 +274,7 @@ def translate(service, text, target, src="auto", auto_detect=False,
                 _REL.log_failure(_bf)
                 note = ("%s; back-translation failed" % note).lstrip("; ")
         out = apply_phonetics(out, service, res.phonetics)
+        out = _run_workflows(out, src, target)
         return Result(res.provider_used, out, res.requested,
                       tuple(res.failures) + tuple(extra),
                       res.attempts, note,

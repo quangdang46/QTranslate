@@ -76,6 +76,29 @@ def play_file(path: str, block: bool = True) -> None:
         play_mp3_bytes(f.read(), block=block)
 
 
+def _extension_backend(text, lang, slow):
+    """An extension's TTS backend, when one registered.
+
+    ``registry.TTS_EXT`` is the live table (``api.register_tts``). The
+    first registered backend is tried; when it raises, the built-in
+    chain below runs, so a broken extension cannot take speech with it.
+    """
+    try:
+        from qtranslate import registry as _RG
+    except Exception:
+        return None
+    table = getattr(_RG, "TTS_EXT", None)
+    if not table:
+        return None
+    for name in sorted(table):
+        try:
+            table[name](text, lang, slow)
+            return name
+        except Exception:
+            continue
+    return None
+
+
 def play_text(text: str, lang: str = "vi", block: bool = True,
               slow: bool = False) -> str:
     """Online mp3 -> BASS; on any failure fall back to offline SAPI.
@@ -84,6 +107,9 @@ def play_text(text: str, lang: str = "vi", block: bool = True,
     SpVoice (FUN_00448BEC) when offline. slow maps
     Advanced.EnableSlowerListening (clearer TTS). Returns backend used.
     """
+    backend = _extension_backend(text, lang, slow)
+    if backend:
+        return "extension:" + backend
     import sys
     sys.path.insert(0, ".")
     from qtranslate.tts import google_tts
