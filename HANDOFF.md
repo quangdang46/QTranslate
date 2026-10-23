@@ -1,9 +1,8 @@
 # HANDOFF
 
-What this session did, what it changed, and what the next session should
-pick up. Written 2026-10-22, on `main`, after the PySide6 parity work
-reached the point where the app runs for the user and the extension
-platform reaches the UI.
+What the last sessions did, what the tree looks like now, and what the
+next session should pick up. Updated **2026-10-23** at `b76889e`, on
+`main`, working tree clean.
 
 The standing rules still apply: the GitHub token is used transiently in
 a push URL only (never in a file, never in `.git/config`, output
@@ -12,233 +11,170 @@ redacted); the native's installer is never run (the installed copy at
 is frozen; every Python run uses `python -I`; downloaded files are
 untrusted.
 
-## 1. The four bugs the user found, and their causes
+## 0. The state of the tree right now
 
-The user ran the app for the first time and hit four things. All four
-are fixed; the causes are recorded here because each one was a real
-defect, not a cosmetic one.
+| What | Value |
+|---|---|
+| Branch / commit | `main` at `b76889e`, pushed |
+| Working tree | clean |
+| Suites | **135 suites, 0 failed, 64.6s** (`python -I tools/run_suites.py`) |
+| Pixel measure | mean ink diff **0.0037** over 12 screens (rgb 0.0358) |
+| Docs consistency | 0 findings, 120 files scanned |
+| Live selftest | `SELFTEST PASS 29/29` (`python -I start_qt.py --selftest`) |
+| Front end | Qt only. tkinter was deleted on 2026-10-23 |
 
-### 1.1 Ctrl+Q crashed the process (access violation)
+The per-feature checklist (what is proven, what needs a human, what is
+blocked) is `docs/review/FEATURE_CHECKLIST_2026-10-23.md`. The
+contract-by-contract table is `docs/CONTRACT_AUDIT.md`.
 
-**Symptom.** The app started, and pressing Ctrl+Q killed it outright.
+## 1. Ctrl+Q now translates the SELECTION
 
-**Cause.** The `keyboard` package fires a global hotkey on ITS OWN
-listener thread, not on Qt's. The handler (`hotkey_popup`) went
-straight to the widgets -- `win.src.setPlainText`, `win.render`, and
-opening a popup window -- from that foreign thread. Qt does not guard
-cross-thread widget access: it is an access violation, not a catchable
-exception, so the process died.
+`hotkey_popup()` used to call `pyperclip.paste()` directly -- no Ctrl+C,
+so a user who selected new text and pressed Ctrl+Q got the OLD clipboard
+translated. The native's own `help.txt` says "Translate **selected**
+text".
 
-**Fix.** `qtranslate/qt/app.py` gained `_UiInvoker` (a `QObject` with a
-queued `invoke` signal) and `QtApp._on_ui(fn)`, which marshals a call
-onto the UI thread (and runs it directly when the caller already is the
-UI thread). `qtranslate/qt/hotkeys.py` wraps every registered callback
-in `app._on_ui`, so the handler runs where the widgets live.
+The fix is native's copy-capture engine (`FUN_0043BF30`,
+`NATIVE_ARCH.md` item 4), as `qtranslate/selection.py`: snapshot the
+clipboard sequence number, synthesize Ctrl+C, poll with the native
+8ms..320ms backoff until the number CHANGES -- that change is the proof
+the copy landed, not a guess. The same engine now serves Alt+W
+(`hotkey_replace_selection`) and the mouse modes' `_capture_selection`,
+which had a fixed `sleep(0.15)` that read the clipboard before a slow
+copy arrived.
 
-**Pinned by** `tests/regress_qt_features.py`: the marshalling from a
-worker thread, and the fact that the registered callback is not the raw
-app method.
+**Pinned by** `tests/regress_selection_capture.py` (15): the backoff
+shape, a slow copy, a refused Ctrl+C, no sequence counter at all, a held
+modifier.
 
-### 1.2 The Options dialog re-rendered into a new window
+## 2. The popup matches the operator's two captures
 
-**Symptom.** Clicking a page in the Options sidebar opened a NEW window
-and closed the old one, so the app flickered and the window jumped.
+Rebuilt against `2162.png` (resting) and `2163.png` (hover), with fully
+content-driven sizing -- `MIN_WIDTH`/`MAX_WIDTH` bounds, never a fixed
+pixel count.
 
-**Cause.** `OptionsBase._goto` created a fresh page window and closed
-the one it came from. Each page was a separate top-level window.
+| What was wrong | What the captures show |
+|---|---|
+| body painted white | same `#f0f0f0` field as the header |
+| hardcoded `#d0d0d0` background | that field is `COLOR_BTNFACE`; 2162's apparent `#cccccc` is the same colour at the default 217 transparency (`240 * 217/255 = 204`) |
+| two header glyphs drew as tofu boxes | all five are `RT_ICON` pixmaps recovered from the binary (`book`/`copy`/`translit` joined `star`/`headphone` in the assets manifest, with match distances) |
+| the strip's height was added on hover | the strip's ROW is always reserved; only the cells appear |
+| labels cut at 4 chars | native cuts at 3 (`Bab...`, `Yan...`) |
 
-**Fix.** One window, one shell. `OptionsBase` now rebuilds the body in
-place: the page's own `build()` is called again with the shell as
-`self`, after pointing the instance's `ORIGIN`/`SIZE`/`CHROME` at the
-page's own. The chrome (sidebar panel, rows, rule, three buttons) is
-described by a `CHROME` dict, because the Hotkeys page's capture (2126)
-is a different size and its chrome sits elsewhere.
+The header pair now reads `Vietnamese to English (Google)` from the live
+settings, not a literal.
 
-**Pinned by** `tests/regress_qt_features.py` (the swap keeps the same
-`winId`, the old widgets are gone, the new ones are there, the size goes
-back to 644 after visiting the 650-wide Hotkeys page).
+**Pinned by** `ui_match.py` and `regress_popup_smoke.py`, whose old
+fixed `(200, 68)` pins became bounds + growth checks.
 
-**Pixel parity preserved.** The first attempt deleted the widgets with
-`deleteLater()`, which is an access violation when a paint event is
-still queued for them -- the suite crashed. The widgets are now hidden
-and unparented instead. The measure is unchanged: mean ink diff
-**0.0037** over twelve screens (rgb 0.0355), the same as before the
-refactor.
+## 3. Every published menu slot now has a window
 
-### 1.3 The language combo's list was far too long
+`ui_slots` publishes nine menu names. Only `tray`, `main` and
+`history_ctx` had a host, so an extension targeting `menu`/`ocr`
+registered without error and appeared nowhere -- the same shape as the
+eight-capability lie the audit caught earlier.
 
-**Symptom.** The target-language combo opened a list that ran off the
-screen (see the user's screenshot 2160.png).
+Six hosts built (`qtranslate/qt/context_menus.py` plus the windows),
+each drawing NATIVE's menu from the shipped locale packs by id:
 
-**Status.** NOT FIXED YET. The combo is populated from
-`app.target_names()`, which returns every language the Google provider
-supports (75 codes) with their display names. Native's own combo is a
-fixed list the native's locale pack declares. This needs the native's
-list, and the measurement of how the native's combo behaves (does it
-scroll? does it have a filter?). It is listed in §4 below.
-
-### 1.4 The mouse mode did nothing
-
-**Symptom.** "Bôi đen" (select text, click) produced nothing.
-
-**Cause.** The Qt front end had a LABEL for the mouse mode but never
-started the hook. Only the tkinter front end ever did.
-
-**Fix.** `qtranslate/qt/app.py` now starts and stops the Win32
-low-level mouse hook with the mode, and a selection click captures the
-text (OLEACC in the third mode, Ctrl+C + clipboard otherwise) and
-translates it through the same `show_translation` step Ctrl+Q uses. The
-work runs on a worker thread and crosses to the UI thread by a queued
-signal (`_MouseBridge`).
-
-**Also fixed while doing it:**
-
-- The mode NAMES were the port's invention. The native's own strings
-  are in the shipped English `lang.json`, ids 60/70/71: "Show icon",
-  "Show translation", "Show translation and read". Corrected in
-  `qtranslate/qt/tray.py`.
-- The mode was not persisted. Native keeps it in `General.MouseMode`
-  (DAT_005493F8) and `General.MouseModeOn`; the tkinter front end
-  writes both. The Qt front end now writes both too, and
-  `_load_session` reads them back -- one state for both front ends.
-- The gate was half of native's. Native's order is
-  `EnableGuiTranslation` (DAT_005494e4) -> `EnableMouseModeOnCtrl` ->
-  exclusions -> the mode-2 OLEACC capture -> the clipboard fallback.
-  The port had folded `mouse_capture.available()` INTO the gate's try
-  block, so a missing hook looked like a closed gate. Now the gate is
-  its own function, `_mouse_gate_ok()`, in native's order.
-- Native's third mode speaks the selected text. The tkinter front end
-  had that half missing (its comment said "we do not have a TTS sink",
-  but the port does: `player.play_text`, online mp3 first, offline
-  SAPI when that fails). Both front ends speak it now.
-
-## 2. The extension platform, connected to the UI
-
-The user's audit found the right thing: the extension registry existed
-and was tested, but **nothing in the running app ever read it back**.
-`ui_slots.winner()` had no consumer outside the tests, and the theme
-resolver the UI used was not the one the extension manager resolves
-through.
-
-What changed:
-
-| Piece | Before | After |
+| slot | native menu | items |
 |---|---|---|
-| Qt startup | never called `load_user_extensions()` | calls the SAME shared loader the tkinter one uses (`qtranslate/qt/app.py`) |
-| The manager handle | `load_user_extensions()` created it locally and threw it away | `qtranslate.extensions.last_manager()` returns it; the app keeps it as `app.ext_manager` |
-| Tray menu | no extension entries | the tray menu reads `ui_slots.entries("menu", "tray")` and adds each contribution as an action (`qtranslate/qt/tray.py`) |
-| Theme | `theme.active_theme()` never saw an extension theme | `theme.active_theme(name, manager=...)` resolves an extension theme first; `qtranslate_style.apply_style(app, theme=...)` lets the theme's colours override the measured tokens; `QtApp.apply_theme()` wires it at startup |
-| Panel | no consumer at all | the main window docks a strip for a contributed panel at the bottom of the pane it claimed (`qtranslate/qt/main_window.py`); with no extension there is NO strip, so the pixels are unchanged |
+| `source_context` | 2 | Undo / Cut / Cut all / Copy / Copy all / Paste / Select all / Translate / Dictionary search for / Listen |
+| `result_context` | 3 | Open / Copy text / Copy translation / Delete / Listen |
+| `language` | 4 | Reset / Edit... / Always detect language |
+| `dict_header` | 7, 8 | Show Full History; plus the strip's Show info / Remove dictionary |
+| `history_menu` | 9 | Clear history / Show services pane / Exact search / Options |
+| `ocr` | 10 | the new `OcrResultWindow`, nine native items |
 
-`qtranslate_style.py`'s QSS now carries `@FACE@`, `@TEXT@`, `@DIM@` and
-`@ACCENT@` placeholders that `apply_style` fills, so a theme can change
-the app's colours.
+An id the port has no operation behind is drawn DISABLED, never faked.
 
-**Pinned by** the new `tests/regress_qt_extension_ui.py` (16 assertions):
-the extension loads, the manager is reachable, the contribution is in
-the tray slot, the tray menu shows it, the theme resolver returns the
-extension's theme, the theme reaches the app's PALETTE, the panel shows
-in the main window, and a window with no extension has no panel.
+**Two real defects fell out of the wiring:**
 
-## 3. Other changes in this session
+1. `open_service_page()` called `open_options()` with no page, so every
+   "go to that page" entry opened Basics. `open_options(page)` takes a
+   page now.
+2. `General.ShowServicesPane` saved and did nothing -- the main window
+   drew all three panes always. `MainWindow.apply_pane_visibility()`
+   hides them now.
 
-- **`qtranslate/languages.py` (new, Core).** The language table
-  (code -> display name) lived in `qtranslate/app.py`, the tkinter
-  module, so the Qt view had to import tkinter for two constants. It is
-  now Core data; both views read it.
-- **`qtranslate/platforms.py`: a macOS adapter.** `platforms.current()`
-  returned `UnavailableAdapter` off Windows, whose `extensions_dir()`
-  raises -- so the extension loader silently returned `[]` on macOS. The
-  new `MacOSAdapter` resolves `~/.config/QTranslate/extensions` and the
-  clipboard, and still reports the Win32-only pieces (hotkey hook, mouse
-  hook, clipboard sequence counter) unavailable honestly.
-- **`tests/regress_extension_e2e.py`**: now also checks that the Qt
-  front end wires the shared loader (20 checks).
-- **`tests/regress_platforms.py`**: the macOS branch is pinned (31
-  checks).
-- **`tests/regress_qt_features.py`**: 71 -> 81 assertions.
+**Pinned by** `tests/regress_menu_slots.py` (37).
 
-## 4. What is NOT done -- the next session's list
+## 4. The extension platform is fully connected
 
-In the order it should be picked up.
+All eight capabilities are real and proven through the app's own paths
+(`engine.translate`, `sdk.dict_lookup`, `player.play_text`,
+`services.ocr.ocr_text`, `registry.google_suggest`), each with a
+`register_*` method, a live table on `registry`, and a call site. A
+capability the host cannot serve is REFUSED at manifest validation.
 
-### 4.1 The language combo's list -- DONE (commit 004e852)
+`tests/regress_extension_capabilities.py` proves each by getting the
+extension's own answer back. `regress_qt_extension_ui.py` (33) covers
+the UI slots, the override picker, and capability refusal.
+`regress_sdk_package.py` (22) builds the wheel and installs it into a
+clean virtualenv.
 
-The user's 2160.png: the drop-down ran off the screen. Three faults, all
-fixed and pinned in `tests/regress_qt_combo_popup.py` (15 assertions):
+## 5. Bugs found and fixed along the way
 
-1. the drop-down was as tall as the WHOLE list (1266px for the 74
-   languages) where the native's dialog resource asks for 120 DLUs =
-   225px;
-2. it had no scroll bar, so languages past the fold were unreachable;
-3. the current row was painted black on black.
+| Bug | Where it was hiding | Suite that caught it |
+|---|---|---|
+| a total provider failure reported `Result.ok == True` | `engine.translate` put the REQUESTED service into `provider_used`; `ok` is `bool(provider_used)` | `regress_app_reliability_e2e.py`, which drives `app.on_go()` rather than the router |
+| the macOS adapter returned the WINDOWS path | `MacOSAdapter.app_data()` called `app_data_dir()`, which reads `%APPDATA%` first -- so the "macOS" test passed while proving nothing | `regress_platforms.py` now asserts the path does NOT come from `%APPDATA%` |
+| `KeyError: 0` on Microsoft/Bing | the live endpoint returns `{"statusCode": 400}` where native's shape is a list | `regress_microsoft_chain.py`; the port reports an empty translation and the chain falls through |
+| the bundle's `--with keyboard==0.13.5` was one argv entry | `build_bundle.py` | the build itself |
+| five Core modules were unreachable in a frozen build | reached only through the deleted tkinter code | the frozen-gap check |
 
-### 4.2 Delete the tkinter front end -- DONE (commit a3c372d)
+## 6. What is NOT done -- and why it needs someone else
 
-`qtranslate/app.py`, `qtranslate/windows.py` and `start_app.py` are gone;
-the bundle ships one Qt executable. The tests that exercised the
-tkinter view were ported or retired, and `qtranslate/qt/` is the only
-front end.
+Read `docs/review/FEATURE_CHECKLIST_2026-10-23.md` §"Tổng hợp NEED/BLOCKED"
+for the full list. The short version:
 
-### 4.3 The extension platform -- DONE
+**Needs a human at a desktop** (nothing automatic can substitute):
+- press Ctrl+Q in a real app with a real selection, repeatedly, and
+  confirm no crash and the popup lands beside the pointer;
+- Replace Selection against a real foreground window;
+- each Options page changed, app restarted, value still in effect;
+- TTS actually audible; microphone actually captured;
+- live providers and live OCR (the latter needs an API key).
 
-All four of the audit's items were closed on 2026-10-23:
+**Blocked on evidence that does not exist:**
+- Options → Basics has NO native capture (BLOCKERS B4), so its pixel
+  parity cannot be measured -- only its control set is verified;
+- the tray menu's live item list has no native capture either; the 13
+  captures were all checked and none shows it. Recording it as
+  `partial` is the honest state.
 
-1. **The popup slot** -- `qtranslate/qt/popup.py` reads
-   `("popup", "body")` and lets a contribution render the body. With no
-   extension the built-in label is untouched, so the pixels are the
-   native's. Pinned in `regress_qt_extension_ui.py`.
-2. **The SDK's public surface** -- `back_translate_internal` is out of
-   `qtranslate/sdk.py`'s `__all__` (the docstring always said it was
-   internal); a star-import now exposes exactly the public surface.
-   Pinned in `regress_sdk.py`.
-3. **The SDK as a package** -- `sdksrc/` holds a standalone
-   `qtranslate_sdk` distribution (contracts, `Result`, the slot names,
-   the language index, `FakeAPI` for an extension's own tests) with a
-   `pyproject.toml` and NO dependencies. `tests/regress_sdk_package.py`
-   proves it imports with no desktop app on the path, that its
-   contracts match the host's field for field, that it imports no GUI,
-   and that its wheel builds and installs into a CLEAN virtualenv.
-   Publishing to PyPI (D19) still needs a human to verify the name.
+**Blocked on hardware:**
+- macOS has an adapter (`MacOSAdapter`, clipboard + paths, resolving
+  `~/.config/QTranslate`) but no macOS host has run it. Hotkeys, the
+  mouse hook and SAPI report themselves `UNAVAILABLE` there rather than
+  faking support.
 
-4. **The override-conflict UX** -- also closed on 2026-10-23.
-   `qtranslate/qt/override_picker.py` offers one row per conflicted
-   provider with every claimant AND the built-in (choosing nothing is a
-   real choice), preselects the saved winner, and writes the choice
-   through the core's `write_saved_overrides` -- the same reader
-   `load_user_extensions` uses at startup. The tray menu shows
-   "Choose the winning extensions..." only while a conflict exists.
-   Pinned in `regress_qt_extension_ui.py`.
+**Human-only gates:**
+- G9 needs a person to review the screenshots and a person to write the
+  waiver. Neither may be self-assigned. `qt-fj5` is exactly those two.
 
-So the extension platform's audit list is fully closed. What remains
-for the SDK is the RELEASE step, which is a human's: verify the PyPI
-name and its usage rights (D19), then publish.
+## 7. Translation speed -- measured, not yet optimised
 
-### 4.4 The docs that must follow this session's code
+The user's question "why is it slow" is not answered by a number yet.
+Two facts are established by reading the code:
 
-- `docs/roadmap/PROGRESS.md`: an entry for this session (the four
-  bugs, the extension wiring, the macOS adapter).
-- `docs/roadmap/TEST_RESULTS.md`: the suite count (135 now) and the
-  assertion counts (81 in `regress_qt_features.py`, 16 in
-  `regress_qt_extension_ui.py`).
-- `docs/COMPATIBILITY_MATRIX.md`: the mouse-mode row now covers the Qt
-  view; a row for the UI/theme/panel extension slots.
-- `docs/EXTENSION_SDK.md`: what the host now does with a registered
-  contribution (tray menu, panel strip, theme), which was "designed-for"
-  when it was written.
-- `docs/CURRENT_STATE.md`: the tkinter view is on its way out.
+- `QtApp.on_go()` / `_translate()` call `engine.translate()` on the UI
+  thread, so a slow provider freezes the window for the duration.
+- `engine.translate` runs pick -> detect -> router -> (retry, fallback,
+  back-translation, workflow) synchronously.
 
-### 4.5 The gates
+**The next step is to MEASURE each stage before changing anything.**
+Do not shorten timeouts or drop the fallback to make it look faster --
+`docs/TEST_STRATEGY.md` and the reliability suites exist because a fast
+wrong answer is worse than a slow right one.
 
-`docs/roadmap/BLOCKERS.md` still holds the two human-only gates
-(B1: a human reviews the G9 screenshots; B2: a human writes the
-waiver). Neither may be self-assigned. The only open bead is
-`qt-fj5`, which is exactly those two.
+## 8. How to run it
 
-## 5. How to run the app (this session's setup)
+```
+.venv/Scripts/python.exe -I start_qt.py google vi
+```
 
-A virtualenv was created for the project because the Python on PATH is
-uv-managed and refuses `pip install`:
+The venv was created with uv (the PATH Python refuses `pip install`):
 
 ```
 uv venv C:/Users/ADMIN/qtranslate-re/.venv --python 3.12
@@ -246,31 +182,13 @@ uv pip install --python C:/Users/ADMIN/qtranslate-re/.venv/Scripts/python.exe \
     PySide6 keyboard pyperclip Pillow
 ```
 
-Run it:
+Sweeps: `python -I tools/run_suites.py`. Pixel: `python -I
+tools/render_qt.py --compare`. Docs: `python -I tools/docs_consistency.py`.
 
-```
-.venv/Scripts/python.exe -I start_qt.py google vi
-```
+## 9. A note on mass suite failures
 
-The venv is in `.gitignore` (added this session).
-
-## 6. The state of the tree when this file was written
-
-- Working tree: the changes of this session, uncommitted.
-- Pixel measure: mean ink diff **0.0037** over twelve screens
-  (rgb 0.0355) -- unchanged by the Options refactor.
-- Suites: **135 suites, 0 failed, 48.4s** (`python -I
-  tools/run_suites.py`), re-run after the Options refactor. The new
-  suites are `regress_qt_features.py` (81 assertions),
-  `regress_qt_extension_ui.py` (16), `regress_platforms.py` (31) and
-  `regress_extension_e2e.py` (20).
-
-**A note on the run.** One sweep in this session came back with 82
-suites failing, every one of them with exit code `0xC0000142`
-(`STATUS_DLL_INIT_FAILED`) -- Windows refusing to initialise a DLL in
-the freshly spawned process. Every one of those suites passes when it
-is run on its own, and the next full sweep was 135/0. It was the
-machine being out of resources (12 other Python processes were running
-at the time: MCP servers and an unrelated project), not a defect in the
-code. If a sweep comes back like that, check the process count and
-re-run before believing it.
+A sweep once came back with 82 suites failing, every one with exit code
+`0xC0000142` (`STATUS_DLL_INIT_FAILED`). Every one of them passed on its
+own, and the next full sweep was clean. The machine was out of
+resources (12 unrelated Python processes running). Check the process
+count and re-run before believing a mass failure.
