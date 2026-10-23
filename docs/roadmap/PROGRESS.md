@@ -3,6 +3,61 @@
 The running log. Newest first. Every entry names what changed and what
 was run to show it.
 
+## 2026-10-23 -- translation no longer freezes the window (measured first)
+
+The user said translation felt slow. Rather than guess, `tools/
+measure_translate.py` drives the REAL call path with providers whose
+latency is known, so the number has a ground truth:
+
+```
+simulated provider latency: 400ms, 3 runs
+stage            total(s)   mean(ms)     n
+TOTAL               1.209      402.8     3
+provider            1.200      400.0     3
+overhead            0.009        2.8     3
+
+UI thread held by one translate: 402ms
+  the window is FROZEN during that time
+```
+
+**The answer: the port's own work is 2.8ms; the network is the whole
+cost.** The defect was not speed, it was that `on_go()` -- and Ctrl+Q,
+and Alt+W, and the clipboard hotkey -- ran the request on the UI thread,
+so a 400ms provider froze the window for 402ms.
+
+All four paths now run on a tracked worker (`_spawn` /
+`_start_translation`) and cross only the FINISHED translation back
+through `_on_ui`. The same tool now reports:
+
+```
+UI thread held by one translate: 1ms
+  the window is responsive during that time
+```
+
+Two things were fixed while doing it, both caught by the existing
+suites rather than by inspection:
+
+1. `_spawn` pruned finished threads AFTER appending, and a thread that
+   has not been started yet is not alive -- so it dropped the very
+   thread the waiter needed. `on_go()` also returned `None` instead of
+   `_start_translation`'s answer.
+2. Ctrl+Q's copy-capture sleeps while it polls (up to ~1s when a target
+   ignores Ctrl+C), so that moved off the UI thread too, not just the
+   network call.
+
+A second request while one is in flight is DROPPED, not queued: native
+keeps one task, and stacking requests on a slow provider shows stale
+answers in arbitrary order.
+
+`tests/regress_translate_off_ui.py` (6) pins the regression numbers --
+the UI thread is held for under a tenth of the provider's latency, the
+result still reaches the pane and the history, and the second request
+is dropped.
+
+```
+136 suites, 0 failed, 56.3s
+```
+
 ## 2026-10-23 -- every published menu slot now has a window behind it
 
 The audit's P1 closed its last structural gap. `ui_slots` publishes nine

@@ -74,7 +74,7 @@ try:
     app.service = "google"
     app.win.src.setPlainText("hello")
     app.on_go()
-    app.qapp.processEvents()
+    app.wait_for_translation()
     out = app.win.out.toPlainText()
     ck("the app falls through to the provider that answers",
        "ALIVE:hello" in out, out[:80])
@@ -92,7 +92,7 @@ try:
     app.service = "google"
     app.win.src.setPlainText("hello")
     app.on_go()
-    app.qapp.processEvents()
+    app.wait_for_translation()
     out = app.win.out.toPlainText()
     ck("the user sees native's own error string when none answers",
        "No data returned" in out, out[:80])

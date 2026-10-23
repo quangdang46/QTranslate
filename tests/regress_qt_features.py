@@ -82,6 +82,9 @@ try:
     try:
         win.src.setPlainText("hello")
         app.on_go()
+        # Translate runs off the UI thread now; the result is applied by
+        # a queued call the waiter drains.
+        app.wait_for_translation()
         ck("the result pane shows the translation",
            "Xin chào" in win.out.toPlainText(), win.out.toPlainText()[:60])
         ck("the engine is called with the pane's text",
@@ -254,6 +257,9 @@ try:
         engine.translate = fake_translate
         try:
             app.hotkey_popup()
+            # Ctrl+Q is off the UI thread now: the copy + translate run
+            # on a worker, only the finished popup crosses back.
+            app.wait_for_translation()
         finally:
             engine.translate = real_translate
         ck("Ctrl+Q shows the translation in the popup",

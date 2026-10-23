@@ -99,6 +99,10 @@ class QtApp:
         self._mouse_hook = False
         self._bridge = _MouseBridge(self)
         self._ui = _UiInvoker()
+        # Every background request the app starts (Translate, Ctrl+Q,
+        # Alt+W, the clipboard hotkey), so ``wait_for_translation`` can
+        # wait for all of them rather than one bookkeeping slot.
+        self._threads = []
         # The extension manager, once the user extensions are loaded.
         # It carries the UI and theme contributions.
         self.ext_manager = None
@@ -283,13 +287,90 @@ class QtApp:
 
     # ----------------------------------------------------------- behaviour
     def on_go(self):
-        """Translate what is in the source pane and show the result."""
-        _config, engine, _registry = self._core()
+        """Translate what is in the source pane and show the result.
+
+        The request runs on a WORKER thread. ``tools/measure_translate.py``
+        measured what the old synchronous call cost: a 400ms provider held
+        the UI thread for 402ms, so the window was frozen for essentially
+        the whole network round trip. The translation itself is not slow --
+        the measurement shows ~3ms of port overhead against 400ms of
+        provider -- but holding the event loop for it is what "QTranslate
+        is slow" looks like from the user's side.
+
+        Only the RESULT crosses back to the UI thread (``_on_ui``); the
+        widgets are never touched from the worker.
+        """
         text = self.win.src.toPlainText()
-        res = engine.translate(self.service, text, self.target, self.source)
+        return self._start_translation(text, self._show_main_result)
+
+    def _show_main_result(self, text, res):
+        """Show a finished translation in the main window (UI thread)."""
+        if self.win is None:
+            return
         self.win.render(res.text)
         if res.text:
             self.push_hist(self.service, text[:120], res.text[:200])
+
+    def _spawn(self, name, work):
+        """Run ``work`` on a tracked background thread.
+
+        Every translation path (Translate, Ctrl+Q, Alt+W, the clipboard
+        hotkey) goes through here, so ``wait_for_translation`` sees all of
+        them and a test or script can observe the result deterministically.
+        """
+        import threading
+        # Prune BEFORE adding: a thread that has not been started yet is
+        # not alive, so filtering after the append dropped the very
+        # thread the caller needs to wait for.
+        self._threads = [t for t in self._threads if t.is_alive()]
+        thread = threading.Thread(target=work, daemon=True,
+                                  name="qtranslate-" + name)
+        self._threads.append(thread)
+        thread.start()
+        return thread
+
+    def _start_translation(self, text, on_done):
+        """Run one translation off the UI thread, then hand back the result.
+
+        A second request while one is in flight is DROPPED rather than
+        queued: the native does the same (its task queue holds one
+        translation), and stacking requests on a slow provider would show
+        a burst of stale answers in arbitrary order.
+        """
+        if any(t.is_alive() for t in self._threads):
+            return False
+
+        def work():
+            try:
+                res = self._translate(text)
+            except Exception as exc:            # noqa: BLE001
+                from qtranslate.core import Result
+                res = Result("", "[error] %s" % exc, self.service)
+            self._on_ui(lambda: on_done(text, res))
+
+        self._spawn("translate", work)
+        return True
+
+    def wait_for_translation(self, timeout=10.0):
+        """Block until every in-flight background request has been applied.
+
+        The UI is event-driven; a test (or a script) that must observe a
+        result has to wait for the worker AND drain the queued UI update.
+        Returns True when nothing is left in flight.
+        """
+        import time
+        deadline = time.monotonic() + timeout
+        for _ in range(200):
+            alive = [t for t in self._threads if t.is_alive()]
+            self.qapp.processEvents()
+            if not alive:
+                self.qapp.processEvents()
+                return True
+            if time.monotonic() >= deadline:
+                break
+            time.sleep(0.01)
+        self.qapp.processEvents()
+        return not any(t.is_alive() for t in self._threads)
 
     def push_hist(self, svc, src, res):
         try:
@@ -789,23 +870,38 @@ class QtApp:
         old clipboard is what a bare ``paste()`` did, and it translated
         the wrong text whenever the user had selected something new.
         """
-        from qtranslate import selection
-        text = (selection.copy_selection() or "").strip()
-        if not text:
-            text = self._clipboard_text()
-        if not text:
-            return
-        res = self._translate(text)
-        self.show_translation(text, res.text)
+        # The copy-capture sleeps while it polls for the clipboard change
+        # (up to ~1s on a target that ignores Ctrl+C) and the translate is
+        # a network round trip, so neither belongs on the UI thread. Both
+        # run on a tracked worker; only the finished translation crosses
+        # back.
+        def work():
+            try:
+                from qtranslate import selection
+                text = (selection.copy_selection() or "").strip()
+                if not text:
+                    text = self._clipboard_text()
+                if not text:
+                    return
+                res = self._translate(text)
+            except Exception:                   # noqa: BLE001
+                return
+            self._on_ui(lambda: self.show_translation(text, res.text))
+
+        self._spawn("popup", work)
 
     def hotkey_translate_clipboard(self):
         text = self._clipboard_text()
         if not text:
             return
-        res = self._translate(text)
+        self._start_translation(text, self._show_clipboard_result)
+
+    def _show_clipboard_result(self, text, res):
+        """Show a clipboard translation in the main window (UI thread)."""
+        if self.win is None:
+            return
         self.win.src.setPlainText(text[:2000])
-        self.win.render(res.text)
-        self.push_hist(self.service, text[:120], res.text[:200])
+        self._show_main_result(text, res)
 
     def hotkey_replace_selection(self):
         """Native's Alt+W: translate the selection and type it back.
@@ -813,13 +909,23 @@ class QtApp:
         Reads the SELECTION, not the clipboard -- the whole point of the
         action is to replace what the user has highlighted.
         """
-        from qtranslate import selection
-        text = (selection.copy_selection() or "").strip()
-        if not text:
-            text = self._clipboard_text()
-        if not text:
-            return
-        res = self._translate(text)
+        def work():
+            try:
+                from qtranslate import selection
+                text = (selection.copy_selection() or "").strip()
+                if not text:
+                    text = self._clipboard_text()
+                if not text:
+                    return
+                res = self._translate(text)
+            except Exception:                   # noqa: BLE001
+                return
+            self._on_ui(lambda: self._show_replace(text, res))
+
+        self._spawn("replace", work)
+
+    def _show_replace(self, text, res):
+        """Apply a finished Alt+W translation (UI thread)."""
         # The retype goes through sendkeys: True delivered, False when
         # there is no synthesizer (off Windows) -- never a raise.
         from qtranslate import sendkeys as _SK
