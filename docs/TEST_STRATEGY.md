@@ -87,9 +87,9 @@ tests, no screenshot tests. These are added per phase below.
    2026-10-15: three suites were red for a day behind an `ALL_GREEN` grep.
    (`docs/review/HEADLESS_SWEEP_RULE_2026-10-15.md`.)
 8. **A headless session runs only suites that do not create a window.**
-   Importing `tkinter` is fine; calling `tk.Tk()` is not. Exactly two regress
-   suites open a window (`regress_screens`, `regress_tray_menu`) and are
-   GUI-session-only.
+   Importing `PySide6` is fine; instantiating `QApplication` offscreen is
+   what the suite's `QT_QPA_PLATFORM=offscreen` guards. Window-creating
+   suites carry the `(gui)` mark in the runner output.
 9. **A green suite that asserts a tautology pins nothing.** `x == x` and
    `a and True` must be replaced with a real check (one such assertion was
    found and fixed 2026-10-15 in `regress_mouse_capture`).

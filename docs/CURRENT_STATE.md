@@ -25,7 +25,8 @@
 > `src` in the clipboard popup) and `tests/` unused imports cleaned — pinned by
 > `tests/regress_app_undefined_names.py`. **Override persistence** then
 > landed: a saved winner pre-empts conflict resolution, startup applies saved
-> winners and clears stale ones, and a thin tkinter dialog picks the winner —
+> winners and clears stale ones, and a thin dialog (`qtranslate/qt/
+override_picker.py` since the tkinter front end was deleted) picks the winner —
 > pinned by `tests/regress_override_persistence.py`. The RE Gate is unchanged:
 > `151 VERIFIED / 1 UNKNOWN (G9)`, `BLOCKED (1)`.
 >
@@ -81,9 +82,9 @@
 | `qtranslate/win32app.py` | 203 lines | Native Win32 DLG129 re-creation (pywin32) |
 | `qtranslate/{theme,locale,history,layout,xdxf,tts,player,sapi,headless,exclusions}.py` | small | feature modules |
 | `docs/NATIVE_ARCH.md` | 1649 lines | native binary RE analysis |
-| `tests/` | 134 files | 130 `regress_*.py` suites (headless unless named), plus `ui_match.py`, `smoke_dict.py`, `live_providers.py`, `live_bass.py`. Sweep them with `python -I tools/run_suites.py` (exit-code judged, not grep) — see §Test suites in `README.md` |
+| `tests/` | 139 files | 134 `regress_*.py` suites (headless unless named), plus `ui_match.py`, `smoke_dict.py`, `live_providers.py`, `live_bass.py`. Sweep them with `python -I tools/run_suites.py` (exit-code judged, not grep) — see §Test suites in `README.md`. The runner reports **136 suites, 0 failed** on 2026-10-23 (it also runs two `smoke_*`/`ui_match` entries that are not `regress_*`) |
 
-**[verified]** Language: Python, Tkinter UI, stdlib `urllib` for HTTP; optional
+**[verified]** Language: Python, Qt/PySide6 UI (tkinter deleted `6636686`), stdlib `urllib` for HTTP; optional
 deps only (`keyboard`, `pyperclip` required; `pystray`, `Pillow`, `comtypes`,
 `playwright` optional — `requirements.txt`).
 
@@ -231,7 +232,7 @@ These are stated **where** they are true; several originate in `CHANGELOG.md` /
 | Gap | Where stated | Impact |
 |-----|--------------|--------|
 | Cursor-hook mouse icon not ported | `CHANGELOG.md` (Flags coverage) | mouse-mode hover UI |
-| Drag-and-drop needs `tkinterdnd2` | `CHANGELOG.md` | file DnD |
+| Drag-and-drop not ported | `CHANGELOG.md` (the native's `tkinterdnd2` note is historical; the Qt view has no DnD handler either) | file DnD |
 | "Extended" feature absent in modern Options.json | `CHANGELOG.md` | legacy menu only (`NATIVE_ARCH.md:727` label) |
 | TTS phonetic: no API | `CHANGELOG.md` | "Read phonetically" limited (`NATIVE_ARCH.md:736`) |
 | Updater dead (server retired 2022) | `NATIVE_ARCH.md:1376` | update check is dead code |

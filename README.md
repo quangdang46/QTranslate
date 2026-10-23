@@ -80,7 +80,7 @@ starts normally and the built-in providers still work.
 The contract is `docs/EXTENSION_SDK.md`; the example is pinned by
 `tests/regress_example_extension.py`.
 
-## Test suites (last verified 2026-10-16 — offline only)
+## Test suites (last verified 2026-10-23 — offline only: **136 suites, 0 failed**)
 
 > These counts are **verified offline results, not a live claim**. Live suites
 > (`live_providers`, `live_bass`) were last run 2026-10-08; see

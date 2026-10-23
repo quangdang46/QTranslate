@@ -34,7 +34,7 @@ be designed, then features migrate behind it.
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│ UI host (Tkinter)          presentation only              │
+│ UI host (Qt/PySide6)       presentation only              │
 │   main window · popup · Options · History · Dictionary     │
 │   extension UI slots (panel/widget/menu/popup)             │
 ├──────────────────────────────────────────────────────────┤
@@ -62,7 +62,10 @@ be designed, then features migrate behind it.
 ```
 
 **Dependency rule (enforced by tests):** arrows point *down only*. Core never
-imports `tkinter`, `win32*`, `winreg`, `comtypes`, or a concrete provider.
+imports `PySide6`, `win32*`, `winreg`, `comtypes`, or a concrete provider.
+(The rule named `tkinter` until the tkinter front end was deleted in
+`6636686`; the banned import is the CURRENT toolkit, so the rule still
+means "Core never imports the UI layer".)
 Providers never import UI. Extensions import only the SDK.
 
 ## 3. Core components

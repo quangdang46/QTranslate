@@ -50,7 +50,7 @@ QTranslate Core   (translation engine, reliability, config, storage, events)
        │  uses platform interfaces, never OS APIs directly
 Platform Adapters (Windows · macOS: hotkey, clipboard, capture, audio, window)
        │
-Desktop UI (Tkinter, unchanged framework) + built-in features (packaged in build)
+Desktop UI (PySide6/Qt, since D3 was superseded) + built-in features (packaged in build)
 ```
 
 The developer experience the project is aiming for:
@@ -73,7 +73,7 @@ architecture must satisfy.
 |---|------|----------|
 | D1 | **Target product** | A redesigned Core/Extension platform built *from* QTranslate (not a patch of the binary, not a unrelated new app). |
 | D2 | **Platform scope** | Cross-platform. MVP ships **Windows + macOS day one** — no "Windows first, port later". |
-| D3 | **UI framework** | Keep the current Python UI framework (Tkinter). Do **not** migrate to Qt/wx/Electron. |
+| D3 | **UI framework** | ~~Keep the current Python UI framework (Tkinter).~~ **SUPERSEDED 2026-10-22 by the operator's instruction**, and the tkinter front end was deleted in `6636686`. The desktop UI is PySide6/Qt; no other UI framework is in the tree. The ORIGINAL reason for D3 -- that framework churn is not a goal -- still holds, which is why the Qt layer is a transcription of the measured native geometry and not a redesign. |
 | D4 | **UI approach** | Redesign module boundaries and extension points, but do not treat the current UI as pixel-perfect truth. |
 | D5 | **Extension language** | Python only. SDK published as a Python package. |
 | D6 | **Extension source** | Built-in first, external published under the **same contract** (difference is distribution + trust policy, not API). |
@@ -186,9 +186,12 @@ Carried forward from the planning discussion and enforced in every later doc:
    fixes.
 4. **Do not overwrite the uncommitted working-tree change.** (See
    `CURRENT_STATE.md` §Working tree.)
-5. **Keep Tkinter.** Framework churn is not a goal.
+5. **~~Keep Tkinter.~~ Superseded with D3 (see above): the framework
+   the port keeps is Qt, and the churn ban now protects the Qt layer's
+   transcription of the native geometry.**
 6. **No implementation code during planning.** This phase produces documents
-   only.
+   only. (Historical -- the planning phase is over and the port is built;
+   kept so the phase's ground rules stay legible.)
 
 ## 8. Document map
 
