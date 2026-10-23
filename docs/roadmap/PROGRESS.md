@@ -3,6 +3,41 @@
 The running log. Newest first. Every entry names what changed and what
 was run to show it.
 
+## 2026-10-23 -- full suite re-executed on f8f82c5 (verification only)
+
+The prior entries' runs predated the final commits; this entry records a
+run against the tree AS COMMITTED (`f8f82c5`, clean working tree), with
+no code changed first. `.venv/Scripts/python.exe -I tools/run_suites.py`:
+
+```
+136 suites, 0 failed, 54.7s
+```
+
+No suite skipped -- `ui_match.py`, the one GUI suite, ran against the
+real desktop (harness tags it `(gui)`). The seven suites the review
+asked to see individually all pass:
+
+| suite | assertions |
+|---|---|
+| regress_translate_off_ui | 6 |
+| regress_menu_slots | 37 |
+| regress_selection_capture | 15 |
+| regress_qt_features | 83 |
+| regress_qt_extension_ui | 33 |
+| regress_app_reliability_e2e | 10 |
+| regress_wiring | 8 |
+
+`regress_wiring`'s orphan list (`fonts`, `history`, `override_ui`,
+`screens`, `sdk`, `speech_input`, `updater`, `win32app`) is that suite's
+own documented "known, intentional orphans" section, not a failure.
+
+Not yet verified on this commit, and not claimable from this run: the
+real-interaction flows (Ctrl+Q against a foreign app, Replace
+Selection, live providers, OCR/TTS/microphone hardware, Options
+persistence across restart, the Windows bundle rebuilt on this tree).
+Each needs the operator or the named environment; the offline suites
+pin the logic but do not stand in for the desktop.
+
 ## 2026-10-23 -- translation no longer freezes the window (measured first)
 
 The user said translation felt slow. Rather than guess, `tools/
