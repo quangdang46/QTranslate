@@ -122,3 +122,24 @@ if fail:
         print("  -", f)
     raise SystemExit(1)
 print("regress_microsoft_chain: all checks ok (%d assertions)" % n[0])
+
+
+# --- 2026-10-23: Microsoft's ERROR shape is handled, not crashed --------
+# Asking the live endpoint today returns {"statusCode": 400,
+# "errorMessage": ""} instead of the list native expects. Indexing that
+# with [0] raised KeyError: 0, which read like a port defect. The port
+# reports an empty translation instead, so the caller's fallback runs.
+from qtranslate.services import microsoft as _MS
+ck("an error object yields no entry",
+   _MS.get_response_obj({"statusCode": 400, "errorMessage": ""}) is None)
+ck("a normal list still yields its first entry",
+   _MS.get_response_obj([{"translations": [{"text": "x"}]}])
+   == {"translations": [{"text": "x"}]})
+ck("an empty list yields None", _MS.get_response_obj([]) is None)
+_raised = None
+try:
+    _MS.get_response_obj({"statusCode": 400})
+except Exception as _e:                        # noqa: BLE001
+    _raised = _e
+ck("an error object never raises", _raised is None, repr(_raised))
+print("regress_microsoft_chain: error-shape checks ok")

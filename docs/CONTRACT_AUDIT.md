@@ -127,7 +127,7 @@ host, which is the same shape as the capability gap above.
 |---|---|---|
 | Fallback router, error classes, health tracking | **Implemented + Behaviour-verified** | `reliability.py`, `regress_reliability.py` |
 | The app tells the user which provider answered | **Wired** | the result pane shows `res.provider_used` |
-| Every provider holds up live | **Missing** | `TEST_RESULTS.md`: 19/21 live, Bing session scrape broken, WordReference needs Playwright |
+| Every provider holds up live | **Missing, and now measured precisely** | Re-checked 2026-10-23: **google, deepl, yandex answer**; **Microsoft/Bing is dead at the endpoint** -- it returns `{"statusCode": 400, "errorMessage": ""}` to the exact request native builds, so this is the host refusing, not the port. The port used to crash on that shape (`KeyError: 0`); it reports an empty translation now, so the fallback chain runs. WordReference still needs Playwright's Chromium, an optional dep. A dead endpoint is recorded, never dressed up. |
 | End-to-end under consecutive failures | **Behaviour-verified** | `regress_app_reliability_e2e.py` drives `app.on_go()` with a rigged provider table |
 
 ### Platforms

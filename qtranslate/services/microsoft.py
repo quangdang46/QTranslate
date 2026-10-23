@@ -135,9 +135,22 @@ def _service_request(text, sl=AUTO_DETECT_LANGUAGE, tl=ENGLISH_LANGUAGE,
 
 
 def get_response_obj(obj):
-    """Port of getResponseObj(a)."""
-    if obj and len(obj) > 0:
-        return obj[0]
+    """Port of getResponseObj(a), guarded against Microsoft's error shape.
+
+    Native's response is a LIST of entries. Microsoft also answers an
+    error OBJECT (``{"statusCode": 400, "errorMessage": ...}``) when the
+    endpoint rejects the request, and indexing that with ``[0]`` raised a
+    ``KeyError: 0`` that read like a port defect instead of what it is: a
+    refused request. The error body is returned as-is so the caller's
+    ``entry.get(...)`` finds nothing and the empty translation is
+    reported, rather than the browser URL leaking a traceback.
+    """
+    if isinstance(obj, list):
+        return obj[0] if obj else None
+    if isinstance(obj, dict):
+        if obj.get("statusCode") and int(obj["statusCode"]) >= 400:
+            return None
+        return obj
     return None
 
 
