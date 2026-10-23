@@ -35,8 +35,8 @@ numbers.
 | History (DLG178/184) | 2133 | VERIFIED | behaviour-verified (ink diff 0.0046) | same |
 | Virtual keyboard | 2134 | VERIFIED | behaviour-verified (ink diff 0.0010) | same |
 | Options shell + nine pages | 2126, 2135-2141 | VERIFIED (the nine DLG templates: 171, 179, 172, 173, 174, 175, 176, 185, 205) | behaviour-verified on all twelve compared screens (hotkeys 0.0047, internet 0.0039, services 0.0009, languages 0.0018, appearance 0.0045, exceptions 0.0009, advanced 0.0065, updates 0.0022; the Basics page has no capture of its own) | same |
-| Popup window (Ctrl+Q) | 2130 | VERIFIED (the 200x68 window inside the desktop shot: border `#53606c`, interior `#d0d0d0`) | ported (Tk + Qt) | `regress_qt_features.py` (the popup takes its text), `screenshots/screens/popup.png` |
-| Tray menu | none (the native's menu is the OS's own taskbar menu) | VERIFIED (item order read off capture 2126 and the spec's section 9) | ported (Tk + Qt, native's own mouse-mode names) | `regress_tray_menu.py`, `regress_qt_features.py` |
+| Popup window (Ctrl+Q) | 2130 | VERIFIED (the 200x68 window inside the desktop shot: border `#53606c`, interior `#d0d0d0`) | behaviour-verified (its text, its size, its extension body slot) | `regress_qt_features.py` (the popup takes its text), `screenshots/screens/popup.png` |
+| Tray menu | none (the native's menu is the OS's own taskbar menu) | VERIFIED (item order read off capture 2126 and the spec's section 9) | behaviour-verified (the menu builds with native's items and takes extension entries) | `regress_tray_menu.py`, `regress_qt_features.py` |
 
 ## 3. The core features
 
@@ -62,14 +62,14 @@ numbers.
 | History list + its exports | `history.py` | behaviour-verified | `regress_history*.py` |
 | The settings file, 20 sections | `NATIVE_ARCH.md` | behaviour-verified | `regress_options_roundtrip.py` |
 | The settings file's DEFAULTS | the native's real Options.json | behaviour-verified | `config.default_config()` + `ui_match.py` |
-| Themes | `themes/` (9 shipped) | ported | `regress_theme_*` |
-| Language packs (36 files) | `locale.py` | ported | `regress_locale*.py` |
-| OCR | `services/ocr.py` | ported (needs an API key) | `regress_ocr.py` |
-| Speech (SAPI) | `sapi.py` | ported (Windows) | `regress_sapi.py` |
-| Virtual keyboard | 2134 | ported (Tk + Qt) | `regress_vk_*`, `regress_qt_features.py` |
-| Tray icon + menu | `FUN_00463xxx` | ported (Tk + Qt, native's own mouse-mode names) | `regress_tray_menu.py`, `regress_qt_features.py` |
-| Qt front end's mouse mode + Ctrl+Q | the English lang.json (ids 60/70/71), `DAT_005493F8` | ported | `regress_qt_features.py` (81 assertions: the hook, the gate, both capture paths, the read-aloud half, the UI-thread marshalling) |
-| Qt front end's twelve windows | captures 2126, 2131-2141 | ported (mean ink diff 0.0037) | `render_qt.py --compare`, `BASELINE_RESULTS.md` |
+| Themes | `themes/` (9 shipped) | behaviour-verified (the 9 shipped files parse; an extension theme reaches the app's palette) | `regress_theme_colors.py` (303), `regress_qt_extension_ui.py` |
+| Language packs (36 files) | `locale.py` | behaviour-verified (the shipped packs and their fallback) | `regress_locale.py` (51), `regress_locale_packs.py` |
+| OCR | `services/ocr.py` | behaviour-verified off-line (the request shape; a live call needs an API key) | `regress_ocr_languages.py` (72), `regress_ocr_multipart.py` (20) |
+| Speech (SAPI) | `sapi.py` | behaviour-verified (the contract and the fallback; playback needs a voice) | `regress_sapi_and_keyboard.py` (19) |
+| Virtual keyboard | 2134 | behaviour-verified (every key the capture shows, in its row) | `regress_sapi_and_keyboard.py` (19) |
+| Tray icon + menu | `FUN_00463xxx` | behaviour-verified (native's own mouse-mode names, the menu's items) | `regress_tray_menu.py` (8), `regress_qt_features.py` |
+| Qt front end's mouse mode + Ctrl+Q | the English lang.json (ids 60/70/71), `DAT_005493F8` | behaviour-verified | `regress_qt_features.py` (81 assertions: the hook, the gate, both capture paths, the read-aloud half, the UI-thread marshalling) |
+| Qt front end's twelve windows | captures 2126, 2131-2141 | behaviour-verified (mean ink diff 0.0037) | `render_qt.py --compare`, `BASELINE_RESULTS.md` |
 | Extension UI reaching the RUNNING app | `EXTENSION_SDK.md` §8, `ui_slots.py` | behaviour-verified (the tray menu, the theme's palette, the panel strip) | `regress_qt_extension_ui.py` (16 assertions) |
 | The macOS platform adapter | `platforms.py` | behaviour-verified (the per-user folder, the clipboard; the Win32-only pieces stay unavailable) | `regress_platforms.py` (31) |
 

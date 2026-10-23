@@ -115,7 +115,8 @@ host, which is the same shape as the capability gap above.
 | Claim | State | Why |
 |---|---|---|
 | The twelve captured native screens are reproduced | **Behaviour-verified** | mean ink diff 0.0037 over twelve screens |
-| Every native feature is reproduced | **Missing** | `FEATURE_MATRIX` still carries `ported` rows that are not `behaviour-verified` |
+| Every feature row has a test behind it | **Behaviour-verified** | every row that was `ported` now names a suite that runs; three of those rows (speech, the virtual keyboard, themes) had NO suite at all and one (`regress_sapi.py`) did not exist -- `regress_sapi_and_keyboard.py` and the existing theme/locale/OCR suites back them now |
+| Every native BEHAVIOUR is reproduced | **Missing** | a suite proves the surfaces above; that is not the same as proving native's behaviour on every screen |
 | The Basics Options page matches native | **Missing** | no native capture of it exists (BLOCKERS B4) |
 | The tray menu matches native item-for-item | **partial** | the menu is the OS's own; the item list was transcribed, not measured |
 | Dead endpoints behave like native's dead endpoints | **missing** | Babylon, ImTranslator, Google Search, Yandex TTS and Baidu TTS are `dead:` by evidence, which is honest, but they are not "working features" |
