@@ -58,7 +58,7 @@ A manifest may declare eight capabilities. `ExtensionAPI` has **three**
 |---|---|---|---|
 | `provider` | `register_provider` | yes -- committed into `registry.TRANSLATORS`, reached by `engine.translate` | **Behaviour-verified** |
 | `theme` | `register_theme` | yes -- `QtApp.apply_theme` resolves through the manager and `apply_style` paints it | **Behaviour-verified** |
-| `ui` | `register_ui` | partly -- the tray menu, the top/middle panels and the popup body | **partial** |
+| `ui` | `register_ui` | yes -- every published menu/panel/popup slot has a host | **Behaviour-verified** |
 | `workflow` | `register_workflow` | yes -- `engine.translate` runs the step on the finished text | **Behaviour-verified** |
 | `dictionary` | `register_dictionary` | yes -- `sdk.dict_lookup` reads `registry.DICT_EXT` | **Behaviour-verified** |
 | `tts` | `register_tts` | yes -- `player.play_text` tries the extension backend first | **Behaviour-verified** |
@@ -128,7 +128,7 @@ host, which is the same shape as the capability gap above.
 | Fallback router, error classes, health tracking | **Implemented + Behaviour-verified** | `reliability.py`, `regress_reliability.py` |
 | The app tells the user which provider answered | **Wired** | the result pane shows `res.provider_used` |
 | Every provider holds up live | **Missing** | `TEST_RESULTS.md`: 19/21 live, Bing session scrape broken, WordReference needs Playwright |
-| End-to-end under consecutive failures | **partial** | unit-tested through the router; not driven through the running app |
+| End-to-end under consecutive failures | **Behaviour-verified** | `regress_app_reliability_e2e.py` drives `app.on_go()` with a rigged provider table |
 
 ### Platforms
 
@@ -171,3 +171,11 @@ The capability gap is closed in both halves: the five are BUILT (each
 with a table and a call site, proven end to end) and the validator still
 refuses a name it does not know, so a manifest cannot claim a capability
 that does not exist.
+
+**A real bug fell out of the end-to-end reliability case.** When every
+provider failed, the engine still put the REQUESTED service into
+`Result.provider_used`, and `Result.ok` is `bool(provider_used)` -- so a
+total failure reported `ok=True`. The unit suite could not see it (it
+asks the router, not the engine); driving `app.on_go()` did. Fixed:
+`provider_used` stays empty on that branch and `requested` carries which
+service was asked.

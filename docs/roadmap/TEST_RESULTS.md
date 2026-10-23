@@ -11,10 +11,10 @@ python -I tools/run_suites.py
 ```
 
 ```
-131 suites, 0 failed, 49.1s
+133 suites, 0 failed, 53.6s
 ```
 
-**131 suites, 0 failed.** The suite files are 132; two of them
+**133 suites, 0 failed.** The suite files are 134; two of them
 (`live_bass.py`, `live_providers.py`) hit real endpoints and are run
 separately, so the runner does not count them.
 

@@ -248,7 +248,13 @@ def translate(service, text, target, src="auto", auto_detect=False,
             # yandex") and `failures` holds one classified Failure per
             # provider. Dropping them here is what made a dead endpoint
             # indistinguishable from a timeout.
-            return Result(service or "",
+            # ``provider_used`` MUST stay empty here. `Result.ok` is
+            # `bool(provider_used)`, and this branch is precisely "no
+            # provider answered" -- filling it with the REQUESTED service
+            # made a total failure report ok=True, which is the bug the
+            # app-level reliability suite caught. `requested` carries
+            # which service was asked.
+            return Result("",
                           "No data returned (timeout while sending data.)",
                           service or "",
                           failures=tuple(res.failures) + tuple(extra),

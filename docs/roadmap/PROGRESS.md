@@ -45,8 +45,19 @@ it. And the validator still refuses a name outside the schema, so
   Qt still had queued events for them. The teardown now drains the loop
   and keeps the references until the end.
 
+**The app-level reliability case found a real bug.** Driving
+`app.on_go()` with a rigged provider table -- rather than asking the
+router directly as the unit suite does -- showed that when EVERY
+provider failed, the engine still put the REQUESTED service into
+`Result.provider_used`, and `Result.ok` is `bool(provider_used)`. A total
+failure therefore reported `ok=True`, which is exactly the kind of lie
+the audit exists to catch. `provider_used` is empty on that branch now;
+`requested` carries which service was asked.
+`regress_app_reliability_e2e.py` pins it, along with the fallback, the
+error string and the workflow step running on a fallback's result.
+
 ```
-131 suites, 0 failed, 49.1s
+133 suites, 0 failed, 53.6s
 ```
 
 ## 2026-10-23 -- the C2C contract audit, and the lie it found
