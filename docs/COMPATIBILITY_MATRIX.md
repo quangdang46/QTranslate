@@ -78,26 +78,26 @@ platforms it claims. Evidence column cites `file:line` where available.
 
 | Feature | Native evidence | Python today | Must keep | Platforms | Test | Status |
 |---|---|---|---|---|---|---|
-| Single-instance guard | `FUN_00435005`, `docs/NATIVE_ARCH.md:367` | absent | yes (bring existing window forward) | Win+mac | launch twice → one window | `analysed` |
-| Main window (DLG129, template `340×201` DU @ `MS Shell Dlg` 8pt, 17 ctls) | `FUN_00411DEB`, `NATIVE_ARCH.md:1086` | `qtranslate/qt/main_window.py` (Qt view; DLG129 geometry per G9) | layout + control ids | Win+mac | `ui_match` structure | `ported` | **corrected 2026-10-10:** earlier said `526×366, Tahoma`. `526×366` is a *runtime pixel* size from a saved `WINDOWPLACEMENT` (not the template), and the font is `MS Shell Dlg` 8pt, not Tahoma (`docs/review/G9_SPEC_NATIVE_WINDOW_2026-10-10.md`). `qtranslate/placement.py:TEMPLATE_GEOMETRY` still sizes to `526x366` — template-vs-placement is a Phase 7 decision. **RESOLVED 2026-10-16:** `placement.py`'s `TEMPLATE_GEOMETRY` is now `595x376` — the DU→px conversion of `340×201` at `MS Shell Dlg` 8pt with the standard `7×15` baseunit, using `/4` horizontally and `/8` vertically (`G9_TEMPLATE_VS_PLACEMENT_2026-10-15.md`). **Arithmetic re-corrected 2026-10-16:** the first fix divided *both* axes by 4 and produced `595×753` — a main window nearly twice as tall as native's. `ui_match` had been pinning that wrong value (`201 * 15 // 4 == 753`), so it looked verified. `G9_PART_A_CLOSED_2026-10-16.md` §1 — and the first-run fallback is that value, not a stale pixel constant from another machine's saved placement. When a `WindowMainPlacement` blob exists, `place_main` restores it instead, which is what native does. Pinned by `tests/regress_g9_part_a_complete.py` |
-| WINDOWPLACEMENT restore | `NATIVE_ARCH.md:1086` | `qtranslate/placement.py:place_main` | yes | Win+mac | reopen → same geom | `ported` |
-| 17 global hotkeys | `FUN_00405A17`, `NATIVE_ARCH.md:677` | `qtranslate/qt/hotkeys.py:install` (`keyboard`) | all 17, from Options.json | Win ✓ / mac needs perm | registry == Options.json | `ported` |
-| Hotkey display string | `FUN_00403B48/D3C` | `config.format_hotkey` | "Double Ctrl + Q" form | Win+mac | known-answer vectors | `ported` |
-| Double-press detection | `FUN_0041786B`, `NATIVE_ARCH.md:915` | partial | Ctrl+C+C / Ctrl+Q+Q | Win+mac | manual | `ported` |
-| Menu accelerators / help.txt default | `NATIVE_ARCH.md:404` | `qtranslate/qt/main_window.py` + `qtranslate/assets/locales/English/help.txt` | yes | Win+mac | `ui_match` | `ported` |
+| Single-instance guard | `FUN_00435005`, `docs/NATIVE_ARCH.md:367` | present (`single_instance` lock) | yes (bring existing window forward) | Win+mac | `tests/regress_single_instance.py` (9) | `behaviour-verified` — **Win only** |
+| Main window (DLG129, template `340×201` DU @ `MS Shell Dlg` 8pt, 17 ctls) | `FUN_00411DEB`, `NATIVE_ARCH.md:1086` | `qtranslate/qt/main_window.py` (Qt view; DLG129 geometry per G9) | layout + control ids | Win+mac | `tests/ui_match.py` structure + `tools/render_qt.py --compare` (0.0037 over 12 screens) | `behaviour-verified` — **Win only**, geometry only | **corrected 2026-10-10:** earlier said `526×366, Tahoma`. `526×366` is a *runtime pixel* size from a saved `WINDOWPLACEMENT` (not the template), and the font is `MS Shell Dlg` 8pt, not Tahoma (`docs/review/G9_SPEC_NATIVE_WINDOW_2026-10-10.md`). `qtranslate/placement.py:TEMPLATE_GEOMETRY` still sizes to `526x366` — template-vs-placement is a Phase 7 decision. **RESOLVED 2026-10-16:** `placement.py`'s `TEMPLATE_GEOMETRY` is now `595x376` — the DU→px conversion of `340×201` at `MS Shell Dlg` 8pt with the standard `7×15` baseunit, using `/4` horizontally and `/8` vertically (`G9_TEMPLATE_VS_PLACEMENT_2026-10-15.md`). **Arithmetic re-corrected 2026-10-16:** the first fix divided *both* axes by 4 and produced `595×753` — a main window nearly twice as tall as native's. `ui_match` had been pinning that wrong value (`201 * 15 // 4 == 753`), so it looked verified. `G9_PART_A_CLOSED_2026-10-16.md` §1 — and the first-run fallback is that value, not a stale pixel constant from another machine's saved placement. When a `WindowMainPlacement` blob exists, `place_main` restores it instead, which is what native does. Pinned by `tests/regress_g9_part_a_complete.py` |
+| WINDOWPLACEMENT restore | `NATIVE_ARCH.md:1086` | `qtranslate/placement.py:place_main` | yes | Win+mac | reopen → same geom; `tests/regress_placement.py` (13) | `behaviour-verified` — **Win only** |
+| 17 global hotkeys | `FUN_00405A17`, `NATIVE_ARCH.md:677` | `qtranslate/qt/hotkeys.py:install` (`keyboard`) | all 17, from Options.json | Win ✓ / mac needs perm | `tests/regress_hotkey_decode.py` (10) + `regress_hotkey_coverage.py` (6) | `behaviour-verified` — **Win only** |
+| Hotkey display string | `FUN_00403B48/D3C` | `config.format_hotkey` | "Double Ctrl + Q" form | Win+mac | `tests/regress_hotkey_option_keys.py` (9) known-answer vectors | `behaviour-verified` — **Win only** |
+| Double-press detection | `FUN_0041786B`, `NATIVE_ARCH.md:915` | partial | Ctrl+C+C / Ctrl+Q+Q | Win+mac | manual desktop test, NO automated suite | `ported` — unpinned, needs a human |
+| Menu accelerators / help.txt default | `NATIVE_ARCH.md:404` | `qtranslate/qt/main_window.py` + `qtranslate/assets/locales/English/help.txt` | yes | Win+mac | `tests/ui_match.py` (tray order) + `tests/regress_menu_slots.py` (37) | `behaviour-verified` — **Win only**, menus only |
 | Cursor-hook mouse icon | `NATIVE_ARCH.md:121` | **none** | decide | Win | — | `not-started` |
 
 ## B. Capture (3 modes)
 
 | Feature | Native evidence | Python today | Must keep | Platforms | Test | Status |
 |---|---|---|---|---|---|---|
-| Mode 3 clipboard capture | viewer `FUN_0043EBE0` | `qtranslate/selection.py:copy_selection` (sequence-number proof, not a fixed sleep) | yes | Win+mac | copy→hotkey→translate | `ported` |
-| Mode 2 mouse (OLEACC) | `FUN_00404901` | `mouse_capture.cursor_text()` via `_capture_selection` (`qtranslate/qt/app.py`); the Tk path is gone with the front end | yes (native core UX) | Win | OLEACC contract suite + `tests/regress_qt_features.py` (the Qt mouse mode: hook, gate, capture, speak) | `ported` |
-| Mode 1 reuse-text | `FUN_004052E4` | partial | yes | Win+mac | — | `ported` |
-| SendInput synth (Ctrl+C) | `FUN_0043BD5C` | `qtranslate/sendkeys.py:send` | yes | Win / mac perm | — | `ported` |
-| Replace-selection write-back | `FUN_0043BE56`, `NATIVE_ARCH.md:650` | `qtranslate/sendkeys.py:write_text` via `QtApp.hotkey_replace_selection` | yes | Win / mac perm | — | `ported` |
-| Foreground exclusion list | `FUN_004631DE/004470B7` | `exclusions.py` | yes (Disabled/Enabled + mode) | Win / mac | wcsicmp vectors | `ported` |
-| **Source-language arg (auto vs selected)** | dispatcher `FUN_00404A12`; per-service `usesAutoDetectCode` hook (`FUN_0045f6c1` → `request+0x50`, consumed by `FUN_004606ba`) | `qtranslate/engine.py:translate`: echo on `src == target`; `_USES_AUTO_DETECT` declares auto-capability per provider | **decided 2026-10-10:** the rule is *capability-dependent and per-service* — the dispatcher echoes when source == destination and skips the service; detect runs only when the service does not answer `usesAutoDetectCode`, or when the destination is also unset. It is neither "all paths honor the selected source" nor "only the popup hotkey" | Win+mac | `tests/regress_source_language.py` (13) | `ported` |
+| Mode 3 clipboard capture | viewer `FUN_0043EBE0` | `qtranslate/selection.py:copy_selection` (sequence-number proof, not a fixed sleep) | yes | Win+mac | `tests/regress_selection_capture.py` (15) + `regress_qt_features.py` Ctrl+Q path | `behaviour-verified` — **Win only** |
+| Mode 2 mouse (OLEACC) | `FUN_00404901` | `mouse_capture.cursor_text()` via `_capture_selection` (`qtranslate/qt/app.py`); the Tk path is gone with the front end | yes (native core UX) | Win | OLEACC contract suite (`regress_oleacc_contract.py`) + `tests/regress_mouse_capture.py` (42) + `regress_qt_features.py` (hook, gate, capture, speak) | `behaviour-verified` — **Win only** |
+| Mode 1 reuse-text | `FUN_004052E4` | partial | yes | Win+mac | — | `ported` — no suite, unpinned |
+| SendInput synth (Ctrl+C) | `FUN_0043BD5C` | `qtranslate/sendkeys.py:send` | yes | Win / mac perm | `tests/regress_selection_capture.py` (15) drives the send + backoff | `behaviour-verified` — **Win only** |
+| Replace-selection write-back | `FUN_0043BE56`, `NATIVE_ARCH.md:650` | `qtranslate/sendkeys.py:write_text` via `QtApp.hotkey_replace_selection` | yes | Win / mac perm | `tests/regress_sendkeys.py` + `regress_selection_capture.py` (the selection read) | `behaviour-verified` — **Win only** |
+| Foreground exclusion list | `FUN_004631DE/004470B7` | `exclusions.py` | yes (Disabled/Enabled + mode) | Win / mac | `tests/regress_exclusions.py` (12) wcsicmp vectors | `behaviour-verified` — **Win only** |
+| **Source-language arg (auto vs selected)** | dispatcher `FUN_00404A12`; per-service `usesAutoDetectCode` hook (`FUN_0045f6c1` → `request+0x50`, consumed by `FUN_004606ba`) | `qtranslate/engine.py:translate`: echo on `src == target`; `_USES_AUTO_DETECT` declares auto-capability per provider | **decided 2026-10-10:** the rule is *capability-dependent and per-service* — the dispatcher echoes when source == destination and skips the service; detect runs only when the service does not answer `usesAutoDetectCode`, or when the destination is also unset. It is neither "all paths honor the selected source" nor "only the popup hotkey" | Win+mac | `tests/regress_source_language.py` (30) | `behaviour-verified` — **Win only** |
 
 > **This row's "decide one rule" is closed as of 2026-10-10** — it was neither
 > option it offered. Evidence and the exact branch conditions:
@@ -121,23 +121,23 @@ platforms it claims. Evidence column cites `file:line` where available.
 
 | Feature | Native evidence | Python today | Must keep | Platforms | Test | Status |
 |---|---|---|---|---|---|---|
-| Orchestrator (pick→exec→render) | `FUN_00404A12`, `NATIVE_ARCH.md:442` | `qtranslate/engine.py:translate` | behavior | Win+mac | end-to-end mock | `ported` |
-| Provider priority (ServicesOrder) | `FUN_0045CEDE` | `config.services_order` | exact order `[1,5,12,13,11,26,28,30,31]` | Win+mac | order test | `ported` |
-| Auto-detect (6-provider loop) | `FUN_00460354` | `qtranslate/registry.py:detect_language` | order + fallthrough | Win+mac | detect test | `ported` |
-| Back-translation | `FUN_004606BA` | `do_translate` | yes | Win+mac | flag test | `ported` |
+| Orchestrator (pick→exec→render) | `FUN_00404A12`, `NATIVE_ARCH.md:442` | `qtranslate/engine.py:translate` | behavior | Win+mac | `tests/regress_translate_response_chain.py` (45) + `regress_app_reliability_e2e.py` (10) | `behaviour-verified` — **Win only** |
+| Provider priority (ServicesOrder) | `FUN_0045CEDE` | `config.services_order` | exact order `[1,5,12,13,11,26,28,30,31]` | Win+mac | `tests/regress_router_order.py` (10) | `behaviour-verified` — **Win only** |
+| Auto-detect (6-provider loop) | `FUN_00460354` | `qtranslate/registry.py:detect_language` | order + fallthrough | Win+mac | `tests/regress_auto_detect_capability.py` (26) + `regress_provider_auto.py` | `behaviour-verified` — **Win only** |
+| Back-translation | `FUN_004606BA` | `qtranslate/engine.py:translate` (back_translate path) | yes | Win+mac | `tests/regress_translate_response_chain.py` (45) | `behaviour-verified` — **Win only** |
 | Google translate | — | `google_translate.py` | yes | Win+mac | live EN→VI (Win) | `behaviour-verified` — **Win only** (mac untested) |
 | Microsoft/Bing | — | `session.bing_translate` | yes | Win+mac | live EN→VI (Win) | `behaviour-verified` — **Win only** (mac untested) |
 | DeepL | — | `deepl.py` | yes | Win+mac | live EN→VI (Win) | `behaviour-verified` — **Win only** (mac untested) |
 | Yandex | — | `yandex.py` (android) | yes | Win+mac | live EN→RU (Win) | `behaviour-verified` — **Win only** (mac untested) |
 | Naver/Papago | — | `naver.py` (new API) | yes | Win+mac | live EN→VI (Win) | `behaviour-verified` — **Win only** (mac untested) |
 | Baidu translate | — | `baidu.py` | see status | Win+mac | detect live | `dead:needs-session-token` |
-| Youdao translate | — | `youdao.py` | see status | Win+mac | translate_web live | `ported` (translate_o needs bv) |
+| Youdao translate | — | `youdao.py` | see status | Win+mac | translate_web live | `ported` — live verify needs a key/session, unpinned |
 | Promt | `ghcs` verified | `promt.py` | see status | Win+mac | signing vectors | `dead:needs-session-token` |
 | Babylon translate (ID13) | `NATIVE_ARCH.md` | `babylon.py` | see status | Win+mac | — | `dead:host-retired` |
 | ImTranslator (ID18) | — | ported | no | — | — | `dead:host-retired` |
-| **Fallback on failure** | backtrans/detect retry | `reliability.FallbackRouter` via `qtranslate/engine.py:translate` via `reliability.FallbackRouter` | yes (D12) | Win+mac | `regress_reliability.py` §5 (fail→next provider, `fell_back` recorded, `NO_FALLBACK` set) | `ported` — wired 2026-10-10 |
-| **Bounded retry + timeout** | `FUN_0045BCED/0045BF7D` | `reliability.RetryPolicy` (base/max delay, `Retry-After`, shared budget) + `session.py` timeout | yes | Win+mac | `regress_reliability.py` §2–4 | `ported` — bounded retry landed 2026-10-10 |
-| **Error classification** | — | `reliability.ErrorKind` (9 kinds) + `classify()` `reliability.py:136` | yes | Win+mac | `regress_reliability.py` §1 (taxonomy, incl. SSL → `PROVIDER_DEAD`) | `ported` — landed 2026-10-10 |
+| **Fallback on failure** | backtrans/detect retry | `reliability.FallbackRouter` via `qtranslate/engine.py:translate` via `reliability.FallbackRouter` | yes (D12) | Win+mac | `regress_reliability.py` §5 + `regress_app_reliability_e2e.py` (10, drives `app.on_go()`) | `behaviour-verified` — **Win only** |
+| **Bounded retry + timeout** | `FUN_0045BCED/0045BF7D` | `reliability.RetryPolicy` (base/max delay, `Retry-After`, shared budget) + `session.py` timeout | yes | Win+mac | `regress_reliability.py` §2–4 | `behaviour-verified` — **Win only** |
+| **Error classification** | — | `reliability.ErrorKind` (9 kinds) + `classify()` `reliability.py:136` | yes | Win+mac | `regress_reliability.py` §1 (taxonomy, incl. SSL → `PROVIDER_DEAD`) | `behaviour-verified` — **Win only** |
 
 **Reconciliation vs `RE_COVERAGE_CHECKLIST.md` §E (19 services + Common.js).**
 This matrix does not list every service as its own row; the mapping is:
@@ -160,12 +160,12 @@ recorded — a service may never quietly disappear between the two docs.
 
 | Feature | Native evidence | Python today | Must keep | Platforms | Test | Status |
 |---|---|---|---|---|---|---|
-| Popup window (borderless, topmost) | `FUN_0040C393`, `NATIVE_ARCH.md:1476` | `qtranslate/qt/popup.py:PopupWindow` + `QtApp.show_translation` | behavior | Win+mac | popup test | `ported` |
-| Auto-fit layout engine | `FUN_0044B4F4`, `NATIVE_ARCH.md:1476` | `qtranslate/qt/popup.py` (content-sized; MIN/MAX bounds) | behavior | Win+mac | geometry test | `ported` |
-| RichEdit link tagging (`qtdp:`) | `FUN_004266C6`, `FUN_00465574` | `tag_links` | yes | Win+mac | link test | `ported` |
-| 8+ themes (JSONC) | `FUN_0044C4CA`, `NATIVE_ARCH.md:926` | `theme.py` | load + roundtrip | Win+mac | theme hex test | `ported` |
-| Theme brightness shift | `FUN_0044A163` | `theme.adjust_brightness` | yes | Win+mac | vector test | `ported` |
-| Popup state colors | `FUN_0044FE1B` | `theme.window_colors` + `state_name` (0 Normal, 1 Hover, 2 Pressed, 3 Disabled, 4→Normal palette; Blue verified all 5) | states 0/1/2/3/4 (4→Normal: focus is a flag, not a palette) | Win+mac | `tests/regress_theme_colors.py` (state table + window_colors roundtrip) | `ported` |
+| Popup window (borderless, topmost) | `FUN_0040C393`, `NATIVE_ARCH.md:1476` | `qtranslate/qt/popup.py:PopupWindow` + `QtApp.show_translation` | behavior | Win+mac | `tests/regress_popup_smoke.py` (20) + `ui_match.py` popup-* + 2162/2163 captures | `behaviour-verified` — **Win only** |
+| Auto-fit layout engine | `FUN_0044B4F4`, `NATIVE_ARCH.md:1476` | `qtranslate/qt/popup.py` (content-sized; MIN/MAX bounds) | behavior | Win+mac | `tests/ui_match.py` popup-size-bounded/grows/clamped + content-driven sizing | `behaviour-verified` — **Win only** |
+| RichEdit link tagging (`qtdp:`) | `FUN_004266C6`, `FUN_00465574` | dictionary-card link handling | yes | Win+mac | `tests/regress_dictionary_html.py` (qtdp: left alone) + `regress_plugin_js_recovered.py` (Oxford qtdp: rewrite) | `behaviour-verified` — **Win only** |
+| 8+ themes (JSONC) | `FUN_0044C4CA`, `NATIVE_ARCH.md:926` | `theme.py` | load + roundtrip | Win+mac | `tests/regress_theme_all.py` (308, 8 themes) + `regress_theme_loader_jsonc.py` | `behaviour-verified` — **Win only** |
+| Theme brightness shift | `FUN_0044A163` | `theme.adjust_brightness` | yes | Win+mac | `tests/regress_theme_colors.py` (303) vector table | `behaviour-verified` — **Win only** |
+| Popup state colors | `FUN_0044FE1B` | `theme.window_colors` + `state_name` (0 Normal, 1 Hover, 2 Pressed, 3 Disabled, 4→Normal palette; Blue verified all 5) | states 0/1/2/3/4 (4→Normal: focus is a flag, not a palette) | Win+mac | `tests/regress_theme_colors.py` (303, state table + window_colors roundtrip) | `behaviour-verified` — **Win only** |
 | **Visual fidelity to native** | screenshots | low (user) | target | Win+mac | screenshot diff | `not-started` |
 
 ## E. Dictionary · history · XDXF
@@ -176,41 +176,41 @@ recorded — a service may never quietly disappear between the two docs.
 | Oxford/Lingvo/Urban/Wikipedia/Multitran/WordReference | — | ported | yes | Win+mac | live OK (Win) | `behaviour-verified` — **Win only** |
 | Reverso translate | — | ported | yes | Win+mac | live OK (Win) | `behaviour-verified` — **Win only** |
 | ImTranslator/Babylon dict/Google Search | — | ported | no | — | — | `dead:host-retired` / `dead:bot-walled` |
-| XDXF offline dict | `FUN_00445BB9`, `NATIVE_ARCH.md:1382` | `xdxf.py` | yes | Win+mac | template test | `ported` |
+| XDXF offline dict | `FUN_00445BB9`, `NATIVE_ARCH.md:1382` | `xdxf.py` | yes | Win+mac | `tests/regress_xdxf_passthrough.py` (25) + `regress_xdxf_render.py` + `regress_xdxf_vs_xslt.py` | `behaviour-verified` — **Win only** |
 | dict template RT_HTML-192 | `qtranslate/dict_template.html` + `tests/regress_dict_template.py` (the `NATIVE_ARCH.md:1392` line previously cited here is the Youdao `Utils.md5` note — wrong reference, corrected 2026-10-16) | `dict_template.html` | byte-identical | Win+mac | MD5 (Win) | `behaviour-verified` (artifact, OS-independent) |
-| History (DLG164) JSON+CSV order | `FUN_004638D8` **loader** / `FUN_00463B04` **saver** (see `RE_PROGRESS.md` §Tensions #4) | `history.py` | col order `[a,c,b,e,d]` | Win+mac | order test | `ported` |
-| History favorites | — | `qtranslate/history.py` (favorites pending; lifecycle wired) | yes | Win+mac | — | `ported` |
-| Export Csv/Html/Json/Txt | `Plugins/History/*.js` | `history.py` | 1:1 | Win+mac | exporter test | `ported` |
+| History (DLG164) JSON+CSV order | `FUN_004638D8` **loader** / `FUN_00463B04` **saver** | `history.py` | col order `[a,c,b,e,d]` | Win+mac | `tests/regress_history_export.py` (JSON comma + CSV order) + `regress_history_dispatch.py` | `behaviour-verified` — **Win only** |
+| History favorites | — | `qtranslate/history.py` (favorites pending; lifecycle wired) | yes | Win+mac | `tests/regress_history_dispatch.py` (lifecycle only, not the star) | `ported` — favorites unpinned |
+| Export Csv/Html/Json/Txt | `Plugins/History/*.js` | `history.py` | 1:1 | Win+mac | `tests/regress_history_export.py` (native parity) | `behaviour-verified` — **Win only** |
 
 ## F. TTS · speech-in · OCR · spell · layout
 
 | Feature | Native evidence | Python today | Must keep | Platforms | Test | Status |
 |---|---|---|---|---|---|---|
 | TTS online mp3 | `FUN_004614BB` | `tts.py` | yes | Win+mac | live mp3 (Win) | `behaviour-verified` — **Win only** (Google) |
-| BASS playback | `FUN_00461642`, `NATIVE_ARCH.md:1603` | `player.py` (real bass.dll) | behavior | Win / mac(no bass.dll) | live audio | `ported` (Win) |
-| Offline TTS fallback | **no native SAPI found** — `FUN_00448BEC` is the MSXML DOMDocument engine (see `RE_PROGRESS.md` §Tensions #5) | `sapi.py` (our fallback only) | mac replacement | Win / mac | — | `ported` (Win) |
-| Slow TTS flag | `Advanced.EnableSlowerListening` | wired | yes | Win+mac | — | `ported` |
-| Read-phonetically (display) | `FUN_0042ED3F` appends `"\r\r"`+res186("Romanization: ")+`entry[5]` to the result when flag on AND `"<Error>"` absent (gate `FUN_00403897`) — an annotation on a *successful* result, never a replacement (J7) | `qtranslate/engine.py:translate` → `phonetics.append_phonetics` | preserve | Win+mac | `tests/regress_phonetics.py` (35) + `tests/regress_google_romanization.py` (19, 4 live langs) | `ported` — phonetics **display**, not TTS; Google `dt=rm` only, as natively |
+| BASS playback | `FUN_00461642`, `NATIVE_ARCH.md:1603` | `player.py` (real bass.dll) | behavior | Win / mac(no bass.dll) | `tests/regress_player.py` (8, backend selection) + `tests/live_bass.py` (manual, audio hardware) | `ported` — request path pinned, audible output needs hardware |
+| Offline TTS fallback | **no native SAPI found** — `FUN_00448BEC` is the MSXML DOMDocument engine (see `RE_PROGRESS.md` §Tensions #5) | `sapi.py` (our fallback only) | mac replacement | Win / mac | `tests/regress_sapi_and_keyboard.py` (19, contract + key grid) | `ported` — contract pinned, audible output needs hardware |
+| Slow TTS flag | `Advanced.EnableSlowerListening` | `qtranslate/player.py:play_text` (slow passthrough) | yes | Win+mac | `tests/regress_tts_slow.py` (7) | `behaviour-verified` — **Win only** |
+| Read-phonetically (display) | `FUN_0042ED3F` appends `"\r\r"`+res186("Romanization: ")+`entry[5]` to the result when flag on AND `"<Error>"` absent (gate `FUN_00403897`) — an annotation on a *successful* result, never a replacement (J7) | `qtranslate/engine.py:translate` → `phonetics.append_phonetics` | preserve | Win+mac | `tests/regress_phonetics.py` (35) + `tests/regress_google_romanization.py` (19, 4 live langs) | `behaviour-verified` — **Win only**, phonetics **display** not TTS; Google `dt=rm` only, as natively |
 | Speech input (mic → FLAC) | `FUN_0044555D`, `NATIVE_ARCH.md:1627` | `comtypes` SAPI | mac replacement | Win / mac | — | `dead:native-unavailable` |
-| OCR (ocr.space) | `OcrSpaceProvider`, `NATIVE_ARCH.md:993` | `services/ocr.py` | yes | Win+mac | endpoint smoke | `ported` |
-| OCR region select overlay | `ScreenCaptureWindow` | `qtranslate/qt/ocr_pick.py:RegionPicker` (`QScreen.grabWindow`) | yes | Win+mac | — | `ported` (Win) |
+| OCR (ocr.space) | `OcrSpaceProvider`, `NATIVE_ARCH.md:993` | `services/ocr.py` | yes | Win+mac | `tests/regress_ocr_multipart.py` (20, request shape) + `regress_ocr_languages.py` (72) — live OCR needs key | `behaviour-verified` — **Win only**, request shape only |
+| OCR region select overlay | `ScreenCaptureWindow` | `qtranslate/qt/ocr_pick.py:RegionPicker` (`QScreen.grabWindow`) + `qtranslate/qt/ocr_window.py` (menu 10 host) | yes | Win+mac | `tests/regress_menu_slots.py` (37, slot host) | `behaviour-verified` — **Win only**, overlay + window only |
 | Spell (Google suggest + Yandex) | `NATIVE_ARCH.md:982` label is wrong — `FUN_0042C909` is a destructor (see `RE_PROGRESS.md` §Tensions #3); real spell entry not read | `services/spell.py` | yes | Win+mac | live OK (Win) | `behaviour-verified` (port); native spell entry `INFERRED` — **Win only** |
-| Keyboard-layout convert | `FUN_00404E09`, `NATIVE_ARCH.md:1282` | `layout.py` | yes | Win+mac | known pairs | `ported` |
+| Keyboard-layout convert | `FUN_00404E09`, `NATIVE_ARCH.md:1282` | `layout.py` | yes | Win+mac | `tests/regress_layout_pairs.py` (13) | `behaviour-verified` — **Win only** |
 
 ## G. Options · i18n · tray · system
 
 | Feature | Native evidence | Python today | Must keep | Platforms | Test | Status |
 |---|---|---|---|---|---|---|
-| 9 Options pages | `FUN_004561F0`, `NATIVE_ARCH.md:781` | `qtranslate/qt/options/` (single shell, `OptionsBase._show_page` rebuilds in place) | 9/9 on real Options.json | Win+mac | `ui_match` | `ported` |
-| Options.json 20 sections R/W | `NATIVE_ARCH.md:398` | `config.py` | full roundtrip | Win+mac | `tests/regress_options_roundtrip.py` (live 20-section + Ocr + stable dump) | `ported` (123/124 was the audit-machine count incl. the `Ocr` header; this machine's live file loads 20 sections incl. `Ocr`/`OcrLanguage`) |
-| Hotkey rebind UI | `FUN_00408456` | `qtranslate/history.py` (favorites pending; lifecycle wired) | yes | Win+mac | — | `ported` |
-| Proxy / Internet.Timeout | `NATIVE_ARCH.md:1303` | `session.net_options` | yes | Win+mac | — | `ported` |
-| i18n lang.json (36 strings, 14 win) | `FUN_0045B716`, `NATIVE_ARCH.md:1071` | `locale.py` | vi verified + en fallback | Win+mac | vi test | `ported` |
-| Tray states | `FUN_00405C42`, `NATIVE_ARCH.md:1214` | `qtranslate/qt/tray.py:Tray` (QSystemTrayIcon; pystray gone with tkinter) | behavior | Win+mac | — | `ported` |
-| Start-with-system (Run key) | `NATIVE_ARCH.md` | `winreg` Run-key write (startup entry; UI-independent, still present where applicable) | mac replacement | Win / mac | — | `ported` (Win) |
-| Crash once-reporter | `FUN_00462C03`, `NATIVE_ARCH.md:413` | `qtranslate/crash.py:install_crash_hook` | behavior | Win+mac | — | `ported` |
+| 9 Options pages | `FUN_004561F0`, `NATIVE_ARCH.md:781` | `qtranslate/qt/options/` (single shell, `OptionsBase._show_page` rebuilds in place) | 9/9 on real Options.json | Win+mac | `tests/ui_match.py` pages-9/order/ids + `regress_qt_features.py` (each page builds, swap keeps winId) | `behaviour-verified` — **Win only** |
+| Options.json 20 sections R/W | `NATIVE_ARCH.md:398` | `config.py` | full roundtrip | Win+mac | `tests/regress_options_roundtrip.py` (5, live 20-section + Ocr + stable dump) | `behaviour-verified` — **Win only** |
+| Hotkey rebind UI | `FUN_00408456` | `qtranslate/qt/options/hotkeys.py` (single-shell page) | yes | Win+mac | `tests/regress_qt_features.py` (HotkeysPage builds, 17-key codec in hotkeys.py) | `behaviour-verified` — **Win only** |
+| Proxy / Internet.Timeout | `NATIVE_ARCH.md:1303` | `session.net_options` | yes | Win+mac | `tests/regress_proxy_options.py` (10) | `behaviour-verified` — **Win only** |
+| i18n lang.json (36 strings, 14 win) | `FUN_0045B716`, `NATIVE_ARCH.md:1071` | `locale.py` | vi verified + en fallback | Win+mac | `tests/regress_locale_all_packs.py` (148, 35 packs) + `regress_locale.py` | `behaviour-verified` — **Win only** |
+| Tray states | `FUN_00405C42`, `NATIVE_ARCH.md:1214` | `qtranslate/qt/tray.py:Tray` (QSystemTrayIcon; pystray gone with tkinter) | behavior | Win+mac | `tests/regress_tray_menu.py` (8) + `regress_tray_state.py` (12) | `behaviour-verified` — **Win only**, order + state |
+| Start-with-system (Run key) | `NATIVE_ARCH.md` | `winreg` Run-key write (startup entry; UI-independent, still present where applicable) | mac replacement | Win / mac | `tests/regress_startup_entry.py` | `behaviour-verified` — **Win only** |
+| Crash once-reporter | `FUN_00462C03`, `NATIVE_ARCH.md:413` | `qtranslate/crash.py:install_crash_hook` | behavior | Win+mac | `tests/regress_crash_failfast.py` (21) + `regress_crash_reporter.py` (9) | `behaviour-verified` — **Win only** |
 | Updater | `FUN_00461A26` | flag only | **drop** (dead) | — | — | `dead:host-retired` (2022) |
-| Fonts (Tahoma/Segoe UI) | `NATIVE_ARCH.md:1086` | `qtranslate/qt/main_window.py:PANE_FONT` (Tahoma 9pt panes) + `qtranslate_style.py` (11px UI) | mac mapping | Win+mac | — | `ported` (Win) |
+| Fonts (Tahoma/Segoe UI) | `NATIVE_ARCH.md:1086` | `qtranslate/qt/main_window.py:PANE_FONT` (9pt panes) + `qtranslate_style.py` (11px UI) | mac mapping | Win+mac | `tests/regress_fonts.py` | `behaviour-verified` — **Win only** |
 
 ## H. New capabilities (no native equivalent)
 
@@ -218,7 +218,7 @@ recorded — a service may never quietly disappear between the two docs.
 |---|---|---|---|
 | Extension SDK (provider/workflow/theme/UI) | design only | `not-started` | `EXTENSION_SDK.md` |
 | Extension override + fail-open | design only | `not-started` | §Override rules |
-| Reliability layer (classify/retry/fallback) | `FUN_004606BA` route + per-call retry | `reliability.ProviderRouter` via `qtranslate/engine.py:translate` | yes | Win+mac | `regress_wiring.py` + `regress_reliability.py` | `ported` (wired 2026-10-10) |
+| Reliability layer (classify/retry/fallback) | `FUN_004606BA` route + per-call retry | `reliability.ProviderRouter` via `qtranslate/engine.py:translate` | yes | Win+mac | `regress_wiring.py` + `regress_reliability.py` | `behaviour-verified` — **Win only** |
 | macOS adapters (hotkey/clipboard/capture/audio) | none | `not-started` | macOS never tested |
 | Stable-id registry (unify 3 sources) | audit | `not-started` | `ARCHITECTURE.md` §3.2 |
 
