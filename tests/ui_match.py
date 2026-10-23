@@ -162,10 +162,11 @@ try:
           "the app's history list is drawn") if _app.history else None
 except Exception as e:
     check("history-window-exists", False, repr(e))
-check("history-no-open-button-src",
-      '"Open"' not in open("qtranslate/qt/history_window.py",
-                           encoding="utf-8").read(),
-      "the History window has no Open button in its source")
+# (The "no Open BUTTON" check is the widget check above, inside the
+# History block. It used to be a source grep as well; that one was
+# removed -- native's window has no Open button, but its item MENU does
+# (menu I6, FUN_004287B6), and grepping the whole file for the word
+# flagged the menu.)
 
 # 7. popup structure
 from qtranslate.qt.popup import PopupWindow

@@ -29,6 +29,17 @@ for api in ("translate", "detect", "speak", "dict_lookup", "Result"):
     ck("%s in __all__" % api, api in sdk.__all__)
 ck("back_translate NOT in __all__ (internal)",
    "back_translate" not in sdk.__all__)
+# The contract says back_translate_internal is internal, so a star-import
+# must not hand it to a consumer either. It stays importable by name.
+ck("back_translate_internal NOT in __all__ (internal too)",
+   "back_translate_internal" not in sdk.__all__)
+ck("back_translate_internal is still importable by name",
+   callable(getattr(sdk, "back_translate_internal", None)))
+_ns = {}
+exec("from qtranslate.sdk import *", _ns)
+ck("a star-import exposes exactly the public surface",
+   sorted(k for k in _ns if not k.startswith("__")) ==
+   sorted(sdk.__all__), str(sorted(k for k in _ns if not k.startswith("__"))))
 
 # --- translate routes through the engine -------------------------------
 import qtranslate.engine as _ENG

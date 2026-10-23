@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qtranslate-sdk"
+# Provisonal (D19): the PyPI name and its usage rights have not been
+# verified. Nothing here is a release commitment.
+version = "0.1.0"
+description = "The QTranslate extension SDK: contracts and slot names, no GUI."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MPL-2.0" }
+authors = [{ name = "QTranslate port" }]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: Microsoft :: Windows",
+    "Topic :: Software Development :: Libraries",
+]
+
+# Deliberately EMPTY. The SDK is contracts only: an extension imports it
+# inside the host process, and the host supplies the engine, the
+# providers and the GUI. A dependency here would make `pip install
+# qtranslate-sdk` drag the desktop app's runtime in, which D19's
+# packaging rule forbids.
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/quangdang46/QTranslate"
+
+[tool.setuptools]
+packages = ["qtranslate_sdk"]

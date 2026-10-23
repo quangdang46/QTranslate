@@ -61,6 +61,46 @@ class PopupWindow(QWidget):
         self.lbl_pair.setText(pair or (source or "")[:40])
         self.lbl_text.setText(result or "")
         self.adjustSize()
+        self._extension_body(source, result, pair)
+
+    def _extension_body(self, source: str, result: str, pair: str):
+        """Let an extension render the popup's body instead.
+
+        The published slot is ``("popup", "body")``: an extension
+        registers anything callable, and it receives the same three
+        pieces the built-in label gets. Its answer replaces the
+        built-in text. With no extension the built-in label is left
+        exactly as it was, so the native's pixels are unchanged.
+        """
+        app = getattr(self, "app", None)
+        manager = getattr(app, "ext_manager", None)
+        slots = getattr(manager, "ui_slots", None) if manager else None
+        if slots is None:
+            return
+        try:
+            winner = slots.winner("popup", "body")
+        except Exception:
+            return
+        if not winner:
+            return
+        contrib = winner.get("contribution")
+        if not callable(contrib):
+            return
+        try:
+            text = contrib(source, result, pair)
+        except TypeError:
+            # A contribution may take just the result; the simplest
+            # contract wins rather than failing the popup.
+            try:
+                text = contrib(result)
+            except Exception:
+                return
+        except Exception:
+            return
+        if text is None:
+            return
+        self.lbl_text.setText(str(text))
+        self.adjustSize()
 
     # ------------------------------------------------------------- show
     def place(self):

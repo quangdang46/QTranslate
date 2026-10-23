@@ -124,7 +124,7 @@ the assets, the font, the OCR region grab).
 **Current state (2026-10-22, measured):**
 
 ```
-135 suites, 0 failed, 48.4s
+137 suites, 0 failed, 52.7s
 ```
 
 (`ui_match.py` is counted as a suite and is a live-GUI suite: 96 checks.)

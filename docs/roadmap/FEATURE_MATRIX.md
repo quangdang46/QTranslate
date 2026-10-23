@@ -54,7 +54,9 @@ numbers.
 | Auto-detect, 6 steps | `regress_auto_detect_capability.py` | behaviour-verified | the same |
 | Reliability, fallback router | `reliability.py` | behaviour-verified | `regress_reliability.py` |
 | Extension loading + overrides | `extensions.py` | behaviour-verified | `regress_extension_*` |
-| The extension SDK | `sdk.py` | ported | `regress_sdk.py` |
+| The extension SDK | `sdk.py` | behaviour-verified (the public surface; a star-import exposes exactly `__all__`) | `regress_sdk.py` (20) |
+| The SDK as an installable package | `docs/EXTENSION_SDK.md` §1 | behaviour-verified (contracts match the host; the wheel installs into a clean virtualenv and pulls in no desktop code) | `regress_sdk_package.py` (22) |
+| The popup UI slot | `ui_slots.POPUP_SLOTS`, §8 | behaviour-verified (a contribution renders the popup's body) | `regress_qt_extension_ui.py` |
 | History list + its exports | `history.py` | behaviour-verified | `regress_history*.py` |
 | The settings file, 20 sections | `NATIVE_ARCH.md` | behaviour-verified | `regress_options_roundtrip.py` |
 | The settings file's DEFAULTS | the native's real Options.json | behaviour-verified | `config.default_config()` + `ui_match.py` |

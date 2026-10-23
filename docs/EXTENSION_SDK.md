@@ -240,6 +240,28 @@ All five were resolved and folded into `PROJECT_VISION.md`:
 > poisoning shapes — cross-extension and Core-shadow — are now closed and
 > reported. Pinned by `tests/regress_extension_vendor.py` (10 assertions).
 
+> **The slots have hosts (landed 2026-10-23).** A registered contribution
+> is now READ by the running app, which is the half that was missing:
+>
+> | Slot | Where the host consumes it |
+> |---|---|
+> | `("menu", "tray")` | the Qt tray menu adds one action per contribution |
+> | `("panel", "top"/"middle")` | the main window docks a strip at the bottom of that pane |
+> | `("popup", "body")` | the popup lets the contribution render its body |
+> | a theme | `QtApp.apply_theme()` resolves it through the manager and `apply_style` applies its colours |
+>
+> With no extension each of these leaves the built-in surface alone, so
+> the native's pixels are unchanged. Pinned by
+> `tests/regress_qt_extension_ui.py`.
+
+> **The SDK package (landed 2026-10-23).** `sdksrc/` is the standalone
+> `qtranslate-sdk` distribution: the contracts, `Result`, the slot names,
+> the language index and `FakeAPI`. It has no dependencies and imports no
+> GUI -- an extension runs inside the host, and the host supplies the
+> engine. `tests/regress_sdk_package.py` builds the wheel and installs it
+> into a clean virtualenv. The name is still provisional (D19): publishing
+> needs a human to verify the PyPI name and its rights.
+
 > **Register API is provisional.** `entrypoint` is `module:callable`, and the
 > callable receives a host API (`extensions.ExtensionAPI`) with
 > `register_provider(name, fn, replaces=None)`. The SDK signature is not frozen

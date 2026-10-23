@@ -191,6 +191,22 @@ try:
         plain = MainWindow(QtApp([]))
         ck("a window with no extension has no panel strip",
            plain.panels == {}, str(list(plain.panels)))
+
+        # --- a popup contribution renders the popup's body ---------------
+        # The docs promise "register an alternative result popup
+        # renderer"; the slot is ("popup", "body").
+        from qtranslate.qt.popup import PopupWindow
+        builtin = PopupWindow(QtApp([]))
+        builtin.set_text("hi", "Xin chao", "EN->VI")
+        ck("with no extension the popup shows the built-in text",
+           builtin.lbl_text.text() == "Xin chao", builtin.lbl_text.text())
+
+        slots.add("popup", "body",
+                  lambda source, result, pair: "[EXT] " + result)
+        pop = PopupWindow(papp)
+        pop.set_text("hi", "Xin chao", "EN->VI")
+        ck("the extension renders the popup's body",
+           pop.lbl_text.text() == "[EXT] Xin chao", pop.lbl_text.text())
     finally:
         RG.TRANSLATORS.clear()
         RG.TRANSLATORS.update(_ORIGINAL)

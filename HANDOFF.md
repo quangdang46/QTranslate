@@ -219,27 +219,31 @@ the hotkeys, the strip) -- `tests/regress_qt_features.py` is the
 tkinter suite's successor, and it is where the ported assertions
 should land.
 
-### 4.3 The extension platform's remaining gaps
+### 4.3 The extension platform -- DONE, except the conflict UX
 
-The audit's items 2-4, in the order they should be done:
+All three of the audit's items were closed on 2026-10-23:
 
-1. **The popup slot.** `ui_slots` publishes a "popup" kind and no host
-   consumes it. The docs promise "register an alternative result popup
-   renderer". The Qt popup is `qtranslate/qt/popup.py`; it needs a
-   registered contribution to win over the built-in one.
-2. **The SDK's public surface.** `qtranslate/sdk.py` says
-   `back_translate` is not public API but `__all__` carries
-   `"back_translate_internal"`. That contradiction has to be resolved
-   before the API is frozen.
-3. **The SDK as a separate package.** The docs describe
-   `qtranslate-sdk` on PyPI; the repo has no `pyproject.toml`, no
-   `setup.py`, and no importable `qtranslate_sdk`. It needs packaging
-   metadata, a build, and an install into a clean virtualenv that is
-   NOT the source tree, then the examples run against it.
-4. **The override-conflict UX.** The logic and the persistence exist
-   (`regress_override_persistence.py`); what is missing is the USER
-   choosing a winner in the app (D18 says the user picks, never
-   auto-resolved).
+1. **The popup slot** -- `qtranslate/qt/popup.py` reads
+   `("popup", "body")` and lets a contribution render the body. With no
+   extension the built-in label is untouched, so the pixels are the
+   native's. Pinned in `regress_qt_extension_ui.py`.
+2. **The SDK's public surface** -- `back_translate_internal` is out of
+   `qtranslate/sdk.py`'s `__all__` (the docstring always said it was
+   internal); a star-import now exposes exactly the public surface.
+   Pinned in `regress_sdk.py`.
+3. **The SDK as a package** -- `sdksrc/` holds a standalone
+   `qtranslate_sdk` distribution (contracts, `Result`, the slot names,
+   the language index, `FakeAPI` for an extension's own tests) with a
+   `pyproject.toml` and NO dependencies. `tests/regress_sdk_package.py`
+   proves it imports with no desktop app on the path, that its
+   contracts match the host's field for field, that it imports no GUI,
+   and that its wheel builds and installs into a CLEAN virtualenv.
+   Publishing to PyPI (D19) still needs a human to verify the name.
+
+**Still open: the override-conflict UX** (item 4). The logic and the
+persistence exist (`regress_override_persistence.py`); what is missing
+is the USER choosing a winner in the app (D18 says the user picks,
+never auto-resolved).
 
 ### 4.4 The docs that must follow this session's code
 

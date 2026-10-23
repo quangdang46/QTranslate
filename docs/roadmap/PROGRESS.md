@@ -3,6 +3,59 @@
 The running log. Newest first. Every entry names what changed and what
 was run to show it.
 
+## 2026-10-23 -- the extension platform, closed
+
+The audit's three remaining items, each closed with a test that proves
+the behaviour rather than the registry call.
+
+**The popup slot has a consumer.** `ui_slots` published a "popup" kind
+and nothing in the app read it, so "register an alternative result
+popup renderer" was a promise with no code behind it.
+`qtranslate/qt/popup.py` now reads `("popup", "body")`: a contribution
+gets the same three pieces the built-in label gets (source, result,
+pair) and its answer replaces the label's text. With no extension the
+built-in label is untouched, so the pixels stay the native's.
+
+**The SDK's `__all__` contradicted its own docstring.**
+`qtranslate/sdk.py` says `back_translate` is internal, and then
+exported `back_translate_internal`. A star-import handed a consumer a
+function the contract forbids relying on. It is out of `__all__` now
+(still importable by name for the internal caller and its test), and
+`regress_sdk.py` pins that a star-import exposes exactly the public
+surface.
+
+**The SDK is a real, installable package.** `sdksrc/` holds a
+standalone distribution: the contracts (`ExtensionAPI`, `Manifest`,
+`ExtensionError`), `Result`, the published slot names, the language
+index, and `FakeAPI` so an extension can test its own registrations
+without the app. It has a `pyproject.toml` and **no dependencies** --
+an extension runs inside the host, and a dependency here would make
+`pip install qtranslate-sdk` drag the desktop runtime in, which D19
+forbids.
+
+`tests/regress_sdk_package.py` (22 assertions) proves the parts that
+matter: the package imports with the desktop app absent from
+`sys.path` (so it cannot be quietly leaning on it), its `Result`
+fields and defaults match the host's field for field, its slot names
+and language codes match the host's, and the WHEEL builds and installs
+into a clean virtualenv with `--no-index`, where it imports and pulls
+in no `qtranslate`.
+
+**Two tests had gone stale, and were corrected rather than deleted.**
+`regress_qt_features.py`'s popup stub was missing `place()`, which the
+caller invokes -- the caller's `except` swallowed the `AttributeError`
+and the suite reported "the popup never opened", which is exactly what
+a real failure would say. The stub now has the same three methods the
+real popup has. `ui_match.py` grepped `history_window.py` for the word
+"Open" to prove native's History window has no Open BUTTON; native's
+item MENU does have one (menu I6), and adding it broke the grep. The
+widget-level check right above it already tested the thing meant, so
+the redundant grep is gone.
+
+```
+137 suites, 0 failed, 52.7s
+```
+
 ## 2026-10-22 -- the user ran the app, and found four bugs
 
 The PySide6 front end was handed to the user to try. Four things came

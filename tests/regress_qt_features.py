@@ -206,13 +206,25 @@ try:
     from qtranslate.qt import popup as popup_mod
 
     class _Popup:
+        """The stand-in for the popup window.
+
+        It carries the same three methods the real one has -- set_text,
+        place and show -- because the caller uses all three and a stub
+        that is missing one makes the call raise inside the caller's
+        try/except, which looks exactly like "the popup never opened".
+        """
+
         def __init__(self, app=None):
+            self.app = app
             self.lbl_text = type("L", (), {"text": ""})()
             self.lbl_pair = type("L", (), {"text": ""})()
 
         def set_text(self, source, result, pair=""):
             self.lbl_text.text = result
             self.lbl_pair.text = pair
+
+        def place(self):
+            shown["placed"] = True
 
         def show(self):
             shown["popup"] = self.lbl_text.text

@@ -12,8 +12,12 @@ from __future__ import annotations
 
 from qtranslate.core import Result
 
-__all__ = ["Result", "translate", "detect", "speak", "dict_lookup",
-           "back_translate_internal"]
+# ``back_translate_internal`` is deliberately NOT here: the module
+# docstring calls it internal, and an ``__all__`` that exports it makes
+# ``from qtranslate.sdk import *`` hand a consumer a function the
+# contract says they must not rely on. It stays importable by name, for
+# the internal caller and its test.
+__all__ = ["Result", "translate", "detect", "speak", "dict_lookup"]
 
 
 def translate(service, text, target, src="auto", auto_detect=False):
