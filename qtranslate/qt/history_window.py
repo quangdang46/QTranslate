@@ -162,6 +162,8 @@ class HistoryWindow(Base):
         try:
             del self.app.history[idx]
             self._fill()
+            from qtranslate.qt.app import _save_history
+            _save_history(self.app.history)
         except Exception:
             pass
 
@@ -250,6 +252,8 @@ class HistoryWindow(Base):
     def _clear(self):
         self.app.history = []
         self._fill()
+        from qtranslate.qt.app import _save_history
+        _save_history(self.app.history)
 
     # ------------------------------------------------- native's menu 9
     def _window_menu(self, gpos=None):

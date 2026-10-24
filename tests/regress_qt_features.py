@@ -40,6 +40,12 @@ except Exception as exc:                       # noqa: BLE001
 
 try:
     from qtranslate.qt.app import QtApp
+    # Isolate the history: it persists now, so this suite must not read
+    # or write the real History.json.
+    import qtranslate.qt.app as _appmod
+    import tempfile as _tf, os as _os
+    _appmod.HISTORY_PATH = _os.path.join(
+        _tf.mkdtemp(prefix="qt_feat_"), "History.json")
     from qtranslate.qt.main_window import MainWindow
 except Exception as exc:                       # noqa: BLE001
     print("SKIP regress_qt_features: the Qt front end does not import (%s)" % exc)

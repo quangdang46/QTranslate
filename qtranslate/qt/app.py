@@ -75,6 +75,47 @@ class _UiInvoker(QObject):
             pass
 
 
+# The history's own file (native keeps a session's history across
+# restarts; the port used to hold it in memory only, so every restart
+# the operator did emptied the History window). Capped at 500 entries,
+# the oldest dropped.
+HISTORY_PATH = None
+HISTORY_LIMIT = 500
+
+
+def _history_path():
+    global HISTORY_PATH
+    if HISTORY_PATH is None:
+        try:
+            from qtranslate.platforms import app_data_dir
+            HISTORY_PATH = os.path.join(app_data_dir(), "History.json")
+        except Exception:                   # noqa: BLE001
+            HISTORY_PATH = ""
+    return HISTORY_PATH
+
+
+def _load_history():
+    """The persisted history, oldest first like native's list."""
+    try:
+        import json
+        with open(_history_path(), encoding="utf-8") as fh:
+            items = json.load(fh)
+        return [tuple(x) for x in items if isinstance(x, list)
+                and len(x) >= 3][-HISTORY_LIMIT:]
+    except Exception:                       # noqa: BLE001 -- fresh install
+        return []
+
+
+def _save_history(items):
+    try:
+        import json
+        with open(_history_path(), "w", encoding="utf-8") as fh:
+            json.dump([list(x)[:3] for x in list(items)[-HISTORY_LIMIT:]],
+                      fh, ensure_ascii=False)
+    except Exception:                       # noqa: BLE001 -- read-only disk
+        pass
+
+
 class QtApp:
     """The application's state and behaviour, independent of the widgets.
 
@@ -89,7 +130,7 @@ class QtApp:
         self.source = "auto"
         self.target = "vi"
         self.argv = list(argv or [])
-        self.history = []
+        self.history = _load_history()
         self.multi_services = set()
         self.win = None
         self.tray = None
@@ -381,6 +422,7 @@ class QtApp:
         except Exception:
             pass
         self.history.append((svc, src, res))
+        _save_history(self.history)
 
     def on_new(self):
         self.win.src.clear()
@@ -400,6 +442,11 @@ class QtApp:
     def switch_service(self, name):
         self.service = name
         self.win.set_service_title(self.service_title())
+        # The strip's highlight follows: the operator's report (2168) --
+        # clicking a provider switched the service but the buttons kept
+        # the FIRST one highlighted forever.
+        if hasattr(self.win, "highlight_service"):
+            self.win.highlight_service(name)
 
     def on_back(self):
         pass

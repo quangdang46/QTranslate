@@ -177,6 +177,9 @@ class MainWindow(Base):
         names = app.ordered_services()
         for i, name in enumerate(names):
             self.tabs.append(self._strip_button(i, name, len(names)))
+        # The highlight follows the RESTORED service, not "first button"
+        # (a session saved on DeepL opened with Google lit up).
+        self.highlight_service(app.service)
 
         # wiring
         self.btn_go.clicked.connect(app.on_go)
@@ -458,3 +461,13 @@ class MainWindow(Base):
 
     def set_service_title(self, name: str):
         self.lbl_service.setText(name)
+
+    def highlight_service(self, name: str):
+        """The strip's active cell: the selection blue on the button the
+        app's service names, the flat style on the rest. The build only
+        set `selected` on the FIRST button and nothing ever moved it."""
+        for b in self.tabs:
+            on = b.property("service") == name
+            b.setProperty("selected", "true" if on else "false")
+            b.style().unpolish(b)
+            b.style().polish(b)
