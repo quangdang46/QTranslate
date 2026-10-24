@@ -71,7 +71,16 @@ try:
        M.available() is False or _sc in (True, False))
 except Exception as e:  # a raise is the defect
     ck("should_capture never raises, returns a bool", False, repr(e))
-ck("start() returns False off Windows (bool)", M.start(lambda x, y: None) is False)
+# start() on Windows installs the REAL low-level hook (it did not for a
+# day -- GetModuleHandleW's HMODULE was truncated to a signed int and
+# the install failed with 126 on every machine; fixed 2026-10-24). The
+# assertion covers both hosts: a bool, and False only off Windows.
+_started = M.start(lambda x, y: None)
+ck("start() returns a bool (True on Windows, False elsewhere)",
+   isinstance(_started, bool)
+   and (sys.platform != "win32" or _started is True),
+   repr(_started))
+M.stop()
 try:
     M.stop()
     ck("stop() never raises off Windows", True)

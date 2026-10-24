@@ -132,11 +132,17 @@ class UISlotRegistry:
                              % (name,))
         return (kind, name)
 
-    def add(self, kind: str, name: str, contribution, replaces: str = "") \
-            -> str:
-        """Register a contribution; returns the winning owner's label."""
+    def add(self, kind: str, name: str, contribution, replaces: str = "",
+            label: str = "") -> str:
+        """Register a contribution; returns the winning owner's label.
+
+        ``label`` is what menus SHOW (the tray renders it verbatim);
+        when it is empty the callable's own name was used -- which put
+        ``tray_entry`` on the operator's tray menu verbatim. The caller
+        (the extension API) now supplies the extension's display name.
+        """
         key = self._key(kind, name)
-        label = replaces or self._label(contribution)
+        label = label or replaces or self._label(contribution)
         self._slots.setdefault(key, []).append(
             {"label": label, "contribution": contribution,
              "replaces": replaces})

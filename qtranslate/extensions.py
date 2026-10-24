@@ -436,8 +436,13 @@ class ExtensionAPI:
         last-wins-with-declared-replaces policy as the provider and theme
         slots, so an outcome never depends on discovery order.
         """
+        # The menu label is the EXTENSION's display name, not the
+        # callable's __name__ -- the operator's tray read "tray_entry"
+        # verbatim (2026-10-24).
+        manifest = self._manager._manifests.get(self._ext_id) or {}
+        label = str(manifest.get("name") or self._ext_id or "")
         return self._manager.register_ui(kind, slot, contribution,
-                                         replaces=replaces)
+                                         replaces=replaces, label=label)
 
     # ---- the four capability tables -----------------------------------
     # Each registers into a live table the app reads, the same way
@@ -564,19 +569,22 @@ class ExtensionManager:
         """A post-translation step, into ``registry.WORKFLOW_EXT``."""
         return self._register_in("WORKFLOW_EXT", name, fn)
 
-    def register_ui(self, kind, slot, contribution, replaces=None):
+    def register_ui(self, kind, slot, contribution, replaces=None,
+                    label=None):
         """Register a UI contribution into the ``ui_slots`` registry.
 
         Lazily creates the registry so a headless caller that never touches
         UI slots pays nothing for it. Fail-open: a bad ``kind``/``slot``
         raises from ``ui_slots.UISlotRegistry.add`` and the caller keeps the
         built-in surface, which is the same contract the provider and theme
-        registrations use.
+        registrations use. ``label`` is the menu text (the API layer
+        supplies the extension's display name).
         """
         if self._ui is None:
             from qtranslate.ui_slots import UISlotRegistry
             self._ui = UISlotRegistry()
-        return self._ui.add(kind, slot, contribution, replaces=replaces)
+        return self._ui.add(kind, slot, contribution, replaces=replaces,
+                            label=label)
 
     @property
     def ui_slots(self):

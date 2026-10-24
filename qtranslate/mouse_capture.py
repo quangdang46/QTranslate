@@ -556,7 +556,19 @@ def start(on_select, on_click=None, own_window: bool = True):
         return u.CallNextHookEx(None, ncode, wparam, lparam)
 
     proc = HOOKPROC(_proc)
-    h = u.SetWindowsHookExW(WH_MOUSE_LL, proc, k.GetModuleHandleW(None), 0)
+    # GetModuleHandleW's HMODULE is pointer-sized; ctypes' default c_int
+    # return TRUNCATES it to a signed 32-bit int, and the hook install
+    # then fails with ERROR_MOD_NOT_FOUND (126) -- the operator's
+    # "bôi đen chả thấy gì" (2026-10-24): the hook never installed, on
+    # any machine, in any run. Declare the restype and both handles are
+    # the real pointers.
+    k.GetModuleHandleW.restype = ctypes.c_void_p
+    u.SetWindowsHookExW.restype = ctypes.c_void_p
+    u.SetWindowsHookExW.argtypes = [ctypes.c_int, HOOKPROC,
+                                    ctypes.c_void_p,
+                                    ctypes.c_uint]
+    h = u.SetWindowsHookExW(WH_MOUSE_LL, proc,
+                            k.GetModuleHandleW(None), 0)
     if not h:
         return False
     _handle = {"hook": h, "proc": proc}
