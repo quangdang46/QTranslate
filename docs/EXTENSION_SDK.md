@@ -53,6 +53,14 @@ An extension only imports the API groups it uses.
 > own file (D16), and fail-open handling of a corrupt state file.
 > Loaded and driven through the real call path by
 > `tests/regress_extension_power_suite.py`.
+>
+> **Mini-repo example (2026-10-24):** `examples/extensions/studio/` is
+> the grown-up LAYOUT: a multi-module package (`__init__:register`
+> entrypoint, relative imports, a shipped data file, its own `ui/`
+> subpackage) sharing one context object. A settings change made
+> through the API flows through the provider, the workflow, the panel
+> and the popup body in the same load. Pinned cross-module by
+> `tests/regress_extension_studio.py` (20).
 
 ## 3. Folder layout
 
