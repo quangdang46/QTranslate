@@ -234,11 +234,14 @@ class HistoryWindow(Base):
         entries = list(self.app.history)
         for entry in entries:
             service, src, res = entry[:3]
-            rect(self._rows, 0, y - 1, 462, ROW_PITCH - 18, FACE, "histrow")
+            # Native 2133: the header row is a light band (star + BOLD
+            # source), the translation sits on WHITE under it, indented
+            # -- not a grey band across the whole entry.
+            rect(self._rows, 0, y - 1, 462, 16, FACE, "histrow")
             icon(self._rows, 3, y + 1, "ui_icons", "star")
-            label(self._rows, 26, y + 6, str(src)[:60])
-            icon(self._rows, 22, y + 16, "service_icons", service)
-            label(self._rows, 46, y + 21, str(res)[:60])
+            label(self._rows, 26, y + 6, str(src)[:60], bold=True)
+            icon(self._rows, 22, y + 17, "service_icons", service)
+            label(self._rows, 46, y + 22, str(res)[:60])
             y += ROW_PITCH
         self._rows.setFixedSize(462, max(228, y + 6))
         self._scroll = QScrollArea(self.list)

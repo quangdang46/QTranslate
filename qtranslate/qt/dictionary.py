@@ -125,13 +125,18 @@ class DictionaryWindow(Base):
 
         # ---- the service strip (capture y 307..328) ---------------------
         services = self._services()
-        # The cell width fits the count: the strip must end before the
-        # result pane's scrollbar (16px) or the last cells are cut.
-        cell_w = min(CELL, max(24, (474 - 16 - STRIP_X)
-                               // max(1, len(services))))
+        # Native 2132: the strip runs the FULL window width -- the last
+        # cell stretches to the right edge, it does not stop before the
+        # result pane's scrollbar (which sits above the strip, not
+        # beside it). Even width from the count, the last one takes the
+        # remainder.
+        n = max(1, len(services))
+        cell_w = (474 - 1 - STRIP_X) // n
         self.strip = []
         for i, name in enumerate(services):
-            self.strip.append(self._strip_cell(i, name, cell_w))
+            w = cell_w + (474 - 1 - STRIP_X - cell_w * n if i == n - 1
+                          else 0)
+            self.strip.append(self._strip_cell(i, name, w))
         self.select(self.strip[0] if self.strip else None)
 
     # ------------------------------------------------------------- helpers
@@ -168,12 +173,16 @@ class DictionaryWindow(Base):
 
     # ------------------------------------------------------------ behaviour
     def select(self, cell):
-        """Make one cell the selected dictionary."""
+        """Make one cell the selected dictionary.
+
+        Native 2132: the SELECTED cell is the light one (white against
+        the grey strip), not the darker -- the port had it inverted.
+        """
         for other in self.strip:
             other.setStyleSheet("QFrame#cell{background:#dadada;border:none;}")
         if cell is None:
             return
-        cell.setStyleSheet("QFrame#cell{background:#b0b0b0;border:none;}")
+        cell.setStyleSheet("QFrame#cell{background:#ffffff;border:none;}")
         self.service = cell.property("service")
         self.service_display = cell.property("display")
 
