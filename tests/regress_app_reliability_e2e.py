@@ -58,6 +58,11 @@ try:
 
     app = QtApp([])
     app._load_session()
+    # _load_session reads the REAL Options.json; a live session whose
+    # source equals its target makes the engine echo the input instead
+    # of driving the rigged router. Pin the pair so this suite tests
+    # the fallback chain, not the machine's config.
+    app.source, app.target = "en", "vi"
     app.win = MainWindow(app)
 
     # --- one provider fails, the next answers -------------------------

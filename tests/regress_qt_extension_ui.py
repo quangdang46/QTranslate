@@ -106,6 +106,9 @@ try:
         # --- the real tray menu shows it -------------------------------
         app = QtApp([])
         app._load_session()
+        # _load_session reads the REAL Options.json; pin the pair so the
+        # suite does not depend on the machine's live session.
+        app.source, app.target = "en", "vi"
         app.ext_manager = manager
         tray = Tray(app)
         labels = [a.text() for a in tray.menu.actions() if a.text()]
