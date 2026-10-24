@@ -130,7 +130,7 @@ DEFAULT_APPEARANCE = {
     "ColorFrame": 8023133, "PopupPinWhenDragging": True,
     "PopupWindowFrameThickness": 2, "Transparency": 217,
     "PopupIcons": 30, "ColorText": 0, "PopupAutoFocus": False,
-    "ThemeName": "", "PopupAutoPos": True, "PopupTimeout": 5,
+    "ThemeName": "", "PopupAutoPos": True, "PopupTimeout": 0,
     "ColorBack": 15790320,
 }
 DEFAULT_ADVANCED = {

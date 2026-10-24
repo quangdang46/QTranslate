@@ -439,6 +439,15 @@ class PopupWindow(QWidget):
         self._set_hover(False)
         super().leaveEvent(event)
 
+    def eventFilter(self, obj, event):          # noqa: N802 (Qt name)
+        """Click-outside closes the popup (native's behaviour)."""
+        from PySide6.QtCore import QEvent
+        if event.type() == QEvent.MouseButtonPress and self.isVisible():
+            pos = event.globalPos() if hasattr(event, "globalPos")                 else None
+            if pos is not None and not self.geometry().contains(pos):
+                self.hide()
+        return False
+
     def showEvent(self, event):                 # noqa: N802 (Qt name)
         # A popup that opens under the cursor (the common Ctrl+Q case --
         # it places at the pointer) never receives an enter event, so
@@ -488,8 +497,15 @@ class PopupWindow(QWidget):
             _to = int(_ap.get("PopupTimeout", 0))
         except Exception:
             _to = 0
+        # POPUP TIMEOUT IS OPT-IN and click-outside CLOSES the popup --
+        # the operator's report (2026-10-24): the answer arrived, the
+        # popup showed for five seconds and vanished while he was still
+        # reading ("giật lag rồi không thấy gì"). A zero timeout means
+        # the popup stays until the user clicks elsewhere or closes it.
         self._timer = QTimer(self)
         self._timer.setSingleShot(True)
         self._timer.timeout.connect(self.hide)
         if _to > 0:
             self._timer.start(_to * 1000)
+        from PySide6.QtWidgets import QApplication as _QA
+        _QA.instance().installEventFilter(self)
