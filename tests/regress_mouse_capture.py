@@ -98,17 +98,18 @@ import inspect  # noqa: E402
 # The capture gesture is a DRAG (press, sweep the selection, release),
 # per the operator's spec and the native: a plain click is not a
 # selection, and firing on it auto-translated in a loop (2026-10-24).
-# NATIVE (decompiled 2026-10-24, FUN_004193f6): a plain CLICK fires;
-# the anti-loop is the DISPATCH's cooldown/no-task gates.
+# NATIVE (decompiled 2026-10-24, FUN_004193f6): a selection DRAG fires
+# at its release ("bôi đen hiện icon nhỏ"); a quick click only records
+# the point for the double-click check and fires nothing.
 _state = {"down": None}
 _fired = []
 _probe_ok = lambda x, y: (0x1234, None, False, True)
 _probe_excluded = lambda x, y: (0x1234, None, True, True)
-for _w in (M.WM_LBUTTONDOWN, M.WM_LBUTTONUP):
-    M.process_mouse_event(_state, _w, 10, 20, _probe_ok,
+for _w, _x, _y in ((M.WM_LBUTTONDOWN, 10, 20), (M.WM_LBUTTONUP, 60, 20)):
+    M.process_mouse_event(_state, _w, _x, _y, _probe_ok,
                           lambda x, y: _fired.append((x, y)))
-ck("hook applies the capture gate (allowed window -> click fires)",
-   _fired == [(10, 20)], repr(_fired))
+ck("hook applies the capture gate (allowed window -> drag fires)",
+   _fired == [(60, 20)], repr(_fired))
 
 _state2 = {"down": None}
 _fired2 = []

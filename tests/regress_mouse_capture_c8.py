@@ -130,29 +130,27 @@ def _drive(events, probe=None):
     return fired
 
 
-ck_eq("left-handed user: primary-button click fires the capture",
-      len(_drive([(M.WM_LBUTTONDOWN, 40, 60), (M.WM_LBUTTONUP, 40, 60)])), 1)
-# NATIVE (decompiled 2026-10-24, FUN_004193f6): a PLAIN CLICK fires the
-# capture -- down and up in the same place. The anti-loop lives at the
-# DISPATCH, not here: the idle-since-last-capture gate and the
-# no-task-running gate (FUN_004183bd + the FUN_0050bc60() > 10.0
-# branch), ported as QtApp._mouse_capture_allowed_now. A drag is NOT
-# the native gesture.
-ck_eq("a plain click fires the capture at the click point",
-      _drive([(M.WM_LBUTTONDOWN, 40, 60), (M.WM_LBUTTONUP, 40, 60)]),
-      [(40, 60)])
+ck_eq("left-handed user: primary-button drag fires the capture",
+      len(_drive([(M.WM_LBUTTONDOWN, 40, 60), (M.WM_LBUTTONUP, 90, 60)])), 1)
+# NATIVE (decompiled 2026-10-24, FUN_004193f6): the UP side measures
+# how long the button was held (FUN_0050bc60() vs 10.0). A selection
+# DRAG -- press, sweep, release -- posts the capture and the icon
+# appears on RELEASE ("bôi đen hiện icon nhỏ"); a quick click only
+# records the point for the double-click check and fires nothing.
+ck_eq("a selection drag fires at its release point",
+      _drive([(M.WM_LBUTTONDOWN, 40, 60), (M.WM_LBUTTONUP, 90, 60)]),
+      [(90, 60)])
 ck_eq("the secondary button never fires the capture",
       len(_drive([(M.WM_RBUTTONDOWN, 40, 60), (M.WM_RBUTTONUP, 40, 60)])), 0)
 ck_eq("a lone button-down fires nothing",
       len(_drive([(M.WM_LBUTTONDOWN, 40, 60)])), 0)
 ck_eq("a lone button-up fires nothing",
       len(_drive([(M.WM_LBUTTONUP, 40, 60)])), 0)
-ck_eq("a drag past the tolerance fires nothing (not the gesture)",
-      len(_drive([(M.WM_LBUTTONDOWN, 40, 60),
-                  (M.WM_LBUTTONUP, 40 + M.CLICK_MOVE_TOL + 1, 60)])), 0)
-ck_eq("two clicks fire twice",
-      len(_drive([(M.WM_LBUTTONDOWN, 40, 60), (M.WM_LBUTTONUP, 40, 60),
-                  (M.WM_LBUTTONDOWN, 40, 60), (M.WM_LBUTTONUP, 40, 60)])), 2)
+ck_eq("a plain click fires nothing (that was the everywhere-loop)",
+      len(_drive([(M.WM_LBUTTONDOWN, 40, 60), (M.WM_LBUTTONUP, 40, 60)])), 0)
+ck_eq("two drags fire twice",
+      len(_drive([(M.WM_LBUTTONDOWN, 40, 60), (M.WM_LBUTTONUP, 90, 60),
+                  (M.WM_LBUTTONDOWN, 40, 60), (M.WM_LBUTTONUP, 90, 60)])), 2)
 
 # =====================================================================
 # 3. The down-side gate (FUN_004193F6)

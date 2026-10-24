@@ -424,14 +424,17 @@ def process_mouse_event(state, wparam, x, y, probe, on_select) -> bool:
         state["down"] = None
         if not rec:
             return False
-        # NATIVE (decompiled 2026-10-24, FUN_004193f6): a PLAIN CLICK
-        # fires the capture -- down and up in the same place, on an
-        # allowed window, no scrollbar. The anti-loop does NOT live
-        # here: native gates on the idle time since the last capture
-        # (its FUN_0050bc60() > 10.0 branch) and on "no task already
-        # running", both applied at the dispatch (FUN_004183bd). A drag
-        # (moving > CLICK_MOVE_TOL) is NOT the native gesture.
-        if abs(x - rec[0]) > CLICK_MOVE_TOL or abs(y - rec[1]) > CLICK_MOVE_TOL:
+        # NATIVE (decompiled 2026-10-24, FUN_004193f6): the UP side
+        # measures how long the button was held (its FUN_0050bc60()
+        # against a 10.0 threshold) -- held-and-swept, i.e. a selection
+        # DRAG, posts the capture message and the icon appears as the
+        # button is RELEASED (the operator's own words: "bôi đen hiện
+        # icon nhỏ"). A quick click only records the point for the
+        # double-click check; it fires nothing, which is also why
+        # clicking around never pops anything.
+        moved = (abs(x - rec[0]) > CLICK_MOVE_TOL
+                 or abs(y - rec[1]) > CLICK_MOVE_TOL)
+        if not moved:
             return False
         on_select(x, y)
         return True
