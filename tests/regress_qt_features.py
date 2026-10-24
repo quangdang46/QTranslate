@@ -371,8 +371,10 @@ try:
         ck("the selection click shows the translation in the popup",
            shown.get("popup") == "Xin chào", str(shown))
 
-        # Mode 2 ("Show translation and read"): the text under the
-        # cursor (OLEACC) is captured, and it is spoken as well.
+        # Mode 2 ("Show translation and read"): the SAME copy-capture as
+        # the others (the OLEACC under-the-cursor read was the auto-loop
+        # -- it returned text whether anything was selected or not), and
+        # the captured text is spoken as well.
         app.set_mouse_mode(MOUSE_MODES[2])
         shown.clear()
         spoken.clear()
@@ -385,11 +387,11 @@ try:
                 engine.translate = real_translate
         finally:
             popup_mod.PopupWindow = real_popup.PopupWindow
-        ck("the third mode captures the text under the cursor",
-           "text under the cursor" in app.win.src.toPlainText(),
+        ck("the third mode captures through the copy-capture like the rest",
+           "text from the clipboard" in app.win.src.toPlainText(),
            app.win.src.toPlainText()[:40])
         ck("the third mode speaks the selected text",
-           spoken == ["text under the cursor"], str(spoken))
+           spoken == ["text from the clipboard"], str(spoken))
 
         # The hook's proc runs on a worker thread: the translation is
         # handed over to the UI thread by the bridge, not shown there.

@@ -95,15 +95,26 @@ except Exception as e:  # pragma: no cover - would be a defect
 src = M.start.__doc__ or ""
 import inspect  # noqa: E402
 
+# The capture gesture is a DRAG (press, sweep the selection, release),
+# per the operator's spec and the native: a plain click is not a
+# selection, and firing on it auto-translated in a loop (2026-10-24).
 _state = {"down": None}
 _fired = []
 _probe_ok = lambda x, y: (0x1234, None, False, True)
 _probe_excluded = lambda x, y: (0x1234, None, True, True)
-for _w in (M.WM_LBUTTONDOWN, M.WM_LBUTTONUP):
-    M.process_mouse_event(_state, _w, 10, 20, _probe_ok,
+for _w, _x, _y in ((M.WM_LBUTTONDOWN, 10, 20), (M.WM_LBUTTONUP, 210, 220)):
+    M.process_mouse_event(_state, _w, _x, _y, _probe_ok,
                           lambda x, y: _fired.append((x, y)))
-ck("hook applies the capture gate (allowed window -> capture fires)",
-   _fired == [(10, 20)], repr(_fired))
+ck("hook applies the capture gate (allowed window -> drag fires)",
+   _fired == [(210, 220)], repr(_fired))
+
+_state_plain = {"down": None}
+_fired_plain = []
+for _w in (M.WM_LBUTTONDOWN, M.WM_LBUTTONUP):
+    M.process_mouse_event(_state_plain, _w, 10, 20, _probe_ok,
+                          lambda x, y: _fired_plain.append((x, y)))
+ck("a plain click (no sweep) does NOT fire -- that was the loop",
+   _fired_plain == [], repr(_fired_plain))
 
 _state2 = {"down": None}
 _fired2 = []
@@ -143,14 +154,15 @@ m = re.search(r"def _capture_selection\(self, x, y\).*?(?=\n    def |\n\nclass )
 ck("the Qt view's capture function is located", m is not None)
 if m:
     body = m.group(0)
-    has_mode_branch = re.search(r"_mouse_mode_index\(\)\s*==\s*2", body) \
-        is not None
-    has_return_after_translate = "return" in body
-    ck("mode==2 branch present", has_mode_branch)
-    ck("mode-2 path returns before the clipboard send",
-       has_return_after_translate)
-    ck("cursor_text is consulted inside _work",
-       "cursor_text" in body)
+    # The OLEACC under-the-cursor read was REMOVED (2026-10-24): it
+    # returns text at the point whether anything is selected or not,
+    # which is what made every click auto-translate. Every mode captures
+    # through the copy-capture engine now; cursor_text stays as the
+    # OLEACC contract port but is off the mouse path.
+    ck("no mode-specific OLEACC branch (that was the auto-loop)",
+       re.search(r"_mouse_mode_index\(\)\s*==\s*2", body) is None)
+    ck("every mode captures through copy-capture",
+       "copy_selection" in body and "cursor_text(" not in body)
     # The clipboard-send fallback is still there, but it lives in the
     # shared capture engine now (qtranslate/selection.py) instead of
     # inline here -- so this pins the CALL, and the engine pins the send.

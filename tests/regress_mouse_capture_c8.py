@@ -130,26 +130,29 @@ def _drive(events, probe=None):
     return fired
 
 
-ck_eq("left-handed user: primary-button pair fires the capture",
-      len(_drive([(M.WM_LBUTTONDOWN, 40, 60), (M.WM_LBUTTONUP, 40, 60)])), 1)
-ck_eq("the capture reports the click point",
-      _drive([(M.WM_LBUTTONDOWN, 40, 60), (M.WM_LBUTTONUP, 40, 60)]),
-      [(40, 60)])
+ck_eq("left-handed user: primary-button DRAG fires the capture",
+      len(_drive([(M.WM_LBUTTONDOWN, 40, 60), (M.WM_LBUTTONUP, 140, 60)])), 1)
+# The capture gesture is a DRAG (press, sweep the selection, release) --
+# the operator's spec (2026-10-24) and the native: a plain click is not
+# a selection, and firing on it auto-translated in a loop. These
+# vectors are the INVERSE of the old ones on purpose.
+ck_eq("the capture reports the drag's release point",
+      _drive([(M.WM_LBUTTONDOWN, 40, 60), (M.WM_LBUTTONUP, 140, 160)]),
+      [(140, 160)])
 ck_eq("the secondary button never fires the capture",
-      len(_drive([(M.WM_RBUTTONDOWN, 40, 60), (M.WM_RBUTTONUP, 40, 60)])), 0)
+      len(_drive([(M.WM_RBUTTONDOWN, 40, 60), (M.WM_RBUTTONUP, 140, 60)])), 0)
 ck_eq("a lone button-down fires nothing",
       len(_drive([(M.WM_LBUTTONDOWN, 40, 60)])), 0)
 ck_eq("a lone button-up fires nothing",
       len(_drive([(M.WM_LBUTTONUP, 40, 60)])), 0)
-ck_eq("a drag past the tolerance fires nothing",
+ck_eq("a plain click (no sweep) fires nothing -- that was the loop",
+      len(_drive([(M.WM_LBUTTONDOWN, 40, 60), (M.WM_LBUTTONUP, 40, 60)])), 0)
+ck_eq("a drag inside the tolerance is still a click, not a sweep",
       len(_drive([(M.WM_LBUTTONDOWN, 40, 60),
-                  (M.WM_LBUTTONUP, 40 + M.CLICK_MOVE_TOL + 1, 60)])), 0)
-ck_eq("a drag inside the tolerance still fires",
-      len(_drive([(M.WM_LBUTTONDOWN, 40, 60),
-                  (M.WM_LBUTTONUP, 40 + M.CLICK_MOVE_TOL, 60)])), 1)
-ck_eq("two clicks fire twice",
-      len(_drive([(M.WM_LBUTTONDOWN, 40, 60), (M.WM_LBUTTONUP, 40, 60),
-                  (M.WM_LBUTTONDOWN, 40, 60), (M.WM_LBUTTONUP, 40, 60)])), 2)
+                  (M.WM_LBUTTONUP, 40 + M.CLICK_MOVE_TOL, 60)])), 0)
+ck_eq("two drags fire twice",
+      len(_drive([(M.WM_LBUTTONDOWN, 40, 60), (M.WM_LBUTTONUP, 140, 60),
+                  (M.WM_LBUTTONDOWN, 40, 60), (M.WM_LBUTTONUP, 140, 60)])), 2)
 
 # =====================================================================
 # 3. The down-side gate (FUN_004193F6)

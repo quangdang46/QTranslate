@@ -882,24 +882,23 @@ class QtApp:
         return True
 
     def _capture_selection(self, x, y) -> str:
-        """The text of the selection the click ended.
+        """The text of the selection the drag swept.
 
-        Native's third mode reads the text under the CURSOR (OLEACC);
-        the other modes copy the selection with Ctrl+C and read the
-        clipboard. The gates are native's (see _mouse_gate_ok).
+        EVERY mode captures through the same copy-capture engine Ctrl+Q
+        uses (native FUN_0043BF30): synthesize Ctrl+C, poll the
+        clipboard's sequence number until it CHANGES. A drag that
+        selected nothing leaves the sequence alone and returns "" -- so
+        nothing pops up.
+
+        The port used to read the text UNDER THE CURSOR (OLEACC
+        ``cursor_text``) for the read-aloud mode, which returns text at
+        the point whether anything is selected or not -- every click
+        then had "a selection" and the app auto-translated in a loop
+        (the operator's report, 2026-10-24). The gates are native's
+        (see _mouse_gate_ok).
         """
         if not self._mouse_gate_ok():
             return ""
-        if self._mouse_mode_index() == 2:
-            try:
-                from qtranslate import mouse_capture as mc
-                text = (mc.cursor_text(x, y) or "").strip()
-            except Exception:
-                text = ""
-            if text:
-                return text
-        # Same copy-capture as Ctrl+Q: a fixed sleep is a guess, and on a
-        # slow target it read the clipboard BEFORE the copy landed.
         from qtranslate import selection
         return (selection.copy_selection() or "").strip()
 
