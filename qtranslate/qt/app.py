@@ -838,18 +838,20 @@ class QtApp:
             text = self._capture_selection(x, y)
             if not text:
                 return
-            if self._mouse_mode_index() == 0:
-                self._on_ui(lambda: self._show_mouse_icon(x, y, text))
-                return
-            res = self._translate(text)
-            self._bridge.translated.emit(text, res.text)
-            if self._mouse_mode_index() == 2:
-                self._speak(text)
+            # THE OPERATOR'S DECISION (2026-10-24, final): EVERY mode is
+            # icon-first -- the drag-release pops the small translate
+            # icon and NOTHING automatic happens until the user clicks
+            # it. The native's modes 1/2 pop the popup immediately
+            # (TaskShowPopupWindow, decompiled) and the operator ran
+            # exactly that as "nó vẫn tự mở popup dịch"; the product
+            # call is that no mode ever auto-translates. Mode 2's read
+            # aloud rides the ICON's click, not the drag's release.
+            self._on_ui(lambda: self._show_mouse_icon(x, y, text))
         except Exception:
             pass
 
     def _show_mouse_icon(self, x, y, text):
-        """The mode-0 floating translate button (UI thread)."""
+        """The floating translate button (UI thread), every mode."""
         try:
             from .mouse_icon import MouseIcon
             icon_win = getattr(self, "_mouse_icon", None)
@@ -866,6 +868,8 @@ class QtApp:
             if res.ok and res.text:
                 self.show_translation(t, res.text,
                                       provider=res.provider_used)
+                if self._mouse_mode_index() == 2:
+                    self._speak(t)
         self._start_translation(text, done)
 
     def _mouse_gate_ok(self) -> bool:

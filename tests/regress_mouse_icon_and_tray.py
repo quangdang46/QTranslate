@@ -104,11 +104,14 @@ try:
        and "GOOGLE:hello selection" in popup.lbl_text.text(),
        popup.lbl_text.text()[:60] if popup else "no popup")
 
-    # mode 1 still translates directly (no icon)
+    # EVERY mode is icon-first (the operator's final call, 2026-10-24):
+    # modes 1/2 never auto-translate; the read-aloud rides the click.
     shown.clear()
     app.set_mouse_mode(MOUSE_MODES[1])
     app._mouse_work(5, 5)
-    ck("mode 1 translates directly, no icon", shown == {}, str(shown))
+    ck("mode 1 pops the icon too, nothing auto-translates",
+       shown == {"x": 5, "y": 5, "text": "selected words"}, str(shown))
+    app._translate_captured("selected words")
     app.wait_for_translation(timeout=10.0)
 
     # --- 2. the tray toggle ----------------------------------------------

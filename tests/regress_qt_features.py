@@ -368,11 +368,10 @@ try:
                 engine.translate = real_translate
         finally:
             popup_mod.PopupWindow = real_popup.PopupWindow
-        ck("the selection drag captures the swept selection",
-           "text from the clipboard" in app.win.src.toPlainText(),
-           app.win.src.toPlainText()[:40])
-        ck("the selection click shows the translation in the popup",
-           shown.get("popup") == "Xin chào", str(shown))
+        ck("mode 1 is ICON-FIRST too (the operator's final call)",
+           "text from the clipboard" not in app.win.src.toPlainText()
+           and shown.get("popup") is None,
+           "%r / %r" % (app.win.src.toPlainText()[:40], shown))
 
         # Mode 2 ("Show translation and read"): the SAME copy-capture as
         # the others (the OLEACC under-the-cursor read was the auto-loop
@@ -390,11 +389,8 @@ try:
                 engine.translate = real_translate
         finally:
             popup_mod.PopupWindow = real_popup.PopupWindow
-        ck("the third mode captures through the same engine",
-           "text from the clipboard" in app.win.src.toPlainText(),
-           app.win.src.toPlainText()[:40])
-        ck("the third mode speaks the selected text",
-           spoken == ["text from the clipboard"], str(spoken))
+        ck("mode 2 is ICON-FIRST too -- nothing spoken on release",
+           spoken == [], str(spoken))
 
         # The hook's proc runs on a worker thread: the translation is
         # handed over to the UI thread by the bridge, not shown there.
@@ -407,11 +403,13 @@ try:
             worker.join()
         finally:
             engine.translate = real_translate
-        ck("the worker's result waits for the UI thread",
+        ck("the worker's drag-release pops the icon, not a popup",
            shown.get("popup") is None, str(shown))
         app.qapp.processEvents()
-        ck("the popup shows the translation in the UI thread",
-           shown.get("popup") == "Xin chào", str(shown))
+        # Icon-first everywhere: the icon's CLICK translates, never the
+        # release -- nothing auto-shows after the drag.
+        ck("nothing auto-shows after the release (icon-first)",
+           shown.get("popup") is None, str(shown))
     finally:
         mc.start, mc.stop = real_start, real_stop
         mc.available = real_available
