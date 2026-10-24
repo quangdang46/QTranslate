@@ -133,12 +133,14 @@ for sym in ("FUN_00417E4E", "FUN_004193F6", "FUN_00404901", "FUN_004183bd"):
 ck("doc records IAccessible::get_accValue fallback",
    "get_accValue" in mod_doc)
 
-# --- app.py's mode-2 branch must route cursor text, not the clipboard ---
+# --- app.py's mouse path: one capture for every mode, the shared engine ---
+# RE (2026-10-24): TaskShowIcons.run -> FUN_004543c6 -> FUN_0043bf30,
+# the copy-capture engine the hotkeys use; there is no per-mode
+# capture branch in the native either.
 app_src = open(os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "qtranslate", "qt", "app.py"),
     encoding="utf-8", errors="replace").read()
-ck("the Qt view reads MouseMode for the branch", 'get("MouseMode"' in app_src)
-ck("the Qt view calls cursor_text for mode 2", "cursor_text" in app_src)
+ck("the Qt view reads MouseMode for the session", 'get("MouseMode"' in app_src)
 ck("the Qt view has _capture_selection", "_capture_selection" in app_src)
 
 # the branch must be `if mode == 2: ... cursor_text ... return` so mode 1/0
@@ -149,16 +151,15 @@ m = re.search(r"def _capture_selection\(self, x, y\).*?(?=\n    def |\n\nclass )
 ck("the Qt view's capture function is located", m is not None)
 if m:
     body = m.group(0)
-    # The mouse path captures through OLEACC at the click point --
-    # native's own FUN_00404901 (AccessibleObjectFromPoint ->
-    # get_accName, fallback get_accValue), decompiled 2026-10-24. The
-    # copy-capture engine is WRONG here: a clipboard manager keeps the
-    # sequence number moving, so every click read "a selection" and the
-    # icon/popup fired everywhere (the operator's report).
+    # The mouse path captures through the copy-capture engine -- the
+    # RE trail (2026-10-24): TaskShowIcons.run -> FUN_004543c6 ->
+    # FUN_0043bf30, the same Ctrl+C engine the hotkeys use, then a
+    # trim. It is safe here because only a selection DRAG's release
+    # reaches it; a plain click fires nothing (see the hook vectors).
     ck("no mode-specific capture branch (one path, native's)",
        re.search(r"_mouse_mode_index\(\)\s*==\s*2", body) is None)
-    ck("the mouse path captures through OLEACC at the point",
-       "cursor_text(" in body and "copy_selection" not in body)
+    ck("the mouse path captures through the copy-capture engine",
+       "copy_selection" in body)
     # The copy-capture engine stays for the HOTKEYS (Ctrl+Q/Alt/W) --
     # native FUN_0043BF30's own path -- it is just off the mouse path.
     _sel = open(os.path.join(os.path.dirname(os.path.dirname(

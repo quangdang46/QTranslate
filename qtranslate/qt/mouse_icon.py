@@ -67,9 +67,15 @@ class MouseIcon(QWidget):
         self._timer.timeout.connect(self.hide)
 
     def pop(self, x, y, text):
-        """Show under the selection at screen (x, y), for 6 seconds."""
+        """Show at the release point, native FUN_004157c9's layout.
+
+        The native places the icon ABOVE-LEFT of the point (cursor
+        minus twice the icon size plus a 2px gap, minus the icon's own
+        extent) -- it hugs the selection's end without covering it.
+        Kept for 6 seconds or until clicked.
+        """
         self._text = text or ""
-        self.move(max(0, x - SIZE // 2), y + 14)
+        self.move(max(0, x - SIZE - 26), max(0, y - SIZE - 26))
         self.show()
         self.raise_()
         self._timer.start(6000)

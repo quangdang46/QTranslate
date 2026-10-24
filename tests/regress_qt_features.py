@@ -357,7 +357,7 @@ try:
         # Mode 1 ("Show translation"): the click copies the selection
         # through the same copy-capture the Ctrl+Q hotkey uses.
         app.set_mouse_mode(MOUSE_MODES[1])
-        mc.cursor_text = lambda x, y: "text from the clipboard"
+        _sel.copy_selection = lambda **kw: "text from the clipboard"
         shown.clear()
         popup_mod.PopupWindow = _Popup
         try:
@@ -368,7 +368,7 @@ try:
                 engine.translate = real_translate
         finally:
             popup_mod.PopupWindow = real_popup.PopupWindow
-        ck("the selection click captures the text under it (OLEACC)",
+        ck("the selection drag captures the swept selection",
            "text from the clipboard" in app.win.src.toPlainText(),
            app.win.src.toPlainText()[:40])
         ck("the selection click shows the translation in the popup",
@@ -390,7 +390,7 @@ try:
                 engine.translate = real_translate
         finally:
             popup_mod.PopupWindow = real_popup.PopupWindow
-        ck("the third mode captures through the same OLEACC path",
+        ck("the third mode captures through the same engine",
            "text from the clipboard" in app.win.src.toPlainText(),
            app.win.src.toPlainText()[:40])
         ck("the third mode speaks the selected text",
