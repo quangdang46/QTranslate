@@ -98,6 +98,9 @@ a = Analysis(
         # Each is a Core module the Qt view may call by lazy import; a
         # module PyInstaller never followed dies in front of the user.
         'qtranslate.clipboard',
+        # Copy-capture (the Ctrl+Q selection copy, FUN_0043BF30) is a lazy
+        # import at the hotkey's call site, so Analysis never follows it.
+        'qtranslate.selection',
         'qtranslate.fonts',
         'qtranslate.override_ui',
         'qtranslate.screens',
