@@ -139,6 +139,7 @@ class QtApp:
         self.mouse_mode = "Show icon"
         self._mouse_enabled = False
         self._mouse_icon = None
+        self._last_mouse_capture = 0.0
         self._mouse_hook = False
         self._bridge = _MouseBridge(self)
         self._ui = _UiInvoker()
@@ -797,29 +798,52 @@ class QtApp:
         threading.Thread(target=self._mouse_work, args=(x, y),
                          daemon=True).start()
 
+    # Native's anti-loop, decompiled 2026-10-24 (FUN_004193f6 +
+    # FUN_004183bd): a capture is DROPPED unless enough time has passed
+    # since the last one (its FUN_0050bc60() > 10.0 branch) and no task
+    # is already running. The port fires the hook on every plain click,
+    # so without this gate every click re-queued a popup ("loop auto
+    # translate cực nghiêm trọng", the operator's report).
+    MOUSE_CAPTURE_COOLDOWN = 10.0
+
+    def _mouse_capture_allowed_now(self) -> bool:
+        """The cooldown + one-task gates, native's own two."""
+        import time
+        now = time.monotonic()
+        if now - self._last_mouse_capture < self.MOUSE_CAPTURE_COOLDOWN:
+            return False
+        if any(t.is_alive() for t in self._threads):
+            return False
+        self._last_mouse_capture = now
+        return True
+
     def _mouse_work(self, x, y):
-        """Capture the text under the cursor and act on the mode.
+        """Act on a selection click, per the mode -- native's dispatch.
+
+        Native (FUN_004183bd, decompiled 2026-10-24): when the mouse
+        mode is ON and no task is running, mode 0 queues TaskShowIcons
+        -- the small translate button at the click point, click IT to
+        translate -- and modes 1/2 queue TaskShowPopupWindow at the
+        cursor, IMMEDIATELY. The port does the same through its own
+        pieces; the text is captured with the copy-capture engine, so a
+        click with nothing selected does nothing at all.
 
         It runs on the worker's thread: the hook's proc has to return
         fast. The panes and the popup belong to the UI thread, so the
         result comes back through the bridge.
         """
         try:
+            if not self._mouse_capture_allowed_now():
+                return
             text = self._capture_selection(x, y)
             if not text:
                 return
             if self._mouse_mode_index() == 0:
-                # native's first mode, "Show icon": a small translate
-                # button pops up under the selection -- clicking it
-                # translates, no Ctrl+Q needed (row C10).
                 self._on_ui(lambda: self._show_mouse_icon(x, y, text))
                 return
             res = self._translate(text)
             self._bridge.translated.emit(text, res.text)
             if self._mouse_mode_index() == 2:
-                # native's third mode, "Show translation and read": the
-                # same as the second one, plus speaking the selected
-                # text aloud.
                 self._speak(text)
         except Exception:
             pass

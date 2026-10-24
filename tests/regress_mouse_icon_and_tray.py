@@ -53,6 +53,17 @@ try:
     app._load_session()
     app.source, app.target = "en", "vi"
     app.win = MainWindow(app)
+    # The suites drive _mouse_work repeatedly; the app's own cooldown
+    # (native's idle gate) would drop every call after the first.
+    # Before zeroing it, PIN it: a second capture inside the window is
+    # dropped, and the first passes (native FUN_004183bd's own gates).
+    ck("a capture passes when the cooldown has elapsed",
+       app._mouse_capture_allowed_now() is True,
+       "gate should pass on a cold app")
+    ck("a capture inside the cooldown is DROPPED (the anti-loop)",
+       app._mouse_capture_allowed_now() is False,
+       "the second call inside the window must drop")
+    app.MOUSE_CAPTURE_COOLDOWN = 0
     app.service = "google"
 
     # --- 1. mode 0 pops the floating icon --------------------------------

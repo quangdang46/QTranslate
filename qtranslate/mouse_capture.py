@@ -424,14 +424,14 @@ def process_mouse_event(state, wparam, x, y, probe, on_select) -> bool:
         state["down"] = None
         if not rec:
             return False
-        # The operator's spec (2026-10-24, and how the native behaves):
-        # the capture gesture is a DRAG -- press, sweep the selection,
-        # release. A plain click (down and up in the same place) is NOT
-        # a selection: firing on it made every click pop the icon or a
-        # translation ("loop auto translate cực nghiêm trọng"). The old
-        # port had this inverted -- it fired on the click and SKIPPED
-        # the drag.
-        if abs(x - rec[0]) <= CLICK_MOVE_TOL and abs(y - rec[1]) <= CLICK_MOVE_TOL:
+        # NATIVE (decompiled 2026-10-24, FUN_004193f6): a PLAIN CLICK
+        # fires the capture -- down and up in the same place, on an
+        # allowed window, no scrollbar. The anti-loop does NOT live
+        # here: native gates on the idle time since the last capture
+        # (its FUN_0050bc60() > 10.0 branch) and on "no task already
+        # running", both applied at the dispatch (FUN_004183bd). A drag
+        # (moving > CLICK_MOVE_TOL) is NOT the native gesture.
+        if abs(x - rec[0]) > CLICK_MOVE_TOL or abs(y - rec[1]) > CLICK_MOVE_TOL:
             return False
         on_select(x, y)
         return True

@@ -59,6 +59,10 @@ except Exception as exc:                       # noqa: BLE001
 
 windows = []
 try:
+    # This suite drives _mouse_work repeatedly; the app's own capture
+    # cooldown (native FUN_004183bd's idle gate, the anti-loop) would
+    # drop every call after the first.
+    app.MOUSE_CAPTURE_COOLDOWN = 0
     # --- 1. the main window ---------------------------------------------
     win = MainWindow(app)
     windows.append(win)
