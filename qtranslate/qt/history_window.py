@@ -36,6 +36,11 @@ HIST_MENU = (("open", "Open", 10),
              ("listen", "Listen to text", 40),
              ("delete", "Delete", 50))
 
+# One entry's vertical footprint: the FACE header row (star + source)
+# and the white row under it (service icon + translation). 30px put the
+# translation ON TOP of the next entry's header; 34 gives both rows air.
+ROW_PITCH = 34
+
 
 def menu_text(pack, menu_id, idx, default) -> str:
     try:
@@ -93,7 +98,7 @@ class HistoryWindow(Base):
         the port showed only the first, so menu 9 had no host at all.
         """
         try:
-            y = self.list.mapFromGlobal(gpos).y()
+            y = self._rows.mapFromGlobal(gpos).y()
         except Exception:
             return
         idx = self._entry_at(y)
@@ -185,10 +190,11 @@ class HistoryWindow(Base):
 
     def _entry_at(self, y):
         """The history index at the list's ``y`` -- ``_fill``'s own
-        arithmetic (rows start at 65, one row per 30px), so the menu
-        targets the row the user right-clicked. -1 past the last."""
+        arithmetic (one row per ROW_PITCH inside the scrolled container),
+        so the menu targets the row the user right-clicked. -1 past the
+        last."""
         try:
-            idx = (int(y) - 65) // 30
+            idx = (int(y) - 6) // ROW_PITCH
         except Exception:
             return -1
         if idx < 0:
@@ -204,16 +210,42 @@ class HistoryWindow(Base):
 
     def _fill(self):
         """The list: one header row per entry, with its translation
-        under it."""
-        y = 66
-        for entry in list(self.app.history)[:12]:
+        under it, inside a SCROLL AREA.
+
+        The rows used to be painted straight onto the list panel at a
+        30px pitch: twelve entries needed 360px in a 228px panel, so
+        everything past the sixth ran out of the panel's bottom and
+        landed on top of the next row and the buttons -- the operator's
+        screenshot 2165. The rows now live in a container inside a
+        QScrollArea: the panel never overflows, longer histories scroll,
+        and ``_entry_at`` reads the container's own coordinates so the
+        right-click menu tracks the row under the cursor even scrolled.
+        """
+        from PySide6.QtWidgets import QScrollArea, QWidget
+        old = getattr(self, "_scroll", None)
+        if old is not None:
+            old.takeWidget()
+            old.deleteLater()
+        self._rows = QWidget()
+        self._rows.setStyleSheet("background:#ffffff;")
+        y = 6
+        entries = list(self.app.history)
+        for entry in entries:
             service, src, res = entry[:3]
-            rect(self.list, 5, y - 1, 466, 13, FACE, "histrow")
-            icon(self.list, 8, y - 3, "ui_icons", "star")
-            label(self.list, 31, y + 5, src[:60])
-            icon(self.list, 27, y + 15, "service_icons", service)
-            label(self.list, 51, y + 20, res[:60])
-            y += 30
+            rect(self._rows, 0, y - 1, 462, ROW_PITCH - 18, FACE, "histrow")
+            icon(self._rows, 3, y + 1, "ui_icons", "star")
+            label(self._rows, 26, y + 6, str(src)[:60])
+            icon(self._rows, 22, y + 16, "service_icons", service)
+            label(self._rows, 46, y + 21, str(res)[:60])
+            y += ROW_PITCH
+        self._rows.setFixedSize(462, max(228, y + 6))
+        self._scroll = QScrollArea(self.list)
+        self._scroll.setStyleSheet(
+            "QScrollArea{background:#fff;border:none;}"
+            "QScrollBar{background:#f0f0f0;width:14px;}")
+        self._scroll.setWidget(self._rows)
+        self._scroll.setGeometry(2, 2, 463, 224)
+        self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
     def _clear(self):
         self.app.history = []

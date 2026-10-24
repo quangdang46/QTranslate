@@ -41,8 +41,12 @@ DICT_ICONS = {
     "Oxford Learner Dictionary": "oxford",
 }
 
-# The strip's cell: 42 pixels, of which 1 is the divider that separates
-# it from the cell before, 3 the gap, 16 the icon and 22 the label.
+# The strip's cell: 42 pixels at native's own 11 services, of which 1
+# is the divider that separates it from the cell before, 3 the gap, 16
+# the icon and 22 the label. At a different service count the cell
+# width is COMPUTED (see _cell_width) so the strip always ends before
+# the scrollbar: at 42px fixed, cell 11 ran under the scrollbar and the
+# last cells were cut (the operator's screenshot 2166).
 CELL = 42
 STRIP_Y, STRIP_H = 307, 22
 STRIP_X = 3
@@ -120,9 +124,14 @@ class DictionaryWindow(Base):
         put(self, self.out, 1, 56, 444, 250)
 
         # ---- the service strip (capture y 307..328) ---------------------
+        services = self._services()
+        # The cell width fits the count: the strip must end before the
+        # result pane's scrollbar (16px) or the last cells are cut.
+        cell_w = min(CELL, max(24, (474 - 16 - STRIP_X)
+                               // max(1, len(services))))
         self.strip = []
-        for i, name in enumerate(self._services()):
-            self.strip.append(self._strip_cell(i, name))
+        for i, name in enumerate(services):
+            self.strip.append(self._strip_cell(i, name, cell_w))
         self.select(self.strip[0] if self.strip else None)
 
     # ------------------------------------------------------------- helpers
@@ -137,16 +146,16 @@ class DictionaryWindow(Base):
         return [config.DICT_DISPLAY.get(i, "") for i in ids
                 if i in config.DICT_DISPLAY]
 
-    def _strip_cell(self, i, name):
+    def _strip_cell(self, i, name, cell_w=CELL):
         """One cell of the bottom strip: a divider, the service's own
         icon, and its name cut to the first letter and an ellipsis."""
-        x = STRIP_X + CELL * i
+        x = STRIP_X + cell_w * i
         cell = _Cell(self)
         cell.setObjectName("cell")
         cell.setProperty("service", DICT_ICONS.get(name, ""))
         cell.setProperty("display", name)
         cell.setStyleSheet("QFrame#cell{background:#dadada;border:none;}")
-        put(self, cell, x + 1, STRIP_Y + 1, CELL - 1, STRIP_H - 2)
+        put(self, cell, x + 1, STRIP_Y + 1, cell_w - 1, STRIP_H - 2)
         vline(self, x, STRIP_Y, STRIP_Y + STRIP_H)
         icon(self, x + 4, STRIP_Y + 3, "dict_icons", DICT_ICONS.get(name, ""))
         lab = QLabel(name[:1] + "...")
