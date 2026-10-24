@@ -148,23 +148,23 @@ m = re.search(r"def _capture_selection\(self, x, y\).*?(?=\n    def |\n\nclass )
 ck("the Qt view's capture function is located", m is not None)
 if m:
     body = m.group(0)
-    # The OLEACC under-the-cursor read was REMOVED (2026-10-24): it
-    # returns text at the point whether anything is selected or not,
-    # which is what made every click auto-translate. Every mode captures
-    # through the copy-capture engine now; cursor_text stays as the
-    # OLEACC contract port but is off the mouse path.
-    ck("no mode-specific OLEACC branch (that was the auto-loop)",
+    # The mouse path captures through OLEACC at the click point --
+    # native's own FUN_00404901 (AccessibleObjectFromPoint ->
+    # get_accName, fallback get_accValue), decompiled 2026-10-24. The
+    # copy-capture engine is WRONG here: a clipboard manager keeps the
+    # sequence number moving, so every click read "a selection" and the
+    # icon/popup fired everywhere (the operator's report).
+    ck("no mode-specific capture branch (one path, native's)",
        re.search(r"_mouse_mode_index\(\)\s*==\s*2", body) is None)
-    ck("every mode captures through copy-capture",
-       "copy_selection" in body and "cursor_text(" not in body)
-    # The clipboard-send fallback is still there, but it lives in the
-    # shared capture engine now (qtranslate/selection.py) instead of
-    # inline here -- so this pins the CALL, and the engine pins the send.
+    ck("the mouse path captures through OLEACC at the point",
+       "cursor_text(" in body and "copy_selection" not in body)
+    # The copy-capture engine stays for the HOTKEYS (Ctrl+Q/Alt/W) --
+    # native FUN_0043BF30's own path -- it is just off the mouse path.
     _sel = open(os.path.join(os.path.dirname(os.path.dirname(
         os.path.abspath(__file__))), "qtranslate", "selection.py"),
         encoding="utf-8", errors="replace").read()
-    ck("clipboard send stays as the fallback",
-       "copy_selection" in body and 'send("ctrl+c")' in _sel)
+    ck("the copy-capture engine keeps its Ctrl+C send (for the hotkeys)",
+       'send("ctrl+c")' in _sel)
 
 
 def _branch(cursor_value, mode):

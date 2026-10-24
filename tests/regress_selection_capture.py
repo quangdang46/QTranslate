@@ -147,12 +147,16 @@ ck("Alt+W (replace selection) reads the selection too",
    _src.split("def hotkey_replace_selection", 1)[1]
    .split("def hotkey_copy_translation", 1)[0])
 
-# The mouse modes' capture goes through the same engine, not a sleep.
+# The mouse mode captures through OLEACC at the click point -- native
+# FUN_00404901 (decompiled 2026-10-24). The copy-capture engine is
+# WRONG on this path: a clipboard manager keeps the clipboard sequence
+# moving, so every click read "a selection" and the icon fired
+# everywhere. No sleeps, no clipboard, no Ctrl+C sent on a click.
 _cap = _src.split("def _capture_selection", 1)[1].split("def quit", 1)[0]
-ck("mouse-mode capture uses the same copy-capture",
-   "selection.copy_selection" in _cap
-   and "time.sleep(0.15)" not in _cap,
-   "a fixed sleep reads the clipboard before a slow copy lands")
+ck("mouse-mode capture reads OLEACC at the point, no clipboard",
+   "cursor_text(" in _cap and "copy_selection" not in _cap
+   and "time.sleep" not in _cap,
+   "the mouse path must not touch the clipboard")
 
 # --- it is in the frozen bundle's reach --------------------------------
 _bundle = io.open(os.path.join(ROOT, "tools", "build_bundle.py"),

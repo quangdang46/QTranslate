@@ -906,25 +906,27 @@ class QtApp:
         return True
 
     def _capture_selection(self, x, y) -> str:
-        """The text of the selection the drag swept.
+        """The text under the click -- native's own mouse capture.
 
-        EVERY mode captures through the same copy-capture engine Ctrl+Q
-        uses (native FUN_0043BF30): synthesize Ctrl+C, poll the
-        clipboard's sequence number until it CHANGES. A drag that
-        selected nothing leaves the sequence alone and returns "" -- so
-        nothing pops up.
+        NATIVE (FUN_00404901, decompiled): GetCursorPos ->
+        AccessibleObjectFromPoint -> get_accName, fallback get_accValue
+        when the name is empty. No clipboard is touched on this path:
+        the port's copy-capture made EVERY click read "a selection",
+        because a clipboard manager keeps the sequence number moving
+        (the operator's 'click bất cứ đâu lại lỗi', 2026-10-24). OLEACC
+        answers with the text AT the point -- empty on a button, a
+        panel, the desktop -- which is exactly the native behaviour:
+        the icon only appears where there is something to read.
 
-        The port used to read the text UNDER THE CURSOR (OLEACC
-        ``cursor_text``) for the read-aloud mode, which returns text at
-        the point whether anything is selected or not -- every click
-        then had "a selection" and the app auto-translated in a loop
-        (the operator's report, 2026-10-24). The gates are native's
-        (see _mouse_gate_ok).
+        The gates are native's (see _mouse_gate_ok).
         """
         if not self._mouse_gate_ok():
             return ""
-        from qtranslate import selection
-        return (selection.copy_selection() or "").strip()
+        try:
+            from qtranslate import mouse_capture as mc
+            return (mc.cursor_text(x, y) or "").strip()
+        except Exception:                   # noqa: BLE001 -- OLEACC may
+            return ""                       # refuse; native fails open too
 
     def quit(self):
         self.qapp.quit()
