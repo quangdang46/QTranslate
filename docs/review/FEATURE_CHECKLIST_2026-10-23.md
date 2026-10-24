@@ -10,6 +10,14 @@ Live providers: **21/21 LIVE-OK trong sweep** (`tests/LIVE_RESULTS.md`,
 2026-10-24) — sweep KHÔNG gồm PROMT/Babylon/Baidu-translate: ba cái đó
 probe riêng cùng ngày, đều `dead:*` và được ghi rõ trong matrix.
 
+**Xác nhận của người vận hành (24/10/2026):** GUI đã match native —
+operator chạy bundle thật (`dist\QTranslate\QTranslate.exe`, các
+commit 89e9e68..775b38b) và xác nhận bằng mắt. Đây là phần review
+thực tế mà các hàng `NEED` về GUI dưới đây không thể tự cấp; không
+đổi trạng thái từng hàng, nhưng NEED "kiểm chứng trong ứng dụng thật"
+cho PHẦN GIAO DIỆN được coi là có người xác nhận. Các NEED về HÀNH VI
+(hotkey với app ngoài, persistence, OCR/mic) vẫn cần thao tác riêng.
+
 Quy tắc đọc:
 
 - `PASS` chỉ khi đã chạy và có bằng chứng đi kèm. Không được đổi `PASS`
