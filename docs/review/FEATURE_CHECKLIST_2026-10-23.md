@@ -1,13 +1,12 @@
 # FEATURE CHECKLIST — kiểm thử thực tế từng feature
 
-Ghi ngày: **2026-10-23**. Commit đã kiểm kê: **`f8f82c5`** (`main`,
-working tree sạch) — *cập nhật lần 2 cùng ngày; bản đầu ghim `e60fc6e`,
-13 commit sau đó đã đổi một số trạng thái dưới đây, mỗi chỗ đều ghi rõ*.
-Suite tự động: **136 suites, 0 failed** (chạy lại trên đúng commit này,
-23/10/2026, exit code 0 — `tools/run_suites.py`). Pixel-parity:
-**0.0037 trên 12 màn hình** (đo trên `e60fc6e`; `f8f82c5` không đổi
-layout — đổi ở luồng dịch và docs). Docs-consistency: **0 findings**.
-Live providers: **20/21 LIVE-OK** (`tests/LIVE_RESULTS.md`, 2026-10-23).
+Ghi ngày: **2026-10-23**, cập nhật **2026-10-24**. Commit đã kiểm kê:
+**`5191dd5`** (+ `362344a` test-isolation và fix Bing trong cùng đợt —
+mỗi lần chạy đều ghi đúng cây lúc chạy). Suite tự động: **136 suites,
+0 failed** (24/10/2026, exit code 0 — `tools/run_suites.py`).
+Pixel-parity: **0.0037 trên 12 màn hình** (chạy lại tươi 24/10).
+Docs-consistency: **0 findings** (tool + `regress_docs_consistency`).
+Live providers: **21/21 LIVE-OK** (`tests/LIVE_RESULTS.md`, 2026-10-24).
 
 Quy tắc đọc:
 
@@ -50,9 +49,9 @@ Quy tắc đọc:
 | A20 | Baidu | `regress_baidu_sign.py` | PASS offline (sign); live: detect + suggest OK, **translate vẫn token-walled** |
 | A21 | Naver/Papago | `regress_naver_auth.py` | **LIVE-OK 23/10** (detect + translate EN→VI + dict + TTS) |
 | A22 | Youdao | `regress_youdao_sign.py` | **LIVE-OK 23/10** (translate_web EN→ZH + dict, không cần key — matrix đã nâng thành `behaviour-verified`) |
-| A23 | Microsoft/Bing | `regress_microsoft_request.py`, `regress_microsoft_chain.py` | **DEAD BY EVIDENCE, xấu hơn** — `statusCode:400` cũ đã thành session scrape fail (`Could not scrape Bing session`, probe 23/10 trên `f8f82c5`); matrix đã hạ thành `ported`. Cần viết lại phần lấy session |
-| A24 | PROMT | `regress_promt_hash.py`, `regress_promt_pageload.py` | PASS offline; live vẫn token-walled (`dead:needs-session-token`) |
-| A25 | Babylon | `regress_dict_uri_native.py` + babylon rows trong `ui_match.py` (`babylon-id/langs/host/error-path`) | **DEAD** theo audit (endpoint chết); trả lỗi rõ ràng |
+| A23 | Microsoft/Bing | `regress_microsoft_request.py`, `regress_microsoft_chain.py`, `regress_session.py`, `regress_session_markers.py` | **ĐÃ SỬA 24/10** — trang đổi layout (credentials vào `params_AbusePreventionHelper`, `key=` là expiry-ts chứ không phải TTL); EN→VI + VI→EN dịch live OK, sweep 21/21 (`LIVE_RESULTS.md`) |
+| A24 | PROMT | `regress_promt_hash.py`, `regress_promt_pageload.py` | PASS offline; live 24/10: session scrape OK (paft/xsrf fresh) nhưng endpoint trả 200 "service temporarily unavailable" — backend từ chối, không phải request (`dead:service-unavailable`) |
+| A25 | Babylon | `regress_dict_uri_native.py` + babylon rows trong `ui_match.py` (`babylon-id/langs/host/error-path`) | **DEAD** — live 24/10 vẫn `SSL: CERTIFICATE_VERIFY_FAILED` (chuỗi chứng chỉ host hỏng, như audit 07/10); trả lỗi rõ ràng |
 
 ---
 
@@ -267,7 +266,7 @@ P2 — evidence exhausted).
 |---|---|---|---|
 | T01–T05 | Entry point, CLI args, headless, crash reporter, single-instance | `regress_startup_entry.py`, `regress_cli_args.py`, `regress_crash_*.py`, `regress_single_instance.py`, `SELFTEST 29/29` | PASS |
 | T06–T08 | Adapters theo OS, không báo nhầm macOS | `regress_platforms.py` (MacOSAdapter ~ paths, Win32-only → UNAVAILABLE) | PASS offline |
-| T09–T13 | Bundle Windows + selftest frozen + đủ module | `tools/build_bundle.py` (frozen-gap check), `regress_startup_entry.py` | PASS lần build gần nhất; **NEED** build lại sau `f8f82c5` (worker thread + menu hosts là thay đổi lớn nhất từ build trước) |
+| T09–T13 | Bundle Windows + selftest frozen + đủ module | `tools/build_bundle.py` (frozen-gap check), `regress_startup_entry.py` | **PASS 24/10** — build lại trên cây hiện tại (chứa fix `qtranslate.selection` + fix Bing), selftest 29/29, exe chạy thật từ `dist\QTranslate\`; build còn tự phát hiện `selection` là lazy import thiếu trong bundle cũ |
 | T14 | Bundle macOS | — | **BLOCKED** — cần máy macOS |
 | T15 | Báo rõ unsupported | `UnavailableAdapter` | PASS |
 
@@ -286,13 +285,13 @@ P2 — evidence exhausted).
 |---|---|---|---|
 | 1 | Bấm Ctrl+Q thật ngoài app, nhiều app | NEED | người + desktop |
 | 2 | Popup cạnh chuột/đa màn hình/mép | NEED | người + desktop |
-| ~~3~~ | ~~Live providers~~ | **XONG 23/10** | 20/21 LIVE-OK trên `f8f82c5`; còn Bing cần sửa session scrape, PROMT/Baidu token-wall |
+| ~~3~~ | ~~Live providers~~ | **XONG 24/10** | 21/21 LIVE-OK (Bing đã sửa); PROMT `dead:service-unavailable`, Babylon `dead:ssl`, Baidu token-wall — ghi rõ trong matrix |
 | 4 | OCR live + API key | NEED | key |
 | 5 | TTS nghe thật / mic thật | NEED | thiết bị âm thanh |
 | 6 | Replace selection thật | NEED | người + desktop |
 | 7 | Settings restart-persistence từng Options page | NEED | người |
 | 8 | Basics + tray menu pixel-compare | BLOCKED | ảnh native (B4) |
-| 9 | Bundle lại sau `f8f82c5` | NEED | chạy `build_bundle.py` |
+| ~~9~~ | ~~Bundle lại~~ | **XONG 24/10** | build trên cây hiện tại (fix `selection` + Bing), selftest 29/29, exe chạy thật |
 | 10 | macOS build + run | BLOCKED | máy macOS |
 | 11 | G9 review + waiver | BLOCKED | người duyệt (không tự gán) |
 | ~~12~~ | ~~Đo perf từng giai đoạn (R15)~~ | **XONG 23/10** | đo rồi; R14 đã sửa theo số đo (worker thread) |

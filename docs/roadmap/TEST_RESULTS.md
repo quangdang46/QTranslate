@@ -1,8 +1,27 @@
 # TEST RESULTS
 
+LATEST RUN -- 2026-10-24, tree `5191dd5` + `362344a` + the Bing fix in
+`qtranslate/session.py` (Windows 11 Pro 10.0.26200, AMD64, Python 3.12,
+`.venv`):
+
+```
+python -I tools/run_suites.py     -> 136 suites, 0 failed, 52.7s (exit 0)
+tools/render_qt.py --compare      -> mean 0.0037 over 12 screens
+tools/docs_consistency.py         -> 120 files, 0 findings
+tests/regress_docs_consistency.py -> 6 assertions, ok
+tools/live_providers.py           -> 21/21 LIVE-OK (bing included)
+tools/build_bundle.py             -> selftest 29/29, exe runs from dist\
+```
+
+The 24/10 run first showed **2 failures on a tree whose previous record
+was green** -- both were suites reading the real `Options.json` (the
+operator's live session had `From=auto, To=auto`, so the engine echoed
+instead of calling the rigged provider). Fixed as test isolation, not
+as a code regression; `PROGRESS.md` 2026-10-24 carries the detail.
+
 What was run, what came out, and what the numbers mean. Every number
-here is from a run on 2026-10-22 on this machine (Windows 11 Pro
-10.0.26200, AMD64, Python 3.12).
+below this line is from a run on 2026-10-22 on this machine (Windows
+11 Pro 10.0.26200, AMD64, Python 3.12).
 
 ## 1. The regression suite
 

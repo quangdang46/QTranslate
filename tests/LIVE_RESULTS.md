@@ -1,3 +1,30 @@
+# Live verification results (2026-10-24, commit 5191dd5 + bing fix)
+
+Run: `.venv/Scripts/python.exe -I tests/live_providers.py` -- **21/21
+LIVE-OK**, the first full sweep with every endpoint answering.
+
+The change against the 2026-10-23 record is Bing, fixed in
+`qtranslate/session.py`:
+
+- The page moved the credentials from the adjacent `IG:"...","token",key`
+  form into `params_AbusePreventionHelper = [<expiry-ts>,"<token>",<TTL>]`;
+  the scrape now reads them there (separate regexes).
+- The POST's `key=` is the EXPIRY TIMESTAMP (the array's first member),
+  not the trailing TTL: `key=3600000` answers `statusCode:205`, `key=<ts>`
+  translates (both verified live before the fix landed).
+- Proof: `bing.translate EN->VI` -> "Chào buổi sáng", VI->EN -> "Hello
+  world", and the full sweep came back 21/21. `regress_session.py` and
+  `regress_session_markers.py` pin the new shapes against a
+  today-shaped fixture.
+
+Also re-probed by hand, outside the sweep:
+
+| Provider | Status 2026-10-24 |
+|---|---|
+| PROMT | session scrape SUCCEEDS (fresh `paft`/`xsrf`), but the translate endpoint answers HTTP 200 with "Sorry, the service is temporarily unavailable" -- the backend, not the request, is refusing. Recorded as unavailable, not fixed |
+| Babylon | still dead: `SSL: CERTIFICATE_VERIFY_FAILED` (host cert chain broken, as the 2026-10-07 audit recorded) |
+| Baidu | unchanged: detect + suggest live-OK, translate token-walled |
+
 # Live verification results (2026-10-23, commit f8f82c5)
 
 Run: `.venv/Scripts/python.exe -I tests/live_providers.py` -- 20/21 LIVE-OK.

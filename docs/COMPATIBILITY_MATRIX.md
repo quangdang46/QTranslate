@@ -126,13 +126,13 @@ platforms it claims. Evidence column cites `file:line` where available.
 | Auto-detect (6-provider loop) | `FUN_00460354` | `qtranslate/registry.py:detect_language` | order + fallthrough | Win+mac | `tests/regress_auto_detect_capability.py` (26) + `regress_provider_auto.py` | `behaviour-verified` — **Win only** |
 | Back-translation | `FUN_004606BA` | `qtranslate/engine.py:translate` (back_translate path) | yes | Win+mac | `tests/regress_translate_response_chain.py` (45) | `behaviour-verified` — **Win only** |
 | Google translate | — | `google_translate.py` | yes | Win+mac | live EN→VI (Win) | `behaviour-verified` — **Win only** (mac untested) |
-| Microsoft/Bing | — | `session.bing_translate` | yes | Win+mac | live EN→VI (Win) | `ported` — live verify BROKE after 2026-10-08: the session scrape fails (`Could not scrape Bing session (page layout changed?)`, `tests/LIVE_RESULTS.md` 2026-10-23, run on `f8f82c5`); the earlier `statusCode: 400` recorded in the docs has the same root. Needs rework, not a pass |
+| Microsoft/Bing | — | `session.bing_translate` | yes | Win+mac | live EN→VI (Win) | `behaviour-verified` — **Win only**: FIXED 2026-10-24 — the page's credentials moved into `params_AbusePreventionHelper = [<expiry-ts>,"<token>",<TTL>]` and the POST's `key=` is the expiry, not the TTL (`statusCode:205` vs translation, both verified live); EN→VI and VI→EN translate live (`tests/LIVE_RESULTS.md`), pinned by `regress_session.py` + `regress_session_markers.py` |
 | DeepL | — | `deepl.py` | yes | Win+mac | live EN→VI (Win) | `behaviour-verified` — **Win only** (mac untested) |
 | Yandex | — | `yandex.py` (android) | yes | Win+mac | live EN→RU (Win) | `behaviour-verified` — **Win only** (mac untested) |
 | Naver/Papago | — | `naver.py` (new API) | yes | Win+mac | live EN→VI (Win) | `behaviour-verified` — **Win only** (mac untested) |
 | Baidu translate | — | `baidu.py` | see status | Win+mac | detect live | `dead:needs-session-token` |
 | Youdao translate | — | `youdao.py` | see status | Win+mac | translate_web live | `behaviour-verified` — **Win only**: `translate_web` EN→ZH and the dictionary path verified live 2026-10-23 on `f8f82c5` (`tests/LIVE_RESULTS.md`), no key needed |
-| Promt | `ghcs` verified | `promt.py` | see status | Win+mac | signing vectors | `dead:needs-session-token` |
+| Promt | `ghcs` verified | `promt.py` | see status | Win+mac | signing vectors | `dead:service-unavailable` — the session scrape SUCCEEDS (fresh `paft`/`xsrf` 2026-10-24) but the endpoint answers HTTP 200 with "the service is temporarily unavailable"; the backend refuses, not the request (`tests/LIVE_RESULTS.md`) |
 | Babylon translate (ID13) | `NATIVE_ARCH.md` | `babylon.py` | see status | Win+mac | — | `dead:host-retired` |
 | ImTranslator (ID18) | — | ported | no | — | — | `dead:host-retired` |
 | **Fallback on failure** | backtrans/detect retry | `reliability.FallbackRouter` via `qtranslate/engine.py:translate` via `reliability.FallbackRouter` | yes (D12) | Win+mac | `regress_reliability.py` §5 + `regress_app_reliability_e2e.py` (10, drives `app.on_go()`) | `behaviour-verified` — **Win only** |

@@ -3,6 +3,40 @@
 The running log. Newest first. Every entry names what changed and what
 was run to show it.
 
+## 2026-10-24 -- Bing fixed, suites re-run on the tree, bundle rebuilt
+
+The review's P0 asked for execution records on the CURRENT commit, and
+the run found a real failure the previous day's green record could not
+show: **three suites failed on `5191dd5` that passed on `f8f82c5`** --
+not because the code regressed, but because the suites read the REAL
+`Options.json`, and the operator's live testing had written
+`LanguageFrom=auto, LanguageTo=auto`, so the engine echoed the input
+("hello") instead of calling the rigged provider. That is a test-
+isolation defect, fixed as one: the three suites
+(`regress_translate_off_ui`, `regress_app_reliability_e2e`,
+`regress_qt_extension_ui`) now pin `en -> vi` after `_load_session`.
+
+**Bing is fixed.** The live page moved the credentials from the
+adjacent `IG:"...","token",key` form (which the recovered image
+documents and one combined regex matched) into
+`params_AbusePreventionHelper = [<expiry-ts>,"<token>",<TTL>]`, and the
+POST's `key=` is the EXPIRY TIMESTAMP, not the TTL -- `key=3600000`
+answers `statusCode:205` while `key=<ts>` translates, both verified
+live before the fix landed. EN→VI ("Chào buổi sáng") and VI→EN
+("Hello world") now translate; the full sweep is **21/21 LIVE-OK**,
+the first one with every endpoint answering. `regress_session.py` and
+`regress_session_markers.py` pin the new shapes against a today-shaped
+fixture. PROMT re-probed: the scrape succeeds but the backend answers
+"service temporarily unavailable" (`dead:service-unavailable`).
+Babylon: still dead (`SSL: CERTIFICATE_VERIFY_FAILED`).
+
+```
+136 suites, 0 failed (after the isolation fix; 2 failed before it)
+pixel compare: mean 0.0037 over 12 screens (re-run fresh)
+docs-consistency: 0 findings; gate-artifact: 147 VERIFIED / 0 doc-only
+bundle rebuilt on this tree: selftest 29/29, exe runs from dist\
+```
+
 ## 2026-10-23 -- every matrix-cited suite re-run on f8f82c5; live providers probed
 
 The matrix's own evidence was next. Every `tests/*.py` file the

@@ -49,15 +49,18 @@ class _H:
         return list(self._c)
 
 
-# Both fixtures spell the markers the recovered image spells
+# The PROMT fixture spells the markers the recovered image spells
 # (tests/regress_session_markers.py reads them out of .rdata):
-#   var params_RichTranslateHelper = [IG:"<ig>","<token>",<key>
 #   id="_paft" type="hidden" value="<paft>"
-# An earlier fixture here used `params_AbusePreventionHelper = [42,...]`
-# and `name="aft"` -- neither exists in the image, so it was testing the
-# port against a page native never loads.
-BING_HTML = ('var params_RichTranslateHelper = ['
-             'IG:"ABC123XYZ","tok.en789",42], '
+# The BING fixture spells the LIVE page (2026-10-24): the IG marker on
+# its own, the credentials in params_AbusePreventionHelper as
+# [<expiry-ts>,"<token>",<TTL>]. The old adjacent `IG:"<ig>","<token>",<key>`
+# form the image documents no longer exists on the page that serves
+# today -- bing live-translate with key=<expiry> is the proof the shape
+# is right (LIVE_RESULTS.md).
+BING_HTML = ('var params_RichTranslateHelper = [IG:"ABC123XYZ"], '
+             'params_AbusePreventionHelper = [1792814899847,"tok.en789",'
+             '3600000], '
              'data-iid="translator.5023" data-iid="translator.5026"')
 PROMT_HTML = ('<input id="_paft" type="hidden" value="PAFT-VALUE-1">'
               '<input id="_xsrf" type="hidden" value="PAGE-XSRF-1">')
@@ -78,7 +81,8 @@ S._net_open = lambda req, opener=None, data=None: _bing()
 try:
     s = S.bing_session()
     ck("bing IG scraped", s.get("IG") == "ABC123XYZ", repr(s.get("IG")))
-    ck("bing key scraped", s.get("key") == "42", repr(s.get("key")))
+    ck("bing key scraped (the expiry timestamp, not the TTL)",
+       s.get("key") == "1792814899847", repr(s.get("key")))
     ck("bing token scraped", s.get("token") == "tok.en789",
        repr(s.get("token")))
     ck("bing cookie jar flattened", "MUID=aaa" in s.get("cookie", ""),
@@ -185,8 +189,8 @@ try:
     s3 = S.bing_session()
     ck("bing token comes from the quoted member",
        s3.get("token") == "tok.en789", repr(s3.get("token")))
-    ck("bing key comes from the trailing number",
-       s3.get("key") == "42", repr(s3.get("key")))
+    ck("bing key comes from the leading expiry timestamp",
+       s3.get("key") == "1792814899847", repr(s3.get("key")))
     ck("bing key is not the IG", s3.get("key") != s3.get("IG"),
        repr(s3.get("key")))
 finally:

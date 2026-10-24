@@ -23,6 +23,16 @@ Both were invisible to the live tests: the port reaches these endpoints
 through its own scraping, so a marker mismatch looked like "site changed"
 rather than "we diverged from native".
 
+UPDATE 2026-10-24: bing.com's LIVE page moved the credentials out of the
+adjacent-IG form the image documents, into
+``params_AbusePreventionHelper = [<expiry-ts>,"<token>",<TTL>]`` -- and
+the POST's ``key=`` is the EXPIRY TIMESTAMP, not the TTL. The old
+combined regex could only end in "page layout changed?", and native's
+own markers no longer describe the page that serves today. The port now
+scrapes IG and the abuse array separately; the Bing sections below pin
+the LIVE layout (verified by an actual EN→VI translation), while the
+image-literal checks keep documenting what native carried.
+
 Headless: the image is READ, never executed. Skips when the artifact is absent.
 """
 import io
@@ -92,12 +102,17 @@ for lit in LITERALS:
     ck("image contains %r" % lit[:52], present(lit))
 
 # --- 2. what native's shapes are NOT -----------------------------------
-ck("the image does NOT spell params_AbusePreventionHelper",
+ck("the image does NOT spell the live page's AbusePreventionHelper name",
    not present("params_AbusePreventionHelper"))
 ck("the image does NOT spell the port's old name=\"aft\" marker",
    not present('name="aft"'))
 
-# --- 3. the port now reproduces the native shapes ----------------------
+# --- 3. the port scrapes the LIVE page shapes --------------------------
+# Bing's live page (2026-10-24) carries the credentials in
+# params_AbusePreventionHelper = [<expiry-ts>,"<token>",<TTL>]; the
+# adjacent IG:"..." form the image documents no longer exists there. The
+# checks pin the port's LIVE-scrape regexes by RUNNING them over a
+# today-shaped sample, the same way 3b ran them over a native-shaped one.
 SRC = io.open(SESSION, encoding="utf-8").read()
 # Split the source at the docstrings, so a check is about the CODE and not
 # about prose that legitimately quotes the old (wrong) marker to explain
@@ -105,13 +120,18 @@ SRC = io.open(SESSION, encoding="utf-8").read()
 CODE = re.sub(r'"""(?:.|\n)*?"""', '""', SRC)
 DOCS = re.sub(r'"""(?:.|\n)*?"""', lambda m: m.group(0), SRC)
 
-ck("the port scrapes params_RichTranslateHelper",
+ck("the port documents native's params_RichTranslateHelper form",
    "params_RichTranslateHelper" in DOCS)
-ck("...with the IG marker as the array's first member",
-   re.search(r'IG:"\(\\w\+\)","\(\[\^"\]\+\)",\(\\d\+\)', CODE) is not None,
-   "the port's array shape still does not match native")
-ck("the port no longer carries the old AbusePreventionHelper regex in CODE",
-   "params_AbusePreventionHelper" not in CODE)
+ck("the port scrapes the IG marker on its own",
+   re.search(r'IG:"\(\\w\+\)"', CODE) is not None)
+ck("the port scrapes params_AbusePreventionHelper in CODE",
+   "params_AbusePreventionHelper" in CODE)
+ABUSE_SRC = ('params_AbusePreventionHelper\\s*=\\s*\\[(\\d+),"([^"]+)",'
+             '\\d+\\]')
+ck("the abuse regex captures [expiry,\"token\",TTL]", ABUSE_SRC in CODE,
+   CODE[CODE.find("AbusePreventionHelper"):
+        CODE.find("AbusePreventionHelper") + 80])
+ABUSE_RE = re.compile(ABUSE_SRC)
 ck("the port scrapes the _paft hidden input by its id",
    'id="_paft"' in CODE)
 ck("the port no longer uses name=\"aft\" in CODE",
@@ -119,26 +139,20 @@ ck("the port no longer uses name=\"aft\" in CODE",
 ck("the port scrapes the _xsrf hidden input by its id too",
    'id="_xsrf"' in CODE)
 
-# --- 3b. the array's slot order: [IG:"<ig>","<token>",<key>] ------------
-# This port assigns key=group(1) / token=group(2) -- i.e. it took the IG
-# itself as the key. Nothing caught it for eleven months because the old
-# fixture put its numbers in the TOKEN slot, so both came back "some
-# string". Pin the order by RUNNING the port's own regex over a
-# native-shaped sample and checking which slot each value lands in.
-m = re.search(r'IG:"\(\\w\+\)","\(\[\^"\]\+\)",\(\\d\+\)', CODE)
-ck("the port's regex captures ig, token, key in that order", m is not None,
-   CODE[CODE.find("IG:"):CODE.find("IG:") + 60])
-SAMPLE = 'var params_RichTranslateHelper = [IG:"IGVAL","TOKVAL",42],'
-got = re.search(m.group(0) if m else r"$^", SAMPLE)
-ck("the sample matches the port's regex", got is not None, SAMPLE)
+# --- 3b. the abuse array's slot order, run against a today-shaped sample
+SAMPLE = ('var params_AbusePreventionHelper = [1792814899847,"TOKVAL",'
+          '3600000]')
+got = ABUSE_RE.search(SAMPLE)
+ck("the live-shaped sample matches the port's abuse regex", got is not None,
+   SAMPLE)
 if got:
+    ck("group 1 is the expiry timestamp (digit-only)", got.group(1) == "1792814899847",
+       repr(got.group(1)))
     ck("group 2 is the token (a quoted string)", got.group(2) == "TOKVAL",
        repr(got.group(2)))
-    ck("group 3 is the key (digit-only)", got.group(3) == "42",
-       repr(got.group(3)))
-ck("the assignment puts token in group 2 and key in group 3",
+ck("the assignment puts token in group 2 and key in group 1 (the expiry)",
    re.search(r'"token":\s*abuse\.group\(2\)', CODE) is not None
-   and re.search(r'"key":\s*abuse\.group\(3\)', CODE) is not None,
+   and re.search(r'"key":\s*abuse\.group\(1\)', CODE) is not None,
    "the port still swaps the token and key slots")
 
 # --- 4. the port's config keys are the native Options names -----------

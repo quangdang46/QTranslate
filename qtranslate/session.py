@@ -119,7 +119,16 @@ def bing_session() -> dict:
         set_cookie = r.headers.get_all("Set-Cookie") or []
     cookie = "; ".join(c.split(";")[0] for c in set_cookie)
     ig = re.search(r'IG:"(\w+)"', html)
-    abuse = re.search(r'IG:"(\w+)","([^"]+)",(\d+)', html)
+    # Layout history: the helpers used to sit ADJACENT to the IG marker
+    # (`IG:"<ig>","<token>",<key>`), which is what one combined regex
+    # could match. The 2026-10 page moved the credentials into
+    # params_AbusePreventionHelper alone, as [<expiry-ts>,"<token>",<TTL>].
+    # The POST's `key=` is the EXPIRY TIMESTAMP (the first member), not
+    # the trailing TTL -- key=3600000 answers statusCode:205 live
+    # (2026-10-24), key=<timestamp> translates. IG and the abuse array
+    # are scraped separately now.
+    abuse = re.search(
+        r'params_AbusePreventionHelper\s*=\s*\[(\d+),"([^"]+)",\d+\]', html)
     # IID format changed: page now has translator.5024/5023/5026
     # (was translator.5023.3). data-iid values feed ttranslatev3 (.3)
     # and tlookupv3 (.2) — keep both, defaulting live.
@@ -129,12 +138,10 @@ def bing_session() -> dict:
         raise RuntimeError("Could not scrape Bing session (page layout changed?)")
     return {
         "IG": ig.group(1),
-        # the array is [IG:"<ig>","<token>",<key>>, so group 2 is the token a
-        # nd group 3 is the numeric key. This port swapped them
-        # (key=g1=the IG itself, token=g2) -- invisible for eleven months
-        # because the old test fixture put its numbers in the token slot.
+        # the abuse array is [<expiry>,"<token>",<TTL>]: the POST wants
+        # token=group 2, key=the expiry timestamp (group 1).
         "token": abuse.group(2),
-        "key": abuse.group(3),
+        "key": abuse.group(1),
         "cookie": cookie,
         "iid": iid,
         "iids": _iids,
