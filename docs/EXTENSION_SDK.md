@@ -44,6 +44,16 @@ An extension is a folder with a `manifest.json` and Python code. It may register
 
 An extension only imports the API groups it uses.
 
+> **Worked example (2026-10-24):** `examples/extensions/power_suite/`
+> registers ALL EIGHT capabilities in one extension and shows the parts
+> the three small examples leave out: a language-gated, classifying
+> provider (a miss RAISES, so the fallback chain answers), a
+> post-translation workflow step, a partial theme record, the
+> popup-body/tray/panel UI slots, restart-safe state in the extension's
+> own file (D16), and fail-open handling of a corrupt state file.
+> Loaded and driven through the real call path by
+> `tests/regress_extension_power_suite.py`.
+
 ## 3. Folder layout
 
 ```

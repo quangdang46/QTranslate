@@ -3,6 +3,34 @@
 The running log. Newest first. Every entry names what changed and what
 was run to show it.
 
+## 2026-10-24 (later) -- a worked extension example, and evidence on the final commit
+
+The review's two open points closed first: the full suite re-ran on the
+FINAL commit `89e9e68` (**136/136**, then **137/137** with the suite
+below), and `LIVE_RESULTS.md` now spells out exactly what "21/21"
+covers -- the sweep's own endpoint list; PROMT, Babylon and
+Baidu-translate are probed separately and recorded `dead:*`, never
+averaged into the sweep.
+
+Then the extension surface got the example it was missing. The three
+shipped examples each show one plumbing path in ~10 lines;
+`examples/extensions/power_suite/` is the other half -- ALL EIGHT
+capabilities in one extension, plus what a real one needs: a provider
+that raises on a miss so the fallback chain answers (and a deliberately
+broken sibling proving fail-open), a post-translation workflow step,
+partial theme record, popup-body/tray/panel slots, restart-safe state
+in the extension's OWN file (D16), and a corrupt-state file handled by
+falling open. `tests/regress_extension_power_suite.py` (28) loads the
+REAL folder through the REAL loader and drives every capability through
+the app's call path -- the miss lands in `Result.failures` and the
+rigged next provider answers, the workflow annotates a finished
+translation, the popup body renders, `active_theme` resolves the
+partial record.
+
+```
+137 suites, 0 failed, 53.3s
+```
+
 ## 2026-10-24 -- Bing fixed, suites re-run on the tree, bundle rebuilt
 
 The review's P0 asked for execution records on the CURRENT commit, and

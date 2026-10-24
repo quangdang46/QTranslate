@@ -1,0 +1,14 @@
+{
+  "id": "ext.examples.power_suite",
+  "name": "Power Suite (worked example)",
+  "version": "1.0.0",
+  "sdk_version": "1.0",
+  "entrypoint": "ext:register",
+  "capabilities": ["provider", "dictionary", "tts", "ocr", "spell",
+                   "workflow", "theme", "ui"],
+  "platforms": ["windows", "macos"],
+  "settings_schema": {
+    "PowerSuite.Greeting": "string",
+    "PowerSuite.Annotate": "bool"
+  }
+}

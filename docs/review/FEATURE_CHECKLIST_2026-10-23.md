@@ -6,7 +6,9 @@ mỗi lần chạy đều ghi đúng cây lúc chạy). Suite tự động: **13
 0 failed** (24/10/2026, exit code 0 — `tools/run_suites.py`).
 Pixel-parity: **0.0037 trên 12 màn hình** (chạy lại tươi 24/10).
 Docs-consistency: **0 findings** (tool + `regress_docs_consistency`).
-Live providers: **21/21 LIVE-OK** (`tests/LIVE_RESULTS.md`, 2026-10-24).
+Live providers: **21/21 LIVE-OK trong sweep** (`tests/LIVE_RESULTS.md`,
+2026-10-24) — sweep KHÔNG gồm PROMT/Babylon/Baidu-translate: ba cái đó
+probe riêng cùng ngày, đều `dead:*` và được ghi rõ trong matrix.
 
 Quy tắc đọc:
 
@@ -236,7 +238,10 @@ lái đủ 8 capability qua ĐƯỜNG APP THẬT: `engine.translate`,
 `regress_extension_vendored_dep.py`, `regress_example_extension.py`,
 `regress_ui_slots.py`, `regress_qt_extension_ui.py` (34),
 `regress_sdk.py`, `regress_sdk_package.py` (22, build wheel + cài venv
-sạch) — **PASS**. Q13/Q14/Q18 (extension lỗi không kéo app): PASS.
+sạch), `regress_extension_power_suite.py` (28 — nạp
+`examples/extensions/power_suite`, example phức tạp đủ 8 capability,
+qua loader thật và lái từng capability qua đường gọi thật) —
+**PASS**. Q13/Q14/Q18 (extension lỗi không kéo app): PASS.
 Q17 (override picker): PASS. Q19 (dep isolation): PASS.
 **Còn:** Q21 PyPI publish — **BLOCKED** (D19: cần người verify tên).
 

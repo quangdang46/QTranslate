@@ -3,6 +3,20 @@
 Run: `.venv/Scripts/python.exe -I tests/live_providers.py` -- **21/21
 LIVE-OK**, the first full sweep with every endpoint answering.
 
+**What "21/21" covers, exactly.** The sweep is the 21 checks
+`tests/live_providers.py` drives -- and its list is NOT the whole
+service surface. IN the sweep: google (translate+tts), deepl
+(detect+translate), baidu (detect+suggest only), yandex (translate),
+bing (translate), youdao (translate_web+dictionary), naver
+(detect+translate+dict+tts), and the dictionaries oxford, lingvo,
+urban, wikipedia, multitran, reverso (translate), wordreference. NOT in
+the sweep, probed separately by hand the same day: PROMT (scrape OK,
+backend answers "temporarily unavailable" -> `dead:service-unavailable`)
+and Babylon (SSL chain broken -> `dead:ssl`). Baidu *translate* is not
+swept and stays token-walled. So "21/21" means "every endpoint the
+sweep exercises answered" -- the dead/blocked endpoints are recorded
+here and in the matrix, never averaged away.
+
 The change against the 2026-10-23 record is Bing, fixed in
 `qtranslate/session.py`:
 

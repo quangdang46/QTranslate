@@ -1,17 +1,25 @@
 # TEST RESULTS
 
-LATEST RUN -- 2026-10-24, tree `5191dd5` + `362344a` + the Bing fix in
-`qtranslate/session.py` (Windows 11 Pro 10.0.26200, AMD64, Python 3.12,
-`.venv`):
+LATEST RUN -- 2026-10-24, commit `89e9e68` (Windows 11 Pro 10.0.26200,
+AMD64, Python 3.12, `.venv`) -- the run RE-EXECUTED on the final commit
+after the Bing fix and the test-isolation fix landed:
 
 ```
-python -I tools/run_suites.py     -> 136 suites, 0 failed, 52.7s (exit 0)
+python -I tools/run_suites.py     -> 136 suites, 0 failed, 53.4s (exit 0)
 tools/render_qt.py --compare      -> mean 0.0037 over 12 screens
 tools/docs_consistency.py         -> 120 files, 0 findings
 tests/regress_docs_consistency.py -> 6 assertions, ok
-tools/live_providers.py           -> 21/21 LIVE-OK (bing included)
+tools/live_providers.py           -> 21 checks LIVE-OK (the sweep's own
+                                     list; PROMT/Babylon/Baidu-translate
+                                     are NOT in the sweep -- probed
+                                     separately, dead, recorded)
 tools/build_bundle.py             -> selftest 29/29, exe runs from dist\
 ```
+
+Same day, +1 suite: `regress_extension_power_suite.py` (28) pins the
+new all-capabilities example `examples/extensions/power_suite` through
+the real loader; the sweep that follows it reads
+**137 suites, 0 failed**.
 
 The 24/10 run first showed **2 failures on a tree whose previous record
 was green** -- both were suites reading the real `Options.json` (the
