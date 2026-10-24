@@ -838,7 +838,8 @@ class QtApp:
             from .popup import PopupWindow
             self._popup = PopupWindow(self)
             self._popup.set_text(text[:300], result,
-                                 self.popup_pair(provider))
+                                 self.popup_pair(provider),
+                                 provider=provider or self.service)
             self._popup.place()
             self._popup.show()
         except Exception:

@@ -237,7 +237,7 @@ try:
             self.lbl_text = type("L", (), {"text": ""})()
             self.lbl_pair = type("L", (), {"text": ""})()
 
-        def set_text(self, source, result, pair=""):
+        def set_text(self, source, result, pair="", provider=""):
             self.lbl_text.text = result
             self.lbl_pair.text = pair
 

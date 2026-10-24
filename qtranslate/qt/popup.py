@@ -29,7 +29,7 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QCursor, QFont, QGuiApplication, QPalette
 from PySide6.QtWidgets import QLabel, QWidget
 
-from qtranslate_style import POPUP_BORDER, POPUP_ICON, POPUP_TEXT
+from qtranslate_style import ACCENT, POPUP_BORDER, POPUP_ICON, POPUP_TEXT
 
 from . import icons
 
@@ -225,6 +225,7 @@ class PopupWindow(QWidget):
         self._strip_buttons = []
         self._strip_icons = []
         self._strip_labels = []
+        self._strip_names = []
         names = []
         try:
             names = self.app.ordered_services() if self.app else []
@@ -235,11 +236,6 @@ class PopupWindow(QWidget):
             # each cell is an icon then the service's display name, cut
             # the same way the main window's strip cuts it ("Micro...").
             b = QLabel(w)
-            b.setStyleSheet(
-                "background:%s;border:none;border-right:1px solid %s;"
-                % ("#b0b0b0" if (self.app is not None
-                                  and name == self.app.service)
-                   else "#e0e0e0", "#7e7e7e"))
             b.setGeometry(65 * i, 0, 65, STRIP_H)
 
             ico = QLabel(w)
@@ -251,15 +247,65 @@ class PopupWindow(QWidget):
             lab = QLabel(w)
             lab.setText(_strip_label(self, name, 65, self.app))
             lab.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-            lab.setStyleSheet("background:transparent;color:#000;border:none;")
             lab.setGeometry(65 * i + 22, 0, 42, STRIP_H)
 
+            # Clicking a cell SWITCHES the provider: the cell becomes the
+            # active one (the selection blue, like the main window's
+            # listbox), the app's service follows, and the popup's
+            # source is re-translated through the chosen provider.
+            handler = (lambda _e, n=name: self._strip_clicked(n))
             for child in (b, ico, lab):
+                child.mousePressEvent = handler
+                child.setCursor(Qt.PointingHandCursor)
                 child.hide()
             self._strip_buttons.append(b)
             self._strip_icons.append(ico)
             self._strip_labels.append(lab)
+            self._strip_names.append(name)
+        self._paint_strip()
         return w
+
+    def _strip_clicked(self, name):
+        """The operator's report (2026-10-24): clicking a strip cell did
+        nothing. It now selects the provider -- highlight first, so the
+        click is acknowledged even before the answer arrives -- then
+        re-translates the popup's source through the chosen provider on
+        the app's worker (the same no-second-request rule as on_go)."""
+        app = self.app
+        if app is None or name not in self._strip_names:
+            return
+        app.switch_service(name)
+        self._active_service = name
+        self._paint_strip()
+        src = (getattr(self, "_source_text", "")
+               or (app.win.src.toPlainText() if app.win else ""))
+        if src:
+            app._start_translation(src, self._show_strip_result)
+
+    def _show_strip_result(self, text, res):
+        """The re-translation's landing spot (UI thread)."""
+        if res.ok and res.text:
+            pair = (self.app.popup_pair(res.provider_used)
+                    if self.app else "")
+            self.set_text(text, res.text, pair)
+
+    def _paint_strip(self):
+        """The active cell is the selection blue with white text; the
+        rest stay the strip's grey. The port used to mark the active
+        cell with a slightly darker GREY, which no one could see."""
+        active = getattr(self, "_active_service", None)
+        if active is None and self.app is not None:
+            active = self.app.service
+        for b, ico, lab, name in zip(getattr(self, "_strip_buttons", []),
+                                     getattr(self, "_strip_icons", []),
+                                     getattr(self, "_strip_labels", []),
+                                     getattr(self, "_strip_names", [])):
+            on = name == active
+            b.setStyleSheet(
+                "background:%s;border:none;border-right:1px solid %s;"
+                % (ACCENT if on else "#e0e0e0", "#7e7e7e"))
+            lab.setStyleSheet("background:transparent;color:%s;border:none;"
+                              % ("#ffffff" if on else "#000"))
 
     def _extension_icons(self):
         """Entries an extension contributed to the popup's icon row.
@@ -326,8 +372,16 @@ class PopupWindow(QWidget):
         self.lbl_text.setGeometry(PAD, HEADER_H, w - 2 * PAD, body_h)
         self._strip.setGeometry(1, h - STRIP_H - 1, w - 2, STRIP_H)
 
-    def set_text(self, source: str, result: str, pair: str = ""):
+    def set_text(self, source: str, result: str, pair: str = "",
+                 provider: str = ""):
         """Show one translation, sized to it."""
+        self._source_text = source
+        # A translation that arrives from elsewhere (hotkey, main window)
+        # may have been served by a different provider: the strip's
+        # highlight follows the SERVING provider, not the click history.
+        if provider:
+            self._active_service = provider
+        self._paint_strip()
         self._fill(source, result, pair)
         self._extension_body(source, result, pair)
 
