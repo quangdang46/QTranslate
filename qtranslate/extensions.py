@@ -63,15 +63,11 @@ OVERRIDES_SECTION = "ExtensionOverrides"
 # startup. Empty until the user picks a winner.
 OVERRIDES_SECTION = "ExtensionOverrides"
 
-# Options.json section holding the user's saved override winners (D18):
-# ``{base_id: extension_id}``. Written by the override UI, applied at
-# startup. Empty until the user picks a winner.
-OVERRIDES_SECTION = "ExtensionOverrides"
-
-# Options.json section holding the user's saved override winners (D18):
-# ``{base_id: extension_id}``. Written by the override UI, applied at
-# startup. Empty until the user picks a winner.
-OVERRIDES_SECTION = "ExtensionOverrides"
+# Options.json section holding the user's per-extension switches:
+# ``{"Disabled": [ext ids], "Settings": {ext_id: {key: value}}}``. The
+# Extensions Options page writes it; the loader applies it at startup.
+# An extension id here is OFF until the user turns it back on.
+EXTENSIONS_SECTION = "Extensions"
 
 # Capability kinds the manifest SCHEMA knows (§2). A name here is a word
 # the schema recognises, not a promise that the runtime can host it.
@@ -367,8 +363,32 @@ class ExtensionAPI:
     ``api.register_provider(name, fn, replaces=…)``.
     """
 
-    def __init__(self, manager):
+    def __init__(self, manager, ext_id=None):
         self._manager = manager
+        # The extension this API was handed to. ``load_dir`` sets it
+        # before each folder's ``register`` runs, so ``get_setting`` /
+        # ``set_setting`` land in THAT extension's own section and one
+        # extension can never read or write another's.
+        self._ext_id = ext_id
+
+    def get_setting(self, key, default=None):
+        """Read THIS extension's persisted setting (Options.json).
+
+        The value lives under ``Extensions.Settings.<ext id>`` — the
+        app's own keys are unreachable through this surface, which is
+        the point: an extension customises itself, not the host.
+        """
+        return self._manager.get_setting(self._ext_id, key, default)
+
+    def set_setting(self, key, value):
+        """Persist THIS extension's setting (Options.json, same section).
+
+        ``key`` must be declared in the manifest's ``settings_schema``
+        when the manifest declares one; a raise here is the extension's
+        to catch, because ``register`` failing disables the extension
+        (§7) and a broken save must not do that silently mid-run.
+        """
+        return self._manager.set_setting(self._ext_id, key, value)
 
     def register_provider(self, name, fn, replaces=None):
         return self._manager.register(name, fn, replaces=replaces)
@@ -441,6 +461,8 @@ class ExtensionManager:
         self._claims = {}
         self._themes = {}
         self._theme_replaces = {}
+        self._manifests = {}    # ext id -> the manifest that loaded it
+        self._last_report = []  # the last load_dir outcome list (the UI reads it)
         self._ui = None      # ui_slots.UISlotRegistry, created on first use
         for name in self._rg.TRANSLATORS:
             self._providers[name] = self._rg.TRANSLATORS[name]
@@ -553,6 +575,50 @@ class ExtensionManager:
     def theme_conflicts(self):
         """Declared theme overrides, for the user to review (D18)."""
         return dict(self._theme_replaces)
+
+    # -- per-extension settings (the Options → Extensions surface) -------
+    def get_setting(self, ext_id, key, default=None, path=None):
+        """One extension's persisted setting, or ``default``.
+
+        Stored under ``Options.json → Extensions.Settings.<ext id>``. A
+        missing file, a missing section or a wrong type all fail open to
+        ``default`` -- a corrupt config must not take an extension down.
+        """
+        if not ext_id:
+            return default
+        try:
+            from qtranslate import config as _C
+            cfg = _C.load(path)
+        except Exception:                       # noqa: BLE001
+            return default
+        section = cfg.get(EXTENSIONS_SECTION, {})
+        settings = (section or {}).get("Settings", {})
+        mine = (settings or {}).get(ext_id, {})
+        return (mine or {}).get(key, default)
+
+    def set_setting(self, ext_id, key, value, path=None):
+        """Persist one extension's setting (same section as get_setting).
+
+        When the extension's manifest declares a ``settings_schema`` and
+        ``key`` is not in it, raises ``ValueError`` -- the schema is a
+        promise the extension made its users; silently storing an
+        undeclared key would break it. Returns the value.
+        """
+        if not ext_id:
+            raise ValueError("set_setting needs an extension id")
+        manifest = self._manifests.get(ext_id) or {}
+        schema = manifest.get("settings_schema")
+        if isinstance(schema, dict) and key not in schema:
+            raise ValueError("setting %r is not in %s's settings_schema"
+                             % (key, ext_id))
+        from qtranslate import config as _C
+        cfg = _C.load(path)
+        section = cfg.setdefault(EXTENSIONS_SECTION, {})
+        settings = section.setdefault("Settings", {})
+        mine = settings.setdefault(ext_id, {})
+        mine[key] = value
+        _C.save(cfg, path)
+        return value
 
     # -- enablement -----------------------------------------------------
     def enabled(self):
@@ -730,7 +796,8 @@ class ExtensionManager:
         return reg
 
     # -- directory loading (Slice 7) ------------------------------------
-    def load_dir(self, extensions_dir, api=None, importer=None, saved=None):
+    def load_dir(self, extensions_dir, api=None, importer=None, saved=None,
+                 disabled=None):
         """Discover, validate and load every extension under a directory.
 
         Fail-open (``EXTENSION_SDK.md`` §7): one bad extension is disabled
@@ -752,15 +819,22 @@ class ExtensionManager:
         ``api``/``importer`` are injectable so the loader is testable
         without touching the import machinery or a real folder.
         """
-        api = api if api is not None else ExtensionAPI(self)
         importer = importer or import_entrypoint
+        self._extensions_dir = extensions_dir   # the UI pages scan the SAME dir
         outcomes, claimed = [], []
         for folder in discover(extensions_dir):
             known = set(self._replaces)
-            outcome = self._load_one(folder, api, importer, saved)
+            # api=None (the real path): each folder gets its OWN
+            # ExtensionAPI with its id bound, so its get_setting /
+            # set_setting calls land in its own section forever -- not
+            # in whichever extension loaded last. An injected api (the
+            # tests) is used as-is.
+            outcome = self._load_one(folder, api, importer, saved,
+                                     disabled=disabled)
             outcomes.append(outcome)
             claimed.append((outcome, set(self._replaces) - known))
         self._resolve_alias_conflicts(claimed)
+        self._last_report = outcomes
         return outcomes
 
     def _resolve_alias_conflicts(self, claimed):
@@ -809,7 +883,7 @@ class ExtensionManager:
         return None
 
 
-    def _load_one(self, folder, api, importer, saved=None):
+    def _load_one(self, folder, api, importer, saved=None, disabled=None):
         try:
             manifest = read_manifest(folder)
         except ManifestError as exc:
@@ -817,6 +891,15 @@ class ExtensionManager:
                     "reason": str(exc)}
 
         ext_id = manifest["id"]
+        if disabled and ext_id in disabled:
+            # The user's own switch (Options → Extensions). OFF means the
+            # folder is not even imported: no code runs, no table is
+            # written, and the reason says whose decision it was.
+            return {"path": folder, "id": ext_id, "status": "disabled",
+                    "reason": "user-disabled (Options → Extensions)"}
+        self._manifests[ext_id] = manifest
+        if api is None:
+            api = ExtensionAPI(self, ext_id=ext_id)
         veto = self._saved_veto(ext_id, manifest.get("replaces", []), saved)
         if veto is not None:
             # A saved winner pre-empts this extension (D18); it never reaches
@@ -839,6 +922,67 @@ class ExtensionManager:
             self._claims.setdefault(base, []).append(ext_id)
         return {"path": folder, "id": ext_id, "status": "loaded",
                 "reason": None}
+
+
+def discover_manifests(extensions_dir=None):
+    """Every extension folder as (path, manifest-or-None), fail-open.
+
+    The Extensions Options page reads this to list what is INSTALLED --
+    including the folders that failed validation, which the page must
+    still show (with the reason) rather than hide. A missing manifest
+    comes back as ``None``; a folder that never existed yields nothing.
+    """
+    if extensions_dir is None:
+        try:
+            from qtranslate import platforms as _P
+            extensions_dir = _P.current().extensions_dir()
+        except Exception:                   # noqa: BLE001
+            return []
+    out = []
+    for folder in discover(extensions_dir):
+        try:
+            out.append((folder, read_manifest(folder)))
+        except Exception:                   # noqa: BLE001 -- ManifestError
+            out.append((folder, None))
+    return out
+
+
+def read_disabled_extensions(cfg=None):
+    """The extension ids the user switched OFF (Options → Extensions).
+
+    ``Options.json → Extensions.Disabled``. Fails open to ``[]`` the
+    same way ``read_saved_overrides`` does: a missing or unreadable
+    config means everything is enabled, which is the state a fresh
+    install has anyway.
+    """
+    if cfg is None:
+        try:
+            from qtranslate import config as _C
+            cfg = _C.load()
+        except Exception:
+            return []
+    if not isinstance(cfg, dict):
+        return []
+    section = cfg.get(EXTENSIONS_SECTION, {}) or {}
+    disabled = section.get("Disabled", []) if isinstance(section, dict) \
+        else []
+    return [str(x) for x in disabled] if isinstance(disabled, list) else []
+
+
+def write_disabled_extensions(disabled, cfg=None, path=None):
+    """Persist the user's per-extension switches (the toggle's writer).
+
+    ``disabled`` is the full list of OFF ids -- the page rewrites the
+    whole list, so unchecking re-enables by removal. Saves the config
+    and returns the list actually written.
+    """
+    from qtranslate import config as _C
+    if cfg is None:
+        cfg = _C.load(path)
+    section = cfg.setdefault(EXTENSIONS_SECTION, {})
+    section["Disabled"] = sorted(set(str(x) for x in disabled))
+    _C.save(cfg, path)
+    return section["Disabled"]
 
 
 def read_saved_overrides(cfg=None):
@@ -891,7 +1035,7 @@ def write_saved_overrides(overrides, cfg=None):
 
 
 def load_user_extensions(manager=None, extensions_dir=None, registry=None,
-                        saved=None):
+                        saved=None, disabled=None):
     """Load the per-user extensions into Core's live dispatch table (D16).
 
     Resolves the folder through the ``Paths`` adapter when not given, loads
@@ -927,7 +1071,9 @@ def load_user_extensions(manager=None, extensions_dir=None, registry=None,
             return []
     if saved is None:
         saved = read_saved_overrides()
-    report = manager.load_dir(extensions_dir, saved=saved)
+    if disabled is None:
+        disabled = read_disabled_extensions()
+    report = manager.load_dir(extensions_dir, saved=saved, disabled=disabled)
     if any(item.get("status") == "loaded" for item in report):
         manager.commit(registry)
     # Clear stale saved winners: a winner that is no longer installed must

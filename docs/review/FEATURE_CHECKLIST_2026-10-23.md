@@ -245,6 +245,15 @@ qua loader thật và lái từng capability qua đường gọi thật) —
 Q17 (override picker): PASS. Q19 (dep isolation): PASS.
 **Còn:** Q21 PyPI publish — **BLOCKED** (D19: cần người verify tên).
 
+**Mới 24/10 — user control surface:** trang Options **Extensions**
+(trang thứ 10, do port tự thêm — native không có extension system):
+toggle on/off từng extension qua `Extensions.Disabled` trong
+Options.json, loader honor ở lần khởi động kế (`regress_extensions_options.py`,
+21). API settings từng extension: `api.get_setting`/`api.set_setting`
+ghi `Extensions.Settings.<ext id>`, key không khai trong
+`settings_schema` bị từ chối. Example `power_suite` (đủ 8 capability)
+và suite 28 assertions pin toàn bộ qua loader thật.
+
 ## R. Reliability
 
 `regress_reliability.py`, `regress_reliability_audit.py`,

@@ -21,11 +21,11 @@ from qtranslate_style import ACCENT, DIM, FACE, TEXT, THUMB, WINDOW
 from ..widgets import (Base, LINK, button, check, combo, field, group,
                        hline, icon, label, panel, put, rect, vline)
 
-# The nine pages, in native's order. The Hotkeys page is the SECOND one
-# (measured off the captures 2140/2141, not the order a reader would
-# guess).
+# The nine native pages in native's order, then the port's OWN page:
+# Extensions is not a native page (native has no extension system), so
+# it trails the captured order instead of sitting inside it.
 SIDEBAR = ["Basics", "Hotkeys", "Internet", "Services", "Languages",
-           "Appearance", "Exceptions", "Advanced", "Updates"]
+           "Appearance", "Exceptions", "Advanced", "Updates", "Extensions"]
 
 
 class OptionsBase(Base):

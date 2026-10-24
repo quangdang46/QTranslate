@@ -329,7 +329,7 @@ import re as _re
 _pgcls = {}
 for _name in opts.PAGES:
     _pgcls[_name] = opts.PAGES[_name].SEL
-check("pages-9", len(opts.PAGES) == 9, str(len(opts.PAGES)))
+check("pages-9", len(opts.PAGES) == 10, str(len(opts.PAGES)))
 # The TEMPLATE order is Basics, Internet, Services, Languages,
 # Appearance, Exceptions, Hotkeys, Advanced, Updates -- but that is the
 # order the dialog TEMPLATE lists the pages in, not the order the
@@ -340,16 +340,16 @@ check("pages-9", len(opts.PAGES) == 9, str(len(opts.PAGES)))
 check("pages-order",
       list(_pgcls) == ["Basics", "Hotkeys", "Internet", "Services",
                        "Languages", "Appearance", "Exceptions",
-                       "Advanced", "Updates"],
+                       "Advanced", "Updates", "Extensions"],
       str(list(_pgcls)))
 check("pages-ids",
       [_pgcls[p] for p in ("Basics", "Hotkeys", "Internet", "Services",
                            "Languages", "Appearance", "Exceptions",
-                           "Advanced", "Updates")]
-      == [0, 1, 2, 3, 4, 5, 6, 7, 8],
+                           "Advanced", "Updates", "Extensions")]
+      == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
       str([_pgcls[p] for p in ("Basics", "Hotkeys", "Internet", "Services",
                                "Languages", "Appearance", "Exceptions",
-                               "Advanced", "Updates")]))
+                               "Advanced", "Updates", "Extensions")]))
 
 print("ui_match: %d passed, %d failed" % (len(PASS), len(FAIL)))
 sys.exit(1 if FAIL else 0)

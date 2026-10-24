@@ -3,6 +3,37 @@
 The running log. Newest first. Every entry names what changed and what
 was run to show it.
 
+## 2026-10-24 (latest) -- the user's extension switch, and the extension's own settings
+
+Three asks from the operator, all landed:
+
+1. **Features re-checked**: 138 suites green on the tree (the two new
+   ones below included); the live sweep stayed 21-checks-OK with PROMT/
+   Babylon/Baidu-translate recorded `dead:*` outside it.
+2. **Customisation APIs**: `api.get_setting`/`api.set_setting` persist a
+   per-extension settings section (`Extensions.Settings.<ext id>` in
+   Options.json). A key the manifest's `settings_schema` does not
+   declare raises instead of silently storing; reads fail open; one
+   extension cannot see another's section. The loader gained the user's
+   own switch: `Extensions.Disabled` skips the folder entirely at load
+   -- no import, no dispatch-table writes, reported as
+   `user-disabled (Options → Extensions)`.
+3. **The Options page**: a tenth page, **Extensions** -- the port's own
+   (native has no extension system, so there is no capture; it follows
+   the siblings' grid). One checkbox per installed folder, the load
+   status beside it, a folder that failed validation shown but not
+   toggleable, an "Open folder" button, and a restart hint instead of
+   pretending the change applied live.
+
+`tests/regress_extensions_options.py` (21) pins the loader honouring
+the switch, the settings round-trip + schema gate + cross-extension
+isolation + corrupt-file fail-open, and the real page offscreen against
+a temp config: unchecking writes the id, re-checking clears it.
+
+```
+138 suites, 0 failed
+```
+
 ## 2026-10-24 (later) -- a worked extension example, and evidence on the final commit
 
 The review's two open points closed first: the full suite re-ran on the

@@ -290,6 +290,19 @@ All five were resolved and folded into `PROJECT_VISION.md`:
 > the native's pixels are unchanged. Pinned by
 > `tests/regress_qt_extension_ui.py`.
 
+> **The user's own switch, and the extension's own settings (landed
+> 2026-10-24).** Options → **Extensions** — the port's own tenth page
+> (native has no extension system, so there is no capture) — lists every
+> installed folder with ONE checkbox per extension: unchecking writes
+> `Extensions.Disabled` in Options.json and the loader skips the folder
+> on the next start (no import, no table writes). The page also opens
+> the extensions folder. Alongside it, the per-extension settings API:
+> `api.get_setting(key, default)` / `api.set_setting(key, value)` read
+> and write `Extensions.Settings.<ext id>` in Options.json — the
+> extension's OWN section, never the app's keys, and a key the
+> manifest's `settings_schema` does not declare is refused. Pinned by
+> `tests/regress_extensions_options.py` (21).
+
 > **The SDK package (landed 2026-10-23).** `sdksrc/` is the standalone
 > `qtranslate-sdk` distribution: the contracts, `Result`, the slot names,
 > the language index and `FakeAPI`. It has no dependencies and imports no

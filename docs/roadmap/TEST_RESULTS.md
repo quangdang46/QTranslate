@@ -18,8 +18,9 @@ tools/build_bundle.py             -> selftest 29/29, exe runs from dist\
 
 Same day, +1 suite: `regress_extension_power_suite.py` (28) pins the
 new all-capabilities example `examples/extensions/power_suite` through
-the real loader; the sweep that follows it reads
-**137 suites, 0 failed**.
+the real loader; +1 more: `regress_extensions_options.py` (21) pins the
+Extensions Options page and the per-extension settings API. The sweep
+that follows them reads **138 suites, 0 failed**.
 
 The 24/10 run first showed **2 failures on a tree whose previous record
 was green** -- both were suites reading the real `Options.json` (the

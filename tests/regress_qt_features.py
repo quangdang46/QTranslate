@@ -110,10 +110,12 @@ try:
     ck("Swap exchanges the combos",
        win.cmb_src.currentText() != before[1] or app.source == before[1])
 
-    # --- 4. the Options dialog and its nine pages ------------------------
+    # --- 4. the Options dialog and its ten pages -------------------------
+    # Nine native pages plus Extensions, the port's own (native has no
+    # extension system to copy the page from).
     from qtranslate.qt import options as opt
 
-    ck("the Options dialog knows all nine pages", len(opt.PAGES) == 9,
+    ck("the Options dialog knows all ten pages", len(opt.PAGES) == 10,
        str(sorted(opt.PAGES)))
     for name, cls in sorted(opt.PAGES.items()):
         try:

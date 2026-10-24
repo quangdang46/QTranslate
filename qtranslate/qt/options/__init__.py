@@ -7,13 +7,16 @@ Every number in the pages was MEASURED off the native captures in
 size). The geometry is in ``qtranslate-pyside6-spec.md`` section 5.
 
 Each page is its own module so one page can be measured and fixed
-without touching the others.
+without touching the others. The exception is Extensions: the PORT'S
+OWN page -- native has no extension system, so there is no capture and
+its numbers follow the siblings' grid.
 """
 from .advanced import AdvancedPage
 from .appearance import AppearancePage
 from .base import PAGES
 from .basics import BasicsPage
 from .exceptions import ExceptionsPage
+from .extensions import ExtensionsPage
 from .hotkeys import HotkeysPage
 from .internet import InternetPage
 from .languages import LanguagesPage
@@ -28,6 +31,7 @@ PAGES.update({
     "Services": ServicesPage, "Languages": LanguagesPage,
     "Appearance": AppearancePage, "Exceptions": ExceptionsPage,
     "Advanced": AdvancedPage, "Updates": UpdatesPage,
+    "Extensions": ExtensionsPage,
 })
 
 # `qtranslate.qt.app.open_options` opens the dialog at Basics, the same
@@ -35,5 +39,5 @@ PAGES.update({
 OptionsDialog = BasicsPage
 
 __all__ = ["AdvancedPage", "AppearancePage", "BasicsPage", "ExceptionsPage",
-           "HotkeysPage", "InternetPage", "LanguagesPage", "ServicesPage",
-           "UpdatesPage", "OptionsDialog", "PAGES"]
+           "ExtensionsPage", "HotkeysPage", "InternetPage", "LanguagesPage",
+           "ServicesPage", "UpdatesPage", "OptionsDialog", "PAGES"]
