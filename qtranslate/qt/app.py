@@ -83,6 +83,20 @@ HISTORY_PATH = None
 HISTORY_LIMIT = 500
 
 
+def _dbg(msg):
+    """TEMPORARY trace of the mouse-icon chain to %TEMP% (the operator's
+    'click vào icon không thấy gì', 2026-10-24). Removed once the cause
+    is in hand."""
+    try:
+        import os as _os
+        with open(_os.path.join(_os.environ.get("TEMP", "/tmp"),
+                                "qt_mouse_debug.log"), "a",
+                  encoding="utf-8") as fh:
+            fh.write(msg + "\n")
+    except Exception:
+        pass
+
+
 def _history_path():
     global HISTORY_PATH
     if HISTORY_PATH is None:
@@ -804,7 +818,11 @@ class QtApp:
     # is already running. The port fires the hook on every plain click,
     # so without this gate every click re-queued a popup ("loop auto
     # translate cực nghiêm trọng", the operator's report).
-    MOUSE_CAPTURE_COOLDOWN = 10.0
+    # 1.5s, not native's 10: the operator re-selects right after a
+    # translation and the icon never came back ("bôi đen lại không có
+    # icon", 2026-10-24). The no-task gate below carries most of the
+    # anti-loop weight anyway.
+    MOUSE_CAPTURE_COOLDOWN = 1.5
 
     def _mouse_capture_allowed_now(self) -> bool:
         """The cooldown + one-task gates, native's own two."""
@@ -865,12 +883,19 @@ class QtApp:
     def _translate_captured(self, text):
         """The floating icon's click: translate like Ctrl+Q would."""
         def done(t, res):
+            _dbg("icon-click done: ok=%s len=%d provider=%s"
+                 % (res.ok, len(res.text or ""), res.provider_used))
             if res.ok and res.text:
                 self.show_translation(t, res.text,
                                       provider=res.provider_used)
+                pop = getattr(self, "_popup", None)
+                _dbg("popup after show: %s visible=%s"
+                     % (pop is not None,
+                        pop.isVisible() if pop else "-"))
                 if self._mouse_mode_index() == 2:
                     self._speak(t)
-        self._start_translation(text, done)
+        started = self._start_translation(text, done)
+        _dbg("icon-click: start=%s text=%r" % (started, text[:40]))
 
     def _mouse_gate_ok(self) -> bool:
         """Native's gates for the mouse capture, in native's order.
