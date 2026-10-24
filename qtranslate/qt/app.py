@@ -84,6 +84,8 @@ HISTORY_LIMIT = 500
 
 
 def _dbg(msg):
+    import time as _t
+    msg = "%s  %s" % (_t.strftime("%H:%M:%S"), msg)
     """TEMPORARY trace of the mouse-icon chain to %TEMP% (the operator's
     'click vào icon không thấy gì', 2026-10-24). Removed once the cause
     is in hand."""
@@ -877,6 +879,7 @@ class QtApp:
                 icon_win = MouseIcon(self, self._translate_captured)
                 self._mouse_icon = icon_win
             icon_win.pop(x, y, text)
+            _dbg("icon popped at (%d,%d) text=%r" % (x, y, text[:30]))
         except Exception:                   # noqa: BLE001 -- fail-open
             pass
 

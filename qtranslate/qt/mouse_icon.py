@@ -78,10 +78,15 @@ class MouseIcon(QWidget):
         self.move(max(0, x - SIZE - 26), max(0, y - SIZE - 26))
         self.show()
         self.raise_()
-        self._timer.start(6000)
+        self._timer.start(15000)
 
     def _clicked(self, _e):
         text, self._text = self._text, ""
+        try:
+            from qtranslate.qt.app import _dbg
+            _dbg("icon CLICKED, text=%r" % (text[:30],))
+        except Exception:
+            pass
         self.hide()
         if text:
             self._on_translate(text)
