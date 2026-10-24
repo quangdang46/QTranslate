@@ -29,11 +29,36 @@ class Tray:
         self.app = app
         self._hotkeys_on = True
         self._mouse_mode = MOUSE_MODES[0]
-        self.icon = QSystemTrayIcon(QIcon(), None)
+        self._armed = False
+        self.icon = QSystemTrayIcon(self._paint_icon(False), None)
         self.icon.setToolTip("QTranslate")
         self.menu = self._menu()
         self.icon.setContextMenu(self.menu)
         self.icon.activated.connect(self._activated)
+
+    # ---------------------------------------------------------------- icon
+    def _paint_icon(self, armed):
+        """The tray icon's OWN pixels: grey when the mouse capture is
+        off, ACCENT blue when on -- the operator's report (2026-10-24):
+        "click the tray icon and the icon changes colour". The old tray
+        carried an EMPTY QIcon, so nothing could ever change."""
+        from PySide6.QtGui import QIcon, QPainter, QPixmap
+        from PySide6.QtCore import Qt as _Qt
+        from qtranslate_style import ACCENT
+        pm = QPixmap(16, 16)
+        pm.fill(_Qt.transparent)
+        p = QPainter(pm)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.setBrush(_Qt.blue if armed else _Qt.gray)
+        p.setPen(_Qt.NoPen)
+        p.drawEllipse(1, 1, 14, 14)
+        p.setPen(_Qt.white)
+        fnt = p.font()
+        fnt.setBold(True)
+        p.setFont(fnt)
+        p.drawText(pm.rect(), _Qt.AlignCenter, "Q")
+        p.end()
+        return QIcon(pm)
 
     # ---------------------------------------------------------------- menu
     def _menu(self) -> QMenu:
@@ -80,10 +105,42 @@ class Tray:
         # host can call; its result is shown in a message box, so the
         # example extension's answer is observable without a network.
         self._add_extension_entries(menu)
+        # The installed extensions by NAME, each with its own on/off
+        # switch -- visible where the operator actually looks (the tray),
+        # not only in the Options page. A toggle persists
+        # Extensions.Disabled and takes effect at the next start.
+        ext_sub = self._extensions_submenu(menu)
+        if ext_sub is not None:
+            menu.addMenu(ext_sub)
         menu.addSeparator()
         act = menu.addAction("Exit")
         act.triggered.connect(self.quit)
         return menu
+
+    def _extensions_submenu(self, menu):
+        """The installed extensions with a checkable on/off each.
+
+        Returns None (no submenu) when nothing is installed, so the tray
+        of a bare install looks exactly like it always did.
+        """
+        from qtranslate.extensions import (read_disabled_extensions,
+                                           write_disabled_extensions)
+        manager = getattr(self.app, "ext_manager", None)
+        ids = sorted(getattr(manager, "_manifests", {}) or {})
+        if not ids:
+            return None
+        sub = menu.addMenu("Extensions")
+        disabled = set(read_disabled_extensions())
+        for ext_id in ids:
+            act = sub.addAction(ext_id)
+            act.setCheckable(True)
+            act.setChecked(ext_id not in disabled)
+            act.setStatusTip("Takes effect after QTranslate restarts")
+            act.triggered.connect(
+                lambda _c=False, on=act.isChecked(), eid=ext_id:
+                _toggle_extension(eid, on))
+        return sub
+
 
     def _add_extension_entries(self, menu):
         """Add the entries an extension contributed to the tray menu."""
@@ -137,9 +194,16 @@ class Tray:
         self.app.set_mouse_mode(mode)
 
     def _activated(self, reason):
-        """A double-click on the tray icon shows the main window, the way
-        native's does."""
-        if reason == QSystemTrayIcon.DoubleClick:
+        """A LEFT click toggles the mouse capture on/off (the operator's
+        toggle: off = select + Ctrl+Q yourself; on = the selected mode
+        applies, and the icon turns blue). A double-click shows the main
+        window, the way native's does."""
+        if reason == QSystemTrayIcon.Trigger:
+            try:
+                self.app.toggle_mouse_enabled()
+            except Exception:               # noqa: BLE001
+                pass
+        elif reason == QSystemTrayIcon.DoubleClick:
             self.app.show_main_window()
 
     def quit(self):
@@ -158,9 +222,10 @@ class Tray:
         ``tray_state.select_state``: the flag is the MOUSE-CAPTURE arm
         state and the other bit is whether the hook actually installed --
         NOT the HotKeys list (which was the port-side guess this module
-        replaced). The tooltip carries the state off-Windows too, where
-        the old pystray colour glyphs never existed.
+        replaced). The ICON turns blue while armed (see ``_paint_icon``)
+        and the tooltip carries the state off-Windows too.
         """
+        self._armed = bool(armed)
         try:
             from qtranslate import tray_state as _TS
             _idx = _TS.select_state(bool(armed), bool(hook_installed))
@@ -168,6 +233,7 @@ class Tray:
         except Exception:
             self._state = "off"
         try:
+            self.icon.setIcon(self._paint_icon(self._armed))
             self.icon.setToolTip(
                 "QTranslate (mouse mode: %s)" % ("on" if armed else "off"))
         except Exception:
@@ -187,3 +253,15 @@ class Tray:
         self._mouse_mode = mode
         for name, act in self._mode_actions.items():
             act.setChecked(name == mode)
+
+
+def _toggle_extension(ext_id, on):
+    """Persist one extension's on/off switch (the tray submenu's writer)."""
+    from qtranslate.extensions import (read_disabled_extensions,
+                                       write_disabled_extensions)
+    disabled = set(read_disabled_extensions())
+    if on:
+        disabled.discard(ext_id)
+    else:
+        disabled.add(ext_id)
+    write_disabled_extensions(disabled)

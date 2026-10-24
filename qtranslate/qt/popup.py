@@ -421,18 +421,32 @@ class PopupWindow(QWidget):
         self._fill(source, str(text), pair)
 
     # --------------------------------------------------------------- hover
-    def enterEvent(self, event):                # noqa: N802 (Qt name)
-        """Show the strip's cells. The row itself is always reserved."""
+    def _set_hover(self, on):
+        """Show or hide the strip's cells. The row itself is always
+        reserved. Split from enterEvent because a popup that opens
+        UNDER THE CURSOR never gets an enter event -- the operator's
+        report (2026-10-24): the strip looked missing. ``showEvent``
+        checks the cursor itself now."""
         for group in ("_strip_buttons", "_strip_icons", "_strip_labels"):
             for w in getattr(self, group, None) or ():
-                w.show()
+                (w.show if on else w.hide)()
+
+    def enterEvent(self, event):                # noqa: N802 (Qt name)
+        self._set_hover(True)
         super().enterEvent(event)
 
     def leaveEvent(self, event):                # noqa: N802 (Qt name)
-        for group in ("_strip_buttons", "_strip_icons", "_strip_labels"):
-            for w in getattr(self, group, None) or ():
-                w.hide()
+        self._set_hover(False)
         super().leaveEvent(event)
+
+    def showEvent(self, event):                 # noqa: N802 (Qt name)
+        # A popup that opens under the cursor (the common Ctrl+Q case --
+        # it places at the pointer) never receives an enter event, so
+        # the provider strip stayed hidden until the pointer left and
+        # came back. Check on show instead.
+        if self.underMouse():
+            self._set_hover(True)
+        super().showEvent(event)
 
     # ------------------------------------------------------------- show
     def place(self):

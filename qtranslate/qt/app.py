@@ -137,6 +137,8 @@ class QtApp:
         self.hotkeys_on = True
         self.hotkeys = []
         self.mouse_mode = "Show icon"
+        self._mouse_enabled = False
+        self._mouse_icon = None
         self._mouse_hook = False
         self._bridge = _MouseBridge(self)
         self._ui = _UiInvoker()
@@ -240,6 +242,7 @@ class QtApp:
             idx = int(general.get("MouseMode", 0) or 0)
             if 0 <= idx < len(MOUSE_MODES):
                 self.mouse_mode = MOUSE_MODES[idx]
+            self._mouse_enabled = bool(general.get("MouseModeOn", False))
         except Exception:
             pass
 
@@ -676,17 +679,19 @@ class QtApp:
         """The mouse mode, and the hook that goes with it.
 
         Native's mouse mode is the one that lets you BOI DEN: select
-        text in another program, click, and the selection is captured
-        and translated. The three modes carry native's own names (the
-        English lang.json, ids 60/70/71) and their index is native's
-        General.MouseMode (DAT_005493F8) -- the key the Tk front end
-        writes too, so the core and both front ends share one state.
+        text in another program, click, and the selection is captured.
+        The three modes carry native's own names (the English lang.json,
+        ids 60/70/71) and their index is native's General.MouseMode
+        (DAT_005493F8) -- the key the Tk front end writes too, so the
+        core and both front ends share one state.
 
-        Mode 0 ("Show icon") is native's "an icon appears next to the
-        cursor and you click it". The port cannot draw that icon (the
-        native capture chain has no SetCursor of its own -- checklist
-        row C10), so mode 0 is the port's off state, the same way the
-        Tk front end treats it.
+        Mode 0 ("Show icon") is native's "an icon appears under the
+        selection and you click it": the port draws that icon now
+        (``qt/mouse_icon.py``, checklist row C10). Whether the mouse
+        capture is ON at all is the SEPARATE switch the tray's left
+        click toggles (``toggle_mouse_enabled``, native's
+        General.MouseModeOn) -- off means select + Ctrl+Q, on means the
+        mode applies.
         """
         self.mouse_mode = mode
         self._persist_mouse_mode()
@@ -697,6 +702,17 @@ class QtApp:
                 self.tray.set_mouse_mode(mode)
             except Exception:
                 pass
+
+    def toggle_mouse_enabled(self):
+        """The tray icon's LEFT CLICK: on/off for the whole mouse
+        capture. Off = select + press Ctrl+Q yourself; on = the selected
+        mode applies ("Show icon" pops the translate button under the
+        selection). Persists native's General.MouseModeOn."""
+        self._mouse_enabled = not self._mouse_enabled
+        self._persist_mouse_mode()
+        self._sync_mouse_hook()
+        self._sync_tray_state()
+        return self._mouse_enabled
 
     def _mouse_mode_index(self) -> int:
         """The mode's number: native's General.MouseMode (DAT_005493F8)."""
@@ -710,9 +726,11 @@ class QtApp:
         """Write the mode to the config, the way native's tray does.
 
         Native keeps the mode in General.MouseMode and the "is it on"
-        flag in General.MouseModeOn. The Tk front end writes the same
+        flag in General.MouseModeOn. The Tk front end wrote the same
         two keys (tests/regress_mouse_capture.py pins that), so the two
-        front ends and the core read one state.
+        front ends and the core read one state. MouseModeOn is now the
+        tray click's own switch (all three modes are real); a mode
+        change alone does not flip it.
         """
         idx = self._mouse_mode_index()
         try:
@@ -720,15 +738,17 @@ class QtApp:
             cfg = config.load()
             general = cfg.setdefault("General", {})
             general["MouseMode"] = idx
-            general["MouseModeOn"] = idx != 0
+            general["MouseModeOn"] = bool(getattr(self, "_mouse_enabled",
+                                                  False))
             config.save(cfg)
         except Exception:
             pass
 
     def _mouse_mode_off(self) -> bool:
-        """True when the mode is native's "Show icon" one, which the
-        port cannot draw, so it is the port's off state."""
-        return self._mouse_mode_index() == 0
+        """True when the mouse capture is switched OFF (the tray's left
+        click). The mode index is no longer the off state -- mode 0
+        ("Show icon") is a real mode with its own floating icon."""
+        return not bool(getattr(self, "_mouse_enabled", False))
 
     def _sync_mouse_hook(self):
         """Start or stop the Win32 low-level mouse hook the way native
@@ -778,7 +798,7 @@ class QtApp:
                          daemon=True).start()
 
     def _mouse_work(self, x, y):
-        """Capture the text under the cursor and translate it.
+        """Capture the text under the cursor and act on the mode.
 
         It runs on the worker's thread: the hook's proc has to return
         fast. The panes and the popup belong to the UI thread, so the
@@ -787,6 +807,12 @@ class QtApp:
         try:
             text = self._capture_selection(x, y)
             if not text:
+                return
+            if self._mouse_mode_index() == 0:
+                # native's first mode, "Show icon": a small translate
+                # button pops up under the selection -- clicking it
+                # translates, no Ctrl+Q needed (row C10).
+                self._on_ui(lambda: self._show_mouse_icon(x, y, text))
                 return
             res = self._translate(text)
             self._bridge.translated.emit(text, res.text)
@@ -797,6 +823,26 @@ class QtApp:
                 self._speak(text)
         except Exception:
             pass
+
+    def _show_mouse_icon(self, x, y, text):
+        """The mode-0 floating translate button (UI thread)."""
+        try:
+            from .mouse_icon import MouseIcon
+            icon_win = getattr(self, "_mouse_icon", None)
+            if icon_win is None:
+                icon_win = MouseIcon(self, self._translate_captured)
+                self._mouse_icon = icon_win
+            icon_win.pop(x, y, text)
+        except Exception:                   # noqa: BLE001 -- fail-open
+            pass
+
+    def _translate_captured(self, text):
+        """The floating icon's click: translate like Ctrl+Q would."""
+        def done(t, res):
+            if res.ok and res.text:
+                self.show_translation(t, res.text,
+                                      provider=res.provider_used)
+        self._start_translation(text, done)
 
     def _mouse_gate_ok(self) -> bool:
         """Native's gates for the mouse capture, in native's order.

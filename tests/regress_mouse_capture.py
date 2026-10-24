@@ -181,14 +181,13 @@ def _cycle(mode):
 ck("cycle 0 -> 1", _cycle(0) == 1)
 ck("cycle 1 -> 2", _cycle(1) == 2)
 ck("cycle 2 -> 0 (wraps)", _cycle(2) == 0)
-# app.py sets MouseModeOn = (mode != 0) after the cycle: on for 1/2, off
-# for 0. Assert the real expression, not a tautology.
-# The Qt view persists the "on" flag from the mode INDEX: true for the
-# two translate modes, false for "Show icon" (native's General.MouseModeOn).
-ck("the Qt view sets MouseModeOn from the mode index",
-   re.search(r'\["MouseModeOn"\]\s*=\s*idx\s*!=\s*0', app_src)
-   is not None,
-   "MouseModeOn must be true for modes 1/2 and false for 0")
+# MouseModeOn is now the TRAY CLICK's own toggle (General.MouseModeOn),
+# not a function of the mode index: all three modes are real since the
+# floating icon landed (row C10), and off is the tray's left click.
+ck("the Qt view persists MouseModeOn from the toggle flag",
+   re.search(r'\["MouseModeOn"\]\s*=\s*bool\(getattr\(self,\s*"_mouse_enabled"',
+             app_src) is not None,
+   "MouseModeOn must come from the tray toggle, not the mode index")
 # ...and cycles with the same wrap, no off-by-one drift.
 ck("the Qt view cycles the mode with (i+1)%len",
    re.search(r"\(i \+ 1\) % len\(MOUSE_MODES\)", app_src) is not None,

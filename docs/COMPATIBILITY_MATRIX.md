@@ -85,7 +85,7 @@ platforms it claims. Evidence column cites `file:line` where available.
 | Hotkey display string | `FUN_00403B48/D3C` | `config.format_hotkey` | "Double Ctrl + Q" form | Win+mac | `tests/regress_hotkey_option_keys.py` (9) known-answer vectors | `behaviour-verified` — **Win only** |
 | Double-press detection | `FUN_0041786B`, `NATIVE_ARCH.md:915` | partial | Ctrl+C+C / Ctrl+Q+Q | Win+mac | manual desktop test, NO automated suite | `ported` — unpinned, needs a human |
 | Menu accelerators / help.txt default | `NATIVE_ARCH.md:404` | `qtranslate/qt/main_window.py` + `qtranslate/assets/locales/English/help.txt` | yes | Win+mac | `tests/ui_match.py` (tray order) + `tests/regress_menu_slots.py` (37) | `behaviour-verified` — **Win only**, menus only |
-| Cursor-hook mouse icon | `NATIVE_ARCH.md:121` | **none** | decide | Win | — | `not-started` |
+| Cursor-hook mouse icon | `NATIVE_ARCH.md:121` | `qtranslate/qt/mouse_icon.py` (a 24px frameless button under the selection; click → translate like Ctrl+Q) | yes (mode 0 "Show icon" is a real mode now) | Win | `tests/regress_mouse_icon_and_tray.py` (15: pop/carry/click, mode-0 vs mode-1 paths) | `behaviour-verified` — **Win only**, offscreen proof; desktop click-through needs the operator |
 
 ## B. Capture (3 modes)
 

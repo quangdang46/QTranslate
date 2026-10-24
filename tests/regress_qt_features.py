@@ -312,19 +312,31 @@ try:
         ck("the mouse modes are native's own names",
            MOUSE_MODES == ("Show icon", "Show translation",
                            "Show translation and read"), str(MOUSE_MODES))
+        # All three modes are REAL now (mode 0 draws the floating icon,
+        # row C10); the on/off switch is the tray click's own toggle.
+        ck("the capture hook starts OFF (the toggle defaults off)",
+           not any(c[0] == "start" for c in calls), str(calls))
+        app.toggle_mouse_enabled()
         app.set_mouse_mode(MOUSE_MODES[1])
-        ck("the mouse mode starts the capture hook",
+        ck("enabled + a mode starts the capture hook",
            any(c[0] == "start" for c in calls), str(calls))
         ck("the mouse mode is written to the config",
            saved.get("General", {}).get("MouseMode") == 1, str(saved))
-        ck("the mouse mode's 'on' flag follows the mode",
+        ck("the toggle wrote MouseModeOn = true",
            saved.get("General", {}).get("MouseModeOn") is True, str(saved))
         app.set_mouse_mode(MOUSE_MODES[0])
-        ck("the mouse mode 'off' stops the capture hook",
-           any(c[0] == "stop" for c in calls), str(calls))
-        ck("the mouse mode 'off' is written to the config",
+        ck("mode 0 is a REAL mode: the hook keeps running",
+           not any(c[0] == "stop" for c in calls), str(calls))
+        ck("the mode is written, the toggle unchanged",
            saved.get("General", {}).get("MouseMode") == 0
-           and saved.get("General", {}).get("MouseModeOn") is False, str(saved))
+           and saved.get("General", {}).get("MouseModeOn") is True,
+           str(saved))
+        app.toggle_mouse_enabled()
+        ck("the tray toggle OFF stops the capture hook",
+           any(c[0] == "stop" for c in calls), str(calls))
+        ck("the toggle OFF is written to the config",
+           saved.get("General", {}).get("MouseModeOn") is False, str(saved))
+        app.toggle_mouse_enabled()   # back on for the mode-0 icon leg
 
         # The gate: native's GUI-translation setting (DAT_005494e4) is
         # closed, so the capture does nothing.

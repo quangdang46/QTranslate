@@ -39,8 +39,16 @@ try:
 except (FileNotFoundError, OSError):
     d = None
 if d:
-    ck("live Options.json has 20 sections", len(d) == 20,
-       "sections=%d" % len(d))
+    # The 20 NATIVE sections must all survive; the port may ADD its own
+    # (ExtensionOverrides for D18 winners, Extensions for the on/off
+    # switches and per-extension settings) but nothing else.
+    ck("live Options.json keeps all 20 native sections",
+       set(KNOWN_SECTIONS) <= set(d),
+       "missing: %s" % sorted(set(KNOWN_SECTIONS) - set(d)))
+    ck("the port's own sections are known additions",
+       set(d) - set(KNOWN_SECTIONS)
+       <= {"Extensions", "ExtensionOverrides"},
+       "unexpected: %s" % sorted(set(d) - set(KNOWN_SECTIONS)))
     ck("Ocr section survives (the 124th key)",
        "Ocr" in d and "OcrLanguage" in d["Ocr"], str(d.get("Ocr")))
     # Roundtrip: dump to a string and reload byte-identical.
