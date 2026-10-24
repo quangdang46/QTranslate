@@ -54,6 +54,75 @@ def _disabled():
     return set(read_disabled_extensions())
 
 
+def _open_settings(page, ext_id, schema):
+    """The Settings button: build the dialog, exec it, save on accept."""
+    dlg, editors, mgr = _build_settings_dialog(page, ext_id, schema)
+    if dlg is None:
+        return
+    from PySide6.QtWidgets import QDialogButtonBox
+    bb = dlg.findChildren(QDialogButtonBox)[0]
+    bb.accepted.connect(lambda: _save_settings(dlg, editors, mgr, ext_id))
+    bb.rejected.connect(dlg.reject)
+    dlg.exec()
+
+
+def _build_settings_dialog(page, ext_id, schema):
+    """The schema renders as one editor per key (bool→checkbox,
+    number→spin, else→line edit). Returns (dialog, editors, manager);
+    split from ``_open_settings`` so a test can drive the fields
+    without exec()ing a modal."""
+    from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QGridLayout,
+                                   QLabel, QLineEdit, QSpinBox,
+                                   QVBoxLayout)
+    mgr = page.app.ext_manager
+    dlg = QDialog(page)
+    dlg.setWindowTitle("%s settings" % ext_id.rsplit(".", 1)[-1])
+    lay = QVBoxLayout(dlg)
+    grid = QGridLayout()
+    editors = {}
+    for r, (key, kind) in enumerate(sorted(schema.items())):
+        grid.addWidget(QLabel(key.rsplit(".", 1)[-1]), r, 0)
+        current = mgr.get_setting(ext_id, key, None)
+        if kind == "bool":
+            w = QCheckBox()
+            w.setChecked(bool(current))
+        elif kind == "number":
+            w = QSpinBox()
+            w.setRange(-10 ** 6, 10 ** 6)
+            if isinstance(current, (int, float)):
+                w.setValue(int(current))
+        else:                               # "string" and anything unknown
+            w = QLineEdit()
+            if current is not None:
+                w.setText(str(current))
+        editors[key] = (kind, w)
+        grid.addWidget(w, r, 1)
+    lay.addLayout(grid)
+    note = QLabel("Applied the next time the extension reads it.")
+    note.setStyleSheet("QLabel{color:%s;}" % DIM)
+    lay.addWidget(note)
+    bb = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Close)
+    lay.addWidget(bb)
+    return dlg, editors, mgr
+
+
+def _save_settings(dlg, editors, mgr, ext_id):
+    """Collect the editors and write each through the schema-checked
+    set_setting; a refused key is skipped, not fatal."""
+    for key, (kind, w) in editors.items():
+        if kind == "bool":
+            value = bool(w.isChecked())
+        elif kind == "number":
+            value = w.value()
+        else:
+            value = w.text()
+        try:
+            mgr.set_setting(ext_id, key, value)
+        except Exception:                   # noqa: BLE001 -- schema gate
+            pass
+    dlg.accept()
+
+
 def _toggle(ext_id, on):
     """One checkbox flipped: rewrite the whole Disabled list."""
     if not ext_id:
@@ -117,6 +186,8 @@ class ExtensionsPage(OptionsBase):
             q.setStyleSheet("QLabel{color:%s;}" % DIM)
             put(lst, q, 167, 60, 440, 16)
         y = 60
+        mgr = getattr(getattr(self.app, "ext_manager", None),
+                      "_manifests", {}) or {}
         for row in rows:
             # A folder with no valid id cannot be "on": there is nothing
             # the loader would load even with the box ticked.
@@ -127,8 +198,19 @@ class ExtensionsPage(OptionsBase):
                 lambda st, rid=row["id"]: _toggle(rid, bool(st)))
             q = QLabel(row["status"])
             q.setStyleSheet("QLabel{color:%s;}" % (DIM if on else TEXT))
-            put(lst, q, 460, y, 165, 14)
-            y += 20
+            put(lst, q, 450, y, 100, 14)
+            # An extension that declared a settings_schema gets a
+            # Settings button: the schema's fields render in a small
+            # dialog and Save writes them through the manager's
+            # schema-checked set_setting. Full customisation without
+            # hand-editing a JSON file.
+            schema = (mgr.get(row["id"], {}) or {}).get("settings_schema")
+            if row["known"] and isinstance(schema, dict) and schema:
+                b = button(lst, 554, y - 1, 62, "Settings…")
+                b.clicked.connect(
+                    lambda _c=False, rid=row["id"], sch=schema:
+                    _open_settings(self, rid, sch))
+            y += 22
         if rows:
             hint = QLabel("Changes take effect after QTranslate restarts.")
             hint.setStyleSheet("QLabel{color:%s;}" % DIM)

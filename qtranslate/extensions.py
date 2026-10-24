@@ -76,6 +76,14 @@ KNOWN_CAPABILITIES = frozenset((
     "dictionary", "tts", "ocr", "spell",
 ))
 
+# The events an extension may subscribe to (api.on). A closed list: the
+# host emits exactly these, with the payloads documented beside them.
+KNOWN_EVENTS = frozenset((
+    "translation.done",   # {"provider","text","result","ok"} after a
+                          # finished translation reaches the UI
+    "app.ready",          # {} once the app is up (hotkeys installed)
+))
+
 # The subset the runtime can actually HOST: each has a register_* on
 # ExtensionAPI and a consumer in the app. A manifest declaring anything
 # outside this set is disabled with a defined error rather than loaded and
@@ -390,6 +398,16 @@ class ExtensionAPI:
         """
         return self._manager.set_setting(self._ext_id, key, value)
 
+    def on(self, event, fn):
+        """Subscribe to a host event (§ ``KNOWN_EVENTS``).
+
+        ``fn(payload: dict)`` runs on the UI thread at the emit point. A
+        closed event list: the host emits exactly what it documents, and
+        an unknown name is refused HERE rather than silently never
+        firing. A raising listener is skipped, never fatal (§7).
+        """
+        return self._manager.add_listener(self._ext_id, event, fn)
+
     def register_provider(self, name, fn, replaces=None):
         return self._manager.register(name, fn, replaces=replaces)
 
@@ -463,6 +481,7 @@ class ExtensionManager:
         self._theme_replaces = {}
         self._manifests = {}    # ext id -> the manifest that loaded it
         self._last_report = []  # the last load_dir outcome list (the UI reads it)
+        self._listeners = {}    # event -> [(ext_id, fn)]
         self._ui = None      # ui_slots.UISlotRegistry, created on first use
         for name in self._rg.TRANSLATORS:
             self._providers[name] = self._rg.TRANSLATORS[name]
@@ -619,6 +638,37 @@ class ExtensionManager:
         mine[key] = value
         _C.save(cfg, path)
         return value
+
+    # -- events (api.on) --------------------------------------------------
+    def add_listener(self, ext_id, event, fn):
+        """Subscribe an extension's callable to a host event.
+
+        The listener is tagged with its extension id, so the Extensions
+        page can show who listens and a disabled extension's listeners
+        are trivially attributable. An unknown event or a non-callable
+        raises -- at REGISTER time, where the fail-open rule turns it
+        into a disabled extension, not a silent no-op at 2 a.m.
+        """
+        if event not in KNOWN_EVENTS:
+            raise ValueError("unknown event %r (known: %s)"
+                             % (event, sorted(KNOWN_EVENTS)))
+        if not callable(fn):
+            raise TypeError("event listener %r is not callable" % (event,))
+        self._listeners.setdefault(event, []).append((ext_id, fn))
+        return event
+
+    def listeners(self, event):
+        """The callables subscribed to ``event`` (fail-open copy)."""
+        return [fn for _ext, fn in self._listeners.get(event, [])]
+
+    def emit(self, event, payload):
+        """Run every listener for ``event``; a raising listener is
+        skipped (§7). The host calls this at the documented points."""
+        for fn in self.listeners(event):
+            try:
+                fn(payload)
+            except Exception:               # noqa: BLE001
+                continue
 
     # -- enablement -----------------------------------------------------
     def enabled(self):

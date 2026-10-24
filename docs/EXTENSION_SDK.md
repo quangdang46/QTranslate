@@ -298,6 +298,20 @@ All five were resolved and folded into `PROJECT_VISION.md`:
 > the native's pixels are unchanged. Pinned by
 > `tests/regress_qt_extension_ui.py`.
 
+> **Events and the settings editor (landed 2026-10-24, later).** The
+> host now emits a CLOSED event list — `translation.done`
+> (`{"provider","text","result","ok"}`, at the choke point every
+> "a translation reached the UI" path shares) and `app.ready` (once the
+> tray and hotkeys exist). An extension subscribes with
+> `api.on(event, fn)`; an unknown name is refused at REGISTER time, and
+> a raising listener is skipped, never fatal. And the Extensions page
+> renders an extension's `settings_schema` as a small dialog (bool →
+> checkbox, number → spin, else → line edit) behind a Settings button,
+> so the user customises an extension without hand-editing JSON — Save
+> writes through the schema-checked `set_setting`. Pinned by
+> `regress_extension_events_settings_ui.py` (15); the studio example
+> shows `api.on` feeding its panel.
+
 > **The user's own switch, and the extension's own settings (landed
 > 2026-10-24).** Options → **Extensions** — the port's own tenth page
 > (native has no extension system, so there is no capture) — lists every

@@ -288,6 +288,12 @@ class PopupWindow(QWidget):
             pair = (self.app.popup_pair(res.provider_used)
                     if self.app else "")
             self.set_text(text, res.text, pair)
+            # This path bypasses push_hist, so emit the extension event
+            # here too -- a strip re-translation is a translation done.
+            if self.app is not None:
+                self.app._emit_extension_event("translation.done", {
+                    "provider": res.provider_used, "text": text,
+                    "result": res.text, "ok": True})
 
     def _paint_strip(self):
         """The active cell is the selection blue with white text; the

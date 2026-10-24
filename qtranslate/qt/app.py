@@ -423,6 +423,23 @@ class QtApp:
             pass
         self.history.append((svc, src, res))
         _save_history(self.history)
+        # Every "a translation reached the UI" path funnels through
+        # here, so this is the emit point for the extensions'
+        # translation.done event. A test stub without the emitter stays
+        # a stub: the getattr keeps this a no-op there.
+        emit = getattr(self, "_emit_extension_event", None)
+        if emit is not None:
+            emit("translation.done", {
+                "provider": svc, "text": src, "result": res, "ok": True})
+
+    def _emit_extension_event(self, event, payload):
+        """Hand an event to the extension manager, fail-open."""
+        try:
+            mgr = getattr(self, "ext_manager", None)
+            if mgr is not None:
+                mgr.emit(event, payload)
+        except Exception:                   # noqa: BLE001
+            pass
 
     def on_new(self):
         self.win.src.clear()
@@ -1240,4 +1257,12 @@ def main(argv=None):
         app.hotkeys = install(app)
     except Exception:
         app.hotkeys = []
+    # The extensions' "app is up" event: emitted once, after the tray
+    # and the hotkeys exist, so a listener can rely on both.
+    try:
+        mgr = getattr(app, "ext_manager", None)
+        if mgr is not None:
+            mgr.emit("app.ready", {})
+    except Exception:                       # noqa: BLE001 -- fail-open
+        pass
     return app.qapp.exec()

@@ -9,9 +9,9 @@ likes, and a settings change flows through without touching the app.
 def make_top_panel(ctx):
     def top_panel():
         spoken = getattr(ctx, "last_spoken", "")
-        lines = ["%s — %d glossary entries, %d misses"
+        lines = ["%s — %d glossary entries, %d misses, %d translations"
                  % (ctx.title, len(ctx.glossary.get("en", {}).get("vi", {})),
-                    ctx.misses)]
+                    ctx.misses, getattr(ctx, "translations", 0))]
         if spoken:
             lines.append("last spoken: %s" % spoken)
         return "\n".join(lines)

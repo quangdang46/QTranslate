@@ -27,4 +27,11 @@ def register(api):
     api.register_ui("menu", "history_ctx", menus.make_history_entry(ctx))
     api.register_ui("panel", "top", panels.make_top_panel(ctx))
     api.register_ui("popup", "body", panels.make_popup_body(ctx))
+
+    # EVENTS: the host emits translation.done with the finished payload;
+    # the context counts them and the panel reports the number. An
+    # unknown event name is refused here, at register time.
+    def count(payload):
+        ctx.translations = getattr(ctx, "translations", 0) + 1
+    api.on("translation.done", count)
     return ctx
