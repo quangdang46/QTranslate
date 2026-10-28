@@ -1059,41 +1059,58 @@ class QtApp:
         return "%s to %s (%s)" % (src, tgt, name)
 
     def show_translation(self, text, result, provider: str = ""):
-        """Show one translation: the panes, the history and the popup.
-
-        This is the step the popup hotkey and the mouse mode share, and
-        it runs in the UI thread.
-        """
-        if self.win is not None:
-            self.win.src.setPlainText(text[:2000])
-            self.win.render(result)
-        self.push_hist(self.service, text[:120], result[:200])
+        """Show one translation: the panes, the history and the popup."""
         try:
-            from .popup import PopupWindow
-            old = getattr(self, "_popup", None)
-            if old is not None:
+            try:
+                _dbg("show_translation called len=%d" % len(result or ""))
+            except Exception:
+                pass
+            if self.win is not None:
                 try:
-                    try:
-                        from PySide6.QtWidgets import QApplication as _QA
-                        _QA.instance().removeEventFilter(old)
-                    except Exception:
-                        pass
-                    old.hide()
-                    old.close()
+                    self.win.src.setPlainText(text[:2000])
+                    self.win.render(result)
                 except Exception:
                     pass
-            self._popup = PopupWindow(self)
-            self._popup.set_text(text[:300], result,
-                                 self.popup_pair(provider),
-                                 provider=provider or self.service)
-            self._popup.place()
             try:
-                self._popup.raise_()
-                self._popup.show()
-                self._popup.activateWindow()
+                self.push_hist(self.service, text[:120], result[:200])
             except Exception:
+                pass
+            try:
+                from .popup import PopupWindow
+                old = getattr(self, "_popup", None)
+                if old is not None:
+                    try:
+                        try:
+                            from PySide6.QtWidgets import QApplication as _QA
+                            _QA.instance().removeEventFilter(old)
+                        except Exception:
+                            pass
+                        old.hide()
+                        old.close()
+                    except Exception:
+                        pass
+                self._popup = PopupWindow(self)
+                self._popup.set_text(text[:300], result,
+                                     self.popup_pair(provider),
+                                     provider=provider or self.service)
+                self._popup.place()
                 try:
+                    self._popup.raise_()
                     self._popup.show()
+                    self._popup.activateWindow()
+                    self._popup.setFocus()
+                    try:
+                        _dbg("popup shown visible=%s" % self._popup.isVisible())
+                    except Exception:
+                        pass
+                except Exception:
+                    try:
+                        self._popup.show()
+                    except Exception:
+                        pass
+            except Exception as e:
+                try:
+                    _dbg("show_translation err %s" % e)
                 except Exception:
                     pass
         except Exception:
