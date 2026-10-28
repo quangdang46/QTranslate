@@ -719,13 +719,11 @@ class QtApp:
         """The tray's checkable item: the hotkeys are UNREGISTERED and
         the setting is written, the way native's does it."""
         self.hotkeys_on = bool(on)
-        keyboard = keyboard_module()
-        if keyboard is not None:
-            for _name, _combo in list(self.hotkeys):
-                try:
-                    keyboard.remove_hotkey(_combo)
-                except Exception:
-                    pass
+        try:
+            from .hotkeys import uninstall
+            uninstall()
+        except Exception:
+            pass
         self.hotkeys = []
         if self.hotkeys_on:
             try:

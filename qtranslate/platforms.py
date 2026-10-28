@@ -140,15 +140,18 @@ class MacOSAdapter:
     """The platform pieces that need no Win32: clipboard, paths.
 
     The Win32-only halves (the low-level mouse hook, the clipboard
-    sequence counter, SAPI speech) stay unavailable honestly on macOS;
-    global hotkeys may work if Accessibility is granted and the keyboard
-    package is available, so report hotkey as available on macOS to allow
-    best-effort registration.
+    sequence counter, SAPI speech) stay unavailable honestly on macOS.
+
+    ``hotkey`` stays UNAVAILABLE on purpose: this flag is what
+    ``keyboard_module()`` reads, and importing ``keyboard`` on macOS
+    ABORTS the process inside CoreFoundation (macOS 26, measured
+    2026-10-28). The macOS front end does not use that package at all --
+    it registers through Carbon (``qtranslate.macos_hotkeys``), which
+    needs no Accessibility permission and cannot take the app down.
     """
 
     clipboard = Capability.AVAILABLE
     paths = Capability.AVAILABLE
-    hotkey = Capability.AVAILABLE
 
     def read_text(self):
         try:
