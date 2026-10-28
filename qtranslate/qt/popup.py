@@ -154,6 +154,10 @@ class PopupWindow(QWidget):
         super().__init__(None, Qt.FramelessWindowHint | Qt.Tool
                          | Qt.WindowStaysOnTopHint)
         self.app = app
+        try:
+            self.setFocusPolicy(Qt.StrongFocus)
+        except Exception:
+            pass
         self.setStyleSheet("Popup{background:%s;border:1px solid %s;}"
                            % (popup_bg(), POPUP_BORDER))
         self.setAttribute(Qt.WA_StyledBackground, True)
@@ -162,6 +166,8 @@ class PopupWindow(QWidget):
         self.btn_close = QLabel("✕", self)
         self.btn_close.setStyleSheet("background:transparent;color:%s;"
                                      % POPUP_ICON)
+        self.btn_close.setCursor(Qt.PointingHandCursor)
+        self.btn_close.mousePressEvent = self._on_close_click
 
         self.lbl_pair = QLabel("", self)
         self.lbl_pair.setStyleSheet("background:transparent;color:%s;"
@@ -180,7 +186,17 @@ class PopupWindow(QWidget):
                                     "border:none;" % POPUP_TEXT)
 
         self._strip = self._provider_strip()
-        self._fill("", "", "")
+        try:
+            self._fill("", "", "")
+        except Exception:
+            pass
+
+    def _on_close_click(self, event):
+        """Clicking the X closes the popup (native behaviour)."""
+        try:
+            self.hide()
+        except Exception:
+            pass
 
     # ------------------------------------------------------------ pieces
     def _header_icons(self):
@@ -439,13 +455,36 @@ class PopupWindow(QWidget):
         self._set_hover(False)
         super().leaveEvent(event)
 
+    def keyPressEvent(self, event):             # noqa: N802 (Qt name)
+        """Esc closes the popup (native's hotkey)."""
+        if event.key() == Qt.Key_Escape:
+            try:
+                self.hide()
+            except Exception:
+                pass
+            return
+        super().keyPressEvent(event)
+
     def eventFilter(self, obj, event):          # noqa: N802 (Qt name)
         """Click-outside closes the popup (native's behaviour)."""
         from PySide6.QtCore import QEvent
         if event.type() == QEvent.MouseButtonPress and self.isVisible():
-            pos = event.globalPos() if hasattr(event, "globalPos")                 else None
+            # Only the ACTIVE popup should respond to click-outside;
+            # old popup instances may still have filters installed.
+            app = getattr(self, "app", None)
+            if app is not None:
+                try:
+                    if getattr(app, "_popup", None) is not self:
+                        return False
+                except Exception:
+                    pass
+            pos = event.globalPos() if hasattr(event, "globalPos") else None
             if pos is not None and not self.geometry().contains(pos):
-                self.hide()
+                try:
+                    self.hide()
+                except Exception:
+                    pass
+                return False
         return False
 
     def showEvent(self, event):                 # noqa: N802 (Qt name)
@@ -453,8 +492,17 @@ class PopupWindow(QWidget):
         # it places at the pointer) never receives an enter event, so
         # the provider strip stayed hidden until the pointer left and
         # came back. Check on show instead.
-        if self.underMouse():
-            self._set_hover(True)
+        try:
+            if self.underMouse():
+                self._set_hover(True)
+        except Exception:
+            pass
+        try:
+            self.raise_()
+            self.activateWindow()
+            self.setFocus(Qt.ActiveWindowFocusReason)
+        except Exception:
+            pass
         super().showEvent(event)
 
     # ------------------------------------------------------------- show
@@ -465,10 +513,17 @@ class PopupWindow(QWidget):
             _ap = _C.load().get("Appearance", {})
         except Exception:
             _ap = {}
-        if _ap.get("PopupAutoFocus"):
+        if _ap.get("PopupAutoFocus", False):
             try:
                 self.activateWindow()
-                self.setFocus()
+                self.raise_()
+                self.setFocus(Qt.ActiveWindowFocusReason)
+            except Exception:
+                pass
+        else:
+            try:
+                self.raise_()
+                self.activateWindow()
             except Exception:
                 pass
         try:
@@ -508,4 +563,11 @@ class PopupWindow(QWidget):
         if _to > 0:
             self._timer.start(_to * 1000)
         from PySide6.QtWidgets import QApplication as _QA
+        # Install only one active filter — remove any previous instance on this
+        # object before installing the fresh one. This prevents stale filters
+        # accumulating over many translations.
+        try:
+            _QA.instance().removeEventFilter(self)
+        except Exception:
+            pass
         _QA.instance().installEventFilter(self)

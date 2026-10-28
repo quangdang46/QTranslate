@@ -153,8 +153,8 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    version='C:\\Users\\ADMIN\\qtranslate-re\\build\\assets\\version_info.txt',
-    icon=['C:\\Users\\ADMIN\\qtranslate-re\\build\\assets\\QTranslate.ico'],
+    version='/Users/tranquangdang21/Projects/QTranslate/build/assets/version_info.txt',
+    icon=['/Users/tranquangdang21/Projects/QTranslate/build/assets/QTranslate.ico'],
 )
 
 coll = COLLECT(

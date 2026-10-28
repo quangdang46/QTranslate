@@ -87,9 +87,15 @@ class MouseIcon(QWidget):
             _dbg("icon CLICKED, text=%r" % (text[:30],))
         except Exception:
             pass
-        self.hide()
+        try:
+            self.hide()
+        except Exception:
+            pass
         if text:
-            self._on_translate(text)
+            try:
+                self._on_translate(text)
+            except Exception:
+                pass
 
     def current_text(self):
         return self._text

@@ -398,16 +398,25 @@ class QtApp:
         translation), and stacking requests on a slow provider would show
         a burst of stale answers in arbitrary order.
         """
-        if any(t.is_alive() for t in self._threads):
-            return False
+        try:
+            if any(t.is_alive() for t in self._threads):
+                return False
+        except Exception:
+            pass
 
         def work():
             try:
                 res = self._translate(text)
             except Exception as exc:            # noqa: BLE001
-                from qtranslate.core import Result
-                res = Result("", "[error] %s" % exc, self.service)
-            self._on_ui(lambda: on_done(text, res))
+                try:
+                    from qtranslate.core import Result
+                    res = Result("", "[error] %s" % exc, self.service)
+                except Exception:
+                    return
+            try:
+                self._on_ui(lambda: on_done(text, res))
+            except Exception:
+                pass
 
         self._spawn("translate", work)
         return True
@@ -886,19 +895,38 @@ class QtApp:
     def _translate_captured(self, text):
         """The floating icon's click: translate like Ctrl+Q would."""
         def done(t, res):
-            _dbg("icon-click done: ok=%s len=%d provider=%s"
-                 % (res.ok, len(res.text or ""), res.provider_used))
+            try:
+                _dbg("icon-click done: ok=%s len=%d provider=%s"
+                     % (res.ok, len(res.text or ""), res.provider_used))
+            except Exception:
+                pass
             if res.ok and res.text:
-                self.show_translation(t, res.text,
-                                      provider=res.provider_used)
-                pop = getattr(self, "_popup", None)
-                _dbg("popup after show: %s visible=%s"
-                     % (pop is not None,
-                        pop.isVisible() if pop else "-"))
+                try:
+                    self._on_ui(lambda: self.show_translation(t, res.text,
+                                                              provider=res.provider_used))
+                except Exception:
+                    try:
+                        self.show_translation(t, res.text,
+                                              provider=res.provider_used)
+                    except Exception:
+                        pass
+                try:
+                    pop = getattr(self, "_popup", None)
+                    _dbg("popup after show: %s visible=%s"
+                         % (pop is not None,
+                            pop.isVisible() if pop else "-"))
+                except Exception:
+                    pass
                 if self._mouse_mode_index() == 2:
-                    self._speak(t)
-        started = self._start_translation(text, done)
-        _dbg("icon-click: start=%s text=%r" % (started, text[:40]))
+                    try:
+                        self._speak(t)
+                    except Exception:
+                        pass
+        try:
+            started = self._start_translation(text, done)
+            _dbg("icon-click: start=%s text=%r" % (started, text[:40]))
+        except Exception:
+            pass
 
     def _mouse_gate_ok(self) -> bool:
         """Native's gates for the mouse capture, in native's order.
@@ -1001,12 +1029,32 @@ class QtApp:
         self.push_hist(self.service, text[:120], result[:200])
         try:
             from .popup import PopupWindow
+            old = getattr(self, "_popup", None)
+            if old is not None:
+                try:
+                    try:
+                        from PySide6.QtWidgets import QApplication as _QA
+                        _QA.instance().removeEventFilter(old)
+                    except Exception:
+                        pass
+                    old.hide()
+                    old.close()
+                except Exception:
+                    pass
             self._popup = PopupWindow(self)
             self._popup.set_text(text[:300], result,
                                  self.popup_pair(provider),
                                  provider=provider or self.service)
             self._popup.place()
-            self._popup.show()
+            try:
+                self._popup.raise_()
+                self._popup.show()
+                self._popup.activateWindow()
+            except Exception:
+                try:
+                    self._popup.show()
+                except Exception:
+                    pass
         except Exception:
             pass
 
@@ -1027,34 +1075,39 @@ class QtApp:
             pass
 
     def hotkey_popup(self):
-        """Native's Ctrl+Q: translate the SELECTED text, in the popup.
-
-        ``help.txt`` says "Translate selected text and show it in popup
-        window", so the selection is copied first (``selection.
-        copy_selection``, native's ``FUN_0043BF30`` copy-capture) instead
-        of trusting whatever happened to be on the clipboard. Reading the
-        old clipboard is what a bare ``paste()`` did, and it translated
-        the wrong text whenever the user had selected something new.
-        """
-        # The copy-capture sleeps while it polls for the clipboard change
-        # (up to ~1s on a target that ignores Ctrl+C) and the translate is
-        # a network round trip, so neither belongs on the UI thread. Both
-        # run on a tracked worker; only the finished translation crosses
-        # back.
+        """Native's Ctrl+Q: translate the SELECTED text, in the popup."""
         def work():
             try:
                 from qtranslate import selection
-                text = (selection.copy_selection() or "").strip()
+                try:
+                    text = (selection.copy_selection() or "").strip()
+                except Exception:
+                    text = ""
                 if not text:
-                    text = self._clipboard_text()
+                    try:
+                        text = self._clipboard_text()
+                    except Exception:
+                        text = ""
                 if not text:
                     return
-                res = self._translate(text)
-            except Exception:                   # noqa: BLE001
+                try:
+                    res = self._translate(text)
+                except Exception:
+                    return
+                try:
+                    self._on_ui(lambda: self.show_translation(text, getattr(res, 'text', '') or ''))
+                except Exception:
+                    try:
+                        self.show_translation(text, getattr(res, 'text', '') or '')
+                    except Exception:
+                        pass
+            except Exception:
                 return
-            self._on_ui(lambda: self.show_translation(text, res.text))
 
-        self._spawn("popup", work)
+        try:
+            self._spawn("popup", work)
+        except Exception:
+            pass
 
     def hotkey_translate_clipboard(self):
         text = self._clipboard_text()

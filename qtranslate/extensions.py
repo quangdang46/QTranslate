@@ -472,6 +472,102 @@ class ExtensionAPI:
         return self._manager.register_workflow(name, fn,
                                                replaces=replaces)
 
+    def get_hotkeys(self):
+        """Expose the hotkey table (name -> combo string) for extensions."""
+        try:
+            from qtranslate import config as _C
+            out = {}
+            cfg = _C.load()
+            hk = cfg.get("HotKeys", {}) or {}
+            for name in getattr(_C, "HOTKEY_NAMES", []):
+                code = hk.get(name, 0) or 0
+                out[name] = _C.hotkey_combo(code) or ""
+            return out
+        except Exception:
+            return {}
+
+    def get_hotkey_info(self):
+        """Expose full hotkey info (name -> {combo, code}) for extensions."""
+        try:
+            from qtranslate import config as _C
+            out = {}
+            cfg = _C.load()
+            hk = cfg.get("HotKeys", {}) or {}
+            for name in getattr(_C, "HOTKEY_NAMES", []):
+                code = hk.get(name, 0) or 0
+                out[name] = {"code": int(code or 0),
+                             "combo": _C.hotkey_combo(code) or "",
+                             "display": _C.format_hotkey(code) or ""}
+            return out
+        except Exception:
+            return {}
+
+    def get_tray_icons(self):
+        """Expose tray icon assets (available service/UI icons) for extensions."""
+        try:
+            import os
+            base = os.path.dirname(os.path.abspath(__file__))
+            assets_base = os.path.join(base, "assets")
+            out = {}
+            for kind in ["ui_icons", "service_icons"]:
+                d = os.path.join(assets_base, kind)
+                if not os.path.isdir(d):
+                    continue
+                out[kind] = []
+                for fn in os.listdir(d):
+                    if fn.endswith(".png"):
+                        out[kind].append(fn[:-4])
+            return out
+        except Exception:
+            return {"ui_icons": [], "service_icons": []}
+
+    def get_services(self):
+        """Expose available translation services."""
+        try:
+            from qtranslate import registry as _RG
+            from qtranslate import config as _C
+            services = []
+            for name in _RG.TRANSLATORS:
+                if name in ("_router",):
+                    continue
+                services.append({
+                    "name": name,
+                    "display": _C.SERVICE_DISPLAY.get(name, name),
+                })
+            return services
+        except Exception:
+            return []
+
+    def get_languages(self):
+        """Expose supported languages."""
+        try:
+            from qtranslate import languages as _L
+            return {"langs": list(getattr(_L, "LANGS", [])),
+                    "display": dict(getattr(_L, "LANG_DISPLAY", {}))}
+        except Exception:
+            return {"langs": [], "display": {}}
+
+    def get_config(self, section=None, key=None, default=None):
+        """Read app config (read-only)."""
+        try:
+            from qtranslate import config as _C
+            cfg = _C.load()
+            if section is None:
+                return cfg
+            sec = (cfg.get(section) or {}) if isinstance(cfg, dict) else {}
+            if key is None:
+                return sec
+            return sec.get(key, default)
+        except Exception:
+            return default if key is not None else {}
+
+    def get_app_info(self):
+        """Expose basic app info."""
+        return {
+            "version": "6.10.0",
+            "name": "QTranslate",
+        }
+
 
 class ExtensionManager:
     """Manager over ``registry``: built-ins plus loaded extensions."""
