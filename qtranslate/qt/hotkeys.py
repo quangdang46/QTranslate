@@ -88,6 +88,20 @@ def install(app) -> list:
         try:
             keyboard.add_hotkey(combo, safe)
             bound.append("%s=%s" % (name, combo))
+            try:
+                import os
+                with open(os.path.join(os.environ.get("TEMP", "/tmp"),
+                                       "qt_hotkey_debug.log"), "a") as _f:
+                    _f.write("%s bound %s\n" % (__import__("time").strftime("%H:%M:%S"), combo))
+            except Exception:
+                pass
         except Exception:
+            try:
+                import os
+                with open(os.path.join(os.environ.get("TEMP", "/tmp"),
+                                       "qt_hotkey_debug.log"), "a") as _f:
+                    _f.write("%s failed %s\n" % (__import__("time").strftime("%H:%M:%S"), combo))
+            except Exception:
+                pass
             continue
     return bound

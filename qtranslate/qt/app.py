@@ -1117,34 +1117,62 @@ class QtApp:
 
     def hotkey_popup(self):
         """Native's Ctrl+Q: translate the SELECTED text, in the popup."""
+        try:
+            _dbg("hotkey_popup triggered")
+        except Exception:
+            pass
         def work():
             try:
                 from qtranslate import selection
                 text = ""
                 try:
                     text = (selection.copy_selection() or "").strip()
+                    try:
+                        _dbg("hotkey_popup copied text len=%d" % len(text))
+                    except Exception:
+                        pass
                 except Exception:
                     text = ""
                 if not text:
                     try:
                         text = self._clipboard_text()
+                        try:
+                            _dbg("hotkey_popup used clipboard len=%d" % len(text))
+                        except Exception:
+                            pass
                     except Exception:
                         text = ""
                 if not text:
+                    try:
+                        _dbg("hotkey_popup no text")
+                    except Exception:
+                        pass
                     return
                 try:
                     res = self._translate(text)
+                    try:
+                        _dbg("hotkey_popup translated ok=%s" % getattr(res, 'ok', False))
+                    except Exception:
+                        pass
                 except Exception:
+                    try:
+                        _dbg("hotkey_popup translate error")
+                    except Exception:
+                        pass
                     return
                 try:
                     out = getattr(res, 'text', '') or ''
-                    self._on_ui(lambda t=text, o=out: self.show_translation(t, o))
+                    self._on_ui(lambda t=text, o=out: (lambda: self.show_translation(t, o))())
                 except Exception:
                     try:
                         self.show_translation(text, getattr(res, 'text', '') or '')
                     except Exception:
                         pass
             except Exception:
+                try:
+                    _dbg("hotkey_popup work error")
+                except Exception:
+                    pass
                 return
 
         try:
