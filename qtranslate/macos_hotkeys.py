@@ -58,10 +58,28 @@ KEYCODES = {
 kEventClassKeyboard = 0x6B657962   # 'keyb'
 kEventHotKeyPressed = 1
 typeEventHotKeyID = 0x686B6964     # 'hkid'
+# kEventParamDirectObject ('----'): where kEventHotKeyPressed carries its
+# EventHotKeyID. Reading it under any other name returns an error, and a
+# handler that only *looks* up the parameter therefore fires silently and
+# does nothing -- the bug this module shipped with until it was measured.
+kEventParamDirectObject = 0x2D2D2D2D
 
 
 class _EventHotKeyID(ctypes.Structure):
     _fields_ = [("signature", ctypes.c_uint32), ("id", ctypes.c_uint32)]
+
+
+def _log(msg):
+    """Temporary diagnostic: append to ~/.qtranslate_hotkeys.log."""
+    try:
+        import os
+        import time
+        path = os.path.join(os.path.expanduser("~"),
+                            ".qtranslate_hotkeys.log")
+        with open(path, "a", encoding="utf-8") as f:
+            f.write("%s  [carbon] %s\n" % (time.strftime("%H:%M:%S"), msg))
+    except Exception:
+        pass
 
 
 class _EventTypeSpec(ctypes.Structure):
@@ -182,14 +200,17 @@ class MacHotkeyTable:
             try:
                 hk = _EventHotKeyID()
                 status = lib.GetEventParameter(
-                    event, 0x686F6B69, typeEventHotKeyID, None,  # 'hoki'
+                    event, kEventParamDirectObject, typeEventHotKeyID, None,
                     ctypes.sizeof(hk), None, ctypes.byref(hk))
+                _log("handler: status=%s sig=%#x id=%s"
+                     % (status, hk.signature, hk.id))
                 if status == 0 and hk.signature == SIGNATURE:
                     fn = self._by_id.get(hk.id)
+                    _log("handler: callback %s" % ("found" if fn else "MISSING"))
                     if fn is not None:
                         fn()
-            except Exception:
-                pass
+            except Exception as exc:            # noqa: BLE001
+                _log("handler: raised %r" % (exc,))
             return 0
 
         self._handler = HANDLER(_on_event)
@@ -209,7 +230,9 @@ class MacHotkeyTable:
             status = lib.InstallEventHandler(target, self._handler, 1,
                                              ctypes.byref(spec), None, None)
             self._installed = (status == 0)
-        except Exception:
+            _log("InstallEventHandler -> %s" % (status,))
+        except Exception as exc:                # noqa: BLE001
+            _log("InstallEventHandler raised %r" % (exc,))
             self._installed = False
 
     def add(self, name, combo, callback):
@@ -229,10 +252,12 @@ class MacHotkeyTable:
         except Exception:
             return False
         if status != 0 or not ref:
+            _log("RegisterEventHotKey %s -> status=%s" % (combo, status))
             return False
         self._next_id += 1
         self._by_id[hk_id.id] = callback
         self._refs.append((ref, callback, name, combo))
+        _log("registered %s id=%s" % (combo, hk_id.id))
         return True
 
     def clear(self):

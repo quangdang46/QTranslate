@@ -111,11 +111,6 @@ a = Analysis(
         # list them so the bundle carries them.
         'keyboard',
         'pyperclip',
-        # macOS registers hotkeys through Carbon, not `keyboard` (that
-        # package's import aborts the process on macOS 26). The module is
-        # imported lazily by qtranslate.qt.hotkeys, so Analysis needs it
-        # listed or the bundle has no hotkeys at all.
-        'qtranslate.macos_hotkeys',
     ],
     hookspath=[],
     hooksconfig={},
