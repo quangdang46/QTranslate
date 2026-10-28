@@ -139,19 +139,16 @@ class WindowsAdapter:
 class MacOSAdapter:
     """The platform pieces that need no Win32: clipboard, paths.
 
-    The Win32-only halves (the global-hotkey hook, the low-level mouse
-    hook, the clipboard sequence counter, SAPI speech) stay unavailable
-    honestly -- a caller that asks for one still gets the
-    ``NotImplementedError``, the same as before. But the two pieces that
-    are pure Python work everywhere: ``pyperclip`` reads and writes the
-    clipboard on macOS too, and the per-user folder is
-    ``~/.config/QTranslate`` (what ``app_data_dir()`` already resolves
-    to off Windows). Extensions therefore resolve and load on macOS;
-    only the Win32 capture hooks do not.
+    The Win32-only halves (the low-level mouse hook, the clipboard
+    sequence counter, SAPI speech) stay unavailable honestly on macOS;
+    global hotkeys may work if Accessibility is granted and the keyboard
+    package is available, so report hotkey as available on macOS to allow
+    best-effort registration.
     """
 
     clipboard = Capability.AVAILABLE
     paths = Capability.AVAILABLE
+    hotkey = Capability.AVAILABLE
 
     def read_text(self):
         try:

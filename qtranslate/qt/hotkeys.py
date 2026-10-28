@@ -51,11 +51,16 @@ def install(app) -> list:
     """
     keyboard = _keyboard()
     if keyboard is None:
-        # `keyboard` needs a desktop session (and admin rights on
-        # Windows); without it there are no global hotkeys, which is
-        # the same degradation native's own code path has. Off Windows
-        # it is not even imported: on macOS the import aborts the
-        # process when the Accessibility permission is missing.
+        # Try to import directly on macOS if possible (may require
+        # Accessibility permission)
+        try:
+            import sys
+            if sys.platform == "darwin":
+                import keyboard as _kb
+                keyboard = _kb
+        except Exception:
+            keyboard = None
+    if keyboard is None:
         return []
 
     from qtranslate import config
