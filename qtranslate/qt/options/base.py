@@ -102,14 +102,21 @@ class OptionsBase(Base):
         ry, x0, x1 = ch["rule"]
         hline(self, ry, x0, x1)
         hline(self, ry + 1, x0, x1 - 1, WINDOW)
+        self._btn_apply = None
         for text, (bx, by, bw, shadow) in ch["buttons"].items():
             b = button(self, bx, by, bw, text, shadow=shadow)
-            if text in ("OK", "Cancel"):
+            if text == "OK":
+                b.clicked.connect(self._on_ok)
+            elif text == "Cancel":
                 b.clicked.connect(self.close)
-            else:
-                # Apply is drawn like the others but its label is grey:
-                # the native greys the label, not the whole button.
-                b.setStyleSheet("color:%s" % DIM)
+            elif text == "Apply":
+                b.clicked.connect(self._on_apply)
+                self._btn_apply = b
+                # Make it clickable even if visually dim; native greys label
+                try:
+                    b.setStyleSheet("color:%s" % TEXT)
+                except Exception:
+                    pass
 
     def _paint_rows(self):
         """Repaint the sidebar highlight for the current page."""
@@ -172,6 +179,26 @@ class OptionsBase(Base):
             self.ORIGIN, self.SIZE = saved_origin, saved_size
             self.CHROME = saved_chrome
         self._paint_rows()
+
+    def _on_ok(self):
+        try:
+            self._on_apply()
+        except Exception:
+            pass
+        self.close()
+
+    def _on_apply(self):
+        try:
+            from qtranslate import config as _C
+            # Trigger a save if any page wants to; most changes go through
+            # direct config writes already. Just ensure config is persisted.
+            try:
+                cfg = _C.load()
+                _C.save(cfg)
+            except Exception:
+                pass
+        except Exception:
+            pass
 
     def _goto(self, page_name):
         """Switch to another page: rebuild the body in place."""
