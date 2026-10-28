@@ -112,7 +112,10 @@ class OptionsBase(Base):
             elif text == "Apply":
                 b.clicked.connect(self._on_apply)
                 self._btn_apply = b
-                # Make it clickable even if visually dim; native greys label
+                try:
+                    b.setEnabled(True)
+                except Exception:
+                    pass
                 try:
                     b.setStyleSheet("color:%s" % TEXT)
                 except Exception:

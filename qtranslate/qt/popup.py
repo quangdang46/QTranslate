@@ -513,17 +513,14 @@ class PopupWindow(QWidget):
             _ap = _C.load().get("Appearance", {})
         except Exception:
             _ap = {}
-        if _ap.get("PopupAutoFocus", False):
-            try:
-                self.activateWindow()
-                self.raise_()
-                self.setFocus(Qt.ActiveWindowFocusReason)
-            except Exception:
-                pass
-        else:
+        try:
+            self.raise_()
+            self.activateWindow()
+            self.setFocus(Qt.ActiveWindowFocusReason)
+        except Exception:
             try:
                 self.raise_()
-                self.activateWindow()
+                self.show()
             except Exception:
                 pass
         try:

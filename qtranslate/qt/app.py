@@ -1120,6 +1120,7 @@ class QtApp:
         def work():
             try:
                 from qtranslate import selection
+                text = ""
                 try:
                     text = (selection.copy_selection() or "").strip()
                 except Exception:
@@ -1136,7 +1137,8 @@ class QtApp:
                 except Exception:
                     return
                 try:
-                    self._on_ui(lambda: self.show_translation(text, getattr(res, 'text', '') or ''))
+                    out = getattr(res, 'text', '') or ''
+                    self._on_ui(lambda t=text, o=out: self.show_translation(t, o))
                 except Exception:
                     try:
                         self.show_translation(text, getattr(res, 'text', '') or '')

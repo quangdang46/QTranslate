@@ -146,9 +146,9 @@ class MainWindow(Base):
         self.cmb_src.setStyleSheet("QComboBox{padding-left:10px;}")
         self.btn_swap = button(self, 223, 217, 27, "")
         icon(self, 228, 220, "ui_icons", "swap")
-        self.cmb_tgt = combo(self, 252, 217, 177, "Vietnamese", 21,
+        self.cmb_tgt = combo(self, 250, 217, 177, "Vietnamese", 21,
                              values=app.target_names())
-        self.cmb_tgt.setStyleSheet("QComboBox{padding-left:8px;}")
+        self.cmb_tgt.setStyleSheet("QComboBox{padding-left:10px;}")
         self.btn_go = button(self, 434, 217, 73, "Translate", 22)
         hline(self, 242, 4, 512)
 
