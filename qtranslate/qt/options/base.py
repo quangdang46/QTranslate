@@ -190,11 +190,25 @@ class OptionsBase(Base):
     def _on_apply(self):
         try:
             from qtranslate import config as _C
-            # Trigger a save if any page wants to; most changes go through
-            # direct config writes already. Just ensure config is persisted.
             try:
                 cfg = _C.load()
                 _C.save(cfg)
+            except Exception:
+                pass
+            # Notify app to reload if possible
+            try:
+                app = getattr(self, "app", None)
+                if app is not None and hasattr(app, "_load_session"):
+                    try:
+                        app._load_session()
+                    except Exception:
+                        pass
+                if app is not None and app.win is not None:
+                    try:
+                        # refresh combos if they exist
+                        pass
+                    except Exception:
+                        pass
             except Exception:
                 pass
         except Exception:

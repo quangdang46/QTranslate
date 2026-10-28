@@ -474,16 +474,57 @@ class QtApp:
         self.win.src.clear()
 
     def on_swap(self):
-        a, b = self.win.cmb_src.currentText(), self.win.cmb_tgt.currentText()
-        self.win.cmb_src.setCurrentText(b)
-        self.win.cmb_tgt.setCurrentText(a)
-        self.source, self.target = self._code_of(b), self._code_of(a)
+        try:
+            a, b = self.win.cmb_src.currentText(), self.win.cmb_tgt.currentText()
+            self.win.cmb_src.blockSignals(True)
+            self.win.cmb_tgt.blockSignals(True)
+            self.win.cmb_src.setCurrentText(b)
+            self.win.cmb_tgt.setCurrentText(a)
+            self.win.cmb_src.blockSignals(False)
+            self.win.cmb_tgt.blockSignals(False)
+            self.source, self.target = self._code_of(b), self._code_of(a)
+            self._persist_language()
+        except Exception:
+            try:
+                a, b = self.win.cmb_src.currentText(), self.win.cmb_tgt.currentText()
+                self.source, self.target = self._code_of(b), self._code_of(a)
+                self._persist_language()
+            except Exception:
+                pass
+
+    def _persist_language(self):
+        try:
+            config, _engine, _registry = self._core()
+            cfg = config.load() or {}
+            general = cfg.setdefault("General", {})
+            # Save language indices as native expects
+            from qtranslate.services.google_translate import SUPPORTED_LANGS
+            table = list(SUPPORTED_LANGS)
+            try:
+                general["LanguageFrom"] = table.index(self.source)
+            except Exception:
+                pass
+            try:
+                general["LanguageTo"] = table.index(self.target)
+            except Exception:
+                pass
+            config.save(cfg)
+        except Exception:
+            pass
 
     def set_source_by_name(self, name):
         self.source = self._code_of(name)
+        try:
+            self._persist_language()
+        except Exception:
+            pass
 
     def set_target_by_name(self, name):
         self.target = self._code_of(name)
+        try:
+            self._persist_language()
+        except Exception:
+            pass
 
     def switch_service(self, name):
         self.service = name
