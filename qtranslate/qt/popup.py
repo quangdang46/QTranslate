@@ -25,7 +25,7 @@ hardcoded to a pixel count that assumes a short string.
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import QPoint, Qt, QTimer
 from PySide6.QtGui import QCursor, QFont, QGuiApplication, QPalette
 from PySide6.QtWidgets import QLabel, QWidget
 
@@ -528,21 +528,34 @@ class PopupWindow(QWidget):
             self.setWindowOpacity(_tr / 255.0 if 0 < _tr < 255 else 1.0)
         except Exception:
             pass
-        if _ap.get("PopupAutoPos", True):
-            try:
+        x = y = None
+        screen = None
+        try:
+            if _ap.get("PopupAutoPos", True):
                 p = QCursor.pos()
-                self.move(p.x() + 12, p.y() + 12)
-            except Exception:
-                pass
-        else:
-            try:
+                x, y = p.x() + 12, p.y() + 12
+                screen = QGuiApplication.screenAt(p)
+            else:
                 from qtranslate.placement import decode_placement
                 rc = decode_placement(
                     _C.load().get("General", {})
                     .get("WindowPopupPlacement", ""))
                 if rc:
                     x, y, _w, _h, _fl = rc
-                    self.move(x, y)
+                    screen = QGuiApplication.screenAt(QPoint(x, y))
+        except Exception:
+            pass
+        if x is not None and y is not None:
+            try:
+                if screen is None:
+                    screen = QGuiApplication.primaryScreen()
+                if screen is not None:
+                    from qtranslate.placement import clamp_window_position
+                    area = screen.availableGeometry()
+                    x, y = clamp_window_position(
+                        x, y, self.width(), self.height(),
+                        area.x(), area.y(), area.width(), area.height())
+                self.move(x, y)
             except Exception:
                 pass
         try:

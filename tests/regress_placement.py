@@ -66,6 +66,32 @@ ck("None decodes to None", P.decode_placement(None) is None)
 ck("garbage hex decodes to None",
    P.decode_placement("ZZZZ") is None)
 
+# --- popup position clamp -----------------------------------------------
+_clamp = getattr(P, "clamp_window_position", None)
+ck("screen-aware popup position clamp exists", callable(_clamp),
+   "popup placement must honor each screen's origin and work area")
+if callable(_clamp):
+    ck("bottom-right popup fits inside the primary work area",
+       _clamp(1900, 1000, 300, 120, 0, 0, 1920, 1080) == (1620, 960),
+       str(_clamp(1900, 1000, 300, 120, 0, 0, 1920, 1080)))
+    ck("negative-origin monitor keeps valid negative coordinates",
+       _clamp(-1900, -100, 200, 100, -1920, -120, 1920, 1080)
+       == (-1900, -100),
+       str(_clamp(-1900, -100, 200, 100, -1920, -120, 1920, 1080)))
+    ck("oversized popup anchors to work-area origin",
+       _clamp(20, 20, 2000, 1200, -1920, -120, 1920, 1080)
+       == (-1920, -120),
+       str(_clamp(20, 20, 2000, 1200, -1920, -120, 1920, 1080)))
+
+# Popup placement must call the pure helper using the screen that owns the
+# cursor or restored top-left point.
+_popup_src = io.open(os.path.join(ROOT, "qtranslate", "qt", "popup.py"),
+                     encoding="utf-8").read()
+ck("popup chooses the display containing its placement point",
+   "QGuiApplication.screenAt" in _popup_src)
+ck("popup placement clamps to the display work area",
+   "clamp_window_position" in _popup_src and "availableGeometry()" in _popup_src)
+
 # --- template constant --------------------------------------------------
 # The two DLU axes use DIFFERENT divisors: /4 horizontally, /8 vertically
 # (MapDialogRect). An earlier revision divided both by 4, which turned

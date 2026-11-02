@@ -37,3 +37,8 @@ dist-mac/
 # Local dev venv (created 2026-10-22 for user trial runs)
 .venv/
 sdksrc/*.egg-info/
+
+# Session reminder logs (cron job output, machine-local)
+cron_reminders.log
+cron_work.log
+reminders.log

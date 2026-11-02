@@ -34,6 +34,22 @@ def decode_placement(hexs: str):
     return None
 
 
+def clamp_window_position(x: int, y: int, window_width: int,
+                         window_height: int, screen_x: int, screen_y: int,
+                         screen_width: int, screen_height: int) -> tuple[int, int]:
+    """Keep a window inside one screen's work area, including negative origins.
+
+    Displays to the left of or above the primary screen use negative desktop
+    coordinates. Clamp relative to the selected screen's origin rather than
+    assuming the desktop starts at ``(0, 0)``. An oversized window is anchored
+    to the work area's top-left corner.
+    """
+    left, top = int(screen_x), int(screen_y)
+    max_x = left + max(0, int(screen_width) - int(window_width))
+    max_y = top + max(0, int(screen_height) - int(window_height))
+    return min(max(int(x), left), max_x), min(max(int(y), top), max_y)
+
+
 def encode_placement(x: int, y: int, w: int, h: int,
                      show: int = 1) -> str:
     """Tk geometry -> WINDOWPLACEMENT hex blob.

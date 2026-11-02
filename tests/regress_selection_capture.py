@@ -142,6 +142,19 @@ ck("Ctrl+Q copies the selection before translating",
    "hotkey_popup must not read a bare paste()")
 ck("Ctrl+Q still falls back to the clipboard",
    "_clipboard_text" in _pop)
+ck("Ctrl+Q uses the shared single-flight translation gate",
+   '_spawn_translation("popup", work)' in _pop
+   and '_spawn("popup", work)' not in _pop)
+_singleflight = _src.split("def _spawn_translation", 1)
+_singleflight = (_singleflight[1].split("def _start_translation", 1)[0]
+                 if len(_singleflight) == 2 else "")
+ck("single-flight gate drops overlapping requests and releases on exit",
+   "acquire(blocking=False)" in _singleflight
+   and "finally:" in _singleflight and "release()" in _singleflight)
+ck("Ctrl+Q displays the provider that actually answered",
+   "provider_used" in _pop and "show_translation(t, o, p)" in _pop)
+ck("Ctrl+Q never updates widgets directly from its worker",
+   "self.show_translation(\n                            text," not in _pop)
 ck("Alt+W (replace selection) reads the selection too",
    "selection.copy_selection" in
    _src.split("def hotkey_replace_selection", 1)[1]

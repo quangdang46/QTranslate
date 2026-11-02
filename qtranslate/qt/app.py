@@ -163,6 +163,8 @@ class QtApp:
         # Alt+W, the clipboard hotkey), so ``wait_for_translation`` can
         # wait for all of them rather than one bookkeeping slot.
         self._threads = []
+        import threading
+        self._translation_lock = threading.Lock()
         # The extension manager, once the user extensions are loaded.
         # It carries the UI and theme contributions.
         self.ext_manager = None
@@ -390,6 +392,25 @@ class QtApp:
         thread.start()
         return thread
 
+    def _spawn_translation(self, name, work):
+        """Run at most one selection/translation request at a time."""
+        lock = self._translation_lock
+        if not lock.acquire(blocking=False):
+            return False
+
+        def guarded_work():
+            try:
+                work()
+            finally:
+                lock.release()
+
+        try:
+            self._spawn(name, guarded_work)
+        except Exception:
+            lock.release()
+            return False
+        return True
+
     def _start_translation(self, text, on_done):
         """Run one translation off the UI thread, then hand back the result.
 
@@ -418,8 +439,7 @@ class QtApp:
             except Exception:
                 pass
 
-        self._spawn("translate", work)
-        return True
+        return self._spawn_translation("translate", work)
 
     def wait_for_translation(self, timeout=10.0):
         """Block until every in-flight background request has been applied.
@@ -1177,10 +1197,13 @@ class QtApp:
                     return
                 try:
                     out = getattr(res, 'text', '') or ''
-                    self._on_ui(lambda t=text, o=out: (lambda: self.show_translation(t, o))())
+                    provider = (getattr(res, 'provider_used', '')
+                                or self.service)
+                    self._on_ui(lambda t=text, o=out, p=provider:
+                                self.show_translation(t, o, p))
                 except Exception:
                     try:
-                        self.show_translation(text, getattr(res, 'text', '') or '')
+                        _dbg("hotkey_popup could not queue result")
                     except Exception:
                         pass
             except Exception:
@@ -1191,7 +1214,7 @@ class QtApp:
                 return
 
         try:
-            self._spawn("popup", work)
+            self._spawn_translation("popup", work)
         except Exception:
             pass
 
@@ -1227,7 +1250,7 @@ class QtApp:
                 return
             self._on_ui(lambda: self._show_replace(text, res))
 
-        self._spawn("replace", work)
+        self._spawn_translation("replace", work)
 
     def _show_replace(self, text, res):
         """Apply a finished Alt+W translation (UI thread)."""

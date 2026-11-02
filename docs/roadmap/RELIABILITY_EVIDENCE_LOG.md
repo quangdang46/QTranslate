@@ -1,0 +1,34 @@
+# Reliability Recovery Evidence Log
+
+Checked: 2026-10-31. Evidence types are kept separate: user report, source
+inspection, automated test, desktop observation, and external reference.
+
+| ID | Claim | Source and type | Observation | Confidence / limit |
+|---|---|---|---|---|
+| `E-001` | Ctrl+Q currently produces no response or popup after selection. | User report in this conversation. | Reported for both Windows and macOS. | High confidence as a report; no reproduction supplied yet. |
+| `E-002` | The current bundle's entry point is `start_qt.py`. | `qtranslate.spec`, `tools/build_bundle.py`; source inspection. | Both specify the PySide6 front end as the sole packaged entry point. | High for the inspected branch; does not identify the user's installed build. |
+| `E-003` | The default popup binding is Ctrl+Q. | `qtranslate/config.py::default_config`, `hotkey_combo`; source inspection. | `HotKeyPopupWindow` defaults to code `593` (`0x251`) and decodes to `ctrl+q`. | High for defaults; user settings may override or disable it. |
+| `E-004` | Hotkey install checks the global enable setting and selects a platform backend. | `qtranslate/qt/hotkeys.py`, `qtranslate/platforms.py`; source inspection. | Disabled hotkeys return without registration. Windows uses `keyboard`; macOS chooses Carbon. | High for current source; no live backend result. |
+| `E-005` | The macOS callback reads the event's direct-object parameter. | `qtranslate/macos_hotkeys.py`, commit `e0ac592`; source and commit inspection. | The code reads the event hotkey ID using `kEventParamDirectObject`. | High for code state; Carbon delivery remains unverified on the user's package. |
+| `E-006` | The action chain performs selection copy, translation, and UI dispatch. | `qtranslate/qt/app.py::hotkey_popup`; source inspection. | Worker reads `selection.copy_selection()`, falls back to clipboard, translates, then queues `show_translation()`. | High for intended source path; not runtime proof. |
+| `E-007` | Existing tests exercise seams but not a real global hotkey. | `tests/regress_qt_features.py`, `tests/regress_selection_capture.py`, `tests/regress_hotkey_coverage.py`; test inspection. | Tests substitute the selector, translator, popup, and/or registration backend. | High for the inspected tests; OS delivery and external-app popup remain unproven. |
+| `E-008` | The current app has diagnostic traces that can localize part of the failure. | `qtranslate/qt/hotkeys.py`, `qtranslate/macos_hotkeys.py`, `qtranslate/qt/app.py`; source inspection. | Hotkey log records registration metadata; action trace begins at `hotkey_popup()` and records capture/translation status. | High for paths and fields; no logs from either reported attempt were reviewed. |
+| `E-009` | The current worktree contains pre-existing edits. | `git status --short --branch`; repository inspection. | `.gitignore`, `qtranslate/placement.py`, `qtranslate/qt/app.py`, `qtranslate/qt/popup.py`, `tests/regress_placement.py`, and `tests/regress_selection_capture.py` are modified. | High; this plan does not alter those paths. |
+| `E-010` | Existing documentation disagrees about the shipped UI entry point. | `docs/roadmap/PROJECT_INVENTORY.md`, `start_qt.py`, `qtranslate.spec`, `tools/build_bundle.py`; source inspection. | The inventory describes Tk as shipped, while the spec and bundle builder name Qt as the sole front end. | High for the contradiction; requires a later documentation refresh. |
+| `E-011` | Upstream reports include hotkey conflicts, modifier contamination, stale input, and popup placement issues. | Upstream changelog, issue links, source and tests in `UPSTREAM_REFERENCE_AUDIT.md`. | These are useful test-design prompts. | High that upstream reports exist; they do not establish matching Python defects. |
+| `E-012` | No real Windows/macOS reproduction is available in this investigation. | Current session environment and reviewed evidence. | Current host is macOS 25.4; no Windows desktop was used. Earlier session notes record a Qt test skip due to missing PySide6. | High for this investigation; earlier test output should be rerun before implementation. |
+| `E-013` | Current host configuration is ready for Ctrl+Q, but the app cannot run from source in this environment. | Read-only runtime probe on 2026-10-31. | `EnableHotKeys` is true, configured combo is `ctrl+q`, and Carbon is available. PySide6 is not importable; the `keyboard` package is also absent (expected not to be used on macOS). | High for this host's config and installed modules; does not identify the user's package or prove live dispatch. |
+| `E-014` | The local macOS hotkey log records successful registration, but not an event from the reported attempt. | `~/.qtranslate_hotkeys.log`, last modified 2026-10-28 21:40:47; `/tmp/qt_mouse_debug.log` absent. | The log records `InstallEventHandler -> 0` and accepted `ctrl+q`/`alt+w` bindings. It contains no event-handler or callback lines. The log predates the report and is not correlated to its build or reproduction. | High for log contents; insufficient to claim dispatch failure or root cause. |
+| `E-015` | Focused offline hotkey/capture checks pass on this checkout. | Commands run 2026-10-31: `regress_hotkey_decode.py` (10), `regress_hotkey_coverage.py` (6), `regress_hotkey_option_keys.py` (9), `regress_selection_capture.py` (19). | All four exited successfully. `regress_qt_features.py` skipped because PySide6 is unavailable. `git diff --check` also exited successfully. | High for these checks only; none proves a real OS event or popup. |
+| `E-016` | This host exposes the macOS APIs needed for a scoped Accessibility check and Command+C event injection. | Read-only `ctypes` symbol probe on 2026-10-31. | `AXIsProcessTrusted`, `AXIsProcessTrustedWithOptions`, `kAXTrustedCheckOptionPrompt`, `CGEventCreateKeyboardEvent`, `CGEventSetFlags`, and `CGEventPost` resolve. The current process is trusted, which does not establish trust for `QTranslate.app`. | High for symbol availability only; no prompt or key event was triggered. |
+| `E-017` | The user approved a macOS Ctrl+Q permission policy. | User answer on 2026-10-31. | Request Accessibility only from Ctrl+Q, synthesize Command+C, and do not log copied content. | High for the stated decision; packaged permission and real selection capture still require macOS acceptance. |
+
+## What would upgrade the evidence
+
+- `E-001`: preserve the report and add a reproducible artifact-bound case.
+- `E-002` through `E-006`: run the exact package, do not infer runtime behavior.
+- `E-007`: add or perform an OS-level integration acceptance, separate from
+  unit tests.
+- `E-008`: review only redacted metadata logs from both platforms.
+- `E-010`: update the canonical inventory and current-state docs from the
+  actual release artifacts.

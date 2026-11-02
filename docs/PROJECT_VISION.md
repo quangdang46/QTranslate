@@ -21,6 +21,20 @@ Agreeing on D1–D20, or any future document edit, is Phase B work and does
 **not**, by itself, authorize Phase C. The Gate is a separate, explicit act
 tied to RE coverage — not to documentation tidiness.
 
+### Scoped exception approved 2026-10-31
+
+The operator approved a **single, bounded exception** to Phase C for the
+Ctrl+Q runtime-reliability work in
+`docs/roadmap/RELIABILITY_RECOVERY_PLAN.md`, while accepting the unresolved G9
+risk. This permits diagnosis, focused regression tests, and the smallest
+production changes directly required to restore Ctrl+Q on Windows and macOS.
+
+This exception does **not** close G9, approve the visual-fidelity result, or
+open Phase C for unrelated features, refactors, packaging, or upstream parity.
+No cross-platform success claim is allowed without real acceptance on both
+operating systems. After the Ctrl+Q slice, all other implementation remains
+blocked by the normal Gate.
+
 ## 1. Why this project exists
 
 The starting point is not "reimplement QTranslate for fun". It is three real
