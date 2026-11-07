@@ -21,7 +21,7 @@ Ctrl+Q and current-feature reliability plan, not a full repository audit.
   `UPSTREAM_REFERENCE_AUDIT.md`.
 - Git status and current HEAD. Existing modified files were not changed.
 
-There is no repository-root `AGENTS.md` in this working tree.
+There is no repository-root agent guide file in this working tree.
 
 ## Confirmed current path
 

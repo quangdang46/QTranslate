@@ -46,6 +46,11 @@ from qtranslate.services import promt as _promt
 from qtranslate.services import babylon as _babylon
 from qtranslate.services import dictionary as _dict
 from qtranslate.services import spell as _spell
+from qtranslate.services import mymemory as _mymemory
+from qtranslate.services import libretranslate as _libretranslate
+from qtranslate.services import reverso as _reverso
+from qtranslate.services import mozhi as _mozhi
+from qtranslate.services import ai_translate as _ai_translate
 from qtranslate.session import bing_translate as _bing_tr
 
 
@@ -95,6 +100,36 @@ def _t_babylon(t, sl, tl):
     return _babylon.translate(t, sl, tl)
 
 
+def _t_mymemory(t, sl, tl):
+    # No ServicesOrder id -- joins after the native order, like an
+    # extension provider (.tmp's mymemory-services plugin port).
+    return _mymemory.translate(t, sl, tl)
+
+
+def _t_libretranslate(t, sl, tl):
+    # .tmp's libretranslate-local-translator plugin port; instance URL
+    # and key come from General.LibreTranslateUrl/ApiKey.
+    return _libretranslate.translate(t, sl, tl)
+
+
+def _t_reverso(t, sl, tl):
+    # .tmp's reverso-services plugin port (cps.reverso.net free API).
+    return _reverso.translate(t, sl, tl)
+
+
+def _t_mozhi(t, sl, tl):
+    # .tmp's mozhi-services plugin port; instance/engine from
+    # General.Mozhi* keys.
+    return _mozhi.translate(t, sl, tl)
+
+
+def _t_aitranslate(t, sl, tl):
+    # .tmp's ai-translator plugin port (OpenAI-compatible endpoint;
+    # General.Ai* settings). Appended LAST in TRANSLATORS so an
+    # unconfigured key fails fast without burning the fallback budget.
+    return _ai_translate.translate(t, sl, tl)
+
+
 def _t_promt(t, sl, tl):
     # Native: a failed provider request surfaces as the app-level error
     # string, not as translation text. Let exceptions propagate so
@@ -116,6 +151,11 @@ TRANSLATORS = {
     "microsoft": _t_bing,
     "promt": _t_promt,
     "babylon": _t_babylon,
+    "mymemory": _t_mymemory,
+    "libretranslate": _t_libretranslate,
+    "reverso": _t_reverso,
+    "mozhi": _t_mozhi,
+    "ai-translate": _t_aitranslate,
 }
 
 DICTS = {
@@ -377,10 +417,14 @@ def router_order() -> list:
     # DisabledServices is a real gate, not a display hint: a disabled
     # provider must not serve the request NOR join the fallback chain
     # (the Services-page audit: checkboxes wrote config nothing read).
+    # DisabledServices entries may be numeric ids (native) or provider
+    # NAMES for id-less providers (extensions, plugin ports) -- a name
+    # entry disables that provider by name.
+    dis_names = {_C.SERVICE_NAMES.get(i, i) for i in dis}
     order = [_C.SERVICE_NAMES[i] for i in ids
              if i in _C.SERVICE_NAMES and i not in dis
-             and _C.SERVICE_NAMES[i] in table]
-    dis_names = {_C.SERVICE_NAMES[i] for i in dis if i in _C.SERVICE_NAMES}
+             and _C.SERVICE_NAMES[i] in table
+             and _C.SERVICE_NAMES[i] not in dis_names]
     for name in table:
         if name not in order and name not in dis_names:
             order.append(name)

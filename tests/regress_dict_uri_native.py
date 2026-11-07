@@ -44,7 +44,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PAYLOAD = os.path.join(ROOT, "docs", "review", "artifacts",
                        "nsis_payload_unpacked.bin")
 if not os.path.exists(PAYLOAD):
-    print("SKIP: recovered payload not present" % PAYLOAD)
+    print("SKIP: recovered payload not present: " + PAYLOAD)
     raise SystemExit(0)
 
 TS = open(PAYLOAD, "rb").read().decode("utf-8", "replace")

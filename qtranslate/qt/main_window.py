@@ -17,7 +17,8 @@ from __future__ import annotations
 import os
 
 from PySide6.QtCore import Qt, QSize, QEvent, QTimer
-from PySide6.QtGui import QAction, QFont, QIcon, QKeySequence, QShortcut
+from PySide6.QtGui import (QAction, QColor, QFont, QIcon, QKeySequence,
+                           QPalette, QShortcut)
 from PySide6.QtWidgets import (QComboBox, QLabel, QMenu, QPushButton,
                                QTextEdit)
 
@@ -116,11 +117,40 @@ class MainWindow(Base):
         super().__init__()
         self.app = app
         self.setWindowTitle("QTranslate")
+        self.setAcceptDrops(True)
+        # Native's main window is user-resizable and remembers its
+        # geometry between runs (the main-window audit). ``Base`` pins
+        # the client to SIZE; lift the ceiling, keep the floor, and
+        # restore whatever frame the last run saved.
+        self.setMinimumSize(*self.SIZE)
+        self.setMaximumSize(16777215, 16777215)
+        self._restore_geometry()
         self._build()
 
     # ---------------------------------------------------------------- build
     def _build(self):
         app = self.app
+        # Appearance.ColorBack/ColorText/ColorFrame are THIS window's
+        # colours (native's defaults: back 0xf0f0f0, text black, frame
+        # 0x7a6c5d) -- the Options page's three swatches. They are NOT
+        # the popup's; popup.py keeps its own theme-derived colours.
+        try:
+            from qtranslate_style import popup_colors
+            _cbg, _ctx, _cfr = popup_colors()
+        except Exception:
+            _cbg = _ctx = _cfr = None
+        self._mw_bg = _cbg or "#f0f0f0"
+        self._mw_text = _ctx or "#000000"
+        self._mw_frame = _cfr or "#7e7e7e"
+        try:
+            _pal = self.palette()
+            _pal.setColor(QPalette.ColorRole.Window,
+                          QColor(self._mw_bg))
+            _pal.setColor(QPalette.ColorRole.WindowText,
+                          QColor(self._mw_text))
+            self.setPalette(_pal)
+        except Exception:
+            pass
         # ---- nav row (capture y 31..58) ---------------------------------
         # The back/forward pair is ONE joined button with a divider, and
         # the two arrows are the icons recovered from the binary.
@@ -131,15 +161,15 @@ class MainWindow(Base):
         self.btn_nav = button(self, 493, 37, 16, "")
         self.btn_nav.setObjectName("navmenu")
         icon(self, 493, 37, "ui_icons", "menu")
-        hline(self, 59, 4, 512)
+        hline(self, 59, 4, 512, self._mw_frame)
 
         # ---- source pane (capture y 59..211) ----------------------------
         # A 1px #7e7e7e frame around a white edit. The text starts three
         # pixels inside the frame; the scrollbar is 17px wide and its
         # thumb 2px, at the far right of the pane.
         rect(self, 5, 61, 507, 150, "#ffffff", "srcbg")
-        vline(self, 4, 59, 212)
-        vline(self, 511, 60, 212)
+        vline(self, 4, 59, 212, self._mw_frame)
+        vline(self, 511, 60, 212, self._mw_frame)
         pane_family, pane_pts, pane_px = _pane_font()
         self.src = QTextEdit()
         self.src.setObjectName("pane")
@@ -150,18 +180,19 @@ class MainWindow(Base):
         # pane -- native's pane has no border of its own, only the frame
         # drawn around it.
         self.src.setStyleSheet(
-            "QTextEdit#pane{background:transparent;border:none;color:#000;"
+            "QTextEdit#pane{background:transparent;border:none;color:%s;"
             'font-family:"%s";font-size:%dpx;'
             "QScrollBar:vertical{background:#f0f0f0;width:16px;margin:0;}"
             "QScrollBar::handle:vertical{background:%s;margin:0 7px;"
-            "min-height:20px;}}" % (pane_family, pane_px, THUMB))
+            "min-height:20px;}}"
+            % (self._mw_text, pane_family, pane_px, THUMB))
         put(self, self.src, 7, 61, 504, 150)
         self.src.document().setDefaultFont(QFont(pane_family, pane_pts))
         self.src.document().setDocumentMargin(0)
         self.src.setPlainText(default_source_text())
         icon(self, 451, 190, "ui_icons", "mic")
         icon(self, 473, 190, "ui_icons", "headphone")
-        hline(self, 211, 4, 512)
+        hline(self, 211, 4, 512, self._mw_frame)
 
         # ---- the splitter's grip (three dots under the rule) ------------
         for x in (252, 256, 260):
@@ -185,12 +216,12 @@ class MainWindow(Base):
                              values=app.target_names())
         self.cmb_tgt.setStyleSheet("QComboBox{padding-left:10px;}")
         self.btn_go = button(self, 434, 217, 73, "Translate", 22)
-        hline(self, 242, 4, 512)
+        hline(self, 242, 4, 512, self._mw_frame)
 
         # ---- result pane (capture y 242..392) ----------------------------
         rect(self, 5, 244, 507, 148, "#ffffff", "resbg")
-        vline(self, 4, 242, 393)
-        vline(self, 511, 243, 393)
+        vline(self, 4, 242, 393, self._mw_frame)
+        vline(self, 511, 243, 393, self._mw_frame)
         self.out = QTextEdit()
         self.out.setObjectName("pane")
         self.out.setAcceptRichText(False)
@@ -198,15 +229,15 @@ class MainWindow(Base):
         self.out.setReadOnly(True)
         self.out.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.out.setStyleSheet(
-            "#pane{background:transparent;border:none;color:#000;"
+            "#pane{background:transparent;border:none;color:%s;"
             'font-family:"%s";font-size:%dpx;}'
-            % (pane_family, pane_px))
+            % (self._mw_text, pane_family, pane_px))
         put(self, self.out, 8, 245, 503, 147)
         self.out.document().setDefaultFont(QFont(pane_family, pane_pts))
         self.out.document().setDocumentMargin(0)
         self.out.setPlainText(EMPTY_RESULT)
         icon(self, 473, 372, "ui_icons", "headphone")
-        hline(self, 392, 4, 512)
+        hline(self, 392, 4, 512, self._mw_frame)
         hline(self, 393, 5, 511, "#ffffff")
 
         # ---- the provider strip (capture y 397..418) --------------------
@@ -297,6 +328,41 @@ class MainWindow(Base):
             widget.setVisible(middle)
         for widget in getattr(self, "tabs", ()) or ():
             widget.setVisible(services)
+        # The pane's DRAWN chrome hides with it too: the 1px rules, the
+        # pane-background rects and the pane icons are plain child
+        # widgets, and hiding only the edits left them floating over
+        # empty space (the pane-toggle audit). Band each child by its
+        # vertical centre in capture coordinates; the nav row (cy < 55)
+        # and the widgets already handled above always stay.
+        try:
+            from PySide6.QtWidgets import QWidget as _W
+            oy = self.ORIGIN[1]
+            keep = {w for w in (
+                self.src, self.out, getattr(self, "cmb_src", None),
+                getattr(self, "cmb_tgt", None), getattr(self, "btn_new",
+                None), getattr(self, "btn_swap", None),
+                getattr(self, "btn_go", None), self.btn_back,
+                self.btn_fwd, self.lbl_service, self.btn_nav)
+                if w is not None}
+            keep.update(getattr(self, "tabs", ()) or ())
+            keep.update((getattr(self, "panels", {}) or {}).values())
+            for child in self.children():
+                if not isinstance(child, _W) or child in keep:
+                    continue
+                try:
+                    cy = child.y() + child.height() // 2 + oy
+                except Exception:
+                    continue
+                if cy < 55:
+                    continue                    # nav row: always shown
+                if cy <= 241:
+                    child.setVisible(top)
+                elif cy <= 396:
+                    child.setVisible(middle)
+                else:
+                    child.setVisible(services)
+        except Exception:
+            pass
 
     # The panel strips: pane slot -> the rect the strip is docked at, in
     # the window's client coordinates. The top pane's strip stops short
@@ -471,8 +537,13 @@ class MainWindow(Base):
         to shoulder; the LAST one is stretched to the right edge of the
         window, which is why it can show "DeepL" where "Baidu" has to be
         cut down to "Ba..."."""
-        x = 4 + 56 * i
-        w = 512 - x if i == total - 1 else 56
+        # Native's nine sit in fixed 56px slots; id-less providers
+        # (the .tmp plugin ports, extension providers) join after them,
+        # so past nine the strip subdivides its 508px evenly instead of
+        # running off the window's right edge.
+        slot = 56 if total <= 9 else max(30, 508 // total)
+        x = 4 + slot * i
+        w = 512 - x if i == total - 1 else slot
         b = QPushButton()
         b.setFocusPolicy(Qt.NoFocus)
         b.setObjectName("service")
@@ -490,8 +561,9 @@ class MainWindow(Base):
         """Native cuts a service name that does not fit its button down
         to two characters and an ellipsis."""
         from qtranslate import config
-        full = config.SERVICE_DISPLAY.get(
-            {v: k for k, v in config.SERVICE_NAMES.items()}.get(name), name)
+        sid = {v: k for k, v in config.SERVICE_NAMES.items()}.get(name)
+        full = config.SERVICE_DISPLAY.get(sid) \
+            or config.EXTRA_SERVICE_DISPLAY.get(name) or name
         if self.fontMetrics().horizontalAdvance(full) <= width - 31:
             return full
         return full[:2] + "..."
@@ -692,9 +764,70 @@ class MainWindow(Base):
         except Exception:
             return {}
 
+    # ----------------------------------------------------- window geometry
+    def _restore_geometry(self):
+        try:
+            from PySide6.QtCore import QByteArray
+            from qtranslate import config
+            cfg = config.load() or {}
+            general = cfg.get("General", {}) or {}
+            raw = general.get("WindowGeometry")
+            # One-time salvage: an earlier build stored the frame under
+            # a dedicated "Ui" section; move it into General and drop
+            # the section so Options.json keeps the native 20 + known
+            # additions (regress_options_roundtrip pins that set).
+            ui = cfg.get("Ui") or {}
+            if ui.get("MainWindowGeometry") and not raw:
+                raw = ui["MainWindowGeometry"]
+                general["WindowGeometry"] = raw
+                cfg["General"] = general
+            if "Ui" in cfg:
+                del cfg["Ui"]
+                try:
+                    config.save(cfg)
+                except Exception:
+                    pass
+            if raw:
+                self.restoreGeometry(QByteArray(raw))
+        except Exception:
+            pass
+
+    def _queue_geometry_save(self):
+        """Debounced save: resizes stream move/resize events, so write
+        the frame once the user stops dragging the corner."""
+        try:
+            from PySide6.QtCore import QTimer
+            if getattr(self, "_geo_timer", None) is None:
+                self._geo_timer = QTimer(self)
+                self._geo_timer.setSingleShot(True)
+                self._geo_timer.setInterval(500)
+                self._geo_timer.timeout.connect(self._write_geometry)
+            self._geo_timer.start()
+        except Exception:
+            pass
+
+    def _write_geometry(self):
+        try:
+            from qtranslate import config
+            cfg = config.load() or {}
+            cfg.setdefault("General", {})["WindowGeometry"] = \
+                bytes(self.saveGeometry().toBase64()).decode()
+            config.save(cfg)
+        except Exception:
+            pass
+
+    def resizeEvent(self, event):                 # noqa: N802 (Qt name)
+        super().resizeEvent(event)
+        self._queue_geometry_save()
+
+    def moveEvent(self, event):                   # noqa: N802 (Qt name)
+        super().moveEvent(event)
+        self._queue_geometry_save()
+
     def closeEvent(self, event):
         """General.MinimizeToTrayOnClose: native keeps running in the
         tray instead of quitting when the window closes."""
+        self._write_geometry()
         if self._tray_prefs().get("MinimizeToTrayOnClose", False):
             event.ignore()
             self.hide()
@@ -721,6 +854,94 @@ class MainWindow(Base):
         self.out.setPlainText(text or "")
         if back:
             self.app.render_back(back)
+        # .tmp SwapLanguagesUseCase refuses a blank result -- and the
+        # button itself goes dead with it, so the affordance matches
+        # the behaviour instead of inviting a click that no-ops.
+        try:
+            usable = bool((text or "").strip()) \
+                and (text or "").strip() != EMPTY_RESULT
+            self.btn_swap.setEnabled(usable)
+        except Exception:
+            pass
+
+    # ------------------------------------------------------------- drag & drop
+    # Native's main window accepts a dropped IMAGE for text recognition
+    # (the OCR audit's missing pipeline). An image file dropped on the
+    # window goes through the same ocr_bytes path the region picker
+    # uses; dropped plain text lands in the source pane instead.
+    def dragEnterEvent(self, event):               # noqa: N802 (Qt name)
+        try:
+            from PySide6.QtCore import QMimeData
+            mime = event.mimeData()
+            if mime.hasImage() or mime.hasUrls():
+                event.acceptProposedAction()
+                return
+            if mime.hasText():
+                event.acceptProposedAction()
+                return
+        except Exception:
+            pass
+        event.ignore()
+
+    def dropEvent(self, event):                    # noqa: N802 (Qt name)
+        try:
+            mime = event.mimeData()
+            app = self.app
+            # An image dragged straight from a browser/page arrives as
+            # QImage data, not a URL -- encode it the same way.
+            if mime.hasImage():
+                try:
+                    import io as _io
+                    img = mime.imageData().toImage()
+                    if not img.isNull():
+                        out = _io.BytesIO()
+                        img.save(out, "PNG")
+                        app.ocr_bytes(out.getvalue())
+                        event.acceptProposedAction()
+                        return
+                except Exception:
+                    pass
+            for url in mime.urls() or []:
+                path = url.toLocalFile() if hasattr(url, "toLocalFile") \
+                    else str(url)
+                if not path or not os.path.isfile(path):
+                    continue
+                ext = os.path.splitext(path)[1].lower()
+                if ext in (".png", ".jpg", ".jpeg", ".bmp", ".gif",
+                           ".tif", ".tiff", ".webp"):
+                    try:
+                        from PySide6.QtGui import QImage
+                        img = QImage(path)
+                        if not img.isNull():
+                            import io as _io
+                            out = _io.BytesIO()
+                            img.save(out, "PNG")
+                            app.ocr_bytes(out.getvalue())
+                            event.acceptProposedAction()
+                            return
+                    except Exception:
+                        continue
+                # A dropped TEXT file goes into the source pane; binary
+                # files that fail a strict decode are skipped rather
+                # than pasted in as mojibake.
+                try:
+                    with open(path, "rb") as f:
+                        raw = f.read(40000)
+                    text = raw.decode("utf-8")
+                    if not text.strip():
+                        continue
+                    self.src.setPlainText(text[:20000])
+                    event.acceptProposedAction()
+                    return
+                except (UnicodeDecodeError, OSError):
+                    continue
+            if mime.hasText():
+                self.src.setPlainText(mime.text()[:20000])
+                event.acceptProposedAction()
+                return
+        except Exception:
+            pass
+        event.ignore()
 
     def set_service_title(self, name: str):
         self.lbl_service.setText(name)

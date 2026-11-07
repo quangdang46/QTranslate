@@ -101,7 +101,10 @@ class AppearancePage(OptionsBase):
             lambda v: cfg_set("Appearance", "PopupTimeout",
                               int(v) if v.isdigit() else 0))
         label(self, 524, 212, "seconds")
-        label(self, 158, 235, "Transparency (0 - 90):")
+        # The stored value is a 0-255 alpha (popup.py divides by 255),
+        # NOT a percent -- the old "(0 - 90)" label invited values like
+        # 15, which render as ~6% opacity (the audit's finding).
+        label(self, 158, 235, "Transparency (0 - 255):")
         f_tr = field(self, 398, 226, 232, 22,
                      str(ap.get("Transparency", 217)))
         f_tr.editingFinished.connect(

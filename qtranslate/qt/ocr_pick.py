@@ -139,9 +139,19 @@ class RegionPicker(QWidget):
             r = self._rect()
             if r.width() < 5 or r.height() < 5:
                 return None
-            screen = QGuiApplication.primaryScreen()
-            return screen.grabWindow(self.winId(),
-                                     r.x(), r.y(), r.width(), r.height())
+            # Multi-monitor: the rect can land on a secondary display.
+            # grabWindow(0, ...) captures the screen it is called on in
+            # THAT screen's local coordinates, so translate the global
+            # rect into the containing screen's frame (the OCR audit's
+            # primary-screen-only grab).
+            screen = QGuiApplication.screenAt(r.center()) \
+                or QGuiApplication.primaryScreen()
+            off = screen.geometry().topLeft()
+            # winId 0 = the screen itself. self.winId() would capture
+            # the picker's own translucent dim layer, not the desktop.
+            return screen.grabWindow(0,
+                                     r.x() - off.x(), r.y() - off.y(),
+                                     r.width(), r.height())
         except Exception:
             return None
 
@@ -188,9 +198,12 @@ class RegionPicker(QWidget):
             result["done"] = True
 
         picker = RegionPicker(_picked)
-        screen = QGuiApplication.primaryScreen()
-        picker.setGeometry(screen.geometry())
-        picker.showFullScreen()
+        # virtualGeometry bounds EVERY screen, so the overlay covers
+        # secondary displays too -- primaryScreen().geometry() left
+        # them unpickable (the OCR audit).
+        vg = QGuiApplication.primaryScreen().virtualGeometry()
+        picker.setGeometry(vg)
+        picker.show()
         picker.raise_()
         picker.activateWindow()
         # The caller polls ``result`` on its own cadence; a modal dialog
@@ -201,8 +214,11 @@ class RegionPicker(QWidget):
 def grab_rect(rect: QRect) -> bytes:
     """The PNG bytes of a screen rectangle."""
     from PySide6.QtCore import QBuffer, QByteArray as _QBA
-    screen = QGuiApplication.primaryScreen()
-    pm = screen.grabWindow(0, rect.x(), rect.y(), rect.width(), rect.height())
+    screen = QGuiApplication.screenAt(rect.center()) \
+        or QGuiApplication.primaryScreen()
+    off = screen.geometry().topLeft()
+    pm = screen.grabWindow(0, rect.x() - off.x(), rect.y() - off.y(),
+                           rect.width(), rect.height())
     ba = _QBA()
     buf = QBuffer(ba)
     buf.open(QBuffer.WriteOnly)

@@ -125,12 +125,59 @@ def _extension_ocr(image_bytes, lang, api_key):
     return None
 
 
+def _macos_vision_ocr(image_bytes: bytes) -> str | None:
+    """Offline OCR through macOS Vision (the .tmp system-ocr plugin's
+    macOS half). Returns the recognized text, or None when Vision is
+    unavailable or finds nothing -- callers then fall back to the
+    cloud endpoint. Runs entirely on-device: no screenshot leaves the
+    machine when this path answers."""
+    try:
+        import Vision
+        from Foundation import NSData
+        nsdata = NSData.dataWithBytes_length_(image_bytes,
+                                               len(image_bytes))
+        handler = Vision.VNImageRequestHandler.alloc() \
+            .initWithData_options_(nsdata, {})
+        req = Vision.VNRecognizeTextRequest.alloc().init()
+        req.setRecognitionLevel_(
+            Vision.VNRequestTextRecognitionLevelAccurate)
+        req.setUsesLanguageCorrection_(True)
+        ok, _err = handler.performRequests_error_([req], None)
+        if not ok:
+            return None
+        lines = []
+        for obs in req.results() or []:
+            cands = obs.topCandidates_(1) or []
+            if cands:
+                lines.append(str(cands[0].string()))
+        text = "\n".join(lines).strip()
+        return text or None
+    except Exception:
+        return None
+
+
+def _offline_ocr(image_bytes: bytes) -> str | None:
+    """Platform offline recognizer, when one exists (macOS Vision;
+    Windows.Media.Ocr would slot in here for the Windows build)."""
+    import sys
+    if sys.platform == "darwin":
+        return _macos_vision_ocr(image_bytes)
+    return None
+
+
 def ocr_text(image_bytes: bytes, api_key: str = "helloworld",
              lang: str = "eng") -> str:
-    """Convenience: return just the parsed text of the first result."""
+    """Convenience: return just the parsed text of the first result.
+
+    Order: extension recognizers, then the platform OFFLINE engine
+    (macOS Vision -- private, no key, no network), then the ocr.space
+    cloud endpoint. An offline hit skips the cloud call entirely."""
     ext = _extension_ocr(image_bytes, lang, api_key)
     if ext is not None:
         return ext
+    off = _offline_ocr(image_bytes)
+    if off is not None:
+        return off
     obj = ocr_space(image_bytes, api_key, lang)
     try:
         return obj["ParsedResults"][0]["ParsedText"].strip()

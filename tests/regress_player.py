@@ -49,7 +49,7 @@ TTS.google_tts = lambda t, l, slow=False: (_calls.__setitem__("slow", slow),
 setattr(P, _ONLINE_PLAYER,
         lambda data, block=True: _calls.__setitem__("bytes", data))
 try:
-    used = P.play_text("hello", "vi")
+    used = P.play_text("hello", "vi", slow=False)
     ck("online success uses the platform player",
        used == _ONLINE_BACKEND, used)
     ck("mp3 bytes passed to the player", _calls.get("bytes") == b"MP3")
@@ -89,7 +89,7 @@ if _DARWIN:
     P._speak_darwin = _darwin_speak
     TTS.google_tts = _boom
     try:
-        used = P.play_text("xin chào", "vi")
+        used = P.play_text("xin chào", "vi", slow=False)
         ck("online failure falls back to the offline voice",
            used == "say", used)
         ck("offline voice receives the text",
@@ -114,7 +114,7 @@ else:
     TTS.google_tts = _boom
     SAPI.speak = _fake_speak
     try:
-        used = P.play_text("xin chào", "vi")
+        used = P.play_text("xin chào", "vi", slow=False)
         ck("online failure falls back to sapi", used == "sapi", used)
         ck("sapi receives the text", _seen.get("text") == "xin chào",
            repr(_seen.get("text")))

@@ -144,10 +144,11 @@ try:
         win.src.clear()
         win.out.clear()
         # .tmp SwapLanguagesUseCase: the target slot can never hold
-        # auto. With an auto source and nothing detected yet the swap is
-        # a no-op; with a detected source the detected language becomes
-        # the target.
+        # auto, and a BLANK result refuses the swap outright -- the
+        # early return fires before the auto-source check, so the
+        # pane needs a result for these cases to reach it.
         app.source, app.target = "auto", "vi"
+        win.out.setPlainText("translated")
         app._detected_src = ""
         app.on_swap()
         ck("Swap with auto source and no detection is a no-op",
@@ -157,6 +158,14 @@ try:
         app.on_swap()
         ck("Swap with auto source uses the detected language as target",
            (app.source, app.target) == ("vi", "en"),
+           str((app.source, app.target)))
+        # And the blank-result refusal itself: clear the pane, the
+        # pair must NOT move even with a concrete source.
+        win.out.clear()
+        app.source, app.target = "en", "vi"
+        app.on_swap()
+        ck("Swap with a blank result is a no-op",
+           (app.source, app.target) == ("en", "vi"),
            str((app.source, app.target)))
         app.set_target_by_name("Auto-Detect")
         ck("set_target_by_name never stores auto",
@@ -386,8 +395,13 @@ try:
            and saved.get("General", {}).get("MouseModeOn") is True,
            str(saved))
         app.toggle_mouse_enabled()
-        ck("the tray toggle OFF stops the capture hook",
-           any(c[0] == "stop" for c in calls), str(calls))
+        # The hook now stays installed with capture off: it also feeds
+        # click-outside dismissal for the popup in Ctrl+Q-only installs.
+        # The capture side is gated on the mode inside _mouse_selected.
+        ck("the tray toggle OFF keeps the hook (dismissal needs it)",
+           not any(c[0] == "stop" for c in calls), str(calls))
+        ck("capture is gated while the toggle is OFF",
+           app._mouse_mode_off(), "mode-off gate missing")
         ck("the toggle OFF is written to the config",
            saved.get("General", {}).get("MouseModeOn") is False, str(saved))
         app.toggle_mouse_enabled()   # back on for the mode-0 icon leg

@@ -85,7 +85,8 @@ HAVE_ARTIFACT = os.path.exists(PAYLOAD)
 
 # --- Google ------------------------------------------------------------
 g = listen_request(1) if HAVE_ARTIFACT else None
-ck("Google has a serviceListenRequest", g is not None)
+if HAVE_ARTIFACT:
+    ck("Google has a serviceListenRequest", g is not None)
 if g:
     ck("Google's path is /translate_tts?ie=UTF-8&q={0}&tl={1}&client=gtx&tk={2}",
        'format("/translate_tts?ie=UTF-8&q={0}&tl={1}&client=gtx&tk={2}"' in g,
@@ -99,7 +100,8 @@ if g:
 
 # --- Yandex ------------------------------------------------------------
 y = listen_request(11) if HAVE_ARTIFACT else None
-ck("Yandex has a serviceListenRequest", y is not None)
+if HAVE_ARTIFACT:
+    ck("Yandex has a serviceListenRequest", y is not None)
 if y:
     ck("Yandex's path is /tts?format=mp3&quality=hi&platform=web"
        "&application=translate&lang={0}&text={1}",
@@ -117,7 +119,8 @@ if y:
 
 # --- Baidu -------------------------------------------------------------
 b = listen_request(28) if HAVE_ARTIFACT else None
-ck("Baidu has a serviceListenRequest", b is not None)
+if HAVE_ARTIFACT:
+    ck("Baidu has a serviceListenRequest", b is not None)
 if b:
     ck("Baidu's path is /text2audio?lan={0}&ie=UTF-8&text={1}",
        'format("/text2audio?lan={0}&ie=UTF-8&text={1}"' in b, b[:200])
@@ -128,8 +131,9 @@ if b:
 
 # --- Papago has NO serviceListenRequest (its TTS is the web API) -------
 p = listen_request(30) if HAVE_ARTIFACT else None
-ck("Papago has no serviceListenRequest (TTS is the live web API)",
-   p is None)
+if HAVE_ARTIFACT:
+    ck("Papago has no serviceListenRequest (TTS is the live web API)",
+       p is None)
 
 # --- the port encodes the way native's encodeGetParam does ------------
 # The helpers take text and return a URL; they are checked through the

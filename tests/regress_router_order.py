@@ -48,7 +48,7 @@ src = io.open("qtranslate/registry.py", encoding="utf-8").read()
 import re
 m = re.search(r"TRANSLATORS = \{(.*?)\n\}", src, re.S)
 keys = re.findall(r'"([a-z-]+)":', m.group(1))
-ck("TRANSLATORS has 10 entries", len(keys) == 10, str(keys))
+ck("TRANSLATORS has 15 entries", len(keys) == 15, str(keys))
 ck("the view holds no dispatch table of its own",
    re.search(r"^\s*TRANSLATORS = \{", view_source(), re.M) is None
    and re.search(r"^\s*DICTS = \{", view_source(), re.M) is None,

@@ -31,7 +31,7 @@ from PySide6.QtGui import (QColor, QCursor, QFont, QGuiApplication,
 from PySide6.QtWidgets import QLabel, QTextEdit, QWidget
 
 from qtranslate_style import (ACCENT, POPUP_BORDER, POPUP_ICON, POPUP_TEXT,
-                             popup_colors, popup_frame_thickness,
+                             popup_frame_thickness,
                              popup_icon_mask, popup_pin_when_dragging)
 
 from . import icons
@@ -184,6 +184,16 @@ class _Spinner(QWidget):
         p.end()
 
 
+class _PopupText(QTextEdit):
+    """QTextEdit with the QLabel-style accessors callers expect."""
+
+    def text(self) -> str:
+        return self.toPlainText()
+
+    def setText(self, text: str):
+        self.setPlainText(text or "")
+
+
 class PopupWindow(QWidget):
     """The popup: a frameless tool window that sizes itself to its text."""
 
@@ -207,17 +217,15 @@ class PopupWindow(QWidget):
             self.setFocusPolicy(Qt.StrongFocus)
         except Exception:
             pass
-        # Appearance.ColorBack/ColorText/ColorFrame + frame thickness:
-        # the Options page's popup-colour swatches finally reach the
-        # widget (the appearance audit's pending consumers).
-        try:
-            _cbg, _ctx, _cfr = popup_colors()
-        except Exception:
-            _cbg = _ctx = _cfr = None
-        self._pop_bg = _cbg or popup_bg()
-        self._pop_text = _ctx or POPUP_TEXT
-        self._pop_icon = _ctx or POPUP_ICON
-        self._pop_frame = _cfr or POPUP_BORDER
+        # Appearance.ColorBack/ColorText/ColorFrame are the MAIN
+        # window's colours (docs/review/THEME_LOADER_AND_BGR_RETRACTION:
+        # "colour the main window"), NOT the popup's -- the popup's own
+        # colours come from the active theme. Feeding them here painted
+        # the popup with settings that were never meant for it.
+        self._pop_bg = popup_bg()
+        self._pop_text = POPUP_TEXT
+        self._pop_icon = POPUP_ICON
+        self._pop_frame = POPUP_BORDER
         try:
             self._pop_thick = popup_frame_thickness()
         except Exception:
@@ -248,8 +256,9 @@ class PopupWindow(QWidget):
         # AdvancedTextPane is read-only-but-selectable) and must SCROLL
         # when a long translation exceeds the screen -- the audit found
         # the QLabel version grew the window past the display with no
-        # way to reach the bottom.
-        self.lbl_text = QTextEdit("", self)
+        # way to reach the bottom. ``_PopupText`` adds the QLabel-style
+        # ``text()``/``setText()`` names the tests and older callers use.
+        self.lbl_text = _PopupText("", self)
         self.lbl_text.setReadOnly(True)
         self.lbl_text.setFrameShape(QTextEdit.NoFrame)
         self.lbl_text.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)

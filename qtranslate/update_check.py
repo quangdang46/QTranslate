@@ -81,13 +81,21 @@ def check_for_update(timeout: int = TIMEOUT_SECONDS) -> dict:
 
     Never raises for network/parse failures — the caller is a UI
     thread-adjacent worker and must always get a result to display.
+
+    ``timeout`` is retained for call-site compatibility; the effective
+    timeout is Options.json Internet.Timeout via the shared net layer.
     """
     req = urllib.request.Request(
         RELEASES_URL,
         headers={"Accept": "application/vnd.github+json",
                  "User-Agent": _USER_AGENT})
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        # Route through the shared net layer so the check honors
+        # Options.json Internet.Timeout and Proxy like every other
+        # request (the update-check audit: a raw urlopen ignored both,
+        # so a configured proxy or short timeout never applied here).
+        from qtranslate import common as _common
+        with _common.http_open(req) as resp:
             raw = resp.read()
     except urllib.error.HTTPError as exc:
         return _error("the update server answered HTTP %d" % exc.code)

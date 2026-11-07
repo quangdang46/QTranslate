@@ -348,7 +348,7 @@ class QtApp:
         for sid, key in config.SERVICE_NAMES.items():
             if key == name:
                 return config.SERVICE_DISPLAY.get(sid, name)
-        return name
+        return config.EXTRA_SERVICE_DISPLAY.get(name, name)
 
     def dictionary_names(self):
         """The dictionary services, in native's order."""
@@ -367,9 +367,29 @@ class QtApp:
             cfg = config.load()
             ids = config.services_order(cfg)
             disabled = set(cfg.get("DisabledServices", []))
+            # Entries may be numeric ids (native) or provider NAMES --
+            # id-less providers (extension-registered, the .tmp plugin
+            # ports) have no ServicesOrder id to disable by.
+            disabled_names = {config.SERVICE_NAMES.get(d, d)
+                              for d in disabled}
             names = [config.SERVICE_NAMES.get(i) for i in ids
                      if i not in disabled]
-            return [n for n in names if n in registry.TRANSLATORS]
+            names = [n for n in names
+                     if n in registry.TRANSLATORS
+                     and n not in disabled_names]
+            # Extension-registered providers have no ServicesOrder id --
+            # they join the strip AFTER the native order (the same
+            # "TRANSLATORS-appended" rule router_order uses for the
+            # fallback chain), deduped by callable identity so an alias
+            # never shows twice. Without this the strip could never
+            # select an extension provider: it stayed fallback-only.
+            seen = {id(registry.TRANSLATORS[n]) for n in names}
+            for n, fn in registry.TRANSLATORS.items():
+                if n in names or n in disabled_names or id(fn) in seen:
+                    continue
+                names.append(n)
+                seen.add(id(fn))
+            return names
         except Exception:
             return ["google", "microsoft", "promt", "babylon", "yandex",
                     "youdao", "baidu", "naver", "deepl"]
@@ -598,14 +618,31 @@ class QtApp:
         to move into the target slot.
         """
         try:
+            # .tmp SwapLanguagesUseCase early-returns when the result
+            # pane is blank: there is no translation to move back into
+            # the input, so the languages do NOT swap either (the
+            # main-window audit). Check BEFORE touching the pair.
+            win = self.win
+            translated = ""
+            if win is not None:
+                try:
+                    translated = win.out.toPlainText().strip()
+                    try:
+                        from .main_window import EMPTY_RESULT as _ER
+                        if translated == _ER:
+                            translated = ""
+                    except Exception:
+                        pass
+                except Exception:
+                    translated = ""
+            if not translated:
+                return
             src = self.source
             if src == "auto":
                 src = getattr(self, "_detected_src", "") or ""
                 if not src:
                     return
             self.source, self.target = self.target, src
-            win = self.win
-            translated = ""
             if win is not None:
                 for combo, code in ((win.cmb_src, self.source),
                                     (win.cmb_tgt, self.target)):
@@ -615,33 +652,13 @@ class QtApp:
                         combo.blockSignals(False)
                     except Exception:
                         pass
-                # .tmp SwapLanguagesUseCase: the translated text moves
-                # back into the input field and is translated again --
-                # that is what "swap" means to the user, not just a
-                # dropdown exchange. A blank result pane swaps languages
-                # only.
-                try:
-                    translated = win.out.toPlainText().strip()
-                    # The EMPTY_RESULT placeholder is not a translation:
-                    # swapping it back into the source pane would feed
-                    # "No data returned..." to the engine (main-window
-                    # audit M1).
-                    try:
-                        from .main_window import EMPTY_RESULT as _ER
-                        if translated == _ER:
-                            translated = ""
-                    except Exception:
-                        pass
-                except Exception:
-                    translated = ""
             self._persist_language()
-            if translated:
-                try:
-                    win.src.setPlainText(translated)
-                    win.out.clear()
-                    self.on_go()
-                except Exception:
-                    pass
+            try:
+                win.src.setPlainText(translated)
+                win.out.clear()
+                self.on_go()
+            except Exception:
+                pass
         except Exception:
             pass
 
@@ -1001,6 +1018,15 @@ class QtApp:
 
     def ocr_bytes(self, data: bytes):
         """OCR an image and show the text in the result pane."""
+        # Keep the grab as a pixmap so the result window's Copy/Save
+        # image items have something real to move.
+        try:
+            from PySide6.QtGui import QImage, QPixmap
+            img = QImage()
+            if img.loadFromData(data):
+                self._ocr_image = QPixmap.fromImage(img)
+        except Exception:
+            self._ocr_image = None
         config, _engine, _registry = self._core()
         try:
             cfg = config.load()
@@ -1040,11 +1066,20 @@ class QtApp:
         # The result goes to native's own OCR window (menu 10's host),
         # which the region picker used to skip by writing straight into
         # the main result pane. The main pane keeps its old content.
+        # One window, reused: a fresh OcrResultWindow per OCR orphaned
+        # the previous one (hidden reference dropped, window stayed up
+        # forever with stale text).
         try:
             from .ocr_window import OcrResultWindow
-            self._ocr = OcrResultWindow(self)
-            self._ocr.set_text(text)
-            self._ocr.show()
+            win = getattr(self, "_ocr", None)
+            if win is None:
+                win = OcrResultWindow(self)
+                self._ocr = win
+            win._image = getattr(self, "_ocr_image", None)
+            win.set_text(text)
+            win.show()
+            win.raise_()
+            win.activateWindow()
         except Exception:
             if self.win is not None:
                 self.win.render(text)
@@ -1913,8 +1948,21 @@ class QtApp:
         # Vietnamese voice (the TTS audit's High finding).
         def work():
             try:
-                from qtranslate import player
-                player.play_text(text, lang or self.target)
+                from qtranslate import player, registry as _RG
+                # An empty lang means "the caller could not name it"
+                # (source=auto with no detection cached). Detecting the
+                # text's language beats defaulting to the TARGET voice,
+                # which spoke Vietnamese text with whatever voice the
+                # target happened to be (the TTS audit's AUTO finding).
+                use_lang = lang
+                if not use_lang:
+                    try:
+                        use_lang = _RG.detect_language(text)
+                    except Exception:
+                        use_lang = ""
+                if use_lang in ("", "auto"):
+                    use_lang = self.target
+                player.play_text(text, use_lang)
             except Exception:
                 pass
         # A plain daemon thread, NOT _spawn: playback can run for many

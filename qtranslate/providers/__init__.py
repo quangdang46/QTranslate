@@ -102,6 +102,20 @@ def build_adapters():
          _RG._promt, "promt"),
         ("babylon", _RG._t_babylon, None,
          _RG._babylon, "babylon"),
+        # The .tmp plugin ports: id-less providers that join TRANSLATORS
+        # after the native order. No detect() of their own -- MyMemory
+        # resolves "auto" through registry.detect_language internally,
+        # LibreTranslate takes "auto" natively.
+        ("mymemory", _RG._t_mymemory, None,
+         _RG._mymemory, "mymemory"),
+        ("libretranslate", _RG._t_libretranslate, None,
+         _RG._libretranslate, "libretranslate"),
+        ("reverso", _RG._t_reverso, None,
+         _RG._reverso, "reverso"),
+        ("mozhi", _RG._t_mozhi, None,
+         _RG._mozhi, "mozhi"),
+        ("ai-translate", _RG._t_aitranslate, None,
+         _RG._ai_translate, "ai-translate"),
     ]
     table = {}
     for key, fn, det, mod, cap in specs:

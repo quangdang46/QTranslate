@@ -60,6 +60,17 @@ SERVICE_DISPLAY = {
     30: "Papago", 31: "DeepL",
 }
 
+# Providers with no native SERVICE_ID (the .tmp plugin ports and any
+# built-in that joins TRANSLATORS without an id) still need a display
+# name; keyed by the registry name, not a numeric id.
+EXTRA_SERVICE_DISPLAY = {
+    "mymemory": "MyMemory (Free)",
+    "libretranslate": "LibreTranslate",
+    "reverso": "Reverso",
+    "mozhi": "Mozhi",
+    "ai-translate": "AI Translate",
+}
+
 # Default dictionary order, measured from the native capture 2136: the
 # list shows Google Search, WordReference, Babylon Dictionary,
 # Wikipedia first.  The port had NO default, so a fresh config produced
