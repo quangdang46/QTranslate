@@ -62,8 +62,13 @@ class MouseIcon(QWidget):
         # and the next synthetic Cmd+C lands nowhere (verified live:
         # frontmost flipped TextEdit -> python the moment pop() ran).
         super().__init__(None, Qt.FramelessWindowHint | Qt.Popup
-                         | Qt.WindowDoesNotAcceptFocus)
+                         | Qt.WindowDoesNotAcceptFocus
+                         | Qt.WindowStaysOnTopHint)
         self.setAttribute(Qt.WA_ShowWithoutActivating)
+        # Same macOS demotion guard as PopupWindow: panels of an
+        # inactive app can be hidden/composited away while isVisible()
+        # stays True -- the "icon pops but is never seen" bug.
+        self.setAttribute(Qt.WA_MacAlwaysShowToolWindow, True)
         self.app = app
         self._text = ""
         self._on_translate = on_translate

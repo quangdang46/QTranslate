@@ -14,7 +14,7 @@ from __future__ import annotations
 import os
 import sys
 
-from PySide6.QtCore import QObject, Qt, Signal, Slot
+from PySide6.QtCore import QObject, Qt, QTimer, Signal, Slot
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QApplication, QMenu, QMessageBox
 
@@ -1311,6 +1311,15 @@ class QtApp:
             # must never land in a world-readable log (AGENTS.md rule).
             _dbg("icon popped at (%d,%d) len=%d front=%s"
                  % (x, y, len(text or ""), _frontmost()))
+            # Post-pop state: distinguishes z-order/opacity/geometry
+            # failures -- all three looked identical in the logs.
+            try:
+                QTimer.singleShot(300, lambda w=icon_win: _dbg(
+                    "icon state visible=%s geo=%s opacity=%.2f"
+                    % (w.isVisible(), w.geometry().getRect(),
+                       w._opacity.opacity())))
+            except Exception:
+                pass
         except Exception:                   # noqa: BLE001 -- fail-open
             pass
 

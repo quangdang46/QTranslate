@@ -96,6 +96,16 @@ class Tray:
         self.act_hotkeys.triggered.connect(self._toggle_hotkeys)
 
         sub = menu.addMenu("Mouse mode")
+        # macOS: a left click on the tray icon does NOT reliably emit
+        # Trigger when a context menu is set (the menu eats the press),
+        # so the capture on/off switch lives inside the Mouse-mode
+        # submenu as its first entry -- the top-level order stays the
+        # native one the regression pins.
+        self.act_capture = sub.addAction("Enabled")
+        self.act_capture.setCheckable(True)
+        self.act_capture.setChecked(self._armed)
+        self.act_capture.triggered.connect(self._toggle_capture)
+        sub.addSeparator()
         self._mode_actions = {}
         for mode in MOUSE_MODES:
             act = sub.addAction(mode)
@@ -202,6 +212,19 @@ class Tray:
         self._hotkeys_on = bool(checked)
         self.app.set_hotkeys_enabled(self._hotkeys_on)
 
+    def _toggle_capture(self, checked):
+        """The menu's Mouse-capture checkbox -- same switch the tray
+        left-click toggles, reachable on macOS where Trigger is eaten
+        by the context menu."""
+        try:
+            on = self.app.toggle_mouse_enabled()
+        except Exception:                   # noqa: BLE001
+            on = checked
+        try:
+            self.act_capture.setChecked(bool(on))
+        except Exception:
+            pass
+
     def _set_mouse_mode(self, mode):
         self.set_mouse_mode(mode)
         self.app.set_mouse_mode(mode)
@@ -211,6 +234,11 @@ class Tray:
         toggle: off = select + Ctrl+Q yourself; on = the selected mode
         applies, and the icon turns blue). A double-click shows the main
         window, the way native's does."""
+        try:
+            from qtranslate.qt.app import _dbg
+            _dbg("tray activated reason=%s" % int(reason))
+        except Exception:
+            pass
         if reason == QSystemTrayIcon.Trigger:
             try:
                 self.app.toggle_mouse_enabled()
@@ -250,6 +278,10 @@ class Tray:
         and the tooltip carries the state off-Windows too.
         """
         self._armed = bool(armed)
+        try:
+            self.act_capture.setChecked(bool(armed))
+        except Exception:
+            pass
         try:
             from qtranslate import tray_state as _TS
             _idx = _TS.select_state(bool(armed), bool(hook_installed))
