@@ -304,6 +304,46 @@ _JAVA_MOD_BITS = (
     (64, 4), (1, 4),     # SHIFT
 )
 
+# Java KeyEvent keyCode <-> Win32 VK. Nav keys, F1-F12, modifiers-as-masks,
+# numpad and ASCII letters/digits coincide; the entries below are the ones
+# that do NOT (Enter 10 vs 0x0D, Delete 127 vs 0x2E, Insert 155 vs 0x2D,
+# OEM punctuation uses ASCII in Java vs VK_OEM_* in Win32, F13+ live in
+# Java's private 0xF000 block).
+_JAVA_TO_WIN32_VK = {
+    10: 0x0D,      # VK_ENTER -> VK_RETURN
+    127: 0x2E,     # VK_DELETE -> VK_DELETE (fwd)
+    155: 0x2D,     # VK_INSERT -> VK_INSERT
+    154: 0x2C,     # VK_PRINTSCREEN -> VK_SNAPSHOT
+    44: 0xBC,      # VK_COMMA -> VK_OEM_COMMA (44 is VK_SNAPSHOT on Win32)
+    45: 0xBD,      # VK_MINUS -> VK_OEM_MINUS
+    46: 0xBE,      # VK_PERIOD -> VK_OEM_PERIOD
+    47: 0xBF,      # VK_SLASH -> VK_OEM_2
+    59: 0xBA,      # VK_SEMICOLON -> VK_OEM_1
+    61: 0xBB,      # VK_EQUALS -> VK_OEM_PLUS
+    91: 0xDB,      # VK_OPEN_BRACKET -> VK_OEM_4
+    92: 0xDC,      # VK_BACK_SLASH -> VK_OEM_5
+    93: 0xDD,      # VK_CLOSE_BRACKET -> VK_OEM_6
+    222: 0xDE,     # VK_QUOTE -> VK_OEM_7
+}
+# F13..F24: Java 0xF000..0xF00B, Win32 0x7C..0x87.
+for _i in range(13):
+    _JAVA_TO_WIN32_VK[0xF000 + _i] = 0x7C + _i
+_WIN32_TO_JAVA_VK = {v: k for k, v in _JAVA_TO_WIN32_VK.items()}
+# Win32 VK_DELETE(0x2E) and VK_INSERT(0x2D) collide with nothing in Java;
+# but Win32 0x2C (snapshot) is already covered. 0x2E/0x2D/0x2C need explicit
+# reverse entries because the forward map is keyed by Java values:
+_WIN32_TO_JAVA_VK.update({0x2E: 127, 0x2D: 155, 0x2C: 154})
+
+
+def _java_keycode_to_vk(key_code: int) -> int:
+    """Kotlin binding keyCode (java.awt.KeyEvent) -> Options.json VK."""
+    return _JAVA_TO_WIN32_VK.get(key_code, key_code)
+
+
+def _vk_to_java_keycode(vk: int) -> int:
+    """Options.json VK -> Kotlin binding keyCode (java.awt.KeyEvent)."""
+    return _WIN32_TO_JAVA_VK.get(vk, vk)
+
 _MOUSE_MODE_TO_SELECTION = {0: "SHOW_ICON", 1: "TRANSLATE", 2: "TRANSLATE_AND_READ"}
 _SELECTION_TO_MOUSE_MODE = {v: k for k, v in _MOUSE_MODE_TO_SELECTION.items()}
 
@@ -469,11 +509,15 @@ def _apply_kotlin_to_options(kcfg: dict, options: dict) -> list:
             for mask, bit in _JAVA_MOD_BITS:
                 if mods & mask:
                     py_mods |= bit
-            dword = (key_code & 0xFF) | (py_mods << 8)
+            # Java keyCodes differ from Win32 VKs (Enter 10 vs 0x0D etc.)
+            vk = _java_keycode_to_vk(key_code)
+            dword = (vk & 0xFF) | (py_mods << 8)
         # SHOW_MAIN_WINDOW's double-Ctrl gesture is a separate mechanism in
         # both apps (native's "Double Ctrl" is not the HotKeyMainWindow dword),
-        # so it is preserved as the dword's "Double" prefix bit.
-        if action == "SHOW_MAIN_WINDOW" and binding.get("isDoubleCtrlEnabled"):
+        # so it is preserved as the dword's "Double" prefix bit. An omitted
+        # flag means the Kotlin default (enabled), not disabled.
+        if action == "SHOW_MAIN_WINDOW" and binding.get(
+                "isDoubleCtrlEnabled", True):
             dword |= 0x8000
         for py_name in py_names:
             hotkeys_sec[py_name] = dword
@@ -702,6 +746,7 @@ def _apply_options_to_kotlin(options: dict, kcfg: dict) -> list:
             if action not in wanted:
                 continue
             key_code, mods, dbl = wanted[action]
+            key_code = _vk_to_java_keycode(key_code)
             if action == "SHOW_MAIN_WINDOW" and key_code == 0:
                 # No explicit key binding: the dword cannot express "off"
                 # for this action (native's double-Ctrl is separate), so only
@@ -730,6 +775,13 @@ def _apply_options_to_kotlin(options: dict, kcfg: dict) -> list:
             seen.add(action)
         kcfg["hotkeys"] = bindings
         applied.append("HotKeys.*")
+
+    # A Kotlin config that never wrote "hotkeys" decodes to an empty list
+    # (the companion default is NOT applied on absent fields), leaving the
+    # app with no bindings at all. Seed the documented defaults instead.
+    if "hotkeys" not in kcfg:
+        kcfg["hotkeys"] = _kt_default_hotkeys()
+        applied.append("HotKeys.defaults")
 
     # ---- AutoDetection ----
     for py_key, kt_key in (

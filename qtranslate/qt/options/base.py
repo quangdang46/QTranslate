@@ -77,6 +77,17 @@ class OptionsBase(Base):
         self.setWindowTitle("Options")
         self._show_page(self._page_name, first=True)
 
+    def closeEvent(self, event):
+        # An armed hotkey capture must not survive the dialog: the
+        # recording flag lives on this shell and would keep swallowing
+        # every bound chord after the window is gone.
+        try:
+            self._hk_recording = None
+            self._hk_esc_armed = False
+        except Exception:
+            pass
+        super().closeEvent(event)
+
     # ---------------------------------------------------------------- shell
     def _build_chrome(self):
         """The sidebar, the rule and the three buttons, in this page's
@@ -139,6 +150,14 @@ class OptionsBase(Base):
         and unparenting removes them from the paint queue without
         destroying the object, and the next event loop pass frees them.
         """
+        # A hotkey capture armed on the outgoing page must not leak:
+        # _options_recording would keep swallowing every bound chord
+        # until the user reopened Hotkeys and pressed a key.
+        try:
+            self._hk_recording = None
+            self._hk_esc_armed = False
+        except Exception:
+            pass
         for w in list(self.findChildren(object)):
             if w is self:
                 continue

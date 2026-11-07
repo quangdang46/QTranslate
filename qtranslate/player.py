@@ -21,6 +21,11 @@ _BASS_PATHS = [
 
 _bass = None
 
+# The in-flight playback, so a new speak request can cut the old one
+# off (native's BASS path frees the previous stream before starting
+# the next -- FUN_00461691 -- and every TTS trigger re-enters here).
+_current = {"proc": None, "stream": None}
+
 
 def _load():
     global _bass
@@ -52,15 +57,37 @@ def _load():
     return b
 
 
+def stop() -> None:
+    """Cut off whatever is playing right now (subprocess or BASS)."""
+    proc = _current.get("proc")
+    _current["proc"] = None
+    if proc is not None:
+        try:
+            proc.kill()
+        except Exception:
+            pass
+    stream = _current.get("stream")
+    _current["stream"] = None
+    if stream:
+        try:
+            b = _load()
+            b.BASS_ChannelStop(stream)
+            b.BASS_StreamFree(stream)
+        except Exception:
+            pass
+
+
 def play_mp3_bytes(data: bytes, block: bool = True) -> None:
     """Play MP3 bytes in memory exactly like FUN_00461642 (mem=TRUE stream)."""
     import time
+    stop()
     b = _load()
     buf = ctypes.create_string_buffer(bytes(data))
     stream = b.BASS_StreamCreateFile(
         True, buf, 0, len(data), 0, 0)  # mem, file, offset, length, flags
     if not stream:
         raise RuntimeError("BASS_StreamCreateFile failed")
+    _current["stream"] = stream
     try:
         if not b.BASS_ChannelPlay(stream, True):
             raise RuntimeError("BASS_ChannelPlay failed")
@@ -68,6 +95,8 @@ def play_mp3_bytes(data: bytes, block: bool = True) -> None:
             while b.BASS_ChannelIsActive(stream):
                 time.sleep(0.05)
     finally:
+        if _current.get("stream") == stream:
+            _current["stream"] = None
         b.BASS_StreamFree(stream)  # mirrors FUN_00461691 free-old-stream
 
 
@@ -104,7 +133,8 @@ def _play_mp3_bytes_darwin(data: bytes, block: bool = True) -> None:
 
     BASS is a Windows DLL; CoreAudio's afplay reads the same MP3 bytes
     natively. Blocking waits on afplay's exit, mirroring
-    ``BASS_ChannelIsActive`` polling.
+    ``BASS_ChannelIsActive`` polling. The Popen handle is registered in
+    ``_current`` so ``stop()`` can cut playback off.
     """
     import subprocess
     import tempfile
@@ -113,11 +143,15 @@ def _play_mp3_bytes_darwin(data: bytes, block: bool = True) -> None:
         with os.fdopen(fd, "wb") as f:
             f.write(bytes(data))
         if block:
+            proc = subprocess.Popen(
+                ["afplay", path],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            _current["proc"] = proc
             try:
-                subprocess.run(["afplay", path], check=True,
-                               stdout=subprocess.DEVNULL,
-                               stderr=subprocess.DEVNULL)
+                proc.wait()
             finally:
+                if _current.get("proc") is proc:
+                    _current["proc"] = None
                 try:
                     os.unlink(path)
                 except OSError:
@@ -125,9 +159,10 @@ def _play_mp3_bytes_darwin(data: bytes, block: bool = True) -> None:
         else:
             # Fire-and-forget: the temp file must outlive afplay, so the
             # wrapper shell removes it after playback ends.
-            subprocess.Popen(
+            proc = subprocess.Popen(
                 ["sh", "-c", 'afplay "$1"; rm -f "$1"', "sh", path],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            _current["proc"] = proc
     except Exception:
         try:
             os.unlink(path)
@@ -143,19 +178,34 @@ def _speak_darwin(text: str, slow: bool = False) -> None:
     if slow:
         cmd += ["-r", "120"]
     cmd.append(text)
-    subprocess.run(cmd, check=False,
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL)
+    _current["proc"] = proc
+    proc.wait()
+    if _current.get("proc") is proc:
+        _current["proc"] = None
 
 
 def play_text(text: str, lang: str = "vi", block: bool = True,
-              slow: bool = False) -> str:
+              slow: bool | None = None) -> str:
     """Online mp3 -> platform player; on any failure fall back to offline TTS.
 
     Mirrors native TaskListenText: serviceListenRequest mp3 first,
     then the offline voice (SpVoice on Windows, ``say`` on macOS) when
     the download fails. slow maps Advanced.EnableSlowerListening
-    (clearer TTS). Returns backend used.
+    (clearer TTS); ``None`` reads the setting so EVERY caller honours it,
+    not just the history window. Returns backend used.
     """
+    if slow is None:
+        try:
+            from qtranslate import config as _C
+            slow = bool((_C.load() or {}).get("Advanced", {})
+                        .get("EnableSlowerListening", False))
+        except Exception:
+            slow = False
+    # A new speak request replaces whatever is playing -- overlapping
+    # audio is never intended (native frees the old stream first).
+    stop()
     backend = _extension_backend(text, lang, slow)
     if backend:
         return "extension:" + backend

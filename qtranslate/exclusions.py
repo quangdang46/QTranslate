@@ -88,7 +88,8 @@ def _side_hit(pattern: str, value: str) -> bool:
 def is_excluded(cls_name: str, exe_name: str,
                 disabled: list | None = None) -> bool:
     """Port of the FUN_004631DE loop with FUN_004470B7 wcsicmp matcher."""
-    for app, cls in (disabled or DEFAULT_DISABLED):
+    rows = DEFAULT_DISABLED if disabled is None else disabled
+    for app, cls in rows:
         if _side_hit(app, exe_name) and _side_hit(cls, cls_name):
             return True
     return False
@@ -103,8 +104,10 @@ def _live_lists():
     try:
         from qtranslate import config as _C
         _ex = _C.load().get("Exceptions", {})
-        dis = [tuple(p) for p in _ex.get("Disabled", [])
-               if isinstance(p, (list, tuple)) and len(p) >= 2]
+        dis = None
+        if "Disabled" in _ex:
+            dis = [tuple(p) for p in _ex.get("Disabled", [])
+                   if isinstance(p, (list, tuple)) and len(p) >= 2]
         ena = [tuple(p) for p in _ex.get("Enabled", [])
                if isinstance(p, (list, tuple)) and len(p) >= 2]
         return dis, ena, bool(_ex.get("DisabledMode", True))
@@ -124,7 +127,7 @@ def foreground_excluded(disabled: list | None = None) -> bool:
         return is_excluded(cls, exe, disabled)
     dis, ena, mode = _live_lists()
     if mode:
-        return is_excluded(cls, exe, dis or list(DEFAULT_DISABLED))
+        return is_excluded(cls, exe, dis)
     # allowlist mode: blocked unless explicitly enabled
     if not ena:
         return False

@@ -93,16 +93,44 @@ def _build_vk_names():
     }
 
 
+# Shifted glyph -> (unshifted VK). US-layout: the recorder sees
+# event.text() which is the SHIFTED character, but the stored dword
+# must carry the key's VK or the chord decodes as a different key
+# entirely (Ctrl+Shift+1 must not become VK_PRIOR).
+_UNSHIFT_VK = {
+    "!": 0x31, "@": 0x32, "#": 0x33, "$": 0x34, "%": 0x35,
+    "^": 0x36, "&": 0x37, "*": 0x38, "(": 0x39, ")": 0x30,
+    "_": 0xBD, "+": 0xBB, "{": 0xDB, "}": 0xDD, "|": 0xDC,
+    ":": 0xBA, '"': 0xDE, "<": 0xBC, ">": 0xBE, "?": 0xBF,
+    "~": 0xC0,
+}
+# Unshifted punctuation -> Win32 OEM VK (the ASCII code would collide
+# with nav/special VKs in the packed dword).
+_PUNCT_VK = {
+    ";": 0xBA, "=": 0xBB, ",": 0xBC, "-": 0xBD, ".": 0xBE,
+    "/": 0xBF, "`": 0xC0, "[": 0xDB, "\\": 0xDC, "]": 0xDD,
+    "'": 0xDE,
+}
+
+
 def _vk_of(qkey: int, text: str) -> int:
     name = _VK_NAME.get(qkey)
     if name in _VK:
         return _VK[name]
     if len(text) == 1 and text.isascii() and text.isprintable():
-        # Only ASCII survives the packed dword: ``hotkey_combo`` can
-        # only name 0x20..0x7F (plus the special/nav VKs), so a
-        # non-ASCII printable key would store a VK it cannot decode.
-        return ord(text.upper())
+        c = text
+        if c in _UNSHIFT_VK:
+            return _UNSHIFT_VK[c]
+        if c in _PUNCT_VK:
+            return _PUNCT_VK[c]
+        if c.isalpha() or c.isdigit():
+            return ord(c.upper())
+        # Space and other ASCII that maps to itself.
+        o = ord(c)
+        return o if 0x20 <= o < 0x7F else 0
     if 0x41 <= qkey <= 0x5A:      # Qt.Key_A..Z are ASCII uppercase
+        return qkey
+    if 0x30 <= qkey <= 0x39:      # Qt.Key_0..9 are ASCII digits
         return qkey
     return 0
 

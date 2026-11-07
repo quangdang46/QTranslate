@@ -226,10 +226,14 @@ class QtApp:
                     "ThemeName", "")
         except Exception:
             name = name or ""
-        if not name:
-            return
         try:
-            record = T.active_theme(name, manager=self.ext_manager)
+            if name:
+                record = T.active_theme(name, manager=self.ext_manager)
+            else:
+                # "--- Default ---" means no theme file: restore the
+                # measured base look instead of leaving the previous
+                # theme's stylesheet applied for the session.
+                record = None
         except Exception:
             return
         try:
@@ -543,6 +547,14 @@ class QtApp:
             src_lang = getattr(self, "source", "") or ""
         if tgt_lang is None:
             tgt_lang = getattr(self, "target", "") or ""
+        # A translation made while the user is browsing BACK in history
+        # forks the timeline: entries after the nav cursor are "future"
+        # and must be dropped, the way a browser discards forward
+        # history on a new navigation -- keeping them would resurrect
+        # stale results on the next step-forward.
+        nav_idx = getattr(self, "_nav_idx", None)
+        if nav_idx is not None and nav_idx < len(self.history):
+            del self.history[nav_idx:]
         self.history.append(
             (svc, src, res, False, src_lang, tgt_lang))
         _save_history(self.history)
@@ -1148,18 +1160,21 @@ class QtApp:
         return not bool(getattr(self, "_mouse_enabled", False))
 
     def _sync_mouse_hook(self):
-        """Start or stop the Win32 low-level mouse hook the way native
-        does: live unless the mode is off."""
+        """Keep the low-level mouse hook installed whenever it can be.
+
+        The hook does two jobs: selection capture (mouse mode ON) and
+        click-outside dismissal for the popup/icon (needed in EVERY
+        mode -- a Ctrl+Q-only install still has to close the popup when
+        the user clicks elsewhere, which is exactly the state where the
+        hook used to be switched off). The hook therefore stays up even
+        with capture off; ``_mouse_selected`` gates the capture side on
+        the mode itself.
+        """
         try:
             from qtranslate import mouse_capture as mc
         except Exception:
             return
         try:
-            if self._mouse_mode_off():
-                if self._mouse_hook:
-                    mc.stop()
-                    self._mouse_hook = False
-                return
             if not self._mouse_hook:
                 mc.start(self._mouse_selected,
                          on_click=self._mouse_pressed)
@@ -1189,8 +1204,12 @@ class QtApp:
 
         The hook proc must return fast, so the capture and the
         translation run on a worker thread and the result comes back
-        through the bridge.
+        through the bridge. The hook is installed even with mouse mode
+        OFF (it also feeds click-outside dismissal), so the capture
+        side is gated here on the mode itself.
         """
+        if self._mouse_mode_off():
+            return
         import threading
         threading.Thread(target=self._mouse_work, args=(x, y),
                          daemon=True).start()

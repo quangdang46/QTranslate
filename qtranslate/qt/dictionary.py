@@ -150,7 +150,7 @@ class DictionaryWindow(Base):
         label(self, 460, 55, "⌃", color=DIM)
         label(self, 460, 248, "⌄", color=DIM)
         self.out = QTextEdit()
-        self.out.setAcceptRichText(False)
+        self.out.setAcceptRichText(True)
         self.out.setFrameShape(QTextEdit.NoFrame)
         self.out.setReadOnly(True)
         self.out.setStyleSheet("QTextEdit{background:transparent;border:none;}")
@@ -279,7 +279,14 @@ class DictionaryWindow(Base):
                                            cfg=cfg)
             except Exception as exc:            # noqa: BLE001
                 cards, summary = [], "[error] %s" % exc
-            self.app._on_ui(lambda: self.out.setPlainText(summary))
+            html = DS.render(cards, word) if cards else ""
+
+            def _show():
+                if html:
+                    self.out.setHtml(html)
+                else:
+                    self.out.setPlainText(summary)
+            self.app._on_ui(_show)
 
         threading.Thread(target=work, daemon=True).start()
 

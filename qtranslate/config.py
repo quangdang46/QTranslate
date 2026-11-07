@@ -166,7 +166,10 @@ _VK_NAMES = {0x08: "Backspace", 0x09: "Tab", 0x0D: "Enter", 0x1B: "Esc",
              0x20: "Space", 0x2E: "Delete", 0x21: "PgUp", 0x22: "PgDn",
              0x23: "End", 0x24: "Home", 0x25: "Left", 0x26: "Up",
              0x27: "Right", 0x28: "Down", 0x2C: "Print Screen",
-             0x2D: "Insert", 0x6F: "Divide", 0x90: "Num Lock"}
+             0x2D: "Insert", 0x6F: "Divide", 0x90: "Num Lock",
+             0xBA: ";", 0xBB: "=", 0xBC: ",", 0xBD: "-", 0xBE: ".",
+             0xBF: "/", 0xC0: "`", 0xDB: "[", 0xDC: "\\", 0xDD: "]",
+             0xDE: "'"}
 
 
 def hotkey_combo(code: int) -> str:
@@ -199,10 +202,14 @@ def hotkey_combo(code: int) -> str:
     if vk:
         special = {0x08: "backspace", 0x09: "tab", 0x0D: "enter",
                    0x1B: "esc", 0x20: "space", 0x2E: "delete",
-                   0x21: "home", 0x22: "pageup", 0x23: "end",
-                   0x24: "pagedown", 0x25: "left", 0x26: "up",
+                   0x21: "pageup", 0x22: "pagedown", 0x23: "end",
+                   0x24: "home", 0x25: "left", 0x26: "up",
                    0x27: "right", 0x28: "down", 0x2C: "printscreen",
-                   0x2D: "insert"}
+                   0x2D: "insert",
+                   0xBA: "oem_1", 0xBB: "oem_plus", 0xBC: "oem_comma",
+                   0xBD: "oem_minus", 0xBE: "oem_period", 0xBF: "oem_2",
+                   0xC0: "oem_3", 0xDB: "oem_4", 0xDC: "oem_5",
+                   0xDD: "oem_6", 0xDE: "oem_7"}
         if vk in special:
             parts.append(special[vk])
         elif 0x70 <= vk <= 0x87:      # VK_F1..VK_F24
@@ -269,7 +276,16 @@ def default_config() -> dict:
             "OptionsPageIndex": 0,
         },
         "Exceptions": {
-            "Disabled": [], "Enabled": [], "DisabledMode": True,
+            # Native's real first-run file ships these 8 blocklist rows
+            # (empty side = match anything); an explicitly emptied list
+            # must stay empty, so seed the defaults rather than [].
+            "Disabled": [
+                ["", "SysListView32"], ["", "SysTreeView32"],
+                ["", "ListBox"], ["", "ScrollBar"], ["", "ComboBox"],
+                ["", "msctls_hotkey32"], ["", "ConsoleWindowClass"],
+                ["mstsc.exe", ""],
+            ],
+            "Enabled": [], "DisabledMode": True,
         },
         "Contents": {
             "EditSource": "", "EditTranslation": "", "EditBackTranslation": "",
@@ -415,9 +431,14 @@ def save(cfg: dict, path: str | None = None) -> None:
     if path is None:
         path = DEFAULT_PATH
     ensure_dir(path)
-    with open(path, "w", encoding="utf-8") as f:
+    # Write-then-rename: a crash mid-write must not leave a truncated
+    # Options.json (which load() would quarantine as .corrupt, losing
+    # every setting). os.replace is atomic on the same filesystem.
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
         json.dump(cfg, f, ensure_ascii=False, indent=2)
         f.write("\n")
+    os.replace(tmp, path)
 
 
 def services_order(cfg: dict | None = None) -> list:

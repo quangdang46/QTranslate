@@ -12,7 +12,11 @@ GitHub API requires.
 
 ``APP_VERSION`` is the version this port replicates: the clean-room
 re-implementation of native QTranslate 6.10.0 (see
-``qtranslate/screens.py``, ``qtranslate/qt/main_window.py``).
+``qtranslate/screens.py``, ``qtranslate/qt/main_window.py``). Releases
+are published on THIS repository (``quangdang46/QTranslate``) — checking
+the Kotlin rewrite's repo (``ahatem/qtranslate``, versioned 1.x) could
+never report an update: 6.10.0 already compares newer than every tag
+there.
 """
 from __future__ import annotations
 
@@ -25,7 +29,7 @@ import urllib.request
 
 APP_VERSION = "6.10.0"
 
-RELEASES_URL = ("https://api.github.com/repos/ahatem/qtranslate/"
+RELEASES_URL = ("https://api.github.com/repos/quangdang46/QTranslate/"
                 "releases/latest")
 TIMEOUT_SECONDS = 10
 _USER_AGENT = "qtranslate-re update-check"

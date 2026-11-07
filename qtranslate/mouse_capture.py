@@ -226,7 +226,7 @@ def _live_lists_cached():
     """
     now = time.monotonic()
     cache = _excl_cache
-    if cache["dis"] is None or now - cache["at"] > 1.0:
+    if cache["at"] <= 0 or now - cache["at"] > 1.0:
         from qtranslate import exclusions as _ex
         dis, ena, mode = _ex._live_lists()
         cache["dis"] = dis
@@ -252,8 +252,7 @@ def class_excluded(cls_name: str, exe_name: str, disabled=None,
     if disabled is None and enabled is None:
         disabled, enabled, mode = _live_lists_cached()
     if mode:
-        return _ex.is_excluded(cls_name, exe_name,
-                               disabled or list(_ex.DEFAULT_DISABLED))
+        return _ex.is_excluded(cls_name, exe_name, disabled)
     if not enabled:
         return False
     for app, cl in enabled:

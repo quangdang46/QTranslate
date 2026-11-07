@@ -31,10 +31,10 @@ from .widgets import Base, button, icon, label, panel, put, rect
 # history item menu) with native's strings as the fallback for an
 # untranslated id.
 HIST_MENU = (("open", "Open", 10),
+             ("copy_src", "Copy text", 15),
              ("copy_tr", "Copy translation", 20),
-             ("copy_src", "Copy text", 30),
-             ("listen", "Listen to text", 40),
-             ("delete", "Delete", 50))
+             ("delete", "Delete", 30),
+             ("listen", "Listen", 40))
 
 # One entry's vertical footprint: the FACE header row (star + source)
 # and the white row under it (service icon + translation). 30px put the
@@ -153,11 +153,26 @@ class HistoryWindow(Base):
 
     # the five operations (each is the same op elsewhere in the window)
     def _open_entry(self, idx, ent):
-        """Open = native's load_sel: into the main window's panes."""
+        """Open = native's load_sel: the entry lands in the main window
+        the same way a history-nav step does -- service, language pair
+        and BOTH panes, with the nav cursor parked on it so Back/Forward
+        continue from there instead of a stale index."""
         try:
-            _svc, src, _res = ent[:3]
-            if getattr(self.app, "win", None) is not None:
-                self.app.win.src.setPlainText(src)
+            app = self.app
+            if getattr(app, "win", None) is None:
+                return
+            # Snapshot the live panes before stepping away, exactly as
+            # _nav_history does, so stepping forward returns here.
+            if getattr(app, "_nav_idx", len(app.history)) == len(app.history):
+                app._nav_live = app._live_snapshot()
+            app._nav_idx = idx
+            app._show_history_entry(ent)
+            try:
+                app.win.show()
+                app.win.raise_()
+                app.win.activateWindow()
+            except Exception:
+                pass
         except Exception:
             pass
 

@@ -201,10 +201,14 @@ def _module_path(folder, module):
 
     ``__init__`` is the package root; any other name may be a module or a
     subpackage (``EXTENSION_SDK.md`` §3 shows ``provider.py``/``ui.py`` as
-    siblings of ``__init__.py``).
+    siblings of ``__init__.py``).  Rejects anything that could escape the
+    folder: separators, ``..``, absolute paths.
     """
     if module == "__init__":
         return os.path.join(folder, "__init__.py"), [folder]
+    if (not module or module.startswith(("/", "\\")) or ".." in module
+            or "/" in module or "\\" in module):
+        return None, None
     flat = os.path.join(folder, module + ".py")
     if os.path.isfile(flat):
         return flat, None
@@ -359,6 +363,29 @@ def import_entrypoint(folder, manifest):
 
 class OverrideConflict(Exception):
     """Two providers claim the same id and the user must pick the winner."""
+
+
+# Upper bound for one extension's import+register.  A hung extension must
+# not wedge app startup (the Kotlin host bounds every plugin callback).
+_REGISTER_TIMEOUT_S = 15
+
+_API_METHODS = (
+    "get_setting", "set_setting", "on", "register_provider",
+    "register_theme", "register_dictionary", "register_tts",
+    "register_ocr", "register_spell", "register_workflow", "register_ui",
+    "get_hotkeys", "get_hotkey_info", "get_tray_icons", "get_services",
+    "get_languages", "get_config", "get_app_info",
+)
+
+
+def _seal_api(api):
+    """Make every public method on ``api`` raise -- used when register()
+    outlives its timeout so late writes cannot leak past the rollback."""
+    def _dead(*a, **k):
+        raise RuntimeError("extension timed out during register()")
+    for name in _API_METHODS:
+        if hasattr(api, name):
+            setattr(api, name, _dead)
 
 
 class ExtensionAPI:
@@ -547,16 +574,30 @@ class ExtensionAPI:
         except Exception:
             return {"langs": [], "display": {}}
 
+    # Keys that must never be handed to extension code: credentials and
+    # secrets stay host-side (the Kotlin host keeps them in a SecretStore).
+    _SECRET_KEYS = {"OcrApiKey", "Password", "ApiKey", "Token", "Secret"}
+
+    @classmethod
+    def _redact(cls, section, data):
+        if not isinstance(data, dict):
+            return data
+        return {k: ("***" if k in cls._SECRET_KEYS else v)
+                for k, v in data.items()}
+
     def get_config(self, section=None, key=None, default=None):
-        """Read app config (read-only)."""
+        """Read app config (read-only, secrets redacted)."""
         try:
             from qtranslate import config as _C
             cfg = _C.load()
             if section is None:
-                return cfg
+                return {s: self._redact(s, v)
+                        for s, v in cfg.items()} if isinstance(cfg, dict) else {}
             sec = (cfg.get(section) or {}) if isinstance(cfg, dict) else {}
             if key is None:
-                return sec
+                return self._redact(section, sec)
+            if key in self._SECRET_KEYS:
+                return default
             return sec.get(key, default)
         except Exception:
             return default if key is not None else {}
@@ -771,7 +812,7 @@ class ExtensionManager:
         for fn in self.listeners(event):
             try:
                 fn(payload)
-            except Exception:               # noqa: BLE001
+            except BaseException:           # noqa: BLE001
                 continue
 
     # -- enablement -----------------------------------------------------
@@ -976,7 +1017,36 @@ class ExtensionManager:
         importer = importer or import_entrypoint
         self._extensions_dir = extensions_dir   # the UI pages scan the SAME dir
         outcomes, claimed = [], []
+
+        # Duplicate-id rejection BEFORE any code runs: two folders
+        # declaring the same manifest id are both refused (the Kotlin
+        # host reports PluginError.DuplicateId the same way) rather than
+        # letting discovery order pick a silent winner.
+        id_seen = {}
+        dup_folders = set()
+        manifests = {}
         for folder in discover(extensions_dir):
+            try:
+                m = read_manifest(folder)
+            except ManifestError:
+                m = None
+            manifests[folder] = m
+            if m is None:
+                continue
+            if m["id"] in id_seen:
+                dup_folders.add(folder)
+                dup_folders.add(id_seen[m["id"]])
+            else:
+                id_seen[m["id"]] = folder
+        for folder in sorted(dup_folders):
+            m = manifests.get(folder) or {}
+            outcomes.append({"path": folder, "id": m.get("id"),
+                             "status": "disabled",
+                             "reason": "duplicate extension id"})
+
+        for folder in discover(extensions_dir):
+            if folder in dup_folders:
+                continue
             known = set(self._replaces)
             # api=None (the real path): each folder gets its OWN
             # ExtensionAPI with its id bound, so its get_setting /
@@ -1061,14 +1131,68 @@ class ExtensionManager:
             return {"path": folder, "id": ext_id, "status": "disabled",
                     "reason": veto}
 
-        providers, replaces = dict(self._providers), dict(self._replaces)
-        try:
-            register = importer(folder, manifest)
-            register(api)
-        except Exception as exc:
-            # Fail-open + rollback: a half-applied extension never wins,
-            # so the built-in stays active (rules 3 and 4).
-            self._providers, self._replaces = providers, replaces
+        # Snapshot EVERY writable surface before register(api) runs --
+        # providers, replaces, themes, the five live registry dispatch
+        # tables, event listeners, and UI slots.  A failed or timed-out
+        # extension must leave nothing behind (fail-open, §7).
+        snap = {
+            "providers": dict(self._providers),
+            "replaces": dict(self._replaces),
+            "themes": dict(self._themes),
+            "theme_replaces": dict(self._theme_replaces),
+            "tables": {t: dict(getattr(self._rg, t))
+                       for t in ("DICT_EXT", "TTS_EXT", "OCR_EXT",
+                                 "SPELL_EXT", "WORKFLOW_EXT")},
+            "listeners": {e: list(v)
+                          for e, v in self._listeners.items()},
+            "ui": ({k: list(v) for k, v in self._ui._slots.items()}
+                   if self._ui is not None else None),
+        }
+
+        def _rollback():
+            self._providers = snap["providers"]
+            self._replaces = snap["replaces"]
+            self._themes = snap["themes"]
+            self._theme_replaces = snap["theme_replaces"]
+            for t, tbl in snap["tables"].items():
+                getattr(self._rg, t).clear()
+                getattr(self._rg, t).update(tbl)
+            self._listeners = snap["listeners"]
+            if snap["ui"] is None:
+                self._ui = None
+            elif self._ui is not None:
+                self._ui._slots = {k: list(v)
+                                   for k, v in snap["ui"].items()}
+            self._manifests.pop(ext_id, None)
+
+        box = {}
+
+        def _run():
+            try:
+                register = importer(folder, manifest)
+                register(api)
+                box["ok"] = True
+            except BaseException as exc:  # noqa: BLE001
+                box["exc"] = exc
+
+        import threading as _th
+        th = _th.Thread(target=_run, daemon=True,
+                        name="ext-load-%s" % ext_id)
+        th.start()
+        th.join(_REGISTER_TIMEOUT_S)
+        if th.is_alive():
+            # The extension is still running (hung import/register).
+            # Python cannot kill the thread; seal its API so late
+            # registrations raise, roll back everything it already
+            # wrote, and report it disabled.
+            _seal_api(api)
+            _rollback()
+            return {"path": folder, "id": ext_id, "status": "disabled",
+                    "reason": "register() timed out after %ds"
+                              % _REGISTER_TIMEOUT_S}
+        if "exc" in box:
+            _rollback()
+            exc = box["exc"]
             return {"path": folder, "id": ext_id,
                     "status": "disabled",
                     "reason": "%s: %s" % (type(exc).__name__, exc)}

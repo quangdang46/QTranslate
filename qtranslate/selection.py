@@ -169,7 +169,6 @@ def copy_selection(backend=None, send=None, read=None, sequence=None,
     read = read or clipboard.read_text
     sequence = sequence or clipboard.sequence
     sleep = sleep or _default_sleep
-    before = sequence()
 
     # Neutralization (.tmp awaitCopyNeutral / TriggerNeutralizer): NO
     # contaminating modifier may still be held when the synthetic Copy
@@ -181,14 +180,25 @@ def copy_selection(backend=None, send=None, read=None, sequence=None,
         _LAST_REASON = "modifiers-held"
         return ""
 
+    # The clipboard baseline is taken AFTER neutralization, immediately
+    # before the snapshot+copy — a token from before the (up to 2s)
+    # modifier wait can be stale and misattribute an external copy to
+    # our synthetic one.
+    before = sequence()
+
     # .tmp SelectionCapture: snapshot the clipboard BEFORE the copy is
     # synthesized and restore it after the text is read, so triggering
     # a translation never destroys what the user had on their clipboard.
-    snap = None
+    # Fail CLOSED when the snapshot fails: copying without a restore
+    # path can destroy the user's clipboard contents.
     try:
         snap = clipboard.snapshot()
     except Exception:
-        snap = None
+        _LAST_REASON = "snapshot-failed"
+        return ""
+    if snap is None:
+        _LAST_REASON = "snapshot-failed"
+        return ""
     try:
         out = _capture_after_snapshot(
             backend, send, read, sequence, sleep, before,

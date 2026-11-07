@@ -13,6 +13,26 @@ import re
 THEMES_DIR = "C:/Program Files (x86)/QTranslate/Themes"
 
 
+def _bundled_themes_dir() -> str:
+    """The theme JSONs shipped inside the package (assets/themes)."""
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "assets", "themes")
+
+
+def _candidate_dirs(themes_dir: str):
+    """Every directory a theme name may live in, in priority order.
+
+    ``THEMES_DIR`` is the native install path and only exists on Windows;
+    the port bundles the same files under ``assets/themes``. Yielding both
+    keeps an installed-copy override working while making the bundled
+    themes resolvable on macOS/Linux too.
+    """
+    yield themes_dir
+    bundled = _bundled_themes_dir()
+    if bundled != themes_dir:
+        yield bundled
+
+
 def _hex(v: str) -> str:
     """Normalise a colour string to `#rrggbb`, or `""` when unparseable.
 
@@ -131,13 +151,21 @@ def load_theme(name: str, themes_dir: str = THEMES_DIR) -> dict:
     Trailing commas are also stripped: the native writer emits them, so a
     hand-edited file can contain what `json` rejects.
     """
+    for d in _candidate_dirs(themes_dir):
+        path = os.path.join(d, name + ".json")
+        if os.path.exists(path):
+            return load_theme_at(path)
     return load_theme_at(os.path.join(themes_dir, name + ".json"))
 
 
 def list_themes(themes_dir: str = THEMES_DIR) -> list:
-    return sorted(
-        os.path.splitext(os.path.basename(p))[0]
-        for p in glob.glob(os.path.join(themes_dir, "*.json")))
+    names = set()
+    for d in _candidate_dirs(themes_dir):
+        names.update(
+            os.path.splitext(os.path.basename(p))[0]
+            for p in glob.glob(os.path.join(d, "*.json"))
+            if not os.path.basename(p).startswith("_"))
+    return sorted(names)
 
 
 def load_theme_native(name: str, themes_dir: str = THEMES_DIR) -> dict | None:
@@ -155,13 +183,14 @@ def load_theme_native(name: str, themes_dir: str = THEMES_DIR) -> dict | None:
     """
     if not name:
         return None
-    path = os.path.join(themes_dir, name + ".json")
-    if not os.path.exists(path):
-        return None
-    try:
-        return load_theme_at(path)
-    except (OSError, ValueError):
-        return None
+    for d in _candidate_dirs(themes_dir):
+        path = os.path.join(d, name + ".json")
+        if os.path.exists(path):
+            try:
+                return load_theme_at(path)
+            except (OSError, ValueError):
+                return None
+    return None
 
 
 # theme::DefaultColorTheme's hardcoded slots (FUN_0044c9a6). All are
