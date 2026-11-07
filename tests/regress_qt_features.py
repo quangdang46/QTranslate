@@ -112,13 +112,58 @@ try:
     app.on_new()
     ck("New clears the source pane", win.src.toPlainText() == "",
        win.src.toPlainText()[:40])
-    before = (app.source, app.target)
-    app.on_swap()
-    ck("Swap exchanges the language pair",
-       (app.source, app.target) == (before[1], before[0]),
-       "%s -> %s" % (before, (app.source, app.target)))
-    ck("Swap exchanges the combos",
-       win.cmb_src.currentText() != before[1] or app.source == before[1])
+    # Language changes persist to the REAL Options.json; keep this
+    # suite's swaps and setters from touching the user's config.
+    _real_persist = app._persist_language
+    _real_go = app.on_go
+    _go_calls = []
+    app._persist_language = lambda: None
+    app.on_go = lambda: _go_calls.append(1)
+    try:
+        app.source, app.target = "en", "vi"
+        for _cmb, _txt in ((win.cmb_src, "English"),
+                           (win.cmb_tgt, "Vietnamese")):
+            _cmb.blockSignals(True)
+            _cmb.setCurrentText(_txt)
+            _cmb.blockSignals(False)
+        before = (app.source, app.target)
+        app.on_swap()
+        ck("Swap exchanges the language pair",
+           (app.source, app.target) == (before[1], before[0]),
+           "%s -> %s" % (before, (app.source, app.target)))
+        ck("Swap exchanges the combos",
+           win.cmb_src.currentText() != before[1]
+           or app.source == before[1])
+        # .tmp: the translated text moves back into the input and is
+        # translated again (on_go re-fired).
+        ck("Swap moves the translation back into the input",
+           "Xin chào" in win.src.toPlainText(),
+           win.src.toPlainText()[:50])
+        ck("Swap re-translates the swapped text", bool(_go_calls),
+           str(_go_calls))
+        win.src.clear()
+        win.out.clear()
+        # .tmp SwapLanguagesUseCase: the target slot can never hold
+        # auto. With an auto source and nothing detected yet the swap is
+        # a no-op; with a detected source the detected language becomes
+        # the target.
+        app.source, app.target = "auto", "vi"
+        app._detected_src = ""
+        app.on_swap()
+        ck("Swap with auto source and no detection is a no-op",
+           (app.source, app.target) == ("auto", "vi"),
+           "%s -> %s" % (("auto", "vi"), (app.source, app.target)))
+        app._detected_src = "en"
+        app.on_swap()
+        ck("Swap with auto source uses the detected language as target",
+           (app.source, app.target) == ("vi", "en"),
+           str((app.source, app.target)))
+        app.set_target_by_name("Auto-Detect")
+        ck("set_target_by_name never stores auto",
+           app.target != "auto", app.target)
+    finally:
+        app._persist_language = _real_persist
+        app.on_go = _real_go
 
     # --- 4. the Options dialog and its ten pages -------------------------
     # Nine native pages plus Extensions, the port's own (native has no
@@ -276,9 +321,11 @@ try:
             engine.translate = real_translate
         ck("Ctrl+Q shows the translation in the popup",
            shown.get("popup") == "Xin chào", str(shown))
-        ck("Ctrl+Q puts the SELECTION in the pane, not the stale clip",
-           "xin chao (selected)" in app.win.src.toPlainText()
-           and "STALE clipboard" not in app.win.src.toPlainText(),
+        # Quick-translate is a separate surface (.tmp QuickTranslateDialog
+        # never touches MainState): the popup path must NOT dump the
+        # answer into the main window's panes.
+        ck("Ctrl+Q does not write the main window panes",
+           app.win.src.toPlainText() == "old",
            app.win.src.toPlainText()[:60])
         ck("Ctrl+Q writes the history", len(app.history) >= 1)
     finally:
@@ -354,8 +401,10 @@ try:
             "Advanced": {"EnableGuiTranslation": True},
         }
 
-        # Mode 1 ("Show translation"): the click copies the selection
-        # through the same copy-capture the Ctrl+Q hotkey uses.
+        # .tmp SelectionBehaviorRouter / native FUN_004183bd: the mode
+        # decides what the captured selection DOES. Mode 1 ("Show
+        # translation") translates AT THE RELEASE -- native's
+        # TaskShowPopupWindow -- no icon, no click needed.
         app.set_mouse_mode(MOUSE_MODES[1])
         _sel.copy_selection = lambda **kw: "text from the clipboard"
         shown.clear()
@@ -364,19 +413,17 @@ try:
             engine.translate = fake_translate
             try:
                 app._mouse_work(10, 20)
+                app.wait_for_translation()
             finally:
                 engine.translate = real_translate
         finally:
             popup_mod.PopupWindow = real_popup.PopupWindow
-        ck("mode 1 is ICON-FIRST too (the operator's final call)",
-           "text from the clipboard" not in app.win.src.toPlainText()
-           and shown.get("popup") is None,
-           "%r / %r" % (app.win.src.toPlainText()[:40], shown))
+        ck("mode 1 translates at the release (no icon, no click)",
+           shown.get("popup") == "Xin chào", str(shown))
 
-        # Mode 2 ("Show translation and read"): the SAME copy-capture as
-        # the others (the OLEACC under-the-cursor read was the auto-loop
-        # -- it returned text whether anything was selected or not), and
-        # the captured text is spoken as well.
+        # Mode 2 ("Show translation and read"): same immediate popup,
+        # and the RESULT is read aloud (.tmp selectionReadSource
+        # default = TRANSLATION, not the source text).
         app.set_mouse_mode(MOUSE_MODES[2])
         shown.clear()
         spoken.clear()
@@ -385,15 +432,42 @@ try:
             engine.translate = fake_translate
             try:
                 app._mouse_work(10, 20)
+                app.wait_for_translation()
             finally:
                 engine.translate = real_translate
         finally:
             popup_mod.PopupWindow = real_popup.PopupWindow
-        ck("mode 2 is ICON-FIRST too -- nothing spoken on release",
-           spoken == [], str(spoken))
+        ck("mode 2 translates at the release too",
+           shown.get("popup") == "Xin chào", str(shown))
+        ck("mode 2 speaks the TRANSLATION, not the source",
+           spoken == ["Xin chào"], str(spoken))
 
-        # The hook's proc runs on a worker thread: the translation is
-        # handed over to the UI thread by the bridge, not shown there.
+        # Mode 0 ("Show icon"): the release only pops the floating
+        # button; nothing translates until its click.
+        app.set_mouse_mode(MOUSE_MODES[0])
+        shown.clear()
+        spoken.clear()
+        popup_mod.PopupWindow = _Popup
+        try:
+            engine.translate = fake_translate
+            try:
+                app._mouse_work(10, 20)
+                app.qapp.processEvents()
+            finally:
+                engine.translate = real_translate
+        finally:
+            popup_mod.PopupWindow = real_popup.PopupWindow
+        icon = getattr(app, "_mouse_icon", None)
+        ck("mode 0 pops the icon instead of translating",
+           icon is not None and icon.is_showing()
+           and icon.current_text() == "text from the clipboard"
+           and shown.get("popup") is None,
+           "icon=%r popup=%r" % (icon, shown))
+        if icon is not None:
+            icon.dismiss()
+
+        # The hook's proc runs on a worker thread: the UI work is handed
+        # over to the UI thread by the bridge, not done there.
         shown.clear()
         import threading
         engine.translate = fake_translate
@@ -403,13 +477,14 @@ try:
             worker.join()
         finally:
             engine.translate = real_translate
-        ck("the worker's drag-release pops the icon, not a popup",
-           shown.get("popup") is None, str(shown))
         app.qapp.processEvents()
-        # Icon-first everywhere: the icon's CLICK translates, never the
-        # release -- nothing auto-shows after the drag.
-        ck("nothing auto-shows after the release (icon-first)",
-           shown.get("popup") is None, str(shown))
+        ck("the worker's drag-release re-pops the icon on the UI thread",
+           getattr(app, "_mouse_icon", None) is not None
+           and app._mouse_icon.is_showing()
+           and shown.get("popup") is None, str(shown))
+        icon2 = getattr(app, "_mouse_icon", None)
+        if icon2 is not None:
+            icon2.dismiss()
     finally:
         mc.start, mc.stop = real_start, real_stop
         mc.available = real_available
@@ -504,8 +579,16 @@ try:
     else:
         ck("the hotkey package is not imported where it cannot work",
            platforms.keyboard_module() is None)
-        ck("install() registers nothing where there is no hotkey hook",
-           _hk.install(app) == [])
+        bound = _hk.install(app)
+        if sys.platform == "darwin":
+            # macOS has its own backends now (the CGEventTap, then
+            # Carbon): ``keyboard`` is not the only hook, so install()
+            # legitimately binds when the tap is live.
+            ck("install() reports a binding list on macOS",
+               isinstance(bound, list), str(bound))
+        else:
+            ck("install() registers nothing where there is no hotkey hook",
+               bound == [])
 
     # --- 9. the assets ---------------------------------------------------
     try:

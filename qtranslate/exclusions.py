@@ -16,6 +16,14 @@ DEFAULT_DISABLED = [
 
 
 def _fg_class_and_exe():
+    import sys
+    if sys.platform == "darwin":
+        return _darwin_fg()
+    if sys.platform != "win32":
+        # No Win32 foreground-window query off Windows; return the
+        # empty pair so the matchers simply do not fire (nothing is
+        # excluded) instead of crashing on ctypes.windll.
+        return "", ""
     user32 = ctypes.windll.user32
     hwnd = user32.GetForegroundWindow()
     if not hwnd:
@@ -37,13 +45,51 @@ def _fg_class_and_exe():
     return cls.value, exe
 
 
+def _darwin_fg():
+    """The macOS pair for the same question.
+
+    There is no HWND class on macOS; the honest equivalents are the
+    frontmost app's bundle identifier (the "window class" slot) and its
+    localized name (the "program" slot). An Exceptions row written for
+    macOS is therefore ``("Safari", "com.apple.Safari")`` -- and a row
+    written for Windows simply never matches, which is correct: those
+    class names do not exist here.
+    """
+    try:
+        from AppKit import NSWorkspace
+        app = NSWorkspace.sharedWorkspace().frontmostApplication()
+        if app is None:
+            return "", ""
+        bundle = app.bundleIdentifier() or ""
+        name = app.localizedName() or ""
+        if not name:
+            try:
+                name = app.executableURL().lastPathComponent() or ""
+            except Exception:
+                name = ""
+        return bundle, name
+    except Exception:
+        return "", ""
+
+
+def _side_hit(pattern: str, value: str) -> bool:
+    """One side of an Exceptions row. Empty matches anything (native's
+    wcsicmp rule); the UI's sentinel rows '* All Programs *' / '* All
+    Windows *' are wildcards too -- comparing them literally never
+    matched, so saving the default list silently disabled every
+    exclusion (the Exceptions-page audit)."""
+    if not pattern:
+        return True
+    if pattern in ("* All Programs *", "* All Windows *"):
+        return True
+    return pattern.lower() == (value or "").lower()
+
+
 def is_excluded(cls_name: str, exe_name: str,
                 disabled: list | None = None) -> bool:
     """Port of the FUN_004631DE loop with FUN_004470B7 wcsicmp matcher."""
     for app, cls in (disabled or DEFAULT_DISABLED):
-        app_hit = (not app) or (app.lower() == exe_name.lower())
-        cls_hit = (not cls) or (cls.lower() == cls_name.lower())
-        if app_hit and cls_hit:
+        if _side_hit(app, exe_name) and _side_hit(cls, cls_name):
             return True
     return False
 

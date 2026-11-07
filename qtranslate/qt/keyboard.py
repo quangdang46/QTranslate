@@ -319,5 +319,24 @@ class KeyboardWindow(Base):
         if keyboard is not None:
             try:
                 keyboard.press(name if name else text)
+                return
             except Exception:
                 pass
+        # macOS: no `keyboard` package (its import aborts the process) —
+        # the CoreGraphics path sends the same keystrokes. Letters type
+        # as unicode; named keys go through the combo sender.
+        try:
+            import sys
+            if sys.platform == "darwin":
+                from qtranslate import macos_input as _mi
+                if name:
+                    # Named keys arrive as keyboard-package names; map
+                    # the ones macos_input's table understands.
+                    _alias = {"backspace": "delete", "enter": "return",
+                              "caps lock": "capslock", "alt gr": "alt",
+                              "menu": "apps"}
+                    _mi.send(_alias.get(name, name))
+                elif len(text) == 1:
+                    _mi.type_text(text)
+        except Exception:
+            pass

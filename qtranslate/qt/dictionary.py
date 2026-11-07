@@ -93,6 +93,13 @@ class DictionaryWindow(Base):
         self.btn_next = button(self, 180, 38, 12, "")
         for b in (self.btn_prev, self.btn_next):
             b.setStyleSheet("QPushButton{border:none;background:transparent;}")
+        # The < > pair walks the session's search history, the way the
+        # arrows beside a find field do: each step fills the field and
+        # re-runs the lookup.
+        self._queries = []
+        self._qpos = -1
+        self.btn_prev.clicked.connect(lambda: self._step_query(-1))
+        self.btn_next.clicked.connect(lambda: self._step_query(1))
         for x, arrow in ((168, "◀"), (180, "▶")):
             lab = label(self, x, 45, arrow, color=DIM)
             lab.setAttribute(Qt.WA_TransparentForMouseEvents, True)
@@ -206,6 +213,14 @@ class DictionaryWindow(Base):
         word = self.inp.text().strip()
         if not word:
             return
+        # A fresh (non-history) search appends to the walk list; stepping
+        # with < > re-enters do_search with _qpos already set, so those
+        # re-queries do not append duplicates.
+        if self._qpos < 0 or \
+                self._qpos >= len(self._queries) or \
+                self._queries[self._qpos] != word:
+            self._queries.append(word)
+            self._qpos = len(self._queries) - 1
         from qtranslate import dictionary_search as DS
         try:
             from qtranslate import config as _C
@@ -229,6 +244,22 @@ class DictionaryWindow(Base):
             self.app._on_ui(lambda: self.out.setPlainText(summary))
 
         threading.Thread(target=work, daemon=True).start()
+
+    def _step_query(self, delta):
+        """Walk the search history with the < > buttons."""
+        try:
+            if not self._queries:
+                return
+            if self._qpos < 0:
+                self._qpos = len(self._queries) - 1 if delta > 0 else 0
+            else:
+                self._qpos = max(0, min(len(self._queries) - 1,
+                                        self._qpos + delta))
+            word = self._queries[self._qpos]
+            self.inp.setText(word)
+            self.do_search()
+        except Exception:
+            pass
 
     def lookup(self, word, src="auto", tgt="en"):
         """Look ``word`` up with the selected dictionary and show it."""

@@ -22,9 +22,15 @@ def speak(text: str, rate: int = 0) -> None:
             "[void]$v.Speak([Console]::In.ReadToEnd())"
         )
         enc = base64.b64encode(ps.encode("utf-16-le")).decode()
-        r = subprocess.run(
-            ["powershell", "-NoProfile", "-EncodedCommand", enc],
-            input=text.encode("utf-8"), capture_output=True, timeout=60)
+        try:
+            r = subprocess.run(
+                ["powershell", "-NoProfile", "-EncodedCommand", enc],
+                input=text.encode("utf-8"), capture_output=True, timeout=60)
+        except OSError:
+            # No PowerShell on this machine at all (macOS/Linux): the
+            # contract is "never raise into the caller", so an absent
+            # backend is silence, not a crash.
+            return
         if r.returncode:
             raise RuntimeError(
                 "SAPI unavailable (pip install comtypes, or enable "

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import os
 
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import Qt, QSize, QEvent
 from PySide6.QtGui import QAction, QFont, QIcon
 from PySide6.QtWidgets import (QComboBox, QLabel, QMenu, QPushButton,
                                QTextEdit)
@@ -451,6 +451,36 @@ class MainWindow(Base):
 
     def _tgt_changed(self, text):
         self.app.set_target_by_name(text)
+
+    # ----------------------------------------------------- tray semantics
+    def _tray_prefs(self):
+        try:
+            from qtranslate import config as cfg
+            return (cfg.load() or {}).get("General", {}) or {}
+        except Exception:
+            return {}
+
+    def closeEvent(self, event):
+        """General.MinimizeToTrayOnClose: native keeps running in the
+        tray instead of quitting when the window closes."""
+        if self._tray_prefs().get("MinimizeToTrayOnClose", False):
+            event.ignore()
+            self.hide()
+            return
+        super().closeEvent(event)
+
+    def changeEvent(self, event):
+        """General.MinimizeToTrayOnMinimize: minimize parks the window
+        in the tray rather than the taskbar."""
+        try:
+            if (event.type() == QEvent.WindowStateChange
+                    and self.isMinimized()
+                    and self._tray_prefs().get("MinimizeToTrayOnMinimize",
+                                               False)):
+                self.hide()
+        except Exception:
+            pass
+        super().changeEvent(event)
 
     # ------------------------------------------------------------- painting
     def render(self, text: str, back: str = ""):

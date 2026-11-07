@@ -83,6 +83,15 @@ HISTORY_PATH = None
 HISTORY_LIMIT = 500
 
 
+def _frontmost():
+    try:
+        from AppKit import NSWorkspace
+        a = NSWorkspace.sharedWorkspace().frontmostApplication()
+        return a.localizedName() if a else "?"
+    except Exception:
+        return "?"
+
+
 def _dbg(msg):
     import time as _t
     msg = "%s  %s" % (_t.strftime("%H:%M:%S"), msg)
@@ -250,6 +259,16 @@ class QtApp:
                 "LanguageTo", config.LANG_DEFAULTS["LanguageTo"])]
             self.source = table[general.get(
                 "LanguageFrom", config.LANG_DEFAULTS["LanguageFrom"])]
+            # The target can never be auto: auto-detect is a SOURCE-only
+            # concept (.tmp SwapLanguagesUseCase / TO_LANGS both exclude
+            # it). A persisted or swapped-in "auto" target silently echoes
+            # the input back as the "translation" -- the vi->auto pair this
+            # produced is what made Translate look dead. Recover to the
+            # native default pair instead.
+            if self.target == "auto":
+                self.target = table[config.LANG_DEFAULTS["LanguageTo"]]
+                if self.source == self.target:
+                    self.source = table[config.LANG_DEFAULTS["LanguageFrom"]]
         except Exception:
             pass
         self._apply_cli()
@@ -472,6 +491,9 @@ class QtApp:
             pass
         self.history.append((svc, src, res))
         _save_history(self.history)
+        # A fresh translation puts the nav cursor past the newest entry:
+        # back walks into history, forward returns to "now".
+        self._nav_idx = len(self.history)
         # Every "a translation reached the UI" path funnels through
         # here, so this is the emit point for the extensions'
         # translation.done event. A test stub without the emitter stays
@@ -494,23 +516,50 @@ class QtApp:
         self.win.src.clear()
 
     def on_swap(self):
+        """Exchange the pair (.tmp SwapLanguagesUseCase).
+
+        The target can never hold auto: when the source is auto the swap
+        uses the DETECTED source language instead, and with nothing
+        detected yet the swap is a no-op -- there is no concrete language
+        to move into the target slot.
+        """
         try:
-            a, b = self.win.cmb_src.currentText(), self.win.cmb_tgt.currentText()
-            self.win.cmb_src.blockSignals(True)
-            self.win.cmb_tgt.blockSignals(True)
-            self.win.cmb_src.setCurrentText(b)
-            self.win.cmb_tgt.setCurrentText(a)
-            self.win.cmb_src.blockSignals(False)
-            self.win.cmb_tgt.blockSignals(False)
-            self.source, self.target = self._code_of(b), self._code_of(a)
+            src = self.source
+            if src == "auto":
+                src = getattr(self, "_detected_src", "") or ""
+                if not src:
+                    return
+            self.source, self.target = self.target, src
+            win = self.win
+            translated = ""
+            if win is not None:
+                for combo, code in ((win.cmb_src, self.source),
+                                    (win.cmb_tgt, self.target)):
+                    try:
+                        combo.blockSignals(True)
+                        combo.setCurrentText(self._display(code))
+                        combo.blockSignals(False)
+                    except Exception:
+                        pass
+                # .tmp SwapLanguagesUseCase: the translated text moves
+                # back into the input field and is translated again --
+                # that is what "swap" means to the user, not just a
+                # dropdown exchange. A blank result pane swaps languages
+                # only.
+                try:
+                    translated = win.out.toPlainText().strip()
+                except Exception:
+                    translated = ""
             self._persist_language()
+            if translated:
+                try:
+                    win.src.setPlainText(translated)
+                    win.out.clear()
+                    self.on_go()
+                except Exception:
+                    pass
         except Exception:
-            try:
-                a, b = self.win.cmb_src.currentText(), self.win.cmb_tgt.currentText()
-                self.source, self.target = self._code_of(b), self._code_of(a)
-                self._persist_language()
-            except Exception:
-                pass
+            pass
 
     def _persist_language(self):
         try:
@@ -525,7 +574,11 @@ class QtApp:
             except Exception:
                 pass
             try:
-                general["LanguageTo"] = table.index(self.target)
+                # Never persist an auto TARGET: the slot is concrete-only,
+                # and a bad write here is what poisoned LanguageTo=1.
+                general["LanguageTo"] = table.index(
+                    self.target if self.target != "auto"
+                    else self._default_target_code())
             except Exception:
                 pass
             config.save(cfg)
@@ -540,11 +593,26 @@ class QtApp:
             pass
 
     def set_target_by_name(self, name):
-        self.target = self._code_of(name)
+        code = self._code_of(name)
+        if code == "auto":
+            # Auto-detect is source-only (.tmp TO_LANGS). An unrecognised
+            # combo name also lands here via _code_of's "auto" fallback --
+            # either way the target must stay a concrete language.
+            code = self._default_target_code()
+        self.target = code
         try:
             self._persist_language()
         except Exception:
             pass
+
+    def _default_target_code(self):
+        try:
+            from qtranslate.services.google_translate import SUPPORTED_LANGS
+            from qtranslate import config as _cfg
+            table = list(SUPPORTED_LANGS)
+            return table[_cfg.LANG_DEFAULTS["LanguageTo"]]
+        except Exception:
+            return "vi"
 
     def switch_service(self, name):
         self.service = name
@@ -556,10 +624,34 @@ class QtApp:
             self.win.highlight_service(name)
 
     def on_back(self):
-        pass
+        self._nav_history(-1)
 
     def on_forward(self):
-        pass
+        self._nav_history(+1)
+
+    def _nav_history(self, delta):
+        """Walk the session's translation history in the main window.
+
+        Back shows older entries, forward newer ones; stepping past the
+        newest returns to the live panes untouched. The entries are the
+        same (service, source, result) triples the History window lists.
+        """
+        hist = list(getattr(self, "history", []) or [])
+        if not hist or self.win is None:
+            return
+        cur = getattr(self, "_nav_idx", len(hist))
+        new = cur + delta
+        if new < 0 or new > len(hist):
+            return
+        self._nav_idx = new
+        if new == len(hist):
+            return
+        try:
+            _svc, src, res = hist[new][:3]
+            self.win.src.setPlainText(str(src))
+            self.win.out.setPlainText(str(res))
+        except Exception:
+            pass
 
     def open_dictionary(self):
         from .dictionary import DictionaryWindow
@@ -599,8 +691,24 @@ class QtApp:
             general = (config.load() or {}).get("General", {})
         except Exception:
             general = {}
-        src = general.get("SourceLanguage", "Auto-Detect")
-        tgt = general.get("TargetLanguage", "English")
+        # The configured pair is LanguageFrom/LanguageTo INDICES into
+        # the shared SupportedLanguages table -- the same keys
+        # _load_session and _persist_language use (the old code read
+        # SourceLanguage/TargetLanguage, which nothing writes).
+        try:
+            from qtranslate.services.google_translate import \
+                SUPPORTED_LANGS
+            table = list(SUPPORTED_LANGS)
+            fi = int(general.get(
+                "LanguageFrom", config.LANG_DEFAULTS["LanguageFrom"]))
+            ti = int(general.get(
+                "LanguageTo", config.LANG_DEFAULTS["LanguageTo"]))
+            src = self._display(table[fi]) if 0 <= fi < len(table) \
+                else "Auto-Detect"
+            tgt = self._display(table[ti]) if 0 <= ti < len(table) \
+                else "English"
+        except Exception:
+            src, tgt = "Auto-Detect", "English"
         for name, setter in (("cmb_src", self.set_source_by_name),
                              ("cmb_tgt", self.set_target_by_name)):
             combo = getattr(self.win, name, None) if self.win else None
@@ -705,15 +813,29 @@ class QtApp:
         except Exception:
             table = []
         code = table[index] if 0 <= index < len(table) else "en"
-        try:
-            from qtranslate.services.ocr import ocr_language, ocr_text
-            # The service takes its OWN 3-letter codes (eng, vie, rus...),
-            # not Google's 2-letter ones: the map is the service's, and
-            # it is the one the native's image carries.
-            text = ocr_text(data, api_key=key, lang=ocr_language(code))
-        except Exception as exc:                # noqa: BLE001
-            self.win.render("[ocr error] %s" % exc)
-            return
+
+        def work():
+            # ocr.space is a network upload -- it must not hold the UI
+            # thread (the OCR audit's Critical: the app froze for the
+            # whole request). Result crosses back via _on_ui.
+            try:
+                from qtranslate.services.ocr import (ocr_language,
+                                                     ocr_text)
+                # The service takes its OWN 3-letter codes (eng, vie,
+                # rus...), not Google's 2-letter ones.
+                text = ocr_text(data, api_key=key,
+                                lang=ocr_language(code))
+            except Exception as exc:            # noqa: BLE001
+                self._on_ui(lambda e=exc: (
+                    self.win.render("[ocr error] %s" % e)
+                    if self.win is not None else None))
+                return
+            self._on_ui(lambda t=text: self._ocr_done(t))
+        import threading
+        threading.Thread(target=work, daemon=True,
+                         name="qtranslate-ocr").start()
+
+    def _ocr_done(self, text: str):
         # The result goes to native's own OCR window (menu 10's host),
         # which the region picker used to skip by writing straight into
         # the main result pane. The main pane keeps its old content.
@@ -723,7 +845,8 @@ class QtApp:
             self._ocr.set_text(text)
             self._ocr.show()
         except Exception:
-            self.win.render(text)
+            if self.win is not None:
+                self.win.render(text)
 
     def open_keyboard(self):
         from .keyboard import KeyboardWindow
@@ -849,7 +972,8 @@ class QtApp:
                     self._mouse_hook = False
                 return
             if not self._mouse_hook:
-                mc.start(self._mouse_selected)
+                mc.start(self._mouse_selected,
+                         on_click=self._mouse_pressed)
                 self._mouse_hook = True
         except Exception:
             self._mouse_hook = False
@@ -872,7 +996,7 @@ class QtApp:
             pass
 
     def _mouse_selected(self, x, y):
-        """The hook's callback: a selection click arrived at (x, y).
+        """The hook's callback: a selection drag released at (x, y).
 
         The hook proc must return fast, so the capture and the
         translation run on a worker thread and the result comes back
@@ -881,6 +1005,36 @@ class QtApp:
         import threading
         threading.Thread(target=self._mouse_work, args=(x, y),
                          daemon=True).start()
+
+    def _mouse_pressed(self, x, y):
+        """Every allowed left-down, drag or not (.tmp onPointerPressed).
+
+        The floating icon and the popups dismiss on a press OUTSIDE
+        them; a press inside the icon is its own click and must not
+        hide it first.
+        """
+        try:
+            icon = getattr(self, "_mouse_icon", None)
+            if icon is None or not icon.is_showing():
+                return
+            if icon.contains_point(x, y):
+                return
+            self._on_ui(lambda: icon.dismiss()
+                        if icon.is_showing() else None)
+        except Exception:
+            pass
+        # .tmp PopupDismissalPolicy: a press outside the popup closes it
+        # (the Qt eventFilter can only see clicks inside our own
+        # windows; the global mouse hook sees every press).
+        try:
+            pop = getattr(self, "_popup", None)
+            if pop is not None and pop.isVisible():
+                g = pop.geometry()
+                if not (g.left() <= x <= g.right()
+                        and g.top() <= y <= g.bottom()):
+                    self._on_ui(pop.hide)
+        except Exception:
+            pass
 
     # Native's anti-loop, decompiled 2026-10-24 (FUN_004193f6 +
     # FUN_004183bd): a capture is DROPPED unless enough time has passed
@@ -921,20 +1075,34 @@ class QtApp:
         result comes back through the bridge.
         """
         try:
+            # .tmp SELECTION_SETTLE_DELAY_MS: the source app needs a
+            # beat to finish writing the selection before the copy is
+            # synthesized.
+            import time as _t
+            _t.sleep(0.08)
+            _dbg("mouse_work: enter (%d,%d) front=%s" % (x, y,
+                                                        _frontmost()))
             if not self._mouse_capture_allowed_now():
+                _dbg("mouse_work: gated (cooldown/task)")
                 return
+            _dbg("mouse_work: pre-gate front=%s" % _frontmost())
             text = self._capture_selection(x, y)
+            _dbg("mouse_work: captured len=%d front=%s"
+                 % (len(text or ""), _frontmost()))
             if not text:
+                _dbg("mouse_work: no captured text at (%d,%d)" % (x, y))
                 return
-            # THE OPERATOR'S DECISION (2026-10-24, final): EVERY mode is
-            # icon-first -- the drag-release pops the small translate
-            # icon and NOTHING automatic happens until the user clicks
-            # it. The native's modes 1/2 pop the popup immediately
-            # (TaskShowPopupWindow, decompiled) and the operator ran
-            # exactly that as "nó vẫn tự mở popup dịch"; the product
-            # call is that no mode ever auto-translates. Mode 2's read
-            # aloud rides the ICON's click, not the drag's release.
-            self._on_ui(lambda: self._show_mouse_icon(x, y, text))
+            # .tmp SelectionBehaviorRouter: the mode decides what the
+            # captured selection DOES -- "Show icon" pops the button
+            # and waits for its click; "Show translation" opens the
+            # popup at once; "...and read" translates AND speaks the
+            # result. (Native's TaskShowIcons/TaskShowPopupWindow split,
+            # decompiled FUN_004183bd, routes the same three ways.)
+            idx = self._mouse_mode_index()
+            if idx == 0:
+                self._on_ui(lambda: self._show_mouse_icon(x, y, text))
+            else:
+                self._translate_captured(text, speak=(idx == 2))
         except Exception:
             pass
 
@@ -947,12 +1115,25 @@ class QtApp:
                 icon_win = MouseIcon(self, self._translate_captured)
                 self._mouse_icon = icon_win
             icon_win.pop(x, y, text)
-            _dbg("icon popped at (%d,%d) text=%r" % (x, y, text[:30]))
+            # Length only -- the selection text itself is user data and
+            # must never land in a world-readable log (AGENTS.md rule).
+            _dbg("icon popped at (%d,%d) len=%d front=%s"
+                 % (x, y, len(text or ""), _frontmost()))
         except Exception:                   # noqa: BLE001 -- fail-open
             pass
 
-    def _translate_captured(self, text):
-        """The floating icon's click: translate like Ctrl+Q would."""
+    def _translate_captured(self, text, speak=False):
+        """Translate captured selection text and show the popup.
+
+        Called by the floating icon's click (icon mode) and directly by
+        the drag release in the "Show translation" modes. ``speak`` is
+        mode 2's read-aloud: .tmp's selectionReadSource default is the
+        TRANSLATION, so the result -- not the source -- is spoken.
+        """
+        try:
+            self._on_ui(lambda t=text: self._popup_loading(t))
+        except Exception:
+            pass
         def done(t, res):
             try:
                 _dbg("icon-click done: ok=%s len=%d provider=%s"
@@ -976,14 +1157,14 @@ class QtApp:
                             pop.isVisible() if pop else "-"))
                 except Exception:
                     pass
-                if self._mouse_mode_index() == 2:
+                if speak:
                     try:
-                        self._speak(t)
+                        self._speak(res.text)
                     except Exception:
                         pass
         try:
             started = self._start_translation(text, done)
-            _dbg("icon-click: start=%s text=%r" % (started, text[:40]))
+            _dbg("icon-click: start=%s len=%d" % (started, len(text or "")))
         except Exception:
             pass
 
@@ -1016,6 +1197,15 @@ class QtApp:
                         return False
                 except Exception:
                     pass
+            elif sys.platform == "darwin":
+                # No ``keyboard`` package on macOS; read the real HID
+                # modifier state through CoreGraphics instead.
+                try:
+                    from qtranslate import macos_input
+                    if not macos_input.control_held():
+                        return False
+                except Exception:
+                    pass
         try:
             from qtranslate import exclusions
             if exclusions.foreground_excluded():
@@ -1041,6 +1231,7 @@ class QtApp:
         The gates are native's (see _mouse_gate_ok).
         """
         if not self._mouse_gate_ok():
+            _dbg("mouse_work: gate_ok=False")
             return ""
         from qtranslate import selection
         return (selection.copy_selection() or "").strip()
@@ -1061,6 +1252,12 @@ class QtApp:
         from qtranslate import engine
         res = engine.translate(self.service, text[:5000], self.target,
                                self.source)
+        # The concrete source auto-detect resolved to -- the swap use
+        # case (.tmp) needs it to give the target slot a real language.
+        try:
+            self._detected_src = res.source_language_code or ""
+        except Exception:
+            pass
         return res
 
     def popup_pair(self, provider: str = "") -> str:
@@ -1076,54 +1273,76 @@ class QtApp:
         name = self.service_display(provider or self.service)
         return "%s to %s (%s)" % (src, tgt, name)
 
+    def _popup_loading(self, text):
+        """.tmp's loading state: the popup opens with a spinner as soon
+        as the selection text is captured, while the translation is
+        still in flight -- the user gets immediate feedback instead of
+        a dead-feeling delay."""
+        try:
+            from .popup import PopupWindow
+            pop = getattr(self, "_popup", None)
+            if pop is None:
+                pop = PopupWindow(self)
+                self._popup = pop
+            pop.set_loading(text[:300], self.popup_pair())
+            pop.place()
+            pop.show()
+            if pop._auto_focus():
+                pop.activateWindow()
+                pop.setFocus()
+        except Exception:
+            pass
+
     def show_translation(self, text, result, provider: str = ""):
-        """Show one translation: the panes, the history and the popup."""
+        """Show one POPUP translation: history and the popup window.
+
+        Quick-translate (Ctrl+Q, the mouse icon, the clipboard hotkey)
+        is a separate surface from the main window -- .tmp's
+        QuickTranslateDialog never writes MainState.inputText /
+        translatedText, and neither does native's popup. Writing the
+        panes here used to dump every Ctrl+Q answer into the main
+        window, which is the "dịch tự điền vào main screen" bug. The
+        main window's own Translate button goes through
+        ``_show_main_result`` instead.
+        """
         try:
             try:
                 _dbg("show_translation called len=%d" % len(result or ""))
             except Exception:
                 pass
-            if self.win is not None:
-                try:
-                    self.win.src.setPlainText(text[:2000])
-                    self.win.render(result)
-                except Exception:
-                    pass
             try:
                 self.push_hist(self.service, text[:120], result[:200])
             except Exception:
                 pass
             try:
                 from .popup import PopupWindow
-                old = getattr(self, "_popup", None)
-                if old is not None:
-                    try:
-                        try:
-                            from PySide6.QtWidgets import QApplication as _QA
-                            _QA.instance().removeEventFilter(old)
-                        except Exception:
-                            pass
-                        old.hide()
-                        old.close()
-                    except Exception:
-                        pass
-                self._popup = PopupWindow(self)
-                self._popup.set_text(text[:300], result,
-                                     self.popup_pair(provider),
-                                     provider=provider or self.service)
-                self._popup.place()
+                # REUSE one popup. Creating a fresh PopupWindow per
+                # translation and dropping the old wrapper let Qt GC a
+                # top-level widget with a pending QTimer -- the
+                # activateTimers->sendEvent SIGBUS that killed the app
+                # after a few Ctrl+Q in a row. Native keeps one popup
+                # window too.
+                pop = getattr(self, "_popup", None)
+                if pop is None:
+                    pop = PopupWindow(self)
+                    self._popup = pop
+                pop.set_text(text[:300], result,
+                             self.popup_pair(provider),
+                             provider=provider or self.service)
+                pop.place()
                 try:
-                    self._popup.raise_()
-                    self._popup.show()
-                    self._popup.activateWindow()
-                    self._popup.setFocus()
+                    pop.raise_()
+                    pop.show()
+                    if pop._auto_focus():
+                        pop.activateWindow()
+                        pop.setFocus()
                     try:
-                        _dbg("popup shown visible=%s" % self._popup.isVisible())
+                        _dbg("popup shown visible=%s" % pop.isVisible())
                     except Exception:
                         pass
                 except Exception:
                     try:
-                        self._popup.show()
+                        pop.show()
                     except Exception:
                         pass
             except Exception as e:
@@ -1168,21 +1387,24 @@ class QtApp:
                         pass
                 except Exception:
                     text = ""
-                if not text:
-                    try:
-                        text = self._clipboard_text()
-                        try:
-                            _dbg("hotkey_popup used clipboard len=%d" % len(text))
-                        except Exception:
-                            pass
-                    except Exception:
-                        text = ""
+                # NO bare-clipboard fallback here: copy_selection only
+                # returns clipboard text when the copy could not be
+                # attempted at all (no synthesizer / no sequence
+                # counter). A delivered copy whose sequence never moved
+                # means "no selection" -- and Ctrl+Q is "translate the
+                # SELECTED text", so stale clipboard content must not
+                # be translated (native keeps clipboard translation on
+                # its own hotkeys for exactly this reason).
                 if not text:
                     try:
                         _dbg("hotkey_popup no text")
                     except Exception:
                         pass
                     return
+                try:
+                    self._on_ui(lambda t=text: self._popup_loading(t))
+                except Exception:
+                    pass
                 try:
                     res = self._translate(text)
                     try:
@@ -1218,6 +1440,28 @@ class QtApp:
         except Exception:
             pass
 
+    def hotkey_popup_clipboard(self):
+        """Native's 'translate clipboard in popup window': the CLIPBOARD
+        text (not the selection) lands in the popup. Distinct from
+        hotkey_popup (Ctrl+Q = selection) and from
+        hotkey_translate_clipboard (result into the main window)."""
+        text = self._clipboard_text()
+        if not text:
+            return
+        try:
+            self._on_ui(lambda t=text: self._popup_loading(t))
+        except Exception:
+            pass
+
+        def done(t, res):
+            if res.ok and res.text:
+                try:
+                    self._on_ui(lambda: self.show_translation(
+                        t, res.text, provider=res.provider_used))
+                except Exception:
+                    pass
+        self._start_translation(text, done)
+
     def hotkey_translate_clipboard(self):
         text = self._clipboard_text()
         if not text:
@@ -1240,13 +1484,20 @@ class QtApp:
         def work():
             try:
                 from qtranslate import selection
+                # Same rule as Ctrl+Q: the SELECTION only. "" means no
+                # selection landed -- there is nothing to replace, and
+                # clipboard text must not be typed over the user's
+                # cursor.
                 text = (selection.copy_selection() or "").strip()
-                if not text:
-                    text = self._clipboard_text()
+                _dbg("replace: copied len=%d" % len(text))
                 if not text:
                     return
                 res = self._translate(text)
-            except Exception:                   # noqa: BLE001
+                _dbg("replace: translated ok=%s len=%d"
+                     % (getattr(res, "ok", "?"),
+                        len(getattr(res, "text", "") or "")))
+            except Exception as exc:           # noqa: BLE001
+                _dbg("replace: work error %r" % (exc,))
                 return
             self._on_ui(lambda: self._show_replace(text, res))
 
@@ -1257,7 +1508,15 @@ class QtApp:
         # The retype goes through sendkeys: True delivered, False when
         # there is no synthesizer (off Windows) -- never a raise.
         from qtranslate import sendkeys as _SK
-        _SK.write_text(res.text)
+        payload = res.text or ""
+        _dbg("replace: typing back len=%d" % len(payload))
+        # Native retypes the translation over the selection (SendInput
+        # unicode). write_text reports honestly and never raises.
+        try:
+            _ok = _SK.write_text(payload)
+            _dbg("replace: write_text -> %s" % (_ok,))
+        except Exception as exc:               # noqa: BLE001
+            _dbg("replace: write_text raised %r" % (exc,))
         self.push_hist(self.service, text[:120], res.text[:200])
 
     def hotkey_copy_translation(self):
@@ -1266,8 +1525,8 @@ class QtApp:
         if not text:
             return
         try:
-            import pyperclip
-            pyperclip.copy(text)
+            from qtranslate import clipboard as _cb
+            _cb.write_text(text)
         except Exception:
             pass
 
@@ -1278,22 +1537,39 @@ class QtApp:
         self.open_dictionary()
 
     def hotkey_listen_text(self):
-        """Speak the text that is on the clipboard."""
+        """Speak the text that is on the clipboard (SOURCE language)."""
         text = self._clipboard_text()
         if text:
-            self._speak(text)
+            lang = (getattr(self, "_detected_src", "")
+                    or (self.source if self.source != "auto" else ""))
+            self._speak(text, lang)
 
     def hotkey_listen_translation(self):
         text = self.win.out.toPlainText() if self.win else ""
         if text:
             self._speak(text)
 
-    def _speak(self, text: str):
-        try:
-            from qtranslate import player
-            player.play_text(text, self.target)
-        except Exception:
-            pass
+    def _speak(self, text: str, lang: str = ""):
+        # Playback blocks for the length of the audio; it must not hold
+        # the UI thread (the same reason translations run on workers).
+        # ``lang`` is the language of THE TEXT being spoken: a
+        # translation is spoken in the target, source text (clipboard
+        # listen, popup source) in the detected/source language --
+        # passing self.target for everything spoke English text with a
+        # Vietnamese voice (the TTS audit's High finding).
+        def work():
+            try:
+                from qtranslate import player
+                player.play_text(text, lang or self.target)
+            except Exception:
+                pass
+        # A plain daemon thread, NOT _spawn: playback can run for many
+        # seconds and must not hold the one-translation-at-a-time gate
+        # (_start_translation drops requests while a tracked thread is
+        # alive).
+        import threading
+        threading.Thread(target=work, daemon=True,
+                         name="qtranslate-speak").start()
 
     def hotkey_convert_layout(self):
         """Native's "fix the layout" hotkey: the wrong text direction is
@@ -1499,7 +1775,18 @@ def main(argv=None):
     # theme may override the built-in one the settings name.
     app.apply_theme()
     app.win = MainWindow(app)
-    app.win.show()
+    # Native's "Show main window on load": the app is a tray resident --
+    # the window only appears when the user asks for it (tray, hotkey,
+    # second instance). An unconditional show() here used to pop the
+    # main window on every start even with the setting off.
+    try:
+        from qtranslate import config as _cfg
+        _show = bool((_cfg.load() or {}).get("General", {})
+                     .get("MainWindowShowOnLoad", True))
+    except Exception:
+        _show = True
+    if _show:
+        app.win.show()
     # The tray: native is a tray app, and its tray menu is the real
     # taskbar menu (the spec's rule 6 -- Qt draws it, not us).
     try:

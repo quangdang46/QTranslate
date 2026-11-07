@@ -99,13 +99,62 @@ def _extension_backend(text, lang, slow):
     return None
 
 
+def _play_mp3_bytes_darwin(data: bytes, block: bool = True) -> None:
+    """Play MP3 bytes on macOS: afplay over a temp file.
+
+    BASS is a Windows DLL; CoreAudio's afplay reads the same MP3 bytes
+    natively. Blocking waits on afplay's exit, mirroring
+    ``BASS_ChannelIsActive`` polling.
+    """
+    import subprocess
+    import tempfile
+    fd, path = tempfile.mkstemp(suffix=".mp3", prefix="qt_tts_")
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(bytes(data))
+        if block:
+            try:
+                subprocess.run(["afplay", path], check=True,
+                               stdout=subprocess.DEVNULL,
+                               stderr=subprocess.DEVNULL)
+            finally:
+                try:
+                    os.unlink(path)
+                except OSError:
+                    pass
+        else:
+            # Fire-and-forget: the temp file must outlive afplay, so the
+            # wrapper shell removes it after playback ends.
+            subprocess.Popen(
+                ["sh", "-c", 'afplay "$1"; rm -f "$1"', "sh", path],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception:
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+        raise
+
+
+def _speak_darwin(text: str, slow: bool = False) -> None:
+    """Offline speech on macOS: the ``say`` command (no SAPI/comtypes)."""
+    import subprocess
+    cmd = ["say"]
+    if slow:
+        cmd += ["-r", "120"]
+    cmd.append(text)
+    subprocess.run(cmd, check=False,
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
 def play_text(text: str, lang: str = "vi", block: bool = True,
               slow: bool = False) -> str:
-    """Online mp3 -> BASS; on any failure fall back to offline SAPI.
+    """Online mp3 -> platform player; on any failure fall back to offline TTS.
 
     Mirrors native TaskListenText: serviceListenRequest mp3 first,
-    SpVoice (FUN_00448BEC) when offline. slow maps
-    Advanced.EnableSlowerListening (clearer TTS). Returns backend used.
+    then the offline voice (SpVoice on Windows, ``say`` on macOS) when
+    the download fails. slow maps Advanced.EnableSlowerListening
+    (clearer TTS). Returns backend used.
     """
     backend = _extension_backend(text, lang, slow)
     if backend:
@@ -113,11 +162,19 @@ def play_text(text: str, lang: str = "vi", block: bool = True,
     import sys
     sys.path.insert(0, ".")
     from qtranslate.tts import google_tts
+    is_darwin = sys.platform == "darwin"
     try:
-        play_mp3_bytes(google_tts(text, lang, slow=slow), block=block)
-        return "bass"
+        data = google_tts(text, lang, slow=slow)
+        if is_darwin:
+            _play_mp3_bytes_darwin(data, block=block)
+        else:
+            play_mp3_bytes(data, block=block)
+        return "afplay" if is_darwin else "bass"
     except Exception as e:
-        print(f"online TTS failed ({e}); falling back to SAPI")
+        print(f"online TTS failed ({e}); falling back to offline voice")
+    if is_darwin:
+        _speak_darwin(text, slow=slow)
+        return "say"
     from qtranslate.sapi import speak
     speak(text, rate=-4 if slow else 0)
     return "sapi"

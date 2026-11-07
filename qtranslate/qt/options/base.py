@@ -228,3 +228,44 @@ class OptionsBase(Base):
 # Filled in by qtranslate.qt.options.__init__ once every page class
 # exists, so a page module does not have to import its eight siblings.
 PAGES: dict = {}
+
+
+# ------------------------------------------------------------- persistence
+def cfg_load() -> dict:
+    """Options.json as a dict (defaults on a fresh install)."""
+    try:
+        from qtranslate import config as _C
+        return _C.load() or {}
+    except Exception:
+        return {}
+
+
+def cfg_set(section: str, key: str, value) -> None:
+    """Write one setting immediately (the Extensions page's own
+    write-through rule: a control that shows a value saves it)."""
+    try:
+        from qtranslate import config as _C
+        cfg = _C.load() or {}
+        cfg.setdefault(section, {})[key] = value
+        _C.save(cfg)
+    except Exception:
+        pass
+
+
+def cfg_section(section: str) -> dict:
+    return cfg_load().get(section, {}) or {}
+
+
+def notify_app(app):
+    """Tell the running app a setting changed (theme, hotkeys, panes)."""
+    try:
+        if app is not None and hasattr(app, "apply_theme"):
+            app.apply_theme()
+    except Exception:
+        pass
+    try:
+        win = getattr(app, "win", None)
+        if win is not None and hasattr(win, "apply_pane_visibility"):
+            win.apply_pane_visibility()
+    except Exception:
+        pass

@@ -4,6 +4,10 @@
 keyboard==0.13.5
 pyperclip==1.11.0
 
+# macOS only (global hotkeys via CGEventTap + NSPasteboard changeCount):
+# pyobjc-framework-Quartz
+# pyobjc-framework-Cocoa
+
 # Optional (only for WordReference headless fallback):
 # uv run --with playwright python -I -m playwright install chromium --only-shell
 # playwright

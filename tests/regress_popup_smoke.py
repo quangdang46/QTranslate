@@ -46,8 +46,15 @@ ck("the hotkey path opens the popup",
    and SRC.count("PopupWindow(") >= 1,
    "the press-Q popup must be in the hotkey chain")
 ck("show_translation drives the popup",
-   "self._popup.set_text(" in SRC and "self._popup.place()" in SRC,
+   "pop.set_text(" in SRC and "pop.place()" in SRC,
    "set_text + place before show")
+ck("the popup instance is reused, not recreated per translation",
+   SRC.count("= PopupWindow(self)") >= 1
+   and SRC.count("= PopupWindow(self)")
+       == SRC.count("if pop is None:")
+   and "self._popup = PopupWindow(self)" not in SRC,
+   "a fresh top-level widget per translation let Qt GC a live QTimer "
+   "-- the activateTimers SIGBUS crash")
 
 # 2. popup placement honours Appearance.PopupAutoPos (cursor-adjacent)
 ck("popup reads Appearance.PopupAutoPos", "PopupAutoPos" in SRC,

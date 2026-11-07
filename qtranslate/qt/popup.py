@@ -26,7 +26,8 @@ hardcoded to a pixel count that assumes a short string.
 from __future__ import annotations
 
 from PySide6.QtCore import QPoint, Qt, QTimer
-from PySide6.QtGui import QCursor, QFont, QGuiApplication, QPalette
+from PySide6.QtGui import (QColor, QCursor, QFont, QGuiApplication,
+                           QPainter, QPalette, QPen)
 from PySide6.QtWidgets import QLabel, QWidget
 
 from qtranslate_style import ACCENT, POPUP_BORDER, POPUP_ICON, POPUP_TEXT
@@ -145,6 +146,42 @@ def _strip_label(parent, name: str, width: int, app) -> str:
     return full[:3] + "..."
 
 
+class _Spinner(QWidget):
+    """The rotating arc .tmp shows while a translation is in flight
+    (QuickTranslateDialog's loading state / InlineLoadingBar)."""
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setFixedSize(18, 18)
+        self._angle = 0
+        self._timer = QTimer(self)
+        self._timer.setInterval(90)
+        self._timer.timeout.connect(self._tick)
+        self.hide()
+
+    def showEvent(self, event):                # noqa: N802 (Qt name)
+        self._timer.start()
+        super().showEvent(event)
+
+    def hideEvent(self, event):                # noqa: N802 (Qt name)
+        self._timer.stop()
+        super().hideEvent(event)
+
+    def _tick(self):
+        self._angle = (self._angle + 30) % 360
+        self.update()
+
+    def paintEvent(self, event):               # noqa: N802 (Qt name)
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        pen = QPen(QColor(POPUP_ICON))
+        pen.setWidth(2)
+        pen.setCapStyle(Qt.RoundCap)
+        p.setPen(pen)
+        p.drawArc(2, 2, 14, 14, self._angle * 16, 270 * 16)
+        p.end()
+
+
 class PopupWindow(QWidget):
     """The popup: a frameless tool window that sizes itself to its text."""
 
@@ -186,6 +223,8 @@ class PopupWindow(QWidget):
                                     "border:none;" % POPUP_TEXT)
 
         self._strip = self._provider_strip()
+        self._spin = _Spinner(self)
+        self._loading = False
         try:
             self._fill("", "", "")
         except Exception:
@@ -222,9 +261,47 @@ class PopupWindow(QWidget):
             q = QLabel("", self)
             q.setStyleSheet("background:transparent;")
             q.setPixmap(icons.pixmap("ui_icons", name))
+            q.setCursor(Qt.PointingHandCursor)
+            # Native's header row is a toolbar, not decoration: book opens
+            # the dictionary on the source, headphone speaks the result,
+            # copy puts the result on the clipboard. The star (favourite)
+            # and the transliteration mark have no backend in the port
+            # yet, so they stay inert rather than fake a reaction.
+            act = {"book": self._icon_dictionary,
+                   "headphone": self._icon_listen,
+                   "copy": self._icon_copy}.get(name)
+            if act is not None:
+                q.mousePressEvent = lambda _e, a=act: a()
             out.append(q)
         out.extend(self._extension_icons())
         return out
+
+    def _icon_dictionary(self):
+        app = self.app
+        word = (getattr(self, "_source_text", "") or "").strip()
+        if app is None or not word:
+            return
+        try:
+            app._dict_word = word.split()[0]
+            app.open_dictionary()
+        except Exception:
+            pass
+
+    def _icon_listen(self):
+        app = self.app
+        text = getattr(self, "_result_text", "") or ""
+        if app is not None and text:
+            app._speak(text)
+
+    def _icon_copy(self):
+        text = getattr(self, "_result_text", "") or ""
+        if not text:
+            return
+        try:
+            from qtranslate import clipboard as _cb
+            _cb.write_text(text)
+        except Exception:
+            pass
 
     def _provider_strip(self) -> QWidget:
         """The strip the native reserves along the bottom.
@@ -375,6 +452,12 @@ class PopupWindow(QWidget):
 
     def _fill(self, source: str, result: str, pair: str):
         """Place the header, the body and the strip row."""
+        self._loading = False
+        try:
+            self._spin.hide()
+        except Exception:
+            pass
+        self._result_text = result or ""
         self.lbl_pair.setText(pair or (source or "")[:40])
         self.lbl_text.setText(result or "")
         w = self._wanted_width(source, result)
@@ -393,6 +476,28 @@ class PopupWindow(QWidget):
             q.setGeometry(x0 + ICON_STEP * i, 4, 16, 16)
         self.lbl_text.setGeometry(PAD, HEADER_H, w - 2 * PAD, body_h)
         self._strip.setGeometry(1, h - STRIP_H - 1, w - 2, STRIP_H)
+
+    def set_loading(self, source: str, pair: str = ""):
+        """.tmp's loading state: the popup opens immediately with the
+        source text and a spinner while the translation is in flight,
+        instead of leaving the user staring at nothing."""
+        self._loading = True
+        self._source_text = source
+        self._paint_strip()
+        self._fill(source, "Translating…", pair or (source or "")[:40])
+        try:
+            self.lbl_text.setText("Translating…")
+            self.lbl_text.setStyleSheet(
+                "background:transparent;color:%s;border:none;" % POPUP_ICON)
+            self.lbl_text.setGeometry(
+                PAD + 26, HEADER_H,
+                max(40, self.width() - 2 * PAD - 26),
+                self.lbl_text.height())
+            self._spin.move(PAD + 4, HEADER_H + (self.height()
+                           - HEADER_H - STRIP_H) // 2 - 9)
+            self._spin.show()
+        except Exception:
+            pass
 
     def set_text(self, source: str, result: str, pair: str = "",
                  provider: str = ""):
@@ -499,11 +604,28 @@ class PopupWindow(QWidget):
             pass
         try:
             self.raise_()
-            self.activateWindow()
-            self.setFocus(Qt.ActiveWindowFocusReason)
+            if self._auto_focus():
+                self.activateWindow()
+                self.setFocus(Qt.ActiveWindowFocusReason)
         except Exception:
             pass
         super().showEvent(event)
+
+    @staticmethod
+    def _auto_focus() -> bool:
+        """Appearance.PopupAutoFocus -- native's "take focus on show".
+
+        Default False: the popup is an answer, not a destination; the
+        user keeps typing in the app they were translating from. On
+        macOS an activateWindow() here also pulls the whole app forward
+        in the Dock, which reads as the translator stealing focus.
+        """
+        try:
+            from qtranslate import config as _C
+            return bool(_C.load().get("Appearance", {})
+                        .get("PopupAutoFocus", False))
+        except Exception:
+            return False
 
     # ------------------------------------------------------------- show
     def place(self):
@@ -515,8 +637,9 @@ class PopupWindow(QWidget):
             _ap = {}
         try:
             self.raise_()
-            self.activateWindow()
-            self.setFocus(Qt.ActiveWindowFocusReason)
+            if self._auto_focus():
+                self.activateWindow()
+                self.setFocus(Qt.ActiveWindowFocusReason)
         except Exception:
             try:
                 self.raise_()
@@ -535,6 +658,16 @@ class PopupWindow(QWidget):
                 p = QCursor.pos()
                 x, y = p.x() + 12, p.y() + 12
                 screen = QGuiApplication.screenAt(p)
+                # .tmp QuickTranslateDialog.applyPosition: prefer the
+                # lower-right of the cursor, but flip to the other side
+                # of the pointer when the popup would leave that
+                # monitor -- clamp is only the last resort.
+                if screen is not None:
+                    a = screen.availableGeometry()
+                    if x + self.width() > a.right():
+                        x = p.x() - self.width() - 10
+                    if y + self.height() > a.bottom():
+                        y = p.y() - self.height() - 10
             else:
                 from qtranslate.placement import decode_placement
                 rc = decode_placement(
@@ -567,11 +700,20 @@ class PopupWindow(QWidget):
         # popup showed for five seconds and vanished while he was still
         # reading ("giật lag rồi không thấy gì"). A zero timeout means
         # the popup stays until the user clicks elsewhere or closes it.
-        self._timer = QTimer(self)
-        self._timer.setSingleShot(True)
-        self._timer.timeout.connect(self.hide)
+        # One QTimer for the popup's whole life: place() runs on every
+        # translation, and re-creating it dropped the old timer's last
+        # reference -- the same GC-of-live-Qt-object crash as the
+        # per-translation PopupWindow did.
+        timer = getattr(self, "_timer", None)
+        if timer is None:
+            timer = QTimer(self)
+            timer.setSingleShot(True)
+            timer.timeout.connect(self.hide)
+            self._timer = timer
+        else:
+            timer.stop()
         if _to > 0:
-            self._timer.start(_to * 1000)
+            timer.start(_to * 1000)
         from PySide6.QtWidgets import QApplication as _QA
         # Install only one active filter — remove any previous instance on this
         # object before installing the fresh one. This prevents stale filters

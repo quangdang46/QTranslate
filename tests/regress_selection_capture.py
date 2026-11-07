@@ -98,6 +98,22 @@ ck("the wait grows (exponential, capped)",
    [s for s in _sleeps if isinstance(s, float)][:2] == [0.008, 0.016],
    repr(_sleeps[:4]))
 
+# --- copy delivered but the sequence NEVER moves: no selection ----------
+# This is the stale-clipboard bug's other half: Ctrl+C landed nowhere
+# (nothing selected), so the answer is "" -- NOT the previous clipboard
+# content. The clipboard fallback exists only where the copy could not
+# be attempted (send refused / no counter), never where it was refused
+# BY THE TARGET.
+_sleeps = []
+text = selection.copy_selection(
+    backend=object(), send=lambda c: True, read=lambda: "OLD",
+    sequence=lambda: 100, sleep=lambda s: _sleeps.append(s),
+    pressed=lambda k: False)
+ck("a copy that never lands returns empty, not stale clipboard",
+   text == "", repr(text))
+ck("the poll still ran its bounded backoff", len(_sleeps) == 8,
+   repr(_sleeps))
+
 # --- Ctrl+C refused: no hang, and the clipboard is read as a fallback -----
 _sleeps = []
 text = selection.copy_selection(
@@ -126,9 +142,17 @@ def held_then_released(key):
     return _seq["n"] < 2
 
 
+_seq2 = {"n": 0}
+
+
+def changing_seq():
+    _seq2["n"] += 1
+    return 100 if _seq2["n"] < 4 else 777
+
+
 text = selection.copy_selection(
     backend=object(), send=lambda c: True, read=lambda: "NEW",
-    sequence=lambda: 100, sleep=lambda s: _seq.__setitem__("n", _seq["n"] + 1),
+    sequence=changing_seq, sleep=lambda s: _seq.__setitem__("n", _seq["n"] + 1),
     pressed=held_then_released)
 ck("it waits for a held modifier to come up", text == "NEW", repr(text))
 
@@ -140,8 +164,10 @@ _pop = _src.split("def hotkey_popup", 1)[1].split("def hotkey_translate", 1)[0]
 ck("Ctrl+Q copies the selection before translating",
    "selection.copy_selection" in _pop,
    "hotkey_popup must not read a bare paste()")
-ck("Ctrl+Q still falls back to the clipboard",
-   "_clipboard_text" in _pop)
+ck("Ctrl+Q does NOT fall back to a bare clipboard read",
+   "_clipboard_text" not in _pop,
+   "stale clipboard text must not be translated as 'the selection' "
+   "-- native keeps clipboard translation on separate hotkeys")
 ck("Ctrl+Q uses the shared single-flight translation gate",
    '_spawn_translation("popup", work)' in _pop
    and '_spawn("popup", work)' not in _pop)

@@ -18,6 +18,8 @@ native binary uses.
 """
 from __future__ import annotations
 
+import sys
+
 WINDOW_CLASS = "QTranslate_ApplicationWindow"
 ACTIVATE_COMMAND = 0x8009
 WM_COMMAND = 0x111
@@ -42,6 +44,36 @@ def _default_activate(hwnd):
         return False
 
 
+_DARWIN_LOCK_FD = None
+
+
+def _darwin_single() -> bool:
+    """macOS single-instance: an flock'd lockfile in the config dir.
+
+    Returns True when another copy holds the lock (this launch must
+    exit). The descriptor stays open for the process's life; the lock
+    releases when the process dies, so a crashed copy never wedges the
+    next launch.
+    """
+    global _DARWIN_LOCK_FD
+    try:
+        import fcntl
+        import os
+        d = os.path.expanduser("~/.config/QTranslate")
+        os.makedirs(d, exist_ok=True)
+        fd = os.open(os.path.join(d, "instance.lock"),
+                     os.O_RDWR | os.O_CREAT, 0o644)
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            os.close(fd)
+            return True
+        _DARWIN_LOCK_FD = fd
+        return False
+    except Exception:
+        return False
+
+
 def ensure_single(argv=None, find_window=None, activate=None):
     """``True`` = another instance was activated; caller must exit.
 
@@ -52,6 +84,8 @@ def ensure_single(argv=None, find_window=None, activate=None):
     args = list(argv) if argv is not None else []
     if any(MULTI_FLAG in a for a in args):
         return False
+    if find_window is None and sys.platform == "darwin":
+        return _darwin_single()
     find = find_window if find_window is not None else _default_find
     act = activate if activate is not None else _default_activate
     try:

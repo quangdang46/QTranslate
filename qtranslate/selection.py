@@ -62,18 +62,26 @@ def copy_selection(backend=None, send=None, read=None, sequence=None,
     sleep = sleep or _default_sleep
     before = sequence()
 
-    # Native waits for the modifier keys to come up first: a held Shift
-    # turns Ctrl+C into Ctrl+Shift+C, which many apps do not treat as copy.
+    # Neutralization (.tmp awaitCopyNeutral): NO modifier may still be
+    # held when the synthetic Copy goes out — a held Shift turns it
+    # into Ctrl+Shift+C, a held Alt into a menu accelerator, and the
+    # trigger chord itself (Ctrl for Ctrl+Q, Option for Alt+W) would
+    # contaminate the injected flags. Windows reads the ``keyboard``
+    # package; macOS reads the real HID flags through CoreGraphics --
+    # the package cannot even be imported there (SIGABRT).
     if pressed is None:
         try:
-            import keyboard
-
+            from qtranslate.platforms import keyboard_module
+            _kb = keyboard_module()
+        except Exception:
+            _kb = None
+        if _kb is not None:
             def pressed(key):
                 try:
-                    return bool(keyboard.is_pressed(key))
+                    return bool(_kb.is_pressed(key))
                 except Exception:
                     return False
-        except Exception:
+        else:
             def pressed(_key):
                 return False
     try:
@@ -84,7 +92,42 @@ def copy_selection(backend=None, send=None, read=None, sequence=None,
                 sleep(0.01)
     except Exception:
         pass
+    try:
+        import sys as _sys
+        if _sys.platform == "darwin":
+            from qtranslate import macos_input as _mi
+            _ALL = (0x00100000 | 0x00020000
+                    | 0x00040000 | 0x00080000)
+            for _ in range(30):
+                if not (_mi.modifiers() & _ALL):
+                    break
+                sleep(0.01)
+    except Exception:
+        pass
 
+    # .tmp SelectionCapture: snapshot the clipboard BEFORE the copy is
+    # synthesized and restore it after the text is read, so triggering
+    # a translation never destroys what the user had on their clipboard.
+    snap = None
+    try:
+        snap = clipboard.snapshot()
+    except Exception:
+        snap = None
+    try:
+        return _capture_after_snapshot(
+            backend, send, read, sequence, sleep, before,
+            start_ms, cap_ms, steps)
+    finally:
+        if snap is not None:
+            try:
+                clipboard.restore(snap)
+            except Exception:
+                pass
+
+
+def _capture_after_snapshot(backend, send, read, sequence, sleep,
+                            before, start_ms, cap_ms, steps):
+    from qtranslate import sendkeys
     delivered = sendkeys.send("ctrl+c", backend=backend) if send is None \
         else send("ctrl+c")
     if not delivered:
@@ -104,4 +147,11 @@ def copy_selection(backend=None, send=None, read=None, sequence=None,
         if now is not None and now != before:
             return read()
         wait_ms = min(wait_ms * 2, cap_ms)
-    return read()
+    # The copy was delivered but the sequence NEVER moved: the frontmost
+    # app had no selection (or refused the copy). Returning the stale
+    # clipboard here is exactly the "Ctrl+Q translates last week's
+    # clipboard" bug -- native's answer is "no selection, nothing to
+    # translate". The clipboard fallback lives only where the copy
+    # could not even be attempted (send refused, or no sequence
+    # counter), handled above.
+    return ""

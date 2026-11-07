@@ -198,9 +198,15 @@ def hotkey_combo(code: int) -> str:
         parts.append("windows")
     if vk:
         special = {0x08: "backspace", 0x09: "tab", 0x0D: "enter",
-                   0x1B: "esc", 0x20: "space", 0x2E: "delete"}
+                   0x1B: "esc", 0x20: "space", 0x2E: "delete",
+                   0x21: "home", 0x22: "pageup", 0x23: "end",
+                   0x24: "pagedown", 0x25: "left", 0x26: "up",
+                   0x27: "right", 0x28: "down", 0x2C: "printscreen",
+                   0x2D: "insert"}
         if vk in special:
             parts.append(special[vk])
+        elif 0x70 <= vk <= 0x87:      # VK_F1..VK_F24
+            parts.append("f%d" % (vk - 0x6F))
         elif 0x20 <= vk < 0x7F:
             parts.append(chr(vk).lower())
         else:

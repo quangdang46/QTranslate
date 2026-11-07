@@ -104,15 +104,32 @@ try:
        and "GOOGLE:hello selection" in popup.lbl_text.text(),
        popup.lbl_text.text()[:60] if popup else "no popup")
 
-    # EVERY mode is icon-first (the operator's final call, 2026-10-24):
-    # modes 1/2 never auto-translate; the read-aloud rides the click.
+    # .tmp SelectionBehaviorRouter (and native's TaskShowIcons /
+    # TaskShowPopupWindow split, FUN_004183bd): the mode decides what
+    # the captured selection DOES -- mode 0 pops the icon and waits
+    # for its click; modes 1/2 translate at the release, mode 2 also
+    # reads the result aloud.
     shown.clear()
+    calls = []
+    _orig_tc = app._translate_captured
+    app._translate_captured = lambda t, speak=False: calls.append(
+        (t, speak))
     app.set_mouse_mode(MOUSE_MODES[1])
     app._mouse_work(5, 5)
-    ck("mode 1 pops the icon too, nothing auto-translates",
-       shown == {"x": 5, "y": 5, "text": "selected words"}, str(shown))
-    app._translate_captured("selected words")
-    app.wait_for_translation(timeout=10.0)
+    ck("mode 1 translates at the release, no icon",
+       shown == {} and calls == [("selected words", False)],
+       "shown=%r calls=%r" % (shown, calls))
+    calls.clear()
+    app.set_mouse_mode(MOUSE_MODES[2])
+    app._mouse_work(6, 6)
+    ck("mode 2 translates AND reads the result aloud",
+       shown == {} and calls == [("selected words", True)],
+       "shown=%r calls=%r" % (shown, calls))
+    app.set_mouse_mode(MOUSE_MODES[0])
+    app._mouse_work(7, 7)
+    ck("back on mode 0 the icon pops again",
+       shown == {"x": 7, "y": 7, "text": "selected words"}, str(shown))
+    app._translate_captured = _orig_tc
 
     # --- 2. the tray toggle ----------------------------------------------
     ck("the tray's armed state is ON right now", app._mouse_enabled)

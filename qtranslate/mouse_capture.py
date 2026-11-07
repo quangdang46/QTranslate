@@ -92,6 +92,12 @@ class _MSLLHOOKSTRUCT(ctypes.Structure):
 
 
 def available() -> bool:
+    if sys.platform == "darwin":
+        try:
+            from qtranslate import macos_mouse
+            return macos_mouse.available()
+        except Exception:
+            return False
     return sys.platform == "win32"
 
 
@@ -537,6 +543,15 @@ def start(on_select, on_click=None, own_window: bool = True):
     Returns True if installed. Safe no-op off Windows.
     """
     global _handle
+    if sys.platform == "darwin":
+        # The macOS edition of the same hook: a listen-only CGEventTap
+        # on the left button (qtranslate/macos_mouse.py). It needs the
+        # Accessibility grant, same as the copy synthesis it feeds.
+        try:
+            from qtranslate import macos_mouse
+            return macos_mouse.start(on_select, on_click)
+        except Exception:
+            return False
     if sys.platform != "win32":
         return False
     if _handle is not None:
@@ -556,6 +571,15 @@ def start(on_select, on_click=None, own_window: bool = True):
         if ncode == 0:
             info = ctypes.cast(lparam, ctypes.POINTER(_MSLLHOOKSTRUCT)).contents
             pt = (info.pt.x, info.pt.y)
+            # Reported before the selection gate, like .tmp's
+            # onPointerPressed: popups dismiss on an outside press even
+            # when the press starts no selection (or hits an excluded
+            # window).
+            if wparam == WM_LBUTTONDOWN and on_click is not None:
+                try:
+                    on_click(pt.x, pt.y)
+                except Exception:
+                    pass
             try:
                 process_mouse_event(
                     state, wparam, pt[0], pt[1],
@@ -587,6 +611,13 @@ def start(on_select, on_click=None, own_window: bool = True):
 
 def stop():
     global _handle
+    if sys.platform == "darwin":
+        try:
+            from qtranslate import macos_mouse
+            macos_mouse.stop()
+        except Exception:
+            pass
+        return
     if _handle is None:
         return
     try:

@@ -67,9 +67,14 @@ class HistoryWindow(Base):
 
     def _build(self):
         # The search field, and the small clear button at its right.
-        field = self._field()
+        # Native's field FILTERS the list as you type; the port drew the
+        # box but never connected it, so search did nothing.
+        self.inp = self._field()
+        self.inp.textChanged.connect(lambda _t: self._fill())
         self.btn_clear_search = button(self, 456, 40, 10, "")
         self.btn_clear_search.setObjectName("flat")
+        self.btn_clear_search.clicked.connect(
+            lambda: self.inp.setText(""))
 
         # The list panel. Custom context menu: the I6 entry menu.
         self.list = panel(self, 4, 60, 468, 228)
@@ -86,6 +91,11 @@ class HistoryWindow(Base):
 
         self.btn_ok.clicked.connect(self.close)
         self.btn_clear.clicked.connect(self._clear)
+        self.btn_save.clicked.connect(self._save_as)
+        self.btn_star.clicked.connect(self._toggle_favorite)
+        # Clicking a row selects it -- the star button acts on the
+        # selection, the way native's does.
+        self._rows_mouse = None
 
     # ------------------------------------------------------- the I6 menu
     def _entry_menu_requested(self, gpos):
@@ -102,10 +112,16 @@ class HistoryWindow(Base):
         except Exception:
             return
         idx = self._entry_at(y)
-        if not (0 <= idx < len(self.app.history)):
+        visible = getattr(self, "_visible", None) or []
+        if not (0 <= idx < len(visible)):
             self._window_menu(gpos)
             return
-        ent = list(self.app.history)[idx]
+        real = visible[idx][0]
+        if not (0 <= real < len(self.app.history)):
+            self._window_menu(gpos)
+            return
+        self._sel = real
+        ent = list(self.app.history)[real]
         m = QMenu(self)
         try:
             from qtranslate.locale import load_pack
@@ -119,7 +135,7 @@ class HistoryWindow(Base):
             text = menu_text(pack, 3, mid, default)
             act = QAction(text, m)
             act.setEnabled(ent is not None)
-            act.triggered.connect(lambda _c=False, k=key, i=idx, e=ent:
+            act.triggered.connect(lambda _c=False, k=key, i=real, e=ent:
                                   ops[k](i, e))
             m.addAction(act)
         # The history item menu is native's menu id 6 (ui_slots
@@ -201,7 +217,8 @@ class HistoryWindow(Base):
             return -1
         if idx < 0:
             return -1
-        return idx if idx < len(self.app.history) else -1
+        visible = getattr(self, "_visible", None) or []
+        return idx if idx < len(visible) else -1
 
     def _field(self):
         from PySide6.QtWidgets import QLineEdit
@@ -230,15 +247,32 @@ class HistoryWindow(Base):
             old.deleteLater()
         self._rows = QWidget()
         self._rows.setStyleSheet("background:#ffffff;")
+        # The search field filters the list; _visible keeps the row ->
+        # history-index map so menus and the star act on the REAL entry
+        # even while a filter hides the rows before it.
+        query = ""
+        try:
+            query = (self.inp.text() or "").strip().lower()
+        except Exception:
+            pass
+        visible = []
+        for hi, entry in enumerate(self.app.history):
+            if query and query not in " ".join(
+                    str(p) for p in entry[:3]).lower():
+                continue
+            visible.append((hi, entry))
+        self._visible = visible
         y = 6
-        entries = list(self.app.history)
-        for entry in entries:
+        for _hi, entry in visible:
             service, src, res = entry[:3]
+            fav = len(entry) > 3 and entry[3]
             # Native 2133: the header row is a light band (star + BOLD
             # source), the translation sits on WHITE under it, indented
-            # -- not a grey band across the whole entry.
+            # -- not a grey band across the whole entry. The star is the
+            # favourite mark: filled when the entry is starred.
             rect(self._rows, 0, y - 1, 462, 16, FACE, "histrow")
-            icon(self._rows, 3, y + 1, "ui_icons", "star")
+            icon(self._rows, 3, y + 1, "ui_icons",
+                 "star" if fav else "star_off")
             label(self._rows, 26, y + 6, str(src)[:60], bold=True)
             icon(self._rows, 22, y + 17, "service_icons", service)
             label(self._rows, 46, y + 22, str(res)[:60])
@@ -251,12 +285,96 @@ class HistoryWindow(Base):
         self._scroll.setWidget(self._rows)
         self._scroll.setGeometry(2, 2, 463, 224)
         self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        # A click on a row selects it -- the star button acts on the
+        # selection, the way native's does. The handler lives on _rows
+        # (the scrolled widget), so the y is already in row coordinates.
+        self._rows.mousePressEvent = self._row_clicked
 
     def _clear(self):
         self.app.history = []
         self._fill()
         from qtranslate.qt.app import _save_history
         _save_history(self.app.history)
+
+    def _save_as(self):
+        """Native's Save as: export the history through the port's own
+        exporters (history.py ports Csv.js/Html.js/Json.js/Txt.js)."""
+        try:
+            from PySide6.QtWidgets import QFileDialog
+            from qtranslate import history as _hist
+        except Exception:
+            return
+        items = []
+        for ent in self.app.history:
+            service, src, res = ent[:3]
+            # The exporters take native's 5-slot item
+            # (service, src, src_lang, tr, tr_lang); the port's entries
+            # carry no language slots, so they export empty like an
+            # unknown pair does.
+            items.append((service, src, "", res, ""))
+        if not items:
+            return
+        path, _flt = QFileDialog.getSaveFileName(
+            self, "Save history", "history.csv",
+            "CSV files (*.csv);;HTML files (*.html);;JSON files (*.json);;"
+            "Text files (*.txt)")
+        if not path:
+            return
+        ext = path.rsplit(".", 1)[-1].lower() if "." in path else "csv"
+        try:
+            if ext in ("html", "htm"):
+                text = _hist.html_export(items)
+            elif ext == "json":
+                text = _hist.json_export(items)
+            elif ext == "txt":
+                text = _hist.txt_export(items)
+            else:
+                text = _hist.csv_export(items)
+                if not path.lower().endswith(".csv"):
+                    path += ".csv"
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(text)
+        except Exception:
+            pass
+
+    def _toggle_favorite(self):
+        """The bottom-row star: mark/unmark the selected entry. The flag
+        rides in the entry's 4th slot -- consumers read ``entry[:3]``,
+        so older 3-slot entries stay valid."""
+        try:
+            idx = self._sel
+            if not (0 <= idx < len(self.app.history)):
+                return
+            ent = list(self.app.history[idx])
+            fav = bool(len(ent) > 3 and ent[3])
+            while len(ent) < 4:
+                ent.append(False)
+            ent[3] = not fav
+            self.app.history[idx] = ent
+            self._fill()
+            from qtranslate.qt.app import _save_history
+            _save_history(self.app.history)
+        except Exception:
+            pass
+
+    def _row_clicked(self, event):
+        """Select the clicked row (the star button's target). ``event``
+        arrives in ``_rows`` coordinates, which is what ``_entry_at``
+        reads."""
+        try:
+            idx = self._entry_at(event.pos().y())
+            visible = getattr(self, "_visible", None) or []
+            if 0 <= idx < len(visible):
+                # No _fill() here: rebuilding _rows would delete the
+                # widget that is dispatching this very event.
+                self._sel = visible[idx][0]
+                return
+        except Exception:
+            pass
+        try:
+            super(type(self._rows), self._rows).mousePressEvent(event)
+        except Exception:
+            pass
 
     # ------------------------------------------------- native's menu 9
     def _window_menu(self, gpos=None):

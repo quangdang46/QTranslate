@@ -162,6 +162,14 @@ a = Analysis(
         'qtranslate.override_ui',
         'qtranslate.screens',
         'qtranslate.updater',
+        # The macOS input/hotkey backends, reached only through lazy
+        # imports inside `qtranslate/qt/hotkeys.py`, `sendkeys.py` and
+        # `selection.py` -- Analysis never follows them, and a frozen app
+        # without them has no Ctrl+Q on macOS.
+        'qtranslate.macos_input',
+        'qtranslate.macos_hotkeys',
+        'qtranslate.macos_tap',
+        'qtranslate.macos_mouse',
         # The optional runtime deps (requirements.txt). PyInstaller's
         # Analysis follows the real import, but an optional-but-expected
         # dep that raises on the *user's* machine is a support ticket:
@@ -419,6 +427,12 @@ def _pyinstaller_argv():
         # whose VALUE was " keyboard==0.13.5" and the build stopped with
         # "unexpected argument '--with keyboard' found".
         deps += ["--with", "keyboard==0.13.5"]
+    if sys.platform == "darwin":
+        # The CGEventTap global-hotkey backend (macos_tap.py) bridges
+        # CoreGraphics/CoreFoundation through PyObjC; without these the
+        # frozen app has no working Ctrl+Q.
+        deps += ["--with", "pyobjc-framework-Quartz",
+                 "--with", "pyobjc-framework-Cocoa"]
     argv = ["uv", "tool", "run", "--python", want]
     argv += deps
     argv += ["--from", "pyinstaller", "pyinstaller"]
