@@ -46,6 +46,19 @@ FLAG_CONTROL = 0x00040000
 FLAG_ALTERNATE = 0x00080000
 _ALL_MODS = FLAG_COMMAND | FLAG_SHIFT | FLAG_CONTROL | FLAG_ALTERNATE
 
+# kVK_Control / kVK_RightControl: the only keycodes whose flagsChanged
+# events toggle FLAG_CONTROL. They feed the Double Ctrl detector
+# (``qt.hotkeys.DoubleCtrlDetector``, the port of .tmp's detector).
+_CTRL_KEYCODES = frozenset({0x3B, 0x3E})
+# Other modifiers' keycodes -> the CGEventFlags bit they toggle. A
+# flagsChanged for one of these is an "other key pressed" edge for the
+# detector, exactly like upstream's KeyClass.SHIFT/ALT/META.
+_MODIFIER_FLAG_BITS = {
+    0x38: FLAG_SHIFT, 0x3C: FLAG_SHIFT,            # left/right Shift
+    0x3A: FLAG_ALTERNATE, 0x3D: FLAG_ALTERNATE,    # left/right Option
+    0x37: FLAG_COMMAND, 0x36: FLAG_COMMAND,        # left/right Command
+}
+
 
 def _log(msg):
     try:
@@ -74,6 +87,10 @@ class _Tap:
         # hotkeys.install lowers this while the options page records a
         # new binding: the chord must reach the recorder unconsumed.
         self.consume_guard = lambda: True
+        # Raw key-edge feed for gesture detectors (Double Ctrl):
+        # fn(kind, pressed) with kind "ctrl" or "other". See
+        # set_key_observer.
+        self._key_observer = None
 
     # ------------------------------------------------------------ matching
     def add(self, name, combo: str, callback) -> bool:
@@ -97,6 +114,58 @@ class _Tap:
     def clear(self):
         with self._lock:
             self._combos.clear()
+
+    def ensure(self) -> bool:
+        """Start the tap even when no chord is registered.
+
+        The Double Ctrl detector needs the raw key stream with zero
+        combos bound, so it cannot rely on ``add`` to start the tap.
+        Returns whether the tap is actually live.
+        """
+        self._ensure_running()
+        return self._started
+
+    def set_key_observer(self, fn):
+        """Install (or with ``None`` remove) a raw key-edge feed.
+
+        ``fn(kind, pressed)`` is called on the tap's run-loop thread:
+
+        * ``("ctrl", True/False)`` -- Control went down/up, from the
+          flagsChanged events of kVK_Control/kVK_RightControl;
+        * ``("other", True)`` -- any other key or modifier went down
+          (keyDown, or a flagsChanged whose modifier bit is now set).
+          Releases of non-Control keys are NOT reported, matching
+          upstream's KeyClass handling (only ``pressed`` counts).
+
+        The feed never consumes events; it only observes. Returns
+        whether the tap is live, so the caller can tell a dead feed
+        (no Accessibility grant) from a working one.
+        """
+        self._key_observer = fn
+        if fn is not None:
+            self._ensure_running()
+        return self._started
+
+    def _notify_observer(self, etype, keycode, flags):
+        """Translate one tap event into observer edges (see
+        ``set_key_observer``). Never raises into the tap callback and
+        never consumes the event -- observation only."""
+        obs = self._key_observer
+        if obs is None or keycode is None:
+            return
+        try:
+            Q = self._lib
+            if etype == Q.kCGEventFlagsChanged:
+                if keycode in _CTRL_KEYCODES:
+                    obs("ctrl", bool(flags & FLAG_CONTROL))
+                else:
+                    bit = _MODIFIER_FLAG_BITS.get(keycode)
+                    if bit is not None and flags & bit:
+                        obs("other", True)
+            elif etype == Q.kCGEventKeyDown:
+                obs("other", True)
+        except Exception:
+            pass
 
     @staticmethod
     def _parse(combo: str):
@@ -149,12 +218,22 @@ class _Tap:
 
             def _cb(_proxy, etype, event, _refcon):
                 try:
+                    keycode = None
+                    flags = 0
+                    raw = 0
                     if etype in (Quartz.kCGEventKeyDown,
-                                 Quartz.kCGEventKeyUp):
+                                 Quartz.kCGEventKeyUp,
+                                 Quartz.kCGEventFlagsChanged):
                         keycode = Quartz.CGEventGetIntegerValueField(
                             event, Quartz.kCGKeyboardEventKeycode)
                         raw = Quartz.CGEventGetFlags(event)
                         flags = raw & _ALL_MODS
+                    # Gesture feeds (Double Ctrl) observe EVERY edge,
+                    # consumed chord or not -- a Ctrl+Q press is still
+                    # "another key while Ctrl was down" to the detector.
+                    self._notify_observer(etype, keycode, flags)
+                    if etype in (Quartz.kCGEventKeyDown,
+                                 Quartz.kCGEventKeyUp):
                         # QTRANSLATE_HK_DEBUG=1 logs every keyDown's
                         # keycode+modifiers -- the diagnostic for "my
                         # real keypress does not fire" reports.

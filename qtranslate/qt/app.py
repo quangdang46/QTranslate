@@ -1746,6 +1746,69 @@ class QtApp:
             self.win.raise_()
             self.win.activateWindow()
 
+    def hotkey_main_window(self):
+        """Native's SHOW_MAIN_WINDOW hotkey target -- the Double Ctrl
+        gesture's firing and its chord alike (.tmp ``onShowApp`` =
+        UpdateInputText + Translate + showAndFocus): capture the
+        selection, put it in the source pane, translate it, and show
+        the window. SHOW_MAIN_WINDOW is a LENIENT action upstream, so
+        with no selection the window still comes up -- only the
+        translate half is skipped. The capture runs on a worker (the
+        copy engine polls the clipboard); the window itself is shown
+        even when another translation already holds the slot."""
+        def work():
+            text = ""
+            try:
+                from qtranslate import exclusions as _ex
+                if not _ex.foreground_excluded():
+                    from qtranslate import selection
+                    text = (selection.copy_selection() or "").strip()
+            except Exception:
+                text = ""
+            try:
+                text = self._prepared_capture(text) if text else ""
+            except Exception:
+                text = ""
+
+            def on_ui():
+                # Load the captured text BEFORE showing: a visible
+                # source pane would arm the instant-translation debounce
+                # on the programmatic setPlainText (.tmp sets the input
+                # first, then shows the window).
+                if text:
+                    try:
+                        if self.win is not None:
+                            self.win.src.setPlainText(text[:2000])
+                    except Exception:
+                        pass
+                try:
+                    self.show_main_window()
+                except Exception:
+                    pass
+            try:
+                self._on_ui(on_ui)
+            except Exception:
+                pass
+            if not text:
+                return
+            try:
+                self._start_translation(text, self._show_main_result,
+                                        apply_rules=True)
+            except Exception:
+                pass
+
+        try:
+            started = self._spawn_translation("mainwindow", work)
+        except Exception:
+            started = False
+        if not started:
+            # The capture/translate half is dropped while another
+            # request holds the slot -- the window still comes up.
+            try:
+                self.show_main_window()
+            except Exception:
+                pass
+
     def open_ocr(self):
         """Native's "Text recognition": pick a region of the screen and
         OCR it. The capture and the OCR call are the core's; only the

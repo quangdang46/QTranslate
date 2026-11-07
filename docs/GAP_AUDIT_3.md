@@ -66,24 +66,27 @@ What's missing / affected:
   `win.render` and never reaches `app._maybe_auto_copy`
   (app.py:956-963 comment corrected — the pipeline exists, it just
   doesn't feed that hook).
-- **DoubleCtrl detector: REAL-GAP (documented divergence).** `.tmp`
+- **DoubleCtrl detector: FIXED (qt-xzg).** `.tmp`
   `DoubleCtrlDetector` (ui-swing/.../input/DoubleCtrlDetector.kt) is a
   pure press/release state machine: two genuine Ctrl taps <400 ms apart
   (with no other key in the combination, press-observed-only) trigger
   SHOW_MAIN_WINDOW; `isDoubleCtrlEnabled` rides `HotkeyBinding`. The
-  port PERSISTS the gesture — `HotKeyMainWindow=0x8000` (bit15 "Double"
-  prefix, `config.format_hotkey` displays "Double Ctrl") and
-  `migrate.py` maps `isDoubleCtrlEnabled`↔0x8000 — but NOTHING detects
-  it: `hotkey_combo(0x8000)` yields no combo (vk=0), so `hotkeys.install`
-  registers nothing, and no tap-pair detector exists in `qt/hotkeys.py`,
-  `macos_tap.py`, `macos_hotkeys.py` or `app.py`. (`hotkey_combo` also
-  masks bit15 off a chord, so a hypothetical "Double Ctrl+Q" would fire
-  on a SINGLE Ctrl+Q — the Double qualifier is silently dropped.) A
-  bare-Ctrl tap pair
-  needs a lower-level key stream than `keyboard.add_hotkey`/Carbon
-  hotkeys provide (upstream uses `MainGlobalKeyListener`+`QInputBackend`).
-  Documented in RE_COVERAGE_CHECKLIST B4/B5 notes; implementing the
-  detector is a real feature, not a docs fix.
+  port now ports that state machine as
+  `qt/hotkeys.py::DoubleCtrlDetector` and feeds it from the raw key
+  stream: on macOS the CGEventTap (`macos_tap.py`) gained a
+  `set_key_observer` feed that translates flagsChanged/keyDown edges
+  into ctrl/other presses (the mask already included
+  kCGEventFlagsChanged), and on the `keyboard` backend (Windows/X11) a
+  dedicated observe-only `keyboard.hook` listener thread does the same.
+  `hotkeys.install` wires the feed whenever `HotKeyMainWindow` carries
+  bit15; `uninstall` tears it down, and the options-page recording
+  state acts as upstream's pause (detector resets on the transition).
+  Honest degradations: the Carbon `RegisterEventHotKey` fallback sees
+  only completed chords, so with no tap and no `keyboard` hook the
+  gesture stays unbound — never a false trigger. A dword carrying BOTH
+  bit15 and a chord still registers the chord (upstream's chord and
+  double-Ctrl mechanisms are independent). Pinned by
+  `tests/regress_double_ctrl.py`.
 - image_search panel internals, dictionary selection-menu parity,
   options/internet.py proxy UI — still open (out of this bead's scope).
 
@@ -105,4 +108,4 @@ What's missing / affected:
 | 12 Proxy password | FIXED — was plaintext in Options.json; now `qtranslate/secrets.py` (0600, upstream key `network.proxy.password`), load() migrates legacy |
 
 ## Remaining REAL-GAP
-- **DoubleCtrl detection**: `HotKeyMainWindow=0x8000` persists/displays but no detector exists (needs raw key stream). Documented in RE_COVERAGE_CHECKLIST B4/B5.
+- ~~**DoubleCtrl detection**~~ — RESOLVED by qt-xzg (see the FIXED entry above and `tests/regress_double_ctrl.py`).

@@ -4,7 +4,9 @@ The geometry was measured off the native capture; see
 ``qtranslate-pyside6-spec.md`` section 5.
 
 WIRED: the rows are the real bindings from Options.json
-(``config.HOTKEY_NAMES`` + ``format_hotkey`` -- all 17 are listed),
+(``config.HOTKEY_NAMES`` + ``format_hotkey`` -- all 17 are listed;
+the bare Double-Ctrl gesture gets its own "Double Ctrl" label via
+``_binding_label``),
 "Enable hotkeys" writes ``HotKeys.EnableHotKeys`` and re-registers,
 and clicking a row's hotkey cell arms a capture -- the next key press
 is encoded into the same ``(modifiers << 8) | vk`` packing native uses
@@ -217,12 +219,31 @@ def _start_record(shell, key):
     shell.setFocus(Qt.FocusReason.OtherFocusReason)
 
 
+def _binding_label(code) -> str:
+    """Row label for a packed hotkey dword.
+
+    ``format_hotkey`` renders chords; the bare Double-Ctrl gesture
+    (bit15 with no key -- ``HotKeyMainWindow=0x8000``) has no chord to
+    name, so it gets the gesture's own label. That is the same words
+    upstream shows on its separate "Double Ctrl" checkbox
+    (``settings_hotkeys.double_ctrl_label``); the port's flat table has
+    no second control, so the cell carries it.
+    """
+    try:
+        code = int(code or 0)
+    except Exception:
+        code = 0
+    if code & 0x8000 and not (code & 0xFFF):
+        return "Double Ctrl"
+    return _C.format_hotkey(code) or "(none)"
+
+
 def _refresh_label(shell, key):
     lab = (getattr(shell, "_hk_labels", {}) or {}).get(key)
     if lab is not None:
         try:
             code = int(cfg_section("HotKeys").get(key, 0) or 0)
-            lab.setText(_C.format_hotkey(code) or "(none)")
+            lab.setText(_binding_label(code))
         except Exception:
             pass
 
@@ -322,7 +343,7 @@ def _save_binding(shell, key, code):
     lab = (getattr(shell, "_hk_labels", {}) or {}).get(key)
     if lab is not None:
         try:
-            lab.setText(_C.format_hotkey(code) or "(none)")
+            lab.setText(_binding_label(code))
         except Exception:
             pass
 
@@ -407,7 +428,7 @@ class HotkeysPage(OptionsBase):
         for i, (key, action) in enumerate(ROWS):
             label(t, 166, first_y + pitch * i, action)
             code = int(hk.get(key, 0) or 0)
-            disp = _C.format_hotkey(code) or "(none)"
+            disp = _binding_label(code)
             lab = label(t, 484, first_y + pitch * i, disp)
             self._hk_labels[key] = lab
             # Click the hotkey cell to record a new binding.
