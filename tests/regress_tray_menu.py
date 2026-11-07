@@ -20,6 +20,14 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from qtranslate.qt import app as QA  # noqa: E402
 
+# The tray labels come from the UI-language pack now; pin the config to
+# a throwaway English one so the assertions do not follow the user's
+# LocaleFoderName (and no write-through can touch the real file).
+import tempfile as _tf  # noqa: E402
+from qtranslate import config as _C  # noqa: E402
+_C.DEFAULT_PATH = os.path.join(_tf.mkdtemp(prefix="tray_i18n_"),
+                               "Options.json")
+
 fail = []
 n = [0]
 
@@ -51,8 +59,16 @@ for a in menu.actions():
 # qt-v74 added the port's own "Check for updates..." after the native
 # entries (native has no update UI in the tray); the native order above
 # it is unchanged.
-WANT = ["QTranslate", "Show main window", "Dictionary", "Text recognition",
-        "History", "Keyboard", "Options...", "About QTranslate",
+# Image search joined between Dictionary and Text recognition -- the
+# .tmp tray order (system_tray_menu.image_search) and the port's new
+# Commons image-search dialog.
+# The labels now come from the UI-language pack (menu 5): English id
+# 80 is "Options" -- the pack's own string, not the old hardcoded
+# "Options..." -- and every other entry resolves to the same English
+# text under the default locale.
+WANT = ["QTranslate", "Show main window", "Dictionary", "Image search",
+        "Text recognition", "Translate document",
+        "History", "Keyboard", "Options", "About QTranslate",
         "Check for updates...",
         "SEPARATOR", "Enable global hotkeys",
         "Mouse mode", "SEPARATOR", "Exit"]

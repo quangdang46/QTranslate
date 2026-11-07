@@ -102,6 +102,29 @@ if os.path.isdir(L.LOCALES_DIR):
             ok, _ = False, str(ex)
         ck("live pack %s loads and reports its own code" % name, ok, code)
 
+# --- ui_pack / ui_caption: the configured language drives the UI ----
+from qtranslate import config as _CFG
+_real_load = _CFG.load
+try:
+    _CFG.load = lambda *a, **k: {"General": {"LocaleFoderName": "Vietnamese"}}
+    vi = L.ui_pack()
+    ck("ui_pack follows LocaleFoderName",
+       vi.get("LanguageCode") == "vi", str(vi.get("LanguageCode")))
+    ck("ui_caption returns the translated dialog caption",
+       L.ui_caption(3, "History") == "Lịch sử tra cứu",
+       L.ui_caption(3, "History"))
+    ck("ui_page_caption maps sidebar names to pack ids",
+       L.ui_page_caption("Basics") == "Cơ bản"
+       and L.ui_page_caption("Extensions") == "Extensions")
+    _CFG.load = lambda *a, **k: {"General": {"LocaleFoderName": "Nope"}}
+    ck("a missing pack falls back to English",
+       L.ui_pack().get("LanguageCode") == "en")
+    _CFG.load = lambda *a, **k: {}
+    ck("a missing setting defaults to English",
+       L.ui_pack().get("LanguageCode") == "en")
+finally:
+    _CFG.load = _real_load
+
 if fails:
     print("FAIL %d" % len(fails))
     for f in fails:

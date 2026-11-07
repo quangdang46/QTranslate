@@ -9,10 +9,11 @@ What it shows: every extension folder discovered under the per-user
 extensions directory (D16), with its manifest's name and version, its
 load status, and ONE checkbox per extension -- the user's own on/off
 switch. Unchecking writes ``Extensions.Disabled`` in Options.json
-(``write_disabled_extensions``) and the loader skips the folder on the
-next start: no code imported, no dispatch table written. A change takes
-effect after QTranslate restarts; the page says so rather than pretending
-it applied live.
+(``write_disabled_extensions``) AND applies the change live through
+``ExtensionManager.disable``/``enable``: the extension's providers,
+themes, dispatch tables, listeners and UI contributions leave the
+running process immediately, and the same choice still holds on the
+next start because the loader skips the folder then too.
 
 The helpers below are MODULE-LEVEL functions, not methods of the page
 class: the shell runs each page's ``build`` with the SHELL instance as
@@ -48,6 +49,39 @@ def _open_folder():
         import subprocess
         subprocess.Popen(["open" if sys.platform == "darwin"
                           else "xdg-open", d])
+
+
+def _install(page):
+    """The page's 'Install…' button: pick an extension folder, copy it
+    into the per-user extensions dir and load it live (upstream's
+    PluginsPanel install action; a folder here, a JAR there)."""
+    from PySide6.QtWidgets import QFileDialog, QMessageBox
+    src = QFileDialog.getExistingDirectory(
+        page, "Choose extension folder")
+    if not src:
+        return
+    manager = getattr(page.app, "ext_manager", None)
+    if manager is None or not hasattr(manager, "install_folder"):
+        QMessageBox.warning(page, "QTranslate",
+                            "Extension manager is not available.")
+        return
+    try:
+        outcome = manager.install_folder(src)
+    except Exception as exc:                # noqa: BLE001
+        QMessageBox.warning(
+            page, "QTranslate",
+            "Could not install the extension: %s" % exc)
+        return
+    if outcome.get("status") == "loaded":
+        QMessageBox.information(
+            page, "QTranslate",
+            "Installed '%s'." % (outcome.get("id") or src))
+    else:
+        QMessageBox.warning(
+            page, "QTranslate",
+            "Installed but disabled: %s"
+            % (outcome.get("reason") or "unknown reason"))
+    page._show_page("extensions", first=True)
 
 
 def _disabled():
@@ -123,8 +157,15 @@ def _save_settings(dlg, editors, mgr, ext_id):
     dlg.accept()
 
 
-def _toggle(ext_id, on):
-    """One checkbox flipped: rewrite the whole Disabled list."""
+def _toggle(page, ext_id, on):
+    """One checkbox flipped: rewrite Disabled AND apply it live.
+
+    The write to ``Extensions.Disabled`` keeps the choice across
+    restarts exactly as before; the manager's ``disable``/``enable``
+    then removes or re-registers the extension's providers, themes,
+    dispatch tables, listeners and UI contributions in the running
+    process -- no restart needed.
+    """
     if not ext_id:
         return
     disabled = _disabled()
@@ -133,6 +174,16 @@ def _toggle(ext_id, on):
     else:
         disabled.add(ext_id)
     write_disabled_extensions(disabled)
+    mgr = getattr(page.app, "ext_manager", None)
+    if mgr is None:
+        return
+    try:
+        if on:
+            mgr.enable(ext_id)
+        else:
+            mgr.disable(ext_id)
+    except Exception:                   # noqa: BLE001 -- fail-open UI
+        pass
 
 
 def _scan(page):
@@ -195,7 +246,8 @@ class ExtensionsPage(OptionsBase):
             c = check(lst, 167, y + 8, row["label"], on=on)
             c.setEnabled(row["known"])
             c.stateChanged.connect(
-                lambda st, rid=row["id"]: _toggle(rid, bool(st)))
+                lambda st, rid=row["id"], p=self:
+                    _toggle(p, rid, bool(st)))
             q = QLabel(row["status"])
             q.setStyleSheet("QLabel{color:%s;}" % (DIM if on else TEXT))
             put(lst, q, 450, y, 100, 14)
@@ -212,8 +264,10 @@ class ExtensionsPage(OptionsBase):
                     _open_settings(self, rid, sch))
             y += 22
         if rows:
-            hint = QLabel("Changes take effect after QTranslate restarts.")
+            hint = QLabel("Changes apply immediately.")
             hint.setStyleSheet("QLabel{color:%s;}" % DIM)
             put(lst, hint, 167, y + 8, 440, 14)
         button(self, 524, 313, 110, "Open folder").clicked.connect(
             _open_folder)
+        button(self, 400, 313, 110, "Install…").clicked.connect(
+            lambda _c=False, p=self: _install(p))

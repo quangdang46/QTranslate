@@ -133,19 +133,21 @@ class UISlotRegistry:
         return (kind, name)
 
     def add(self, kind: str, name: str, contribution, replaces: str = "",
-            label: str = "") -> str:
+            label: str = "", owner: str = "") -> str:
         """Register a contribution; returns the winning owner's label.
 
         ``label`` is what menus SHOW (the tray renders it verbatim);
         when it is empty the callable's own name was used -- which put
         ``tray_entry`` on the operator's tray menu verbatim. The caller
         (the extension API) now supplies the extension's display name.
+        ``owner`` is the extension id, kept on the entry so a live
+        disable can remove exactly this extension's contributions.
         """
         key = self._key(kind, name)
         label = label or replaces or self._label(contribution)
         self._slots.setdefault(key, []).append(
             {"label": label, "contribution": contribution,
-             "replaces": replaces})
+             "replaces": replaces, "owner": owner})
         return label
 
     @staticmethod
@@ -185,6 +187,20 @@ class UISlotRegistry:
     def contributions(self, kind: str, name: str) -> list:
         """Every contribution in order, so a host can compose them."""
         return [e["contribution"] for e in self.entries(kind, name)]
+
+    def remove_owner(self, owner: str) -> int:
+        """Drop every contribution ``owner`` registered; returns the
+        count removed. Used by the extension manager's live disable."""
+        removed = 0
+        for key in list(self._slots):
+            kept = [e for e in self._slots[key]
+                    if e.get("owner") != owner]
+            removed += len(self._slots[key]) - len(kept)
+            if kept:
+                self._slots[key] = kept
+            else:
+                del self._slots[key]
+        return removed
 
     def is_empty(self, kind: str, name: str) -> bool:
         return not self.entries(kind, name)

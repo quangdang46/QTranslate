@@ -27,8 +27,8 @@ import os
 from PySide6.QtWidgets import QColorDialog
 
 from .base import OptionsBase, cfg_section, cfg_set, check, combo, \
-    field, group, label, notify_app, rect
-from ..widgets import button
+    field, group, hline, label, notify_app, rect
+from ..widgets import HEADING, HEADING_LINE, button
 
 
 def _theme_names(app):
@@ -66,6 +66,18 @@ def _to_int(qcolor):
 
 class AppearancePage(OptionsBase):
     SEL = 5
+    # Grew for the port-owned "Image search"/"Interface" sections and
+    # the close-on-outside-click checkbox below the measured popup
+    # controls (.tmp PopupsPanel/AppearancePanel carry the same
+    # settings next to the translate popup's).
+    SIZE = (644, 536)
+    CHROME = dict(OptionsBase.CHROME)
+    CHROME["panel"] = (4, 29, 142, 498)
+    CHROME["shadow_row"] = (3, 527, 144, 1)
+    CHROME["rule"] = (532, 3, 638)
+    CHROME["buttons"] = {k: (x, y + 174, w, sh)
+                         for k, (x, y, w, sh)
+                         in OptionsBase.CHROME["buttons"].items()}
 
     def build(self):
         ap = cfg_section("Appearance")
@@ -173,6 +185,107 @@ class AppearancePage(OptionsBase):
             r.mousePressEvent = (lambda _e, k=key, wdg=r:
                                  _pick_color(self, k, wdg))
             self._swatches[key] = r
+
+        # ---- Image search (.tmp PopupsPanel imageSearch* fields) ----
+        # Port-owned: the Commons image-search dialog is a port feature,
+        # so its automatic-position toggle and transparency percent
+        # live here next to the translate popup's own transparency.
+        from qtranslate.qt import image_search as _IS
+        icfg = _IS._imgsearch_cfg()
+        label(self, 167, 344, "Image search", color=HEADING, size=12)
+        hline(self, 344, 330, 608, HEADING_LINE)
+        cb_pos = check(self, 159, 362,
+                       "Automatic window position",
+                       bool(icfg.get("AutoPosition", True)), blue=True)
+        cb_pos.toggled.connect(
+            lambda v: _imgsearch_set("AutoPosition", bool(v)))
+        try:
+            pct = int(icfg.get("Transparency", 5))
+        except Exception:
+            pct = 5
+        pct = max(5, min(50, pct))
+        label(self, 158, 390, "Transparency (5 - 50 %):")
+        vals = [str(v) for v in range(5, 51, 5)]
+        c_tr = combo(self, 398, 382, 114, str(pct), values=vals)
+        c_tr.activated.connect(
+            lambda _i: _imgsearch_set(
+                "Transparency", int(c_tr.currentText())))
+
+        # .tmp closePopupsOnClickOutside (PopupsPanel): whether an
+        # outside click dismisses the quick-translate popup. Default
+        # on, matching upstream; the popup reads it live per click.
+        ap_now = cfg_section("Appearance")
+        cb_out = check(self, 159, 420,
+                       "Close popup when clicking outside",
+                       bool(ap_now.get("ClosePopupsOnClickOutside",
+                                       True)), blue=True)
+        cb_out.toggled.connect(
+            lambda v: cfg_set("Appearance",
+                              "ClosePopupsOnClickOutside", bool(v)))
+
+        # .tmp AppearancePanel uiScale (JSpinner 75-300 step 25,
+        # applied live via FlatLaf UIScale). Qt's equivalent is
+        # QT_SCALE_FACTOR, which is read once at QApplication creation,
+        # so the port applies it on the NEXT start -- the hint says so.
+        label(self, 167, 446, "Interface", color=HEADING, size=12)
+        hline(self, 446, 330, 608, HEADING_LINE)
+        try:
+            scale = int(ap_now.get("UiScale", 100))
+        except Exception:
+            scale = 100
+        scale = max(75, min(300, scale))
+        svals = [str(v) for v in range(75, 301, 25)]
+        if str(scale) not in svals:
+            svals.insert(0, str(scale))
+        label(self, 158, 472, "UI scale:")
+        c_scale = combo(self, 398, 464, 114, str(scale), values=svals)
+        c_scale.activated.connect(
+            lambda _i: cfg_set("Appearance", "UiScale",
+                               int(c_scale.currentText())))
+        label(self, 522, 472, "%  (applies after restart)",
+              color="#777777")
+
+        # .tmp AppearancePanel fonts_group: the editor font is separate
+        # from the UI font (Basics page "Font name"/"Text size"). Empty
+        # name inherits the UI font; Qt's own per-glyph fallback covers
+        # upstream's editorFallbackFontConfig, so no third combo.
+        try:
+            from PySide6.QtGui import QFontDatabase
+            families = sorted(QFontDatabase.families())
+        except Exception:
+            families = []
+        cur_ef = (general.get("EditorFontName", "")
+                  if (general := cfg_section("General")) else "") or ""
+        ef_names = ["(inherit UI font)"] + (
+            families if cur_ef in families or not cur_ef
+            else [cur_ef] + families)
+        label(self, 158, 500, "Editor font:")
+        c_ef = combo(self, 398, 492, 232,
+                     cur_ef if cur_ef in ef_names else ef_names[0],
+                     values=ef_names)
+        c_ef.currentTextChanged.connect(
+            lambda v: cfg_set("General", "EditorFontName",
+                              "" if v == ef_names[0] else v))
+        label(self, 158, 524, "Editor text size:")
+        esizes = [str(s) for s in (8, 9, 10, 11, 12, 13, 14, 15, 16,
+                                   18, 20, 24, 28, 32)]
+        try:
+            cur_es = str(int(general.get("EditorTextSize", 0) or 0))
+        except Exception:
+            cur_es = "0"
+        c_es = combo(self, 398, 516, 114,
+                     cur_es if cur_es in esizes else "0", values=["0"] + esizes)
+        c_es.currentTextChanged.connect(
+            lambda v: cfg_set("General", "EditorTextSize",
+                              int(v) if v.isdigit() and v != "0" else ""))
+        label(self, 522, 524, "pt  (0 = inherit)", color="#777777")
+
+
+def _imgsearch_set(key, value):
+    """Write one ``ImageSearch`` key (the image-search dialog reads the
+    section live on each open, so no restart or notify is needed)."""
+    from qtranslate.qt import image_search as _IS
+    _IS._imgsearch_save(**{key: value})
 
 
 def _theme_changed(shell, name):

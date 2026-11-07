@@ -15,6 +15,7 @@ from .advanced import AdvancedPage
 from .appearance import AppearancePage
 from .base import PAGES
 from .basics import BasicsPage
+from .comparison import ComparisonPage
 from .exceptions import ExceptionsPage
 from .extensions import ExtensionsPage
 from .hotkeys import HotkeysPage
@@ -31,13 +32,14 @@ PAGES.update({
     "Services": ServicesPage, "Languages": LanguagesPage,
     "Appearance": AppearancePage, "Exceptions": ExceptionsPage,
     "Advanced": AdvancedPage, "Updates": UpdatesPage,
-    "Extensions": ExtensionsPage,
+    "Extensions": ExtensionsPage, "Comparison": ComparisonPage,
 })
 
 # `qtranslate.qt.app.open_options` opens the dialog at Basics, the same
 # page native's Options opens to from the main window's overflow menu.
 OptionsDialog = BasicsPage
 
-__all__ = ["AdvancedPage", "AppearancePage", "BasicsPage", "ExceptionsPage",
+__all__ = ["AdvancedPage", "AppearancePage", "BasicsPage",
+           "ComparisonPage", "ExceptionsPage",
            "ExtensionsPage", "HotkeysPage", "InternetPage", "LanguagesPage",
            "ServicesPage", "UpdatesPage", "OptionsDialog", "PAGES"]

@@ -12,9 +12,11 @@ front ends agree on what the app is configured to do.
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer, QPoint
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import QLabel
+from PySide6.QtWidgets import (QCheckBox, QComboBox, QGroupBox, QLabel,
+                               QLineEdit, QListWidget, QListWidgetItem,
+                               QPlainTextEdit, QTextEdit)
 
 from qtranslate_style import ACCENT, DIM, FACE, TEXT, THUMB, WINDOW
 
@@ -25,7 +27,8 @@ from ..widgets import (Base, LINK, button, check, combo, field, group,
 # Extensions is not a native page (native has no extension system), so
 # it trails the captured order instead of sitting inside it.
 SIDEBAR = ["Basics", "Hotkeys", "Internet", "Services", "Languages",
-           "Appearance", "Exceptions", "Advanced", "Updates", "Extensions"]
+           "Appearance", "Exceptions", "Advanced", "Updates", "Extensions",
+           "Comparison"]
 
 
 class OptionsBase(Base):
@@ -79,7 +82,16 @@ class OptionsBase(Base):
         # opened -- otherwise "Cancel" would keep every edit.
         self._cfg_snapshot = cfg_load()
         self._cfg_committed = False
-        self.setWindowTitle("Options")
+        # .tmp SettingsSearchController state: the query survives the
+        # per-page chrome rebuilds, the index is built once per dialog.
+        self._search_text = ""
+        self._search_idx = None
+        self._search_building = False
+        try:
+            from qtranslate.locale import ui_caption
+            self.setWindowTitle(ui_caption(2, "Options"))
+        except Exception:
+            self.setWindowTitle("Options")
         self._show_page(self._page_name, first=True)
 
     def closeEvent(self, event):
@@ -115,22 +127,78 @@ class OptionsBase(Base):
         shadow_row = ch.get("shadow_row")
         if shadow_row:
             rect(self, *shadow_row, WINDOW)
-        self._rows = []
+        # .tmp SettingsSearchController: a search field above the page
+        # list; typing swaps the rows for matching settings, choosing a
+        # hit navigates to its page and flashes the control. The index
+        # is built lazily on the first query, exactly like upstream's
+        # "pause on the first keystroke" tradeoff.
         rx, ry, rw = ch["row"]
+        px, py, pw, ph = ch["panel"]
+        self._search = QLineEdit(self)
+        self._search.setPlaceholderText("Search settings")
+        self._search.setClearButtonEnabled(True)
+        self._search.setStyleSheet("QLineEdit{padding:0 4px;}")
+        put(self, self._search, rx, ry + 2, rw - 4, 16)
+        # Chrome is rebuilt on every page swap; put the in-flight query
+        # back so a hit-activation or an index build does not wipe it.
+        self._search.blockSignals(True)
+        self._search.setText(self._search_text)
+        self._search.blockSignals(False)
+        self._search.textChanged.connect(self._on_search)
+        self._search.returnPressed.connect(self._search_enter)
+        self._rows_y = ry + 20
+        # The results list and the no-hits card share the rows' space;
+        # both stay hidden until a query swaps them in (.tmp's
+        # NAV_TREE/NAV_RESULTS/NAV_EMPTY cards).
+        self._search_results = QListWidget(self)
+        self._search_results.setStyleSheet(
+            "QListWidget{border:none;background:transparent;}")
+        put(self, self._search_results, rx, self._rows_y, rw,
+            (py + ph) - self._rows_y)
+        self._search_results.itemClicked.connect(
+            lambda it: self._search_activate(it))
+        self._search_results.hide()
+        self._search_empty = QLabel(self)
+        self._search_empty.setWordWrap(True)
+        self._search_empty.setStyleSheet(
+            "QLabel{color:%s;background:transparent;}" % DIM)
+        put(self, self._search_empty, rx + 8, self._rows_y + 8,
+            rw - 16, 60)
+        self._search_empty.hide()
+        self._rows = []
         for i, name in enumerate(SIDEBAR):
-            q = QLabel(name)
+            # The page caption comes from the UI-language pack (Windows
+            # section ids 10-18); port-owned pages have no id and keep
+            # their English name.
+            try:
+                from qtranslate.locale import ui_page_caption
+                shown = ui_page_caption(name)
+            except Exception:
+                shown = name
+            q = QLabel(shown)
             q.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
             # No left padding: the text has to start one pixel inside the
             # row, the way native's does (MEASURED off the capture).
-            put(self, q, rx, ry + 13 * i, rw, 13)
+            put(self, q, rx, self._rows_y + 13 * i, rw, 13)
             q.mousePressEvent = (lambda _e, n=name: self._goto(n))
             self._rows.append(q)
         ry, x0, x1 = ch["rule"]
         hline(self, ry, x0, x1)
         hline(self, ry + 1, x0, x1 - 1, WINDOW)
         self._btn_apply = None
+        # The footer buttons' captions live in the pack's Windows
+        # section (dialog 2 Controls: 1=OK, 2=Cancel, 1049=Apply).
+        _BTN_IDS = {"OK": 1, "Cancel": 2, "Apply": 1049}
         for text, (bx, by, bw, shadow) in ch["buttons"].items():
-            b = button(self, bx, by, bw, text, shadow=shadow)
+            shown = text
+            cid = _BTN_IDS.get(text)
+            if cid:
+                try:
+                    from qtranslate.locale import ui_control_caption
+                    shown = ui_control_caption(2, cid, text)
+                except Exception:
+                    pass
+            b = button(self, bx, by, bw, shown, shadow=shadow)
             if text == "OK":
                 b.clicked.connect(self._on_ok)
             elif text == "Cancel":
@@ -212,6 +280,7 @@ class OptionsBase(Base):
                 self.setFixedSize(*cls.SIZE)
             self._build_chrome()
             cls.build(self)
+            self._localize_page()
         finally:
             self.ORIGIN, self.SIZE = saved_origin, saved_size
             self.CHROME = saved_chrome
@@ -275,6 +344,328 @@ class OptionsBase(Base):
                 notify_app(getattr(self, "app", None))
             except Exception:
                 pass
+        except Exception:
+            pass
+
+    def _localize_page(self):
+        """Re-label this page's static texts in the UI language.
+
+        The lang packs carry every native control caption under the
+        page's dialog id (Windows section, ``Controls`` pairs, nested
+        sublists included). Matching is by the ENGLISH text the port
+        hardcoded: a label whose text equals a pack string is swapped
+        for the translation; anything the pack does not know (the
+        port's own rows, or strings the port re-worded like
+        "Transparency (0 - 255)") stays English. Port-owned pages have
+        no dialog id and are skipped entirely.
+        """
+        try:
+            from qtranslate import locale as _L
+            did = _L.PAGE_CAPTION_IDS.get(self._page_name)
+            if not did:
+                return
+            en = _L.load_pack("English")
+            ui = _L.ui_pack()
+            if not en or not ui:
+                return
+
+            def _ctrls(pack):
+                out = {}
+
+                def rec(items):
+                    for it in items or ():
+                        if (isinstance(it, list) and len(it) == 2
+                                and isinstance(it[0], int)
+                                and isinstance(it[1], str)):
+                            out[it[0]] = it[1]
+                        elif isinstance(it, list):
+                            rec(it)
+                for m in pack.get("Windows", ()):
+                    if isinstance(m, dict) and m.get("Id") == did:
+                        rec(m.get("Controls"))
+                return out
+
+            ce, cu = _ctrls(en), _ctrls(ui)
+            tr = {}
+            for cid, en_text in ce.items():
+                ui_text = cu.get(cid)
+                if ui_text and ui_text != en_text:
+                    tr[en_text] = ui_text
+            if not tr:
+                return
+            from PySide6.QtWidgets import (QCheckBox, QGroupBox, QLabel)
+            def _swap(w, t, new):
+                w.setText(new)
+                # The geometry was sized for the English string; grow
+                # the widget (never shrink) so a longer translation is
+                # not clipped. Group boxes keep their frame -- their
+                # title is painted inside it.
+                g = w.geometry()
+                need = w.fontMetrics().horizontalAdvance(new) + 18
+                if need > g.width():
+                    w.setGeometry(g.x(), g.y(), need, g.height())
+
+            for w in self.findChildren(QLabel):
+                t = w.text()
+                if t in tr:
+                    _swap(w, t, tr[t])
+            for w in self.findChildren(QCheckBox):
+                t = w.text()
+                if t in tr:
+                    _swap(w, t, tr[t])
+            for w in self.findChildren(QGroupBox):
+                t = w.title()
+                if t in tr:
+                    w.setTitle(tr[t])
+        except Exception:
+            pass
+
+    # ------------------------------------------------------- settings search
+    # .tmp SettingsSearchController/Index: typing in the sidebar field
+    # filters every page's settings; a hit navigates to its page and
+    # flashes the control. Entries are collected by scanning the built
+    # page -- the same "instrumented helpers" outcome upstream gets from
+    # addCheckbox/addRow, without touching every page's build code.
+
+    # Pages deliberately left unindexed, like upstream's PluginsPanel:
+    # a manager for a runtime list, not a page of settings.
+    _SEARCH_EXCLUDE = {"Extensions"}
+
+    def _on_search(self, text=None):
+        if text is None:
+            try:
+                text = self._search.text()
+            except Exception:
+                text = ""
+        self._search_text = text or ""
+        q = self._search_text.strip().lower()
+        if not q:
+            for r in self._rows:
+                r.show()
+            self._search_results.hide()
+            self._search_empty.hide()
+            return
+        hits = [h for h in self._search_index()
+                if self._search_match(h, q)]
+        for r in self._rows:
+            r.hide()
+        if not hits:
+            self._search_results.hide()
+            # Naming the query back is the difference between "nothing
+            # matched what you typed" and a sidebar that looks broken
+            # (.tmp's NAV_EMPTY card does the same).
+            self._search_empty.setText(
+                'No settings match "%s"' % self._search_text.strip())
+            self._search_empty.show()
+            return
+        self._search_empty.hide()
+        self._search_results.clear()
+        for h in hits:
+            it = QListWidgetItem(h["label"])
+            it.setData(Qt.UserRole, h)
+            # The path line tells identically-labelled rows apart,
+            # upstream's "page › section" subtitle.
+            it.setToolTip("%s  ›  %s" % (h["page"], h["section"]
+                                       or h["page"]))
+            self._search_results.addItem(it)
+        self._search_results.show()
+
+    def _search_match(self, h, q):
+        return any(q in str(h.get(k, "")).lower()
+                   for k in ("label", "section", "hint", "page"))
+
+    def _search_enter(self):
+        """Down-from-field equivalent: Enter activates the first hit
+        (.tmp's enterResults moves into the results list)."""
+        if self._search_results.count() > 0:
+            self._search_activate(self._search_results.item(0))
+
+    def _search_index(self):
+        """Build the index once per dialog: visit every searchable page
+        through the same _show_page path navigation uses, then scan the
+        built widgets. Upstream builds panels lazily for the same
+        reason -- most pages do not exist until asked."""
+        if self._search_idx is not None or self._search_building:
+            return self._search_idx or []
+        self._search_building = True
+        idx = []
+        cur = self._page_name
+        try:
+            for name in SIDEBAR:
+                if name in self._SEARCH_EXCLUDE:
+                    continue
+                try:
+                    self._show_page(name)
+                    idx.extend(self._collect_search(name))
+                except Exception:
+                    continue
+        finally:
+            self._search_building = False
+            try:
+                self._show_page(cur)
+            except Exception:
+                pass
+        self._search_idx = idx
+        return idx
+
+    def _collect_search(self, page):
+        """Scan the freshly built page for setting rows, the way
+        upstream's instrumented layout helpers record entries: every
+        body QLabel that heads a row (something sits to its right on
+        the same line) is an entry anchored on the label; checkboxes
+        are entries by their own text; a control with no row label
+        still registers when it carries a tooltip."""
+        from PySide6.QtWidgets import (QComboBox, QLineEdit,
+                                       QPlainTextEdit, QTextEdit)
+        rule_y = self.CHROME["rule"][0]
+        groups = []    # (top, bottom, title) in dialog coords
+        labels = []    # (cy, right, x, y, text)
+        controls = []  # (cy, x, y, widget)
+        checks = []    # (x, y, text)
+        for w in self.findChildren(object):
+            if w is self._search or w is self._search_empty:
+                continue
+            is_lab = isinstance(w, QLabel)
+            is_ctl = isinstance(w, (QCheckBox, QComboBox, QLineEdit,
+                                    QTextEdit, QPlainTextEdit))
+            if not is_lab and not is_ctl:
+                continue
+            try:
+                if not w.isVisible():
+                    continue
+                pos = w.mapTo(self, QPoint(0, 0))
+            except Exception:
+                continue
+            x, y = pos.x(), pos.y()
+            # Sidebar chrome lives left of x=148; the footer buttons
+            # sit below the rule. Everything between is page content.
+            if x < 148 or y >= rule_y - 2:
+                continue
+            cy = y + w.height() // 2
+            if isinstance(w, QCheckBox):
+                t = (w.text() or "").strip()
+                if t:
+                    checks.append((x, y, t))
+            elif is_lab:
+                t = (w.text() or "").strip()
+                if t:
+                    labels.append((cy, x + w.width(), x, y, t))
+            else:
+                controls.append((cy, x, y, w))
+        try:
+            from PySide6.QtWidgets import QGroupBox
+            for g in self.findChildren(QGroupBox):
+                try:
+                    pos = g.mapTo(self, QPoint(0, 0))
+                    groups.append((pos.y(), pos.y() + g.height(),
+                                   g.title() or ""))
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        def section_at(y):
+            for top, bottom, title in groups:
+                if top <= y < bottom and title:
+                    return title
+            return ""
+
+        entries = []
+        # Checkboxes carry their own caption (.tmp addCheckbox).
+        for x, y, t in checks:
+            entries.append({"page": page, "label": t,
+                            "section": section_at(y), "hint": "",
+                            "x": x, "y": y})
+        # Row labels: a label heads a setting row when another widget
+        # sits to its right on the same line -- the control it names,
+        # or (Hotkeys' action rows) the hotkey caption beside it.
+        for i, (lcy, lright, lx, ly, lt) in enumerate(labels):
+            headed = False
+            for ccy, cx, cy2, _w in controls:
+                if abs(ccy - lcy) <= 12 and cx >= lright - 5 \
+                        and cx - lright <= 350:
+                    headed = True
+                    break
+            if not headed:
+                for j, (ocy, oright, ox, _oy, _ot) in enumerate(labels):
+                    if j == i:
+                        continue
+                    if abs(ocy - lcy) <= 12 and ox >= lright - 5 \
+                            and ox - lright <= 350:
+                        headed = True
+                        break
+            if headed:
+                entries.append({"page": page, "label": lt,
+                                "section": section_at(ly), "hint": "",
+                                "x": lx, "y": ly})
+        # Controls no label claimed (service cards and the like):
+        # registerSearchEntry's port -- searchable only with a hint.
+        for ccy, cx, cy, w in controls:
+            partnered = any(
+                abs(lcy - ccy) <= 12 and lright <= cx + 40
+                for lcy, lright, _lx, _ly, _lt in labels)
+            if partnered:
+                continue
+            try:
+                hint = (w.toolTip() or "").strip()
+            except Exception:
+                hint = ""
+            if hint:
+                entries.append({"page": page, "label": hint,
+                                "section": section_at(cy), "hint": hint,
+                                "x": cx, "y": cy})
+        seen = set()
+        out = []
+        for e in entries:
+            key = (e["page"], e["label"], e["section"], e["x"], e["y"])
+            if key not in seen:
+                seen.add(key)
+                out.append(e)
+        return out
+
+    def _search_activate(self, item):
+        """A hit was chosen: go to its page and flash the control --
+        upstream's anchor reveal, minus the scroll (pages fit whole)."""
+        h = item.data(Qt.UserRole) or {}
+        page, x, y = h.get("page"), h.get("x"), h.get("y")
+        # Choosing a hit ends the search session, the way picking a
+        # sidebar row does: the rows come back for the next navigation.
+        self._search_text = ""
+        try:
+            self._search.setText("")
+        except Exception:
+            pass
+        if page:
+            self._goto(page)
+        self._flash_anchor(x, y)
+
+    def _flash_anchor(self, x, y):
+        """Brief highlight on the widget at the hit's recorded spot so
+        the eye lands on the setting the search named."""
+        if x is None or y is None:
+            return
+        target = None
+        for w in self.findChildren(object):
+            try:
+                pos = w.mapTo(self, QPoint(0, 0))
+            except Exception:
+                continue
+            if abs(pos.x() - x) <= 3 and abs(pos.y() - y) <= 3:
+                target = w
+                break
+        if target is None:
+            return
+        try:
+            target.setStyleSheet(
+                "%s;background:#cfe3ff;" % (target.styleSheet() or ""))
+        except Exception:
+            return
+        QTimer.singleShot(900, lambda: self._unflash(target))
+
+    def _unflash(self, w):
+        try:
+            ss = w.styleSheet() or ""
+            w.setStyleSheet(ss.replace("background:#cfe3ff;", ""))
         except Exception:
             pass
 

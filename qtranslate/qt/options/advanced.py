@@ -14,6 +14,20 @@ from .base import OptionsBase, cfg_section, cfg_set, check, combo, \
 class AdvancedPage(OptionsBase):
     SEL = 7
 
+    # The "API keys" group carries four provider keys (OCR, Google
+    # Vision, Google Translate, DeepL) -- 50px more than the native
+    # capture's three-row group, so the page and its chrome grow by
+    # the same delta (HotkeysPage sets the precedent for a page with
+    # its own SIZE/CHROME).
+    SIZE = (644, 412)
+    CHROME = dict(OptionsBase.CHROME)
+    CHROME["panel"] = (4, 29, 142, 374)
+    CHROME["shadow_row"] = (3, 403, 144, 1)
+    CHROME["rule"] = (408, 3, 638)
+    CHROME["buttons"] = {k: (x, y + 50, w, sh)
+                         for k, (x, y, w, sh)
+                         in OptionsBase.CHROME["buttons"].items()}
+
     def build(self):
         adv = cfg_section("Advanced")
         group(self, 152, 35, 484, 180, "Advanced")
@@ -62,12 +76,22 @@ class AdvancedPage(OptionsBase):
               ).toggled.connect(
             lambda v: cfg_set("Advanced", "SwitchMouseModeOnTrayClick",
                               bool(v)))
-        group(self, 152, 295, 484, 55, "API keys")
-        label(self, 158, 313, "OCR API key:")
-        f_key = field(self, 387, 304, 243, 22,
-                      str(adv.get("OcrApiKey", "")))
-        f_key.editingFinished.connect(
-            lambda: cfg_set("Advanced", "OcrApiKey", f_key.text()))
-        from .base import LINK
-        label(self, 158, 338, "Register here for free OCR API key",
-              color=LINK, underline=True)
+        gen = cfg_section("General")
+        group(self, 152, 295, 484, 103, "API keys")
+        # .tmp plugin secrets -> Options.json General.*: the Google
+        # plugin's visionApiKey/translateApiKey and the deepl-services
+        # apiKey, alongside the native OCR key.
+        for cy, t, sect, key in [
+                (311, "OCR API key:", "Advanced", "OcrApiKey"),
+                (332, "Google Vision API key:", "General",
+                 "GoogleVisionApiKey"),
+                (353, "Google Translate API key:", "General",
+                 "GoogleTranslateApiKey"),
+                (374, "DeepL API key:", "General", "DeeplApiKey")]:
+            label(self, 158, cy, t)
+            sec = adv if sect == "Advanced" else gen
+            f = field(self, 387, cy - 9, 243, 20,
+                      str(sec.get(key, "")))
+            f.editingFinished.connect(
+                lambda w=f, s=sect, k=key:
+                cfg_set(s, k, w.text()))

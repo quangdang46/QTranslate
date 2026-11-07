@@ -52,10 +52,13 @@ assert _c.string_find_sub("a[START]mid[END]b", "[START]", False, "[END]", False)
 assert _c.is_language(17, [None] * 70) and not _c.is_language(1, [None] * 70)
 print("OK: common helpers (trim/unquote/links/sub/lang)")
 
-# deepl sentence splitting (matches JS parseText edge cases)
-from qtranslate.services.deepl import split_text as _split
-assert _split("Hello world. How are you? Fine!") == ["Hello world.", "How are you?", "Fine!"]
-print("OK: deepl split")
+# deepl free-web contract (oneshot-free port; the jsonrpc jobs
+# endpoint is dead upstream -- see regress_deepl_payload.py)
+from qtranslate.services import deepl as _dl
+assert _dl._web_code("ZH-HANT") == "zh" and _dl._web_code("EN") == "en"
+assert _dl._split_for_web("Hello world.") == ["Hello world."]
+assert "".join(_dl._split_for_web("word " * 1200)) == "word " * 1200
+print("OK: deepl web contract")
 
 # yandex chunking (600-char boundary, lossless)
 from qtranslate.services.yandex import make_chunks as _ch
@@ -110,23 +113,25 @@ finally:
     _uuid.uuid4, _time.time = _ru, _rt
 print("OK: naver HMAC deterministic")
 
-# deepl payload determinism (timestamp formula with mocked time)
-import time as _t2
+# deepl web contract determinism (oneshot-free port; the jsonrpc
+# translate payload is gone -- see regress_deepl_payload.py)
 from qtranslate.services import deepl as _dl
-_real_post, _real_time = _dl._post_jsonrpc, _t2.time
-captured = {}
-def _fake_post(payload):
-    captured.update(payload["params"])
-    return {"result": {"translations": [{"beams": [{"postprocessed_sentence": "X"}]} for _ in payload["params"]["jobs"]]}}
-_dl._post_jsonrpc = _fake_post
-_t2.time = lambda: 1700000.0
+_bodies = []
+_real_wp = _dl._web_post
+def _fake_wp(body):
+    _bodies.append(body)
+    return '{"translations": [{"text": "X"}]}'
+_dl._web_post = _fake_wp
 try:
-    _dl.translate("Hi there", "EN", "VI")
-    _ts = captured["timestamp"]
-    assert _ts % 1 == 0 and _ts >= 1700000000
+    assert _dl._web_translate_once("Hi there", "EN", "VI") == "X"
+    assert _bodies[-1]["target_lang"] == "vi"
+    assert _bodies[-1]["source_lang"] == "en"
+    _bodies.clear()
+    _dl._web_translate_once("hi", "auto", "VI")
+    assert "source_lang" not in _bodies[-1]
 finally:
-    _dl._post_jsonrpc, _t2.time = _real_post, _real_time
-print("OK: deepl payload")
+    _dl._web_post = _real_wp
+print("OK: deepl web payload")
 
 # config: load real Options.json + hotkey round-trip + theme palettes.
 # The live config is a Windows path; off-Windows this section is skipped

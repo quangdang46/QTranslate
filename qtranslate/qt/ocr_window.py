@@ -107,10 +107,11 @@ class OcrResultWindow(QWidget):
 
     def _translate(self):
         try:
-            self.app.show_translation(self.out.toPlainText()[:2000],
-                                      self.app._translate(
-                                          self.out.toPlainText()
-                                          [:2000]).text)
+            self.app.show_translation(
+                self.out.toPlainText()[:2000],
+                self.app._translate(
+                    self.out.toPlainText()[:2000]).text,
+                origin="ocr")
         except Exception:
             pass
 

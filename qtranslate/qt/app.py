@@ -161,6 +161,27 @@ def _save_history(items):
         pass
 
 
+def _apply_ui_scale():
+    """Port of .tmp AppearancePanel ``uiScale`` (75-300, step 25).
+
+    Qt's equivalent is QT_SCALE_FACTOR, which Qt reads once when the
+    QApplication is created -- so the options combo is honoured on the
+    NEXT start and the page says so. An explicit QT_SCALE_FACTOR in the
+    environment wins over the stored setting.
+    """
+    if "QT_SCALE_FACTOR" in os.environ:
+        return
+    try:
+        from qtranslate import config as _C
+        ap = (_C.load() or {}).get("Appearance") or {}
+        scale = int(ap.get("UiScale", 100))
+    except Exception:
+        return
+    scale = max(75, min(300, scale))
+    if scale != 100:
+        os.environ["QT_SCALE_FACTOR"] = "%.2f" % (scale / 100.0)
+
+
 class QtApp:
     """The application's state and behaviour, independent of the widgets.
 
@@ -169,6 +190,7 @@ class QtApp:
     """
 
     def __init__(self, argv=None):
+        _apply_ui_scale()
         self.qapp = QApplication.instance() or QApplication(argv or [])
         apply_style(self.qapp)
         self.service = "google"
@@ -203,6 +225,12 @@ class QtApp:
         # The extension manager, once the user extensions are loaded.
         # It carries the UI and theme contributions.
         self.ext_manager = None
+        # Spell check (.tmp PerformSpellCheckUseCase): corrections for
+        # the current source text, refreshed on a debounce; the source
+        # pane's context menu offers them as "Spelling suggestions".
+        self._spell_corrections = []
+        self._spell_timer = None
+        self._spell_sig = None
 
     def apply_theme(self, name=None):
         """Apply the active theme, including one an extension registered.
@@ -279,6 +307,12 @@ class QtApp:
         names = [n for n in names if n in registry.TRANSLATORS]
         if names:
             self.service = names[0]
+            # General.ActiveService: the last service the user (or an
+            # applied preset) picked -- names[0] is only the fallback
+            # priority order, not a remembered choice.
+            active = str(general.get("ActiveService") or "")
+            if active in names:
+                self.service = active
         try:
             from qtranslate.services.google_translate import SUPPORTED_LANGS
             table = list(SUPPORTED_LANGS)
@@ -311,6 +345,13 @@ class QtApp:
             if 0 <= idx < len(MOUSE_MODES):
                 self.mouse_mode = MOUSE_MODES[idx]
             self._mouse_enabled = bool(general.get("MouseModeOn", False))
+        except Exception:
+            pass
+        # Options -> Apply/OK lands here via _notify_app: pinned
+        # languages (and any other picker-list change) take effect on
+        # the combos without rebuilding the window.
+        try:
+            self._refresh_language_combos()
         except Exception:
             pass
 
@@ -412,16 +453,67 @@ class QtApp:
         except Exception:
             return set()
 
+    def _pinned_codes(self):
+        """.tmp Configuration.pinnedLanguages: non-empty means ONLY these
+        language codes appear in the pickers ("cannot disable all
+        languages and keep only 3-4" -- Yan's request). Empty = all."""
+        try:
+            from qtranslate import config as _C
+            cfg = _C.load() or {}
+            v = (cfg.get("General", {}) or {}).get("PinnedLanguages")
+            if v is None:
+                v = cfg.get("PinnedLanguages")
+            if isinstance(v, str):
+                v = [s for s in v.replace("|", ",").split(",") if s.strip()]
+            return {str(c).strip() for c in (v or []) if str(c).strip()}
+        except Exception:
+            return set()
+
     def source_names(self):
         dis = self._disabled_lang_names()
+        pinned = self._pinned_codes()
         return [self._display("auto")] + [
             self._display(c) for c in self._lang_codes()
-            if c != "auto" and self._display(c) not in dis]
+            if c != "auto" and self._display(c) not in dis
+            and (not pinned or c in pinned)]
 
     def target_names(self):
         dis = self._disabled_lang_names()
+        pinned = self._pinned_codes()
         return [self._display(c) for c in self._lang_codes()
-                if c != "auto" and self._display(c) not in dis]
+                if c != "auto" and self._display(c) not in dis
+                and (not pinned or c in pinned)]
+
+    def _refresh_language_combos(self):
+        """Repopulate the main window's language combos after a settings
+        change (.tmp MainAppFrame re-renders withPinnedLanguages on every
+        state emission). A selection the filter hides stays put --
+        .tmp LanguageComboBox leaves selectedItem untouched rather than
+        silently swapping the pair."""
+        win = getattr(self, "win", None)
+        if win is None:
+            return
+        for combo, names in (
+                (getattr(win, "cmb_src", None), self.source_names()),
+                (getattr(win, "cmb_tgt", None), self.target_names())):
+            if combo is None:
+                continue
+            try:
+                cur = combo.currentText()
+                combo.blockSignals(True)
+                combo.clear()
+                for n in names:
+                    combo.addItem(n)
+                if cur:
+                    if combo.findText(cur) < 0:
+                        combo.addItem(cur)
+                    combo.setCurrentText(cur)
+                combo.blockSignals(False)
+            except Exception:
+                try:
+                    combo.blockSignals(False)
+                except Exception:
+                    pass
 
     def _lang_codes(self):
         try:
@@ -454,15 +546,479 @@ class QtApp:
         widgets are never touched from the worker.
         """
         text = self.win.src.toPlainText()
-        return self._start_translation(text, self._show_main_result)
+        return self._start_translation(text, self._show_main_result,
+                                       apply_rules=True)
 
     def _show_main_result(self, text, res):
         """Show a finished translation in the main window (UI thread)."""
         if self.win is None:
             return
+        # A translation rule that re-resolved the AUTO source moved the
+        # session target (.tmp updates targetLanguage state); apply it
+        # on the UI thread without persisting LanguageTo.
+        rt = getattr(self, "_pending_rule_target", None)
+        self._pending_rule_target = None
+        if rt:
+            self.target = rt
+            try:
+                cmb = getattr(self.win, "cmb_tgt", None)
+                if cmb is not None:
+                    name = self._display(rt)
+                    cmb.blockSignals(True)
+                    if cmb.findText(name) >= 0:
+                        cmb.setCurrentText(name)
+                    cmb.blockSignals(False)
+            except Exception:
+                pass
+        self._last_src_text = text or ""
+        # The result string can carry the back-translation marker --
+        # downstream consumers (extra output, inline gloss) judge the
+        # visible translation only.
+        _disp_out = res.text or ""
+        try:
+            from qtranslate import reliability as _REL
+            _disp_out = _REL.split_backtranslation(_disp_out)[0]
+        except Exception:
+            pass
+        self._last_out_text = _disp_out
         self.win.render(res.text)
         if res.text:
             self.push_hist(self.service, text[:2000], res.text[:4000])
+            # AutoCopyGuard copies translatedText -- the visible
+            # translation, without the back-translation block.
+            self._maybe_auto_copy(_disp_out, "main")
+        self.refresh_extra_output()
+        self._refresh_inline_definition(text, _disp_out)
+        # .tmp ParallelComparisonUseCase fires alongside the primary
+        # answer whenever comparison translators are configured; the
+        # rows land in the extra pane's Compare mode whenever it's on.
+        try:
+            self._run_comparison(text)
+        except Exception:
+            pass
+
+    # ------------------------------------------- inline dictionary gloss
+    # .tmp FetchInlineDefinitionUseCase + DictionaryAutoSource
+    # (OFF/TRANSLATED/SOURCE, default TRANSLATED): when the chosen side
+    # of the pair is a single word, a quiet background lookup puts a
+    # one-line definition under the result. Every failure is silent.
+    def _inline_pick(self, src_text, out_text):
+        """(.tmp DictionaryAutoSource OFF/TRANSLATED/SOURCE) -> the
+        single word to gloss plus the fallback side, or ("", "") when
+        the mode is off or neither side is one word."""
+        try:
+            gen_cfg = self._extra_cfg()
+            mode = (gen_cfg.get("DictionaryAutoSource")
+                    or "TRANSLATED")
+            # .tmp isDictionaryAutoPopupEnabled gates the WHOLE
+            # AutoLookupCoordinator -- inline gloss included, not just
+            # the dictionary panel.
+            if not gen_cfg.get("DictionaryAutoPopup", True):
+                return "", ""
+        except Exception:
+            mode = "TRANSLATED"
+        if mode == "OFF":
+            return "", ""
+        prefer_source = mode == "SOURCE"
+        primary = (src_text if prefer_source else out_text) or ""
+        alternate = (out_text if prefer_source else src_text) or ""
+
+        def single(t):
+            t = (t or "").strip()
+            return t if len(t) >= 2 and not any(
+                c.isspace() for c in t) else ""
+
+        word = single(primary)
+        alt = single(alternate)
+        if not word and alt:
+            word, alt = alt, ""
+        return word, alt
+
+    def _inline_lookup(self, word, alt, done):
+        """Shared worker for the main window and the popup gloss: the
+        dictionary fan-out can take seconds, so it runs UNTRACKED --
+        _start_translation drops new requests while any tracked thread
+        lives and a glance must never block the next translate."""
+        def work():
+            gloss = ""
+            try:
+                from qtranslate import dictionary_search as _DS
+                gloss = _DS.inline_definition(word)
+                if not gloss and alt:
+                    gloss = _DS.inline_definition(alt)
+            except Exception:
+                gloss = ""
+            try:
+                self._on_ui(lambda: done(gloss or ""))
+            except Exception:
+                pass
+        import threading
+        threading.Thread(target=work, daemon=True,
+                         name="qtranslate-inline-def").start()
+
+    def _refresh_inline_definition(self, src_text, out_text):
+        win = getattr(self, "win", None)
+        if win is None or not hasattr(win, "set_inline_definition"):
+            return
+        word, alt = self._inline_pick(src_text, out_text)
+        self._inline_gen = getattr(self, "_inline_gen", 0) + 1
+        gen = self._inline_gen
+        if not word:
+            try:
+                win.set_inline_definition("")
+            except Exception:
+                pass
+            return
+        # .tmp AutoLookupCoordinator: a VISIBLE dictionary panel
+        # follows the picked word; it never opens one, and the same
+        # word is not re-sent.
+        self._auto_dict_refresh(word)
+        self._inline_lookup(word, alt, lambda gloss: self._inline_done(
+            gen, gloss))
+
+    def _auto_dict_refresh(self, word):
+        """Point an already-open DictionaryWindow at ``word``.
+
+        .tmp AutoLookupCoordinator calls setDictionarySearchWord +
+        LookupWord only when the dictionary panel is visible AND the
+        main window is visible -- automatic lookup refreshes, it never
+        opens. ``_auto_dict_word`` mirrors upstream's dictionaryWord
+        dedup so repeat translations of the same word do not re-query.
+        """
+        d = getattr(self, "_dict", None)
+        if d is None or not word:
+            return
+        try:
+            if not d.isVisible():
+                return
+            if getattr(self, "_auto_dict_word", "") == word:
+                return
+            self._auto_dict_word = word
+            d.inp.setText(word)
+            d.do_search()
+        except Exception:
+            pass
+
+    def _inline_done(self, gen, gloss):
+        if gen != getattr(self, "_inline_gen", 0):
+            return          # a newer translation superseded this one
+        win = getattr(self, "win", None)
+        if win is None:
+            return
+        try:
+            win.set_inline_definition(gloss or "")
+        except Exception:
+            pass
+
+    def _popup_inline_definition(self, src_text, out_text):
+        """The same gloss for the quick popup (.tmp QuickTranslateDialog
+        state.definition = mainState.inlineDefinition). Same settings,
+        same single-word rule, same silent failure -- only the target
+        widget differs."""
+        pop = getattr(self, "_popup", None)
+        if pop is None or not hasattr(pop, "set_inline_definition"):
+            return
+        word, alt = self._inline_pick(src_text, out_text)
+        self._popup_defn_gen = getattr(self, "_popup_defn_gen", 0) + 1
+        gen = self._popup_defn_gen
+        if not word:
+            try:
+                pop.set_inline_definition("")
+            except Exception:
+                pass
+            return
+        def done(gloss):
+            if gen != getattr(self, "_popup_defn_gen", 0):
+                return          # a newer popup translation superseded
+            if getattr(self, "_popup", None) is not pop:
+                return
+            try:
+                pop.set_inline_definition(gloss)
+            except Exception:
+                pass
+        self._inline_lookup(word, alt, done)
+
+    # -------------------------------------------------------- comparison
+    # .tmp ParallelComparisonUseCase + ServicePreset.comparisonTranslatorIds:
+    # the configured comparison translators re-translate the SAME source
+    # in parallel, independently of the primary answer. The port keeps
+    # the flat General.ComparisonServices list (no preset system) and
+    # renders the rows in the extra pane's "Compare" mode.
+    def _comparison_services(self):
+        """Enabled translator keys configured for comparison, minus the
+        primary -- .tmp TranslatorSet drops repeats and the Primary."""
+        try:
+            from qtranslate import config as _C
+            v = ((_C.load() or {}).get("General", {}) or {}
+                 ).get("ComparisonServices")
+            if isinstance(v, str):
+                v = [s for s in v.replace("|", ",").split(",") if s.strip()]
+            wanted = [str(s).strip() for s in (v or []) if str(s).strip()]
+        except Exception:
+            return []
+        if not wanted:
+            return []
+        try:
+            enabled = set(self.ordered_services())
+        except Exception:
+            enabled = set()
+        return [s for s in dict.fromkeys(wanted)
+                if s != self.service and (not enabled or s in enabled)]
+
+    def _run_comparison(self, text):
+        """Fan the source text out to every comparison translator.
+
+        One untracked daemon per service -- the same rule as the
+        inline-definition lookup: N side requests must never hold the
+        single-flight translation lock, and a stale generation's rows
+        are dropped on arrival."""
+        svcs = self._comparison_services()
+        self._compare_gen = getattr(self, "_compare_gen", 0) + 1
+        gen = self._compare_gen
+        self._compare_rows = {s: {"status": "loading", "text": "",
+                                  "error": ""} for s in svcs}
+        if not svcs or not (text or "").strip():
+            self._compare_render()
+            return
+        self._compare_render()
+        for svc in svcs:
+            def work(s=svc):
+                out, err = self._compare_fetch(s, text)
+                try:
+                    self._on_ui(lambda: self._compare_row_done(
+                        gen, s, out, err))
+                except Exception:
+                    pass
+            import threading
+            threading.Thread(target=work, daemon=True,
+                             name="qtranslate-compare-" + svc).start()
+
+    def _compare_fetch(self, svc, text):
+        """One comparison row's (text, error) -- shared by the main
+        window's Compare mode and the quick popup's cards."""
+        out, err = "", ""
+        try:
+            from qtranslate import engine
+            res = engine.translate(svc, (text or "")[:5000],
+                                   self.target, self.source)
+            if res.ok and res.text:
+                out = res.text
+            else:
+                err = res.text or "Translation failed"
+        except Exception as exc:            # noqa: BLE001
+            err = str(exc) or "Translation failed"
+        return out, err
+
+    def _popup_compare(self, text):
+        """.tmp quickTranslationComparisonPolicy: the QUICK popup
+        compares whenever >=2 effective translators exist --
+        independent of the saved layout, which only gates the main
+        window. Same untracked-daemon + generation-guard rules as
+        _run_comparison; rows render into the popup's compare strip."""
+        pop = getattr(self, "_popup", None)
+        if pop is None or not hasattr(pop, "set_comparison"):
+            return
+        svcs = self._comparison_services()
+        self._popup_cmp_gen = getattr(self, "_popup_cmp_gen", 0) + 1
+        gen = self._popup_cmp_gen
+        if not svcs or not (text or "").strip():
+            try:
+                pop.set_comparison("")
+            except Exception:
+                pass
+            return
+        rows = {s: {"status": "loading", "text": "", "error": ""}
+                for s in svcs}
+
+        def render():
+            if gen != getattr(self, "_popup_cmp_gen", 0):
+                return                      # superseded
+            if getattr(self, "_popup", None) is not pop:
+                return
+            blocks = []
+            for svc in svcs:
+                row = rows.get(svc) or {"status": "loading"}
+                try:
+                    name = self.service_display(svc)
+                except Exception:
+                    name = svc
+                if row.get("status") == "loading":
+                    body = "Translating…"
+                elif row.get("status") == "ok":
+                    body = row.get("text") or ""
+                else:
+                    body = row.get("error") or "Translation failed"
+                blocks.append("%s\n%s" % (name, body))
+            try:
+                pop.set_comparison("\n\n".join(blocks))
+            except Exception:
+                pass
+
+        render()
+        for svc in svcs:
+            def work(s=svc):
+                out, err = self._compare_fetch(s, text)
+
+                def done():
+                    if gen != getattr(self, "_popup_cmp_gen", 0):
+                        return
+                    rows[s] = {"status": "ok" if out else "error",
+                               "text": out, "error": err}
+                    render()
+                try:
+                    self._on_ui(done)
+                except Exception:
+                    pass
+            import threading
+            threading.Thread(target=work, daemon=True,
+                             name="qt-popup-cmp-" + svc).start()
+
+    def _compare_row_done(self, gen, svc, out, err):
+        if gen != getattr(self, "_compare_gen", 0):
+            return                      # a newer translation superseded
+        rows = getattr(self, "_compare_rows", None)
+        if rows is None or svc not in rows:
+            return
+        rows[svc] = {"status": "ok" if out else "error",
+                     "text": out or "", "error": err or ""}
+        self._compare_render()
+
+    def _compare_render(self):
+        """Paint the comparison rows into the extra pane (Compare mode).
+
+        Blocks read "Service name / result" -- the port's card grid is
+        flattened into the one pane the extra-output surface already
+        owns; the information (per-provider answer + failure) is the
+        same."""
+        win = getattr(self, "win", None)
+        if win is None:
+            return
+        svcs = self._comparison_services()
+        if not svcs:
+            try:
+                win.set_extra_text(
+                    "No comparison services configured "
+                    "(Options > Comparison).", visible=True)
+            except Exception:
+                pass
+            return
+        rows = getattr(self, "_compare_rows", {}) or {}
+        blocks = []
+        for svc in svcs:
+            row = rows.get(svc) or {"status": "loading"}
+            try:
+                name = self.service_display(svc)
+            except Exception:
+                name = svc
+            if row.get("status") == "loading":
+                body = "Translating…"
+            elif row.get("status") == "ok":
+                body = row.get("text") or ""
+            else:
+                body = row.get("error") or "Translation failed"
+            blocks.append("%s\n%s\n%s" % (name, "-" * 12, body))
+        try:
+            win.set_extra_text("\n\n".join(blocks), visible=True)
+        except Exception:
+            pass
+
+    # ------------------------------------------------------ extra output
+    # .tmp's ExtraOutputPanel: one lower pane, three modes. "back" is
+    # the native EditBackTranslation flow (handled inside
+    # win.render/set_result); "summary"/"rewrite" call the ai-services
+    # ports on a worker -- the same SummarizeUseCase/RewriteUseCase
+    # shape: pick the input (Output = translated text, Input = source),
+    # run with the stored option id, show the answer or the failure in
+    # the pane itself.
+    def _extra_cfg(self):
+        try:
+            from qtranslate import config as _C
+            return (_C.load() or {}).get("General", {}) or {}
+        except Exception:
+            return {}
+
+    def _maybe_auto_copy(self, text, origin):
+        """AutoCopyGuard port (.tmp workspace/translation): copy the
+        finished translation per ``General.AutoCopyTranslation`` —
+        "off" never, "quick" only for the quick-translate surface,
+        "all" for main/quick/OCR. Blank results never copy; instant
+        translation is excluded upstream in every mode (the port has
+        no instant pipeline feeding this hook)."""
+        try:
+            mode = str(self._extra_cfg().get(
+                "AutoCopyTranslation", "off") or "off").lower()
+        except Exception:
+            mode = "off"
+        if mode == "off" or not text:
+            return
+        if mode == "quick" and origin != "quick":
+            return
+        try:
+            QApplication.clipboard().setText(text)
+        except Exception:
+            pass
+
+    def refresh_extra_output(self):
+        """Re-derive the extra pane for the current mode/texts.
+
+        UI-thread entry (called after a translation lands and whenever
+        the mode/options/source change). In "back" mode this is a
+        no-op -- the back-translation already rode inside the result.
+        """
+        win = getattr(self, "win", None)
+        if win is None:
+            return
+        try:
+            mode = win.extra_mode()
+        except Exception:
+            mode = "back"
+        if mode == "back":
+            return
+        if mode == "compare":
+            self._compare_render()
+            return
+        g = self._extra_cfg()
+        use_input = g.get("ExtraOutputSource") == "Input"
+        source_text = ((getattr(self, "_last_src_text", "") if use_input
+                        else getattr(self, "_last_out_text", "")) or "")
+        length = g.get("SummaryLength") or "MEDIUM"
+        style = g.get("RewriteStyle") or "FORMAL"
+        try:
+            win.set_extra_text(
+                "Summarizing…" if mode == "summary" else "Rewriting…",
+                visible=True)
+        except Exception:
+            pass
+        if not source_text.strip():
+            try:
+                win.set_extra_text("", visible=False)
+            except Exception:
+                pass
+            return
+
+        def work():
+            try:
+                from qtranslate.services import ai_translate as _AI
+                if mode == "summary":
+                    out = _AI.summarize(source_text, length)
+                else:
+                    out = _AI.rewrite(source_text, style)
+            except Exception as exc:
+                out = "[error] %s" % exc
+            try:
+                self._on_ui(lambda: self._extra_done(out))
+            except Exception:
+                pass
+        self._spawn("extra-output", work)
+
+    def _extra_done(self, text):
+        win = getattr(self, "win", None)
+        if win is None:
+            return
+        try:
+            win.set_extra_text(text or "", visible=True)
+        except Exception:
+            pass
 
     def _spawn(self, name, work):
         """Run ``work`` on a tracked background thread.
@@ -501,7 +1057,7 @@ class QtApp:
             return False
         return True
 
-    def _start_translation(self, text, on_done):
+    def _start_translation(self, text, on_done, apply_rules=False):
         """Run one translation off the UI thread, then hand back the result.
 
         A second request while one is in flight is DROPPED rather than
@@ -518,7 +1074,8 @@ class QtApp:
         def work():
             try:
                 res = self._translate(
-                    text, back_translate=self._back_translation_enabled())
+                    text, back_translate=self._back_translation_enabled(),
+                    apply_rules=apply_rules)
             except Exception as exc:            # noqa: BLE001
                 try:
                     from qtranslate.core import Result
@@ -665,7 +1222,7 @@ class QtApp:
             self._persist_language()
             try:
                 win.src.setPlainText(translated)
-                win.out.clear()
+                win.set_result("")
                 self._refresh_detected_label()
                 self.on_go()
             except Exception:
@@ -735,6 +1292,42 @@ class QtApp:
         # the FIRST one highlighted forever.
         if hasattr(self.win, "highlight_service"):
             self.win.highlight_service(name)
+        try:
+            # Persist the pick (General.ActiveService) and detach any
+            # active preset -- a manual switch means "custom" now.
+            # Preset application writes ActivePresetId AFTER this runs,
+            # so apply_preset's ordering stays intact.
+            from qtranslate import config as _C, presets as _P
+            cfg = _C.load() or {}
+            g = cfg.setdefault("General", {})
+            g[_P.SERVICE_KEY] = name
+            _P.clear_active(cfg)
+            _C.save(cfg)
+        except Exception:
+            pass
+
+    def apply_preset(self, preset):
+        """Apply a service preset (.tmp PresetManager.activate).
+
+        Writes translator + comparison set + ActivePresetId, then moves
+        the live app: switch_service persists ActiveService (and clears
+        the preset marker) BEFORE presets.apply rewrites all three keys,
+        so the final state keeps the preset active.
+        """
+        from qtranslate import config as _C, presets as _P
+        try:
+            cfg = _C.load() or {}
+            probe = _P.apply(cfg, preset)
+            if probe is None:
+                return False
+            translator = probe["translator"]
+            if translator in self.ordered_services():
+                self.switch_service(translator)
+            _P.apply(cfg, preset)
+            _C.save(cfg)
+            return True
+        except Exception:
+            return False
 
     def on_back(self):
         self._nav_history(-1)
@@ -839,7 +1432,7 @@ class QtApp:
             win.src.blockSignals(True)
             win.out.blockSignals(True)
             win.src.setPlainText(str(src))
-            win.out.setPlainText(str(res))
+            win.set_result(str(res))
         finally:
             try:
                 win.src.blockSignals(False)
@@ -864,7 +1457,7 @@ class QtApp:
             win.src.blockSignals(True)
             win.out.blockSignals(True)
             win.src.setPlainText(snap.get("src") or "")
-            win.out.setPlainText(snap.get("out") or "")
+            win.set_result(snap.get("out") or "")
         finally:
             try:
                 win.src.blockSignals(False)
@@ -888,10 +1481,52 @@ class QtApp:
                 pass
         self._dict.show()
 
+    def open_image_search(self, term=""):
+        """Open the image search dialog (Wikimedia Commons).
+
+        Native seeds the dialog with the source pane's text when it is
+        a single word and opens it empty otherwise -- same rule
+        ``showImageSearchDialog`` uses in MainAppFrame.kt.
+        """
+        from .image_search import open_image_search
+        if not (term or "").strip():
+            term = self._image_search_term()
+        self._img_search = open_image_search(self, term=term)
+        self._img_search.show()
+        return self._img_search
+
+    def _image_search_term(self):
+        """Single-word seed for the image search dialog, or "".
+
+        The source pane's text wins when it is one word; a multi-word
+        input opens the dialog empty, exactly like native's
+        ``inputText.trim().takeIf { !it.contains(' ') }``.
+        """
+        try:
+            win = self.win
+            text = (win.src.toPlainText() or "").strip()
+        except Exception:
+            text = ""
+        return text if text and " " not in text and "\n" not in text \
+            else ""
+
     def open_history(self):
         from .history_window import HistoryWindow
         self._hist = HistoryWindow(self)
         self._hist.show()
+
+    def open_document_translation(self, path=None):
+        """TrayPopupMenu.translateDocument / document drop: one reused
+        dialog like upstream's lazy documentTranslationDialog."""
+        from .document_dialog import DocumentTranslationDialog
+        dlg = getattr(self, "_doc_dlg", None)
+        if dlg is None:
+            dlg = DocumentTranslationDialog(self)
+            self._doc_dlg = dlg
+        if path:
+            dlg.open_with(path)
+        else:
+            dlg.open()
 
     def open_options(self, page: str = ""):
         """Open Options, optionally straight on one page.
@@ -1012,8 +1647,10 @@ class QtApp:
     def open_ocr(self):
         """Native's "Text recognition": pick a region of the screen and
         OCR it. The capture and the OCR call are the core's; only the
-        region picker belongs to the front end."""
-        from .ocr_pick import RegionPicker, grab_rect
+        region picker belongs to the front end. The .tmp snipping tool
+        floats an action row over the selection -- Translate, Copy
+        Text, Copy Image, Save Image -- so the picker gets all four."""
+        from .ocr_pick import RegionPicker, grab_pixmap, grab_rect
 
         def _picked(rect):
             if rect is None:
@@ -1025,8 +1662,78 @@ class QtApp:
                 return
             self.ocr_bytes(data)
 
-        picker, _result = RegionPicker.pick()
-        picker._picked = _picked
+        def _copy_text(rect):
+            try:
+                data = grab_rect(rect)
+            except Exception:
+                return
+            key, code = self._ocr_settings()
+            try:
+                from qtranslate.services.ocr import (ocr_language,
+                                                     ocr_text)
+                text = ocr_text(data, api_key=key,
+                                lang=ocr_language(code))
+            except Exception:
+                return
+            if text:
+                from PySide6.QtWidgets import QApplication
+                QApplication.clipboard().setText(text)
+
+        def _copy_image(rect):
+            try:
+                from PySide6.QtWidgets import QApplication
+                QApplication.clipboard().setPixmap(grab_pixmap(rect))
+            except Exception:
+                pass
+
+        def _save_image(rect):
+            try:
+                data = grab_rect(rect)
+            except Exception:
+                return
+            self._save_ocr_png(data)
+
+        picker, _result = RegionPicker.pick(actions={
+            "Translate": lambda r: _picked(r),
+            "Copy Text": _copy_text,
+            "Copy Image": _copy_image,
+            "Save Image": _save_image,
+        })
+        picker._picked = lambda r: None if r is None else _picked(r)
+
+    def _ocr_settings(self):
+        """(api_key, google-lang-code) for the OCR service, shared by
+        the window flow and the picker's Copy Text action."""
+        try:
+            cfg = self._core()[0].load()
+        except Exception:
+            cfg = {}
+        key = (cfg.get("Advanced", {}) or {}).get(
+            "OcrApiKey", "") or "helloworld"
+        index = (cfg.get("Ocr", {}) or {}).get("OcrLanguage", 17)
+        try:
+            from qtranslate.services.google_translate import SUPPORTED_LANGS
+            table = list(SUPPORTED_LANGS)
+        except Exception:
+            table = []
+        code = table[index] if 0 <= index < len(table) else "en"
+        return key, code
+
+    @staticmethod
+    def _save_ocr_png(data: bytes):
+        """Write OCR grab PNGs under Ocr.SaveImagePath (or ~)."""
+        import datetime as _dt
+        import os as _o
+        _dir = _o.path.expanduser("~")
+        try:
+            from qtranslate import config as _C
+            _dir = _C.load().get(
+                "Ocr", {}).get("SaveImagePath", "") or _dir
+        except Exception:
+            pass
+        _fn = "ocr_%s.png" % _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+        with open(_o.path.join(_dir, _fn), "wb") as _fh:
+            _fh.write(data)
 
     def ocr_bytes(self, data: bytes):
         """OCR an image and show the text in the result pane."""
@@ -1039,19 +1746,7 @@ class QtApp:
                 self._ocr_image = QPixmap.fromImage(img)
         except Exception:
             self._ocr_image = None
-        config, _engine, _registry = self._core()
-        try:
-            cfg = config.load()
-        except Exception:
-            cfg = {}
-        key = (cfg.get("Advanced", {}) or {}).get("OcrApiKey", "") or "helloworld"
-        index = (cfg.get("Ocr", {}) or {}).get("OcrLanguage", 17)
-        try:
-            from qtranslate.services.google_translate import SUPPORTED_LANGS
-            table = list(SUPPORTED_LANGS)
-        except Exception:
-            table = []
-        code = table[index] if 0 <= index < len(table) else "en"
+        key, code = self._ocr_settings()
 
         def work():
             # ocr.space is a network upload -- it must not hold the UI
@@ -1406,9 +2101,19 @@ class QtApp:
 
         Called by the floating icon's click (icon mode) and directly by
         the drag release in the "Show translation" modes. ``speak`` is
-        mode 2's read-aloud: .tmp's selectionReadSource default is the
-        TRANSLATION, so the result -- not the source -- is spoken.
+        mode 2's read-aloud: .tmp's selectionReadSource picks WHICH
+        text is spoken -- TRANSLATION (default) reads the result after
+        it lands, SOURCE reads the captured selection immediately in
+        the source language while the translation still runs.
         """
+        if speak and self._read_source() == "source":
+            try:
+                lang = (self.source if self.source != "auto"
+                        else (getattr(self, "_detected_src", "") or ""))
+                self._speak(text, lang)
+            except Exception:
+                pass
+            speak = False
         try:
             self._on_ui(lambda t=text: self._popup_loading(t))
         except Exception:
@@ -1535,7 +2240,283 @@ class QtApp:
             _hist.clear_history_on_exit(self)
         except Exception:
             pass
+        self._persist_contents()
         self.qapp.quit()
+
+    # ------------------------------------------------- Contents.* persist
+    #
+    # Native keeps the editor contents across sessions in three separate
+    # Options.json fields -- Contents.EditSource, Contents.EditTranslation
+    # and Contents.EditBackTranslation, each truncated to 5000 chars on
+    # save (D10 spotcheck). The port's back-translation lives in its own
+    # pane, so the three fields map one-to-one onto src/out/back.
+    _CONTENTS_LIMIT = 5000
+
+    def _persist_window_state(self):
+        """Record whether the main window was visible at quit -- the
+        "Restore previous state" startup action (menu 1 item 88) reads
+        ``General.LastWindowVisible`` on the next start. Runs on EVERY
+        quit path, independent of SaveContentsOnExit."""
+        try:
+            from qtranslate import config as _C
+            win = getattr(self, "win", None)
+            visible = bool(win is not None and win.isVisible())
+            cfg = _C.load() or {}
+            cfg.setdefault("General", {})["LastWindowVisible"] = visible
+            _C.save(cfg)
+        except Exception:
+            pass
+
+    def _contents_enabled(self):
+        """Menu-1 item 62 "Save contents on exit"
+        (``General.SaveContentsOnExit``, default on -- the behaviour
+        before the toggle existed)."""
+        try:
+            from qtranslate import config as _C
+            return bool((_C.load() or {}).get("General", {})
+                        .get("SaveContentsOnExit", True))
+        except Exception:
+            return True
+
+    def _persist_contents(self):
+        win = getattr(self, "win", None)
+        if win is None or not self._contents_enabled():
+            return
+        try:
+            from qtranslate import config as _C
+            cfg = _C.load() or {}
+            contents = cfg.setdefault("Contents", {})
+            def _clip(w):
+                try:
+                    return (w.toPlainText() or "")[:self._CONTENTS_LIMIT]
+                except Exception:
+                    return ""
+            contents["EditSource"] = _clip(getattr(win, "src", None))
+            contents["EditTranslation"] = _clip(getattr(win, "out", None))
+            # EditBackTranslation belongs to the "back" extra mode --
+            # in the AI modes the pane holds a derived summary/rewrite
+            # that must not be persisted as a back-translation.
+            try:
+                _mode = win.extra_mode()
+            except Exception:
+                _mode = "back"
+            if _mode == "back":
+                contents["EditBackTranslation"] = _clip(
+                    getattr(win, "back", None))
+            _C.save(cfg)
+        except Exception:
+            pass
+
+    def _restore_contents(self):
+        """Put Contents.* back into the panes on boot."""
+        win = getattr(self, "win", None)
+        if win is None or not self._contents_enabled():
+            return
+        try:
+            from qtranslate import config as _C
+            contents = (_C.load() or {}).get("Contents", {}) or {}
+            src = contents.get("EditSource") or ""
+            trans = contents.get("EditTranslation") or ""
+            back = contents.get("EditBackTranslation") or ""
+            if not (src or trans or back):
+                return
+            if src:
+                win.src.setPlainText(src)
+            if trans or back:
+                win.out.setPlainText(trans)
+                try:
+                    _mode = win.extra_mode()
+                except Exception:
+                    _mode = "back"
+                if _mode == "back" and back:
+                    win.back.setPlainText(back)
+                    try:
+                        win.set_extra_visible(True)
+                    except Exception:
+                        win.back.setVisible(True)
+        except Exception:
+            pass
+
+    # ------------------------------------------------------------ spell check
+    #
+    # .tmp MainStore collects spellCheckInputs(state, isSpellCheckingEnabled)
+    # and runs PerformSpellCheckUseCase on every input change; the source
+    # pane's context menu then offers "Spelling suggestions" for the
+    # correction under the cursor. The port debounces the same way the
+    # instant-translation observer does and keeps the result list on the
+    # app so the menu can reach it.
+
+    def _read_source(self):
+        """General.SelectionReadSource (.tmp selectionReadSource):
+        which text mouse-mode-3 reads aloud -- "source" or
+        "translation" (the default, and the only pre-feature value)."""
+        try:
+            from qtranslate import config as _C
+            v = str((_C.general_setting("SelectionReadSource", "")
+                     or "")).strip().lower()
+            return "source" if v == "source" else "translation"
+        except Exception:
+            return "translation"
+
+    def _spell_check_enabled(self):
+        try:
+            from qtranslate import config as _C
+            return bool((_C.load() or {}).get("General", {})
+                        .get("SpellChecking", True))
+        except Exception:
+            return True
+
+    def _schedule_spell_check(self):
+        """src.textChanged -> debounce -> _run_spell_check
+        (AppConstants.SPELL_CHECK_DEBOUNCE_MS = 750)."""
+        try:
+            if self._spell_timer is None:
+                from PySide6.QtCore import QTimer
+                self._spell_timer = QTimer(self.qapp)
+                self._spell_timer.setSingleShot(True)
+                self._spell_timer.setInterval(750)
+                self._spell_timer.timeout.connect(self._run_spell_check)
+            self._spell_timer.start()
+        except Exception:
+            pass
+
+    def _spell_lang(self):
+        """Resolved source language for the check: detected beats the
+        AUTO slot, exactly like resolvedSourceLanguage upstream --
+        which then falls back to the USER's locale (and its base
+        language) when nothing is known."""
+        det = getattr(self, "_detected_src", "") or ""
+        if det and det != "auto":
+            return det
+        src = getattr(self, "source", "auto") or "auto"
+        if src != "auto":
+            return src
+        try:
+            import locale as _loc
+            tag = (_loc.getlocale()[0] or "").replace("_", "-")
+            if tag and tag != "und":
+                return tag
+        except Exception:
+            pass
+        return ""
+
+    def _run_spell_check(self):
+        win = getattr(self, "win", None)
+        if win is None:
+            return
+        text = ""
+        try:
+            text = win.src.toPlainText() or ""
+        except Exception:
+            pass
+        if not self._spell_check_enabled() or not text.strip():
+            self._spell_corrections = []
+            return
+        lang = self._spell_lang()
+
+        class _Sig(QObject):
+            done = Signal(object)
+        if self._spell_sig is None:
+            self._spell_sig = _Sig()
+            self._spell_sig.done.connect(self._spell_done)
+        sig = self._spell_sig
+
+        def work():
+            try:
+                # .tmp runs the system-services spell backends as the
+                # SpellChecker role; port prefers the on-device macOS
+                # NSSpellChecker (private, no key) and falls back to
+                # the Bing spell endpoint when it is unavailable.
+                # General.PreferredServices.spell promotes one backend.
+                backends = []
+                try:
+                    from qtranslate.services import system_spell as SS
+                    backends.append(("system", lambda: SS.check(
+                        text, lang or "en")))
+                except Exception:
+                    pass
+                try:
+                    from qtranslate.services import bing_spell as BS
+                    backends.append(("bing", lambda: BS.check(
+                        text, lang or "en")))
+                except Exception:
+                    pass
+                try:
+                    from qtranslate.services import google_spell as GS
+                    backends.append(("google", lambda: GS.check(
+                        text, lang or "en")))
+                except Exception:
+                    pass
+                try:
+                    from qtranslate.services import ai_translate as AI
+                    backends.append(("ai", lambda: AI.spell_check(
+                        text, lang or "")))
+                except Exception:
+                    pass
+                try:
+                    from qtranslate import config as _C
+                    pref = ((_C.general_setting("PreferredServices", {})
+                             or {}).get("spell") or "")
+                except Exception:
+                    pref = ""
+                backends.sort(key=lambda kv: kv[0] != pref)
+                res = None
+                for _name, fn in backends:
+                    try:
+                        res = fn()
+                    except Exception:
+                        res = None
+                    if res is not None:
+                        break
+                sig.done.emit((res or {}).get("corrections") or [])
+            except Exception:
+                sig.done.emit([])
+        import threading
+        threading.Thread(target=work, daemon=True).start()
+
+    def _spell_done(self, corrections):
+        # Drop stale results: the text may have changed while Bing
+        # answered -- re-check against the live pane before storing.
+        win = getattr(self, "win", None)
+        if win is None:
+            return
+        try:
+            live = win.src.toPlainText() or ""
+        except Exception:
+            live = ""
+        if not live.strip() or not self._spell_check_enabled():
+            self._spell_corrections = []
+            return
+        self._spell_corrections = list(corrections or [])
+
+    def spell_correction_at(self, pos):
+        """The correction covering ``pos`` in the source text, or None."""
+        for c in self._spell_corrections:
+            try:
+                if c["startIndex"] <= pos < c["endIndex"]:
+                    return c
+            except Exception:
+                continue
+        return None
+
+    def apply_spell_correction(self, correction, suggestion):
+        """MainIntent.ApplyCorrection: swap the span for the suggestion
+        and clear the list -- upstream clears spellCheckCorrections on
+        apply so the menu rebuilds from the next check."""
+        win = getattr(self, "win", None)
+        if win is None or not correction:
+            return
+        try:
+            cur = win.src.textCursor()
+            cur.setPosition(int(correction["startIndex"]))
+            cur.setPosition(int(correction["endIndex"]),
+                            cur.MoveMode.KeepAnchor)
+            cur.insertText(suggestion or "")
+            win.src.setTextCursor(cur)
+        except Exception:
+            pass
+        self._spell_corrections = []
+        self._schedule_spell_check()
 
     # ------------------------------------------------------- the hotkeys
     def _clipboard_text(self) -> str:
@@ -1545,13 +2526,52 @@ class QtApp:
         except Exception:
             return ""
 
-    def _translate(self, text: str, back_translate: bool = False):
+    def _translation_rules(self):
+        """General.TranslationRules -> {source_code: target_code}.
+
+        .tmp Configuration.translationRules: per-source-language forced
+        target, applied by TranslateTextUseCase (the MAIN workspace --
+        quick translate uses TranslateStringUseCase and skips rules).
+        Entries are {"source","target"} dicts or [src, tgt] pairs."""
+        out = {}
+        try:
+            rules = self._extra_cfg().get("TranslationRules") or []
+        except Exception:
+            return out
+        for r in rules:
+            try:
+                if isinstance(r, dict):
+                    s, t = r.get("source"), r.get("target")
+                else:
+                    s, t = (list(r) + [None, None])[:2]
+            except Exception:
+                continue
+            if s and t:
+                out[str(s)] = str(t)
+        return out
+
+    def _rule_target(self, src_code):
+        rules = self._translation_rules()
+        if not rules or not src_code:
+            return None
+        return (rules.get(src_code)
+                or rules.get(src_code.split("-", 1)[0])
+                or rules.get(src_code.split("_", 1)[0]))
+
+    def _translate(self, text: str, back_translate: bool = False,
+                   apply_rules: bool = False):
         """Translate a piece of text with the current service and pair.
 
         ``back_translate`` is opt-in per call site: only the main-window
         task honours General.BackTranslation. The popup and Alt+W paths
         must NOT get it -- Alt+W types ``res.text`` verbatim into the
         target app, so an appended back-translation would be typed too.
+
+        ``apply_rules`` opts into .tmp TranslationRule resolution
+        (TranslateTextUseCase only): an explicit source pre-resolves
+        the target before the request; an AUTO source re-resolves from
+        the detected language and re-translates once when a rule
+        changes the target.
         """
         from qtranslate import engine
         service = self.service
@@ -1564,8 +2584,28 @@ class QtApp:
                 service = enabled[0]
         except Exception:
             pass
-        res = engine.translate(service, text[:5000], self.target,
+        target = self.target
+        if apply_rules and self.source != "auto":
+            rt = self._rule_target(self.source)
+            if rt:
+                target = rt
+        res = engine.translate(service, text[:5000], target,
                                self.source, back_translate=back_translate)
+        if apply_rules and self.source == "auto":
+            try:
+                det = res.source_language_code or ""
+            except Exception:
+                det = ""
+            rt = self._rule_target(det)
+            if rt and rt != target:
+                # Upstream handleReTranslation + targetLanguage state
+                # update: re-translate to the rule's target and move
+                # the target combo with it (UI side applied in
+                # _show_main_result via _pending_rule_target).
+                self._pending_rule_target = rt
+                res = engine.translate(service, text[:5000], rt,
+                                       det or self.source,
+                                       back_translate=back_translate)
         # The concrete source auto-detect resolved to -- the swap use
         # case (.tmp) needs it to give the target slot a real language.
         try:
@@ -1628,6 +2668,65 @@ class QtApp:
         except Exception:
             return False
 
+    def popup_lang_changed(self, which, name):
+        """Quick popup language pickers (.tmp onSourceLanguageSelected
+        / onTargetLanguageSelected): update the pair, persist the
+        preferred languages, sync the main window's combos, and
+        retranslates the popup's stored text (RetranslateQuickTranslate).
+        """
+        code = self._code_of(name or "")
+        if which == "src":
+            self.source = code or "auto"
+        else:
+            # The target combo never offers auto (.tmp's target
+            # LanguageComboBox excludes it the same way).
+            if code in ("", "auto"):
+                code = self.target
+            self.target = code
+        try:
+            # LanguageFrom/LanguageTo IS the port's preferred* pair --
+            # the same "remember the last choice" upstream writes.
+            self._persist_language()
+            self._refresh_language_combos()
+            self._refresh_detected_label()
+        except Exception:
+            pass
+        self._popup_retranslate()
+
+    def popup_swap(self):
+        """Quick popup swap (.tmp onSwapLanguages -> SwapLanguages +
+        RetranslateQuickTranslate): AUTO source uses the detected
+        language, same rule as the main window's on_swap."""
+        src = self.source
+        if src == "auto":
+            src = getattr(self, "_detected_src", "") or ""
+            if not src:
+                return
+        self.source, self.target = self.target, src
+        self._detected_src = ""
+        try:
+            self._persist_language()
+            self._refresh_language_combos()
+            self._refresh_detected_label()
+            pop = getattr(self, "_popup", None)
+            if pop is not None:
+                pop.sync_languages()
+        except Exception:
+            pass
+        self._popup_retranslate()
+
+    def _popup_retranslate(self):
+        """Retranslate the popup's stored source with the current pair
+        (.tmp RetranslateQuickTranslate -> TranslateTextUseCase
+        QUICK)."""
+        text = getattr(self, "_popup_src_full", "") or ""
+        if not text.strip():
+            return
+        try:
+            self._translate_captured(text)
+        except Exception:
+            pass
+
     def popup_pair(self, provider: str = "") -> str:
         """The line native puts in the popup's title row.
 
@@ -1680,7 +2779,8 @@ class QtApp:
         except Exception:
             pass
 
-    def show_translation(self, text, result, provider: str = ""):
+    def show_translation(self, text, result, provider: str = "",
+                         origin: str = "quick"):
         """Show one POPUP translation: history and the popup window.
 
         Quick-translate (Ctrl+Q, the mouse icon, the clipboard hotkey)
@@ -1699,6 +2799,7 @@ class QtApp:
                 pass
             try:
                 self.push_hist(self.service, text[:2000], result[:4000])
+                self._maybe_auto_copy(result, origin)
             except Exception:
                 pass
             try:
@@ -1716,6 +2817,21 @@ class QtApp:
                 pop.set_text(text[:300], result,
                              self.popup_pair(provider),
                              provider=provider or self.service)
+                # .tmp QuickTranslateDialog retranslates inputText on
+                # language/swap changes -- keep the FULL source (the
+                # widget only displays the first 300 chars).
+                self._popup_src_full = text
+                try:
+                    pop.sync_languages()
+                except Exception:
+                    pass
+                self._popup_inline_definition(text, result)
+                # .tmp quickTranslationComparisonPolicy: quick compare
+                # is independent of the layout preset.
+                try:
+                    self._popup_compare(text)
+                except Exception:
+                    pass
                 try:
                     _dbg("popup set_text done, placing")
                 except Exception:
@@ -1872,7 +2988,8 @@ class QtApp:
         text = self._clipboard_text()
         if not text:
             return
-        self._start_translation(text, self._show_clipboard_result)
+        self._start_translation(text, self._show_clipboard_result,
+                                apply_rules=True)
 
     def _show_clipboard_result(self, text, res):
         """Show a clipboard translation in the main window (UI thread)."""
@@ -1988,6 +3105,33 @@ class QtApp:
             lang = (getattr(self, "_detected_src", "")
                     or (self.source if self.source != "auto" else ""))
             self._speak(text, lang)
+
+    def _speak_extra(self):
+        """Speak the extra-output pane (.tmp ListenToText
+        TextSource.ExtraOutput). Its language follows
+        ExtraOutputSource exactly like upstream determineLanguage:
+        Input -> source (detected when auto), Output -> target."""
+        win = getattr(self, "win", None)
+        if win is None:
+            return
+        try:
+            text = win.back.toPlainText()
+        except Exception:
+            return
+        if not (text or "").strip():
+            return
+        lang = ""
+        try:
+            if str(self._extra_cfg().get(
+                    "ExtraOutputSource", "Output")) == "Input":
+                lang = (self._detected_src
+                        if self.source == "auto"
+                        else self.source) or ""
+            else:
+                lang = self.target or ""
+        except Exception:
+            lang = ""
+        self._speak(text, lang)
 
     def hotkey_listen_translation(self):
         text = self.win.out.toPlainText() if self.win else ""
@@ -2121,10 +3265,24 @@ class QtApp:
             self.tray.set_mouse_mode(mode)
 
     def render_back(self, text):
-        """The back-translation pane (1018) -- the port shows it in the
-        result pane when it has one."""
-        self.win.out.setPlainText(
-            (self.win.out.toPlainText() or "") + "\n" + text)
+        """The back-translation pane -- its own QTextEdit under the
+        result, shown only while it holds text. In the AI extra modes
+        the pane belongs to the extra-output worker, so this is a
+        no-op there."""
+        win = self.win
+        back = getattr(win, "back", None) if win is not None else None
+        if back is None:
+            return
+        try:
+            if win.extra_mode() != "back":
+                return
+        except Exception:
+            pass
+        back.setPlainText(text or "")
+        try:
+            win.set_extra_visible(bool((text or "").strip()))
+        except Exception:
+            back.setVisible(bool((text or "").strip()))
 
 
 def _frozen_selftest():
@@ -2264,16 +3422,44 @@ def main(argv=None):
     # theme may override the built-in one the settings name.
     app.apply_theme()
     app.win = MainWindow(app)
+    # Contents.EditSource/EditTranslation/EditBackTranslation: restore
+    # what the last session left in the panes, and persist on EVERY
+    # quit path (tray Exit, window close, signal) -- not only app.quit.
+    try:
+        app._restore_contents()
+        app.qapp.aboutToQuit.connect(app._persist_contents)
+        app.qapp.aboutToQuit.connect(app._persist_window_state)
+        # Spell check rides the source pane's textChanged, debounced
+        # inside _schedule_spell_check (.tmp spellCheckInputs flow).
+        app.win.src.textChanged.connect(app._schedule_spell_check)
+    except Exception:
+        pass
     # Native's "Show main window on load": the app is a tray resident --
     # the window only appears when the user asks for it (tray, hotkey,
     # second instance). An unconditional show() here used to pop the
     # main window on every start even with the setting off.
+    # Native's startup action (menu 1 items 85-88): General.
+    # MainWindowStartupAction 0=Show window, 1=Minimize to tray,
+    # 2=Restore previous state. Configs written before the key existed
+    # only carry MainWindowShowOnLoad -- derive the action from it.
     try:
         from qtranslate import config as _cfg
-        _show = bool((_cfg.load() or {}).get("General", {})
-                     .get("MainWindowShowOnLoad", True))
+        _g = (_cfg.load() or {}).get("General", {})
+        _action = _g.get("MainWindowStartupAction")
+        if _action is None:
+            _action = 0 if _g.get("MainWindowShowOnLoad", True) else 1
+        _action = int(_action)
     except Exception:
-        _show = True
+        _action = 0
+    _show = (_action == 0)
+    if _action == 2:
+        # Restore previous state: reopen however the last run left the
+        # window -- visible means show, tray-resident means stay hidden.
+        try:
+            _show = bool((_cfg.load() or {}).get("General", {})
+                         .get("LastWindowVisible", True))
+        except Exception:
+            _show = True
     if _show:
         app.win.show()
     # The tray: native is a tray app, and its tray menu is the real

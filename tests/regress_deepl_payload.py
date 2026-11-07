@@ -1,20 +1,28 @@
-"""Regression: DeepL JSON-RPC request shape (E4).
+"""Regression: DeepL request shape.
 
-`translate()` depends on two invariants that were untested, and a broken
-one silently corrupts output instead of failing:
+History: this suite originally pinned the legacy ``www2.deepl.com``
+JSON-RPC ``LMT_handle_jobs`` payload (i_count timestamp rule and the
+split_text/parse_text segmentation contract). Live probing showed that
+endpoint now answers every translate with an "update DeepL" wall of
+text, and plugins/deepl-services upstream replaced it with the
+``oneshot-free.www.deepl.com/v1/translate`` JSON API -- so translate()
+was re-ported onto that contract and the dead-protocol invariants were
+dropped with it. ``detect()`` still uses the jsonrpc endpoint (that
+method remains alive upstream of this port).
 
-  1. the ``i_count`` timestamp rule --
-     ``now + (i_count - now % i_count)`` with ``i_count = 1 + count('i')``;
-  2. the segmentation contract between ``split_text`` (the jobs sent) and
-     ``parse_text`` (the parts the beams are re-interleaved into):
-     ``len(jobs) == number of type-1 parts`` AND
-     concatenating every part reproduces the input byte-for-byte.
+Pinned here, headless:
 
-Both are pinned here against independently written expectations, so a
-wrong port cannot pass. Headless: no network, no Tk.
+  1. translate() prefers the official api.deepl.com/v2 endpoint when
+     General.DeeplApiKey is set, and falls back to the free web path;
+  2. the free web path posts {text, target_lang, source_lang?} to
+     oneshot-free with Authorization: None, paces requests >=2s,
+     chunks >5000 chars, and retries once on rate-limit markers;
+  3. _web_code/_official_code language mappings;
+  4. detect() keeps the jsonrpc LMT_split_into_sentences shape.
 """
+import io
+import json
 import os
-import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -31,69 +39,79 @@ def ck(name, cond, detail=""):
         fail.append(name + (" -- " + detail if detail else ""))
 
 
-# --- 1. the i_count timestamp rule ---------------------------------------
-def ref_ts(text, now):
-    ic = 1 + len(re.findall(r"i", text))
-    return now + (ic - now % ic)
-
-
-ck("i_count('hello') == 1", 1 + len(re.findall(r"i", "hello")) == 1)
-ck("i_count('initializing') == 6",
-   1 + len(re.findall(r"i", "initializing")) == 6)
-for text in ("hello", "initializing", "iii", "", "this is a test"):
-    for now in (1700000000000, 1700000000001, 1750000123456):
-        count = 1 + len(re.findall(r"[i]", text))
-        got = now + (count - now % count)
-        ck("timestamp rule for %r@%d" % (text, now),
-           got == ref_ts(text, now), "%d != %d" % (got, ref_ts(text, now)))
-
-# the count is what the source computes, cross-checked against its method
 src = open("qtranslate/services/deepl.py", encoding="utf-8").read()
-ck("source computes i_count as 1 + count of 'i'",
-   'count = 1' in src and 're.findall(r"[i]"' in src)
-ck("source applies the rounding rule",
-   "timestamp\": now + (count - now % count)" in src
-   or "now + (count - now % count)" in src)
 
-# --- 2. the segmentation contract ----------------------------------------
-CASES = [
-    "hello world",
-    "One. Two! Three?",
-    "Mr. Smith went home.",
-    "a\n\nb",
-    "  spaced   out  ",
-    "1.5 apples",
-    "U.S.A. is big.",
-    "Hello… World",
-    "e.g. this",
-    'Dr. No said: "Go."',
-    "end.",
-    "",
-]
-for t in CASES:
-    parts = D.parse_text(t)
-    jobs = D.split_text(t)
-    t1 = [p["text"] for p in parts if p["type"] == 1]
-    ck("jobs == type-1 part count for %r" % t, len(jobs) == len(t1),
-       "%d != %d" % (len(jobs), len(t1)))
-    ck("parts reassemble the input for %r" % t,
-       "".join(p["text"] for p in parts) == t,
-       repr("".join(p["text"] for p in parts)))
+# --- 1. official-first ----------------------------------------------------
+ck("official endpoint constant",
+   'OFFICIAL_HOST = "https://api.deepl.com"' in src)
+ck("official path /v2/translate",
+   '"/v2/translate?key="' in src)
+ck("translate() tries official when keyed",
+   "_deepl_api_key()" in src and "official_translate(" in src)
+ck("official failure falls through to web",
+   "_web_translate(text, sl_code, tl_code)" in src)
 
-# translate()'s interleave consumes one beam per type-1 part, so the
-# queue must never underflow for a well-formed response.
-ck("split_text returns strings", all(isinstance(s, str)
-                                     for s in D.split_text("a. b.")))
-ck("split_text normalises whitespace",
-   D.split_text("a\n b") == ["a b"] or True)  # informational
+# --- 2. free web contract -------------------------------------------------
+ck("web endpoint is oneshot-free",
+   'WEB_HOST = "https://oneshot-free.www.deepl.com"' in src)
+ck("web path /v1/translate", '"/v1/translate"' in src)
+ck("Authorization: None header", '"Authorization": "None"' in src)
+ck("pace >= 2s", "WEB_MIN_INTERVAL = 2.0" in src
+   and "_pace_web_request()" in src)
+ck("rate-limit retry budget = 1", "WEB_MAX_RETRIES = 1" in src)
+ck("rate-limit markers",
+   "too many requests" in src and "1042911" in src)
+ck("chunk cap 5000", "WEB_MAX_CHARS = 5_000" in src)
+ck("random UA pool", "_WEB_UAS" in src and "_r.choice(_WEB_UAS)" in src)
 
-# --- 3. payload constants the endpoint requires ---------------------------
-ck("translate() sends jsonrpc 2.0", '"jsonrpc": "2.0"' in src)
-ck("translate() sends method LMT_handle_jobs",
-   '"method": "LMT_handle_jobs"' in src)
+# _web_code: toWebCode
+ck("web_code zh collapses", D._web_code("ZH-HANS") == "zh"
+   and D._web_code("ZH") == "zh")
+ck("web_code lowercases tag", D._web_code("EN") == "en"
+   and D._web_code("VI") == "vi")
+ck("web_code strips region", D._web_code("PT-BR") == "pt")
+
+# _split_for_web boundaries
+ck("short text is one chunk", D._split_for_web("hello") == ["hello"])
+long_text = "word " * 1200 + "END"
+chunks = D._split_for_web(long_text)
+ck(">5000 chars splits", len(chunks) > 1, str(len(chunks)))
+ck("chunks respect the cap",
+   all(len(c) <= D.WEB_MAX_CHARS for c in chunks),
+   str([len(c) for c in chunks]))
+ck("chunks reassemble the input", "".join(chunks) == long_text)
+
+# request body shape via a stubbed post
+seen = []
+
+
+def fake_post(body):
+    seen.append(body)
+    return json.dumps({"translations": [{"text": "Xin chào"}]})
+
+
+orig = D._web_post
+D._web_post = fake_post
+try:
+    out = D._web_translate_once("Hello", "EN", "VI")
+finally:
+    D._web_post = orig
+ck("once returns translated text", out == "Xin chào", out)
+ck("body text list", seen and seen[0].get("text") == ["Hello"])
+ck("body target_lang web code", seen and seen[0].get("target_lang") == "vi")
+ck("body source_lang web code", seen and seen[0].get("source_lang") == "en")
+
+seen.clear()
+D._web_post = fake_post
+try:
+    D._web_translate_once("hi", "auto", "VI")
+finally:
+    D._web_post = orig
+ck("auto omits source_lang", "source_lang" not in seen[0], str(seen[0]))
+
+# --- 3. detect() keeps jsonrpc ---------------------------------------------
 ck("detect() sends LMT_split_into_sentences",
    '"method": "LMT_split_into_sentences"' in src)
-ck("jobs carry kind=default", '"kind": "default"' in src)
 
 if fail:
     print("FAIL %d/%d" % (len(fail), n[0]))

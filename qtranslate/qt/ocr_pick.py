@@ -28,10 +28,16 @@ class RegionPicker(QWidget):
     the pick early, because that key has already consumed the grab.
     """
 
-    def __init__(self, picked):
+    def __init__(self, picked, actions=None):
         super().__init__(None, Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
                          | Qt.Tool)
         self._picked = picked
+        # .tmp snipping tool: a floating button row over the selection
+        # (Translate / Copy Text / Copy Image / Save Image). ``actions``
+        # maps label -> callable(screen_rect); None keeps the legacy
+        # release-to-pick behaviour.
+        self._actions = actions or {}
+        self._action_btns = []
         self._origin = QPoint()
         self._current = QPoint()
         self._dragging = False
@@ -60,10 +66,13 @@ class RegionPicker(QWidget):
             return
         self._dragging = False
         rect = self._rect()
-        self.hide()
         if rect.width() < 4 or rect.height() < 4:
+            self.hide()
             self._picked(None)
+        elif self._actions:
+            self._show_actions(rect)
         else:
+            self.hide()
             self._picked(rect)
 
     def keyPressEvent(self, e):
@@ -73,8 +82,15 @@ class RegionPicker(QWidget):
         elif k in (Qt.Key_Return, Qt.Key_Enter):
             self._dragging = False
             rect = self._rect()
-            self.hide()
-            self._picked(rect if rect.width() >= 4 else None)
+            if self._actions:
+                if rect.width() >= 4:
+                    self._run_action("Translate", rect)
+                else:
+                    self.hide()
+                    self._picked(None)
+            else:
+                self.hide()
+                self._picked(rect if rect.width() >= 4 else None)
         elif k in (Qt.Key_S, Qt.Key_C):
             pm = self._grab()
             data = self._png_of(pm) if pm is not None else None
@@ -125,8 +141,64 @@ class RegionPicker(QWidget):
 
     def _cancel(self):
         self._dragging = False
+        self._clear_actions()
         self.hide()
         self._picked(None)
+
+    # ------------------------------------------------------- action toolbar
+    def _show_actions(self, rect):
+        """Float the .tmp button row under the selection (above when the
+        selection sits at the screen's bottom edge)."""
+        self._clear_actions()
+        from PySide6.QtWidgets import QToolButton
+        order = ["Translate", "Copy Text", "Copy Image", "Save Image"]
+        labels = {k: v for k, v in self._actions.items()}
+        btns = [k for k in order if k in labels] + \
+               [k for k in labels if k not in order]
+        w = sum(92 for _ in btns) + 8
+        h = 26
+        x = rect.center().x() - w // 2
+        y = rect.bottom() + 8
+        if y + h > self.geometry().bottom():
+            y = rect.top() - h - 8
+        x = max(self.geometry().left() + 4,
+                min(x, self.geometry().right() - w - 4))
+        y = max(self.geometry().top() + 4,
+                min(y, self.geometry().bottom() - h - 4))
+        for i, name in enumerate(btns):
+            b = QToolButton(self)
+            b.setText(name)
+            b.setStyleSheet(
+                "QToolButton{background:#2d2d30;color:#fff;border:1px "
+                "solid #555;padding:2px 10px;font-size:12px;}"
+                "QToolButton:hover{background:#3e3e42;}")
+            b.move(x + 4 + i * 92, y)
+            b.resize(88, h)
+            b.setAttribute(Qt.WA_TransparentForMouseEvents, False)
+            b.clicked.connect(
+                lambda _c=False, n=name, r=rect: self._run_action(n, r))
+            b.show()
+            self._action_btns.append(b)
+
+    def _run_action(self, name, rect):
+        fn = self._actions.get(name)
+        self._clear_actions()
+        self._dragging = False
+        self.hide()
+        self._picked(None)
+        if fn is not None:
+            try:
+                fn(rect)
+            except Exception:
+                pass
+
+    def _clear_actions(self):
+        for b in self._action_btns:
+            try:
+                b.deleteLater()
+            except Exception:
+                pass
+        self._action_btns = []
 
     # ------------------------------------------------------------- capture
     def _grab(self):
@@ -184,12 +256,15 @@ class RegionPicker(QWidget):
 
     # ----------------------------------------------------------------- usage
     @staticmethod
-    def pick():
-        """Show the picker and return the chosen rectangle, or None.
+    def pick(actions=None):
+        """Show the picker and return (picker, result).
 
-        The caller runs this on the UI thread; the result arrives
-        through the ``picked`` callback, because a modal dialog would
-        block the event loop the picker needs.
+        ``actions`` (optional) maps button label -> callable(screen
+        rect); with it, releasing a valid selection floats the .tmp
+        action toolbar instead of finishing immediately. The caller
+        runs this on the UI thread; the result arrives through the
+        ``picked`` callback, because a modal dialog would block the
+        event loop the picker needs.
         """
         result = {"rect": None, "done": False}
 
@@ -197,7 +272,7 @@ class RegionPicker(QWidget):
             result["rect"] = rect
             result["done"] = True
 
-        picker = RegionPicker(_picked)
+        picker = RegionPicker(_picked, actions=actions)
         # virtualGeometry bounds EVERY screen, so the overlay covers
         # secondary displays too -- primaryScreen().geometry() left
         # them unpickable (the OCR audit).
@@ -211,15 +286,19 @@ class RegionPicker(QWidget):
         return picker, result
 
 
-def grab_rect(rect: QRect) -> bytes:
-    """The PNG bytes of a screen rectangle."""
-    from PySide6.QtCore import QBuffer, QByteArray as _QBA
+def grab_pixmap(rect: QRect):
+    """The screen rectangle as a QPixmap (multi-monitor aware)."""
     screen = QGuiApplication.screenAt(rect.center()) \
         or QGuiApplication.primaryScreen()
     off = screen.geometry().topLeft()
-    pm = screen.grabWindow(0, rect.x() - off.x(), rect.y() - off.y(),
-                           rect.width(), rect.height())
-    ba = _QBA()
+    return screen.grabWindow(0, rect.x() - off.x(), rect.y() - off.y(),
+                             rect.width(), rect.height())
+
+
+def grab_rect(rect: QRect) -> bytes:
+    """The PNG bytes of a screen rectangle."""
+    pm = grab_pixmap(rect)
+    ba = QByteArray()
     buf = QBuffer(ba)
     buf.open(QBuffer.WriteOnly)
     pm.save(buf, "PNG")

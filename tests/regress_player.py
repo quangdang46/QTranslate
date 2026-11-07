@@ -41,6 +41,7 @@ import qtranslate.tts as TTS
 
 _calls = {}
 _orig_tts = TTS.google_tts
+_orig_bing_tts = getattr(TTS, "bing_tts", None)
 _orig_play = getattr(P, _ONLINE_PLAYER)
 _orig_speak = None
 
@@ -82,12 +83,14 @@ def _boom(_t, _l, slow=False):
 if _DARWIN:
     _orig_darwin_speak = P._speak_darwin
 
-    def _darwin_speak(text, slow=False):
+    def _darwin_speak(text, lang="", slow=False):
         _seen["text"] = text
+        _seen["lang"] = lang
         _seen["rate"] = -4 if slow else 0
 
     P._speak_darwin = _darwin_speak
     TTS.google_tts = _boom
+    TTS.bing_tts = _boom
     try:
         used = P.play_text("xin chào", "vi", slow=False)
         ck("online failure falls back to the offline voice",
@@ -96,12 +99,15 @@ if _DARWIN:
            _seen.get("text") == "xin chào", repr(_seen.get("text")))
         ck("voice rate is 0 at normal speed",
            _seen.get("rate") == 0, repr(_seen.get("rate")))
+        ck("offline voice receives the language",
+           _seen.get("lang") == "vi", repr(_seen.get("lang")))
         _seen.clear()
         P.play_text("x", "vi", slow=True)
         ck("voice rate is -4 when slow",
            _seen.get("rate") == -4, repr(_seen.get("rate")))
     finally:
         TTS.google_tts = _orig_tts
+        TTS.bing_tts = _orig_bing_tts
         P._speak_darwin = _orig_darwin_speak
 else:
     import qtranslate.sapi as SAPI
@@ -112,6 +118,7 @@ else:
         _seen["rate"] = rate
 
     TTS.google_tts = _boom
+    TTS.bing_tts = _boom
     SAPI.speak = _fake_speak
     try:
         used = P.play_text("xin chào", "vi", slow=False)
@@ -126,6 +133,7 @@ else:
            repr(_seen.get("rate")))
     finally:
         TTS.google_tts = _orig_tts
+        TTS.bing_tts = _orig_bing_tts
         SAPI.speak = _orig_sapi
 
 if fails:

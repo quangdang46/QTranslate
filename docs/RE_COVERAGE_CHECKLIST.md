@@ -382,7 +382,7 @@ that undercounted the inventory; fixed here.
 | E1 Common.js (shared framework) | `Services/Common.js` | VERIFIED | ported | ported 1:1 → `common.py`. **2026-10-16: `removeAttributes`' pattern was wrong** — a Python raw string with `\\.` where native's regex is `\.` (escaped dot, not backslash-any). Diverged only on a backslash-quote inside a quoted value (`<a href="a\"b">t</a>`: native `<ab">t</a>`, port `<a>t</a>`), so it survived every earlier vector test. Fixed and pinned by `tests/regress_reg_exp_patterns.py` (12), which reads the pattern out of the recovered JS and captures the port's from the call it actually makes. `trim_string`/`strip_html`/`remove_empty_lines`/`string_find_sub`/`update_html_links` then differentially fuzzed over 150,060 inputs against a model transcribed from the JS (`tests/regress_common_fuzz.py`) — zero divergences |
 | E2 Google Translate (1) | `Services/Google Translate/Service.js` | VERIFIED | behaviour-verified | tk()+gtx; live Win |
 | E3 Microsoft Translator (5) | `Services/Microsoft Translator/Service.js` | VERIFIED | behaviour-verified | shared cookie jar; live Win. **Documented port-side divergence, recorded 2026-10-16:** the port's `_service_request` body carries `&tryFetchingGenderDebiasedTranslations=true`, which native's recovered body does **not** have (native: `text={}&fromLang={}&to={}&token={}&key={}`). This is a deliberate live fix — Bing hardened after the 6.10 JS shipped — and is documented in the docstring, not silently; pinned by `tests/regress_microsoft_request.py`. Native's detect chain (`serviceDetectLanguageRequest` → `serviceRequest` → `getResponseObj(a)` → `getSourceLanguage(a)`) and all three `getSourceLanguage` shapes (Google indexed `a[8][0][0]`, Microsoft `a.detectedLanguage.language`, DeepL keyed `a.result[b]`) match the port. **Session-scrape fixes 2026-10-16 (`tests/regress_session_markers.py`, 47):** the image spells `var params_RichTranslateHelper = [IG:"<ig>","<token>",<key>]` and `id="_paft"`/`id="_xsrf"`; this port looked for `params_AbusePreventionHelper=[(\d+),…]` and `name="aft"` — **neither exists in the image**, so both scrapes could only ever report "layout changed". It also read `key=group(1)` (the IG itself) and `token=group(2)`, i.e. the two slots swapped — invisible for eleven months because the old fixture put its numbers in the token slot. And unlike Baidu/Promt/Google it never honoured `BingCookie`/`BingToken`/`BingKey` from Options, so a saved session was ignored and re-scraped. All fixed; the provider's live state is unchanged |
-| E4 DeepL (31) | `Services/DeepL/Service.js`: POST `www2.deepl.com/jsonrpc` `LMT_handle_jobs` (translate) + `LMT_split_into_sentences` (detect); caps TRANSLATE\|DETECT | VERIFIED | behaviour-verified | live Win (429 on rerun) |
+| E4 DeepL (31) | `Services/DeepL/Service.js`: legacy `www2.deepl.com/jsonrpc` (`LMT_handle_jobs` translate — now returns an "update DeepL" wall; `LMT_split_into_sentences` detect, still live). **2026-11-08 re-ported to plugins/deepl-services**: official `api.deepl.com/v2` first when `General.DeeplApiKey` set, then free `oneshot-free.www.deepl.com/v1/translate` (Authorization: None, ≥2s pace, 10s backoff ×1 retry, 5000-char chunks) | VERIFIED | behaviour-verified | live: oneshot-free verified EN→VI |
 | E5 Yandex (11) | `Services/Yandex/Service.js`: POST `/api/v1/tr.json/translate` (`.text.join`) + GET `/detect`; LISTEN `tts.voicetech.yandex.net`; `YandexModel` 600-char chunker; caps 7 | VERIFIED | ported | android variant; live Win. **2026-10-16: `_useDictionary` split wrong** — native is `3 >= a.split(/\s+/).length`, and JS `split(/\s+/)` keeps the empty member that leading/trailing whitespace produces, so `"   a b c"` has 4 members and native rejects it. The port's `str.split()` collapsed the run, saw 3 members, and took the dictionary branch native does not take. Fixed to `re.split(r"\s+", text)` and pinned for 14 probes in `tests/regress_translate_response_chain.py` (45) |
 | E6 Naver/Papago (30) | `Services/Naver/Service.js`: POST `papago.naver.com/apis/{n2mt\|nsmt}/translate` + `/apis/langs/dect`; `buildAuthData()` HMAC-MD5 (key `v1.6.5_956d74858f`); caps TRANSLATE\|DETECT | VERIFIED | behaviour-verified | new API; live Win |
 | E7 Baidu (28) | `Services/Baidu/Service.js`: POST `/v2transapi` (`sign(b,GoogleTkk)`+`BaiduToken`+`BaiduCookie`), `/langdetect`, LISTEN `tts.baidu.com`; caps 7 | VERIFIED | dead:needs-session-token | detect live. **2026-10-16:** the port read `Options.BaiduGtk`/`BaiduToken` but nothing ever FILLED them, so every request signed with the `0.0` seed — the port had no scraper for a page native definitely scrapes (`.rdata` carries `http://fanyi.baidu.com`, `BAIDUID`, and the page markers `token: '` / `gtk = '`). `session.baidu_session()` now does it and `baidu.translate` calls it when the seed is still default; pinned in `tests/regress_session.py` (24) + `tests/regress_session_markers.py` (51). The provider stays `dead:needs-session-token` — the scrape is wired and evidence-backed, but the endpoint's live acceptance still needs a real session |
@@ -922,3 +922,264 @@ more port bugs, all in code that had *looked* wired.
 
 **G9 and the Gate are unchanged** — `UNKNOWN`, `BLOCKED (1)`. The four
 `not-started` rows stay deliberate. Phase C still not started.
+
+---
+
+## .tmp feature-parity pass — service presets, role prefs, local hotkeys
+
+Audit of `.tmp/QTranslate` core use cases and plugins against the port;
+every remaining functional gap found was ported or recorded as a
+deliberate divergence.
+
+| .tmp source | Port | Where |
+|---|---|---|
+| `ServicePreset`/`PresetManager` + `ServicesPanel` preset row | `General.ServicePresets`/`ActivePresetId`/`ActiveService`; preset = {translator, comparison set} (the port's only two user-picked roles — TTS/spell/OCR pin via PreferredServices, dict order via DictionariesOrder) | `qtranslate/presets.py`, `qt/options/services.py`, `QtApp.apply_preset` |
+| `HotkeyBinding` scope=LOCAL + `HotkeyPresets` defaults | Window-scoped QShortcuts: Ctrl+Enter translate, Ctrl+, options, Ctrl+Shift+S swap, Ctrl+Shift+H history, Ctrl+Shift+D document, Ctrl+Shift+C copy result, Ctrl+Shift+X clear input, Ctrl+L cycle target, Alt+1/2/3 focus panes | `qt/main_window.py` |
+| Per-role `selectedServices` (TTS/spell/OCR) | `General.PreferredServices` — preferred-first inside each fallback chain; "system" TTS bypasses online fetches | `services/ocr.py`, `player.py`, `qt/app.py::_run_spell_check`, Services page combos |
+| `google-services` plugin roles | translator, TTS, dictionary (DICT_EXT), spell, Cloud-Vision OCR — all present via service modules | `services/{google_translate,tts,google_dict,google_spell,google_vision}.py` |
+| `system-services` plugin roles | Vision/tesseract OCR, `say`-voice TTS (`system_tts.py` + VoiceLocaleMapper), NSSpellChecker | `services/{ocr,system_tts,system_spell}.py`, `player.py` |
+| `deepl-services` plugin | official + web-free DeepL paths | `services/deepl.py` |
+| `ai-services` plugin | translator, vision OCR, spell, dict, summarize, rewrite | `services/ai_translate.py` + Extra Output pane |
+| `bing-services` plugin | translator (microsoft alias), TTS, spell | `services/{microsoft,tts,bing_spell}.py` |
+| `wikimedia-reference` plugin | Commons image search + Wiktionary dict | `services/commons_images.py`, examples ext |
+
+**Deliberate divergences (recorded, not gaps):**
+- `LocalizationManager` / UI i18n: PARTIALLY ported -- the 35 native
+  `lang.json` packs now drive the chrome: window captions (Windows
+  section ids 1/2/3/5), the Options sidebar page names + footer
+  buttons (ids 10-18, dialog-2 Controls 1/2/1049), every native page's
+  control labels (`OptionsBase._localize_page`, English-text match per
+  dialog id), tray menu (Menus id 5) and all context menus
+  (`context_menus.pack_labels`). Form-field labels the port re-worded
+  and port-owned surfaces stay English; `.tmp`'s TOML packs + dotted
+  keys remain unported (different string table).
+- Layout presets (`classic`/`side_by_side`/`comparison`) and
+  service-selector style/appearance: `.tmp`'s main window is a new
+  JPanel composition; the port clones native 6.10's fixed window, so
+  there is no layout engine to preset. Comparison output lives in the
+  extra pane's "Compare" mode instead.
+- Quick-translate dictionary popup settings: `.tmp`'s dictionary is a
+  popup; the port's is a persistent window (native 6.10 model).
+- `deepl-services`/`google-services` plugin *manifest* form: roles are
+  registered by the service modules directly (the port has no plugin
+  runtime for first-party providers); extension plugins use the
+  manifest system.
+- PDF layout-aware translation: needs a renderer/font pipeline
+  (PDFBox equivalent); text-only mode reports an honest error.
+- Windows/Linux OCR/spell/TTS backends: port targets macOS first;
+  `.tmp`'s Windows.Media.Ocr/hunspell/SAPI ports are future work.
+- Donation nudge: promotional dialog, not a translation feature.
+
+Pinned by `tests/regress_presets.py`, `tests/regress_local_hotkeys.py`,
+`tests/regress_role_prefs.py` (171 suites green).
+
+Follow-up in the same pass: `selectionReadSource` (SOURCE reads the
+captured selection immediately in the source language; TRANSLATION keeps
+the result read-aloud) is `General.SelectionReadSource` with a Languages
+page combo; pinned by `tests/regress_read_source.py`.
+
+## .tmp settings-parity pass — popup/image-search/interface fields
+
+Remaining `.tmp` `Configuration` fields audited and ported where the
+port's architecture supports them.
+
+| .tmp source | Port | Where |
+|---|---|---|
+| `imageSearchAutoPositionEnabled`/`imageSearchTransparencyPercentage`/`imageSearchLastKnownPosition`/`imageSearchLastKnownSize` | `ImageSearch.{AutoPosition,Transparency,LastKnownPosition,LastKnownSize}` — opacity `(100-pct)/100` clamped 5-50%, geometry restored only when auto-position is off, persisted on close, malformed geometry falls back to 580x500 | `qtranslate/qt/image_search.py`, Appearance page "Image search" group |
+| `closePopupsOnClickOutside` | `Appearance.ClosePopupsOnClickOutside` (default on), read live per outside click; pinned popups and non-active instances unaffected | `qtranslate/qt/popup.py`, Appearance page checkbox |
+| `uiScale` (JSpinner 75-300 step 25) | `Appearance.UiScale` → `QT_SCALE_FACTOR` set before QApplication creation; env var wins; takes effect next start (Qt reads it once — upstream applies live via FlatLaf UIScale) | `qtranslate/qt/app.py::_apply_ui_scale`, Appearance page "Interface" group |
+| `popupIdleTimeoutSeconds` | `Appearance.PopupTimeout` auto-hide delay combo (native key, seconds) | `qt/options/appearance.py`, `qt/popup.py` |
+| `popupTransparencyPercentage`/`isPopupAutoSizeEnabled`/`isPopupAutoPositionEnabled` | `Appearance.Transparency` (0-255 alpha), `PopupAutoSize`, `PopupAutoPos` | native keys, same panel |
+| `uiFontConfig`/`editorFontConfig`/`editorFallbackFontConfig` | Single-font contract: `General.FontName`/`TextSize` resolve through `qtranslate.fonts.resolve_font` for BOTH controls (`qtranslate_style._ui_font`) and panes (`_pane_font`) | `qtranslate/fonts.py`, Basics page font rows — divergence: `.tmp` splits UI/editor/fallback fonts; the port keeps native 6.10's one font |
+| `quickDictionary*` popup fields | N/A — `.tmp` dictionary is a popup; the port's is a persistent window (native 6.10 model) | recorded divergence above |
+| `isDictionaryAutoPopupEnabled`, `donationNudgeShown`, `interfaceLanguage`, `toolbarVisibility`, `layoutPresetId`, `serviceSelector*` | recorded divergences (promo/i18n/layout-engine/selector-style — see table above) | — |
+
+Pinned by `tests/regress_image_search_prefs.py` (image-search
+geometry/opacity + uiScale env bridge), `tests/regress_qt_features.py`
+(page sizes), `tests/regress_options_roundtrip.py` — **173 suites
+green**.
+
+## .tmp settings-parity pass 2 -- editor font split + UI i18n chrome
+
+| .tmp source | Port | Where |
+|---|---|---|
+| `editorFontConfig`/`editorFallbackFontConfig` (AppearancePanel fonts_group) | `General.EditorFontName`/`EditorTextSize` -- editor font for the text panes and the quick popup's result/definition; empty inherits the UI font (`General.FontName`/`TextSize`). Qt's own per-glyph fallback covers `editorFallbackFontConfig` (no manual per-run fallback needed) | `qtranslate/fonts.py::resolve_editor_font`, `qt/main_window._pane_font`, `qt/popup.py`, Appearance page "Interface" group |
+| `interfaceLanguage` + `LocalizationManager` packs | `General.LocaleFoderName` now drives captions/sidebar/buttons/page labels/tray+context menus via `locale.ui_pack`/`ui_caption`/`ui_page_caption`/`ui_control_caption` | `qtranslate/locale.py`, `qt/options/base.py::_localize_page`, `qt/tray.py::_ml`, `qt/context_menus.pack_labels`, window `setWindowTitle`s |
+
+Pinned by `tests/regress_ui_i18n.py` (Vietnamese chrome offscreen),
+`tests/regress_fonts.py` (editor-font resolution), `tests/regress_locale.py`
+(ui_pack/caption helpers) — **174 suites green**.
+
+## Legacy menu pass -- toggles 60-62, startup action 85-88, Help submenu
+
+| Native item | Port | Where |
+|---|---|---|
+| Menu 181 "Clear input on Drag && Drop" (`0x8063`) | `General.ClearInputOnDragDrop` (default on) -- drop replaces source text when on, appends with newline when off | `qt/main_window._drop_text` |
+| "Auto-cleanup of translation" (`0x8077`) | `General.AutoCleanupTranslation` (default off) -- clears output/back panes when source becomes empty, except while browsing history | `qt/main_window._maybe_auto_cleanup` |
+| "Save contents on exit" (`0x8075`) | `General.SaveContentsOnExit` (default on) -- gates `Contents.EditSource/EditTranslation/EditBackTranslation` persist+restore | `qt/main_window._contents_enabled` |
+| "On startup" radio group (`0x806F`-family, ids 85-88) | `General.MainWindowStartupAction` int 0/1/2 (show / minimize to tray / restore previous state) + `General.LastWindowVisible` persisted on quit; legacy `MainWindowShowOnLoad` kept coherent and used as fallback for configs that predate the key | `qt/main_window._set_startup_action`, `qt/app._persist_window_state`, startup derivation |
+| Menu 181 "Extended" (`0x802D`) | **left disabled -- semantics unrecoverable.** Neither this binary's decompile nor `.tmp` (`Configuration`) defines what the flag controls; guessing would fake behavior | `qt/main_window` dead entry |
+| Menu 181 "Help" (`0x8130`-family) | submenu matching `.tmp` `OptionsPopupMenu.helpSubmenu`: How to use (bundled `help.txt`), Contact us (project page), Check for updates (`update_check.check_now`), auto-check toggle (`Update.CheckForUpdates`, same key as the Updates page) | `qt/main_window._build_nav_menu`, `_show_help`, `_contact_us`, `_set_auto_update` |
+
+`_build_nav_menu` was split from `_nav_menu` so tests can inspect the menu
+without entering the modal `exec` loop. Pinned by
+`tests/regress_menu_toggles_60_62.py` (28 assertions: toggle checkability,
+drag/drop replace-vs-append, auto-cleanup, save-on-exit gating, startup
+radio group + legacy fallback, Help submenu) -- **175 suites green**.
+
+## .tmp AutoLookupCoordinator pass -- dictionary auto-popup flag + panel refresh
+
+| .tmp source | Port | Where |
+|---|---|---|
+| `isDictionaryAutoPopupEnabled` (`dictAutoPopupCheck`, "Show floating popup for single words") | `General.DictionaryAutoPopup` (default true) -- gates the WHOLE auto-lookup exactly like upstream's coordinator filter: inline gloss AND dictionary refresh both stop when off | `qt/app._inline_pick`, Languages page checkbox |
+| `dictionaryAutoSource` UI (`dictAutoLookupCheck` + "Look up:" radios, OFF/TRANSLATED/SOURCE) | `General.DictionaryAutoSource` was already consumed by `_inline_pick` but had NO options UI -- now exposed: checkbox "Automatically look up single-word translations" + "Look up: Translation/Source" combo (disabled when off, upstream `dictAutoUseTranslated/Source.isEnabled` rule) | `qt/options/languages.py` |
+| AutoLookupCoordinator panel refresh (`panelVisible && mainVisible` -> `setDictionarySearchWord` + `LookupWord`, same-word dedup, never opens) | `_auto_dict_refresh`: an already-visible DictionaryWindow gets `inp` set + `do_search()`; hidden/absent window untouched; `_auto_dict_word` dedups repeats | `qt/app._auto_dict_refresh`, called from `_refresh_inline_definition` |
+
+The port's "popup" is the inline definition strip (the quick-popup gloss),
+so the upstream label is rendered "Show dictionary popup for single
+words". Pinned by `tests/regress_inline_definition.py` (+8 assertions:
+flag gating, hidden/absent/dedup refresh) — LanguagesPage.SIZE is now
+(644, 468).
+
+Additional Configuration.kt fields audited this pass: `showDictionaryPanel`
+is .tmp's docked dictionary panel (LayoutPanel checkbox) -- the port's
+dictionary is a separate window (native 6.10 model), so the field maps to
+"no equivalent; the auto-refresh above covers its lookup role". The
+remaining fields (`mainWindowSize/Position` -> `General.WindowGeometry`,
+`clearHistoryOnExit` -> `General.ClearHistoryOnExit`, `network` ->
+`Proxy.*`, fonts/theme/selector/layout fields) were already ported or
+recorded as deliberate divergences above.
+
+## MainStore policy pass -- lookup sessions, quick comparison, input cleaning
+
+| .tmp source | Port | Where |
+|---|---|---|
+| `LookupSessions.DictionaryLookupSession` / `ImageLookupSession` (new search cancels prior delivery) | generation counters: `_search_gen` in DictionaryWindow.do_search and image_search.search drop stale results | `qt/dictionary.py`, `qt/image_search.py` |
+| `MainTranslationPolicy.prepareInputText` via `UpdateInputText` (visible pane cleaned: \n->space, \r dropped, one "  "->" " pass, trim) | `_maybe_remove_line_breaks` on `src.textChanged`; request layer already did the same via `reliability.normalize_request`. Flag cached against Options.json mtime so a normal keystroke costs a stat, not a parse | `qt/main_window.py` |
+| `SPELL_CHECK_DEBOUNCE_MS` = 750 (was 800) | aligned | `qt/app._schedule_spell_check` |
+| `PerformSpellCheckUseCase.resolveSpellCheckLanguage` user-locale fallback (full tag then base) | `_spell_lang` falls back to `locale.getlocale()` when source=AUTO and nothing detected | `qt/app._spell_lang` |
+| `HandleTextToSpeechUseCase` `TextSource.ExtraOutput` + `determineLanguage` (Input->source/detected, Output->target) | `_speak_extra` + 🔊 button on the extra-output bar | `qt/app._speak_extra`, `qt/main_window` extra bar |
+| `quickTranslationComparisonPolicy` (quick compares whenever >=2 effective translators, independent of layout) | `_popup_compare`: same untracked-daemon fan-out + generation guard as `_run_comparison` (fetch shared via `_compare_fetch`), rows render into the popup's new compare strip (`PopupWindow.compare`, capped ~8 lines, cleared per translation) | `qt/app._popup_compare`, `qt/popup.py` |
+
+Pinned by `tests/regress_comparison.py` (+5 popup assertions),
+`tests/regress_extra_output.py` (+5 listen assertions),
+`tests/regress_menu_toggles_60_62.py` (+4 RemoveLineBreaks pane
+assertions, incl. Kotlin's single-pass "  "->" " semantics).
+
+## QuickTranslateDialog parity pass -- language row, shortcuts, listen source
+
+| .tmp source | Port | Where |
+|---|---|---|
+| `QuickTranslateDialog` top panel: source `LanguageComboBox`, swap button, target `LanguageComboBox` | `_lang_bar` row (LANG_ROW_H=22) between header and body: `cmb_src` (incl. Auto-Detect) / passive `btn_swap` QLabel / `cmb_tgt` (no auto); combos repopulate from `source_names()`/`target_names()` so pinned/disabled languages filter applies | `qt/popup.py`, `qt/app.popup_lang_changed` |
+| `onSourceLanguageSelected`/`onTargetLanguageSelected` -> update pair, persist preferred*, `RetranslateQuickTranslate` | `popup_lang_changed`: sets `self.source`/`self.target`, `_persist_language` (LanguageFrom/To == preferred pair), `_refresh_language_combos`, `_refresh_detected_label`, `_popup_retranslate` -> `_translate_captured` on `_popup_src_full` | `qt/app.py` |
+| `onSwapLanguages` -> `SwapLanguages` + `RetranslateQuickTranslate` (AUTO resolves to detected) | `popup_swap`: same auto->detected rule as `on_swap`, clears `_detected_src`, persists, syncs combos, retranslates | `qt/app.py` |
+| popup keyboard shortcuts (WHEN_IN_FOCUSED_WINDOW): Ctrl+C copy / Ctrl+E listen / Ctrl+S swap / Ctrl+P pin | `QShortcut` WindowShortcut x4 on the popup; swap is a passive QLabel (ui_match popup-no-buttons invariant kept) | `qt/popup.py` |
+| `ListenToText(TextSource.Input)` -- popup listen reads the SOURCE text with source/detected language | `_icon_listen` uses `_source_text` + explicit-or-detected source lang, not the result | `qt/popup.py` |
+
+Pinned by `tests/regress_popup_smoke.py` (+10 assertions: combo
+population, auto exclusion, delegation, shortcut registration).
+
+## NetworkConfig pass -- shared retry policy + per-host timeouts
+
+| .tmp source | Port | Where |
+|---|---|---|
+| `NetworkConfig.retryEnabled`/`maxRetries`/`retryInitialDelaySeconds` (KtorHttpClient HttpRequestRetry) | `Internet.RetryEnabled`/`MaxRetries`/`RetryDelayMs`; `_net_open` retries 429 (any method) + 5xx (idempotent only) + transport errors, exponential backoff `base*2^i` + jitter | `qtranslate/session.py`, Internet page "Retries" group |
+| `HttpRequestRetry` Retry-After honour (delta-seconds + HTTP-date) | `_retry_after_seconds`, capped at upstream's `MAX_RETRY_AFTER_SECONDS=600` | `qtranslate/session.py` |
+| `hostTimeoutSeconds` per-host overrides | `Internet.HostTimeouts` {host: seconds}; `_host_timeout` overrides the shared `Internet.Timeout` per request URL | `qtranslate/session.py`, `qtranslate/config.py` |
+| `connectTimeoutSeconds`/`socketTimeoutSeconds` split | Divergence: urllib exposes one timeout; `Internet.Timeout` (native key) covers the whole request | recorded |
+| `maxConnectionsPerHost`/`maxConnectionsTotal` | Divergence: urllib has no connection pool; nothing to cap | recorded |
+| `proxyUrl`/`proxyUsername`/secret-store password | `Proxy.*` native keys (type/host/port/user/pass) already on the Internet page | `qt/options/internet.py` |
+
+Pinned by `tests/regress_network_retry.py` (24 assertions).
+
+## Configuration.kt field-by-field audit (68 fields)
+
+Every `Configuration.kt` val was cross-checked against the port. The last
+gaps closed in this pass:
+
+| .tmp field | Port | Where |
+|---|---|---|
+| `summaryLength` / `rewriteStyle` (`StandardOptions.SUMMARY_LENGTH`/`REWRITE_STYLE`, TranslationPanel combos) | `General.SummaryLength` (SHORT/MEDIUM/LONG) + `General.RewriteStyle` (FORMAL/CASUAL/CONCISE/DETAILED/SIMPLIFIED); `_extra_output` already passed them to `ai_translate.summarize/rewrite` -- only the config keys and UI were missing | `qtranslate/config.py`, Languages page bottom row (SIZE 512) |
+| `network` (`NetworkConfig`) | `Internet.RetryEnabled`/`MaxRetries`/`RetryDelayMs`/`HostTimeouts` + `_net_open` retry loop | see NetworkConfig pass above |
+
+Fields confirmed already mapped in earlier passes: `activeServicePresetId`,
+`servicePresets`, `autoCheckForUpdates`, `autoCopyTranslation`,
+`clearHistoryOnExit`, `closeButtonBehavior`, `closePopupsOnClickOutside`,
+`dictionaryAutoSource`, `disabledServices`, `editorFontConfig` (partial --
+see font-split row), `extraOutputSource`, `extraOutputType`,
+`hotkeys`, `imageSearch*`, `isDictionaryAutoPopupEnabled`,
+`isGlobalHotkeysEnabled` (`HotKeys.EnableHotKeys`), `isHistoryEnabled`
+(`General.EnableHistory`), `isInstantTranslationEnabled`,
+`isPopupAutoPositionEnabled`/`isPopupAutoSizeEnabled`/
+`popupTransparencyPercentage`/`popupIdleTimeoutSeconds` (native keys),
+`isRemoveLineBreaksEnabled`, `isSpellCheckingEnabled`
+(`General.SpellChecking`), `launchOnSystemStartup` (OS-level
+registry/LaunchAgent via `startup_entry()`), `mainWindowSize`/
+`mainWindowPosition` (`saveGeometry`/`restoreGeometry` blob),
+`minimizeButtonBehavior` (`MinimizeToTrayOnMinimize`),
+`pinnedLanguages`, `popupLastKnownPosition`/`Size`
+(`WindowPopupPlacement`), `preferredSourceLanguage`/
+`preferredTargetLanguage` (`LanguageFrom`/`To`), `selectionBehavior`,
+`selectionReadSource`, `showDictionaryPanel` (see divergence),
+`themeId`, `translationRules`, `uiScale`, `uiFontConfig` (partial),
+`useUnifiedTitleBar` (N/A -- Swing-only), `configVersion`/`type`
+(serialization internals).
+
+Recorded divergences (architectural, not gaps):
+- `layoutPresetId`, `toolbarVisibility`, `serviceSelectorStyle`/
+  `serviceSelectorAppearance` -- .tmp's composable layout engine and
+  selector chrome have no counterpart in the native-6.10-clone window.
+- `quickDictionary*` fields and `showDictionaryPanel` -- .tmp's
+  dictionary is a popup/dock; the port's is a separate window (native
+  6.10 model). The auto-refresh coordinator still only touches a
+  VISIBLE dictionary, matching upstream.
+- `iconSetId` -- .tmp ships named icon packs ("lucide"); the port's
+  chrome uses the native captures' own glyphs.
+- `legacySelectionIconEnabled` -- one-shot v6->v7 migration field,
+  already consumed upstream; the port starts at the migrated shape.
+- `donationNudgeShown` -- promo bookkeeping, not a feature.
+- `interfaceLanguage` + TOML locale packs -- port chrome is localized
+  through the native lang.json packs (see ui_i18n pass); .tmp's dotted
+  keys are a different string table.
+- `editorFallbackFontConfig` -- Qt per-glyph fallback covers it.
+
+## SettingsSearch pass -- Options dialog search field
+
+| .tmp source | Port | Where |
+|---|---|---|
+| `SettingsSearchController` (field above page list, NAV_TREE/NAV_RESULTS/NAV_EMPTY cards, Down-to-results, hit -> navigate + anchor) | `_search` QLineEdit in the sidebar chrome; typing swaps page rows for a `QListWidget` of hits ("page › section" tooltip path); Enter activates the first hit; no-hits card names the query; clearing restores rows | `qt/options/base.py` |
+| `SettingsSearchIndex` (lazy build once per dialog, panels built on first search) | `_search_index()` visits every page through `_show_page` on first query, caches on the shell; `Extensions` excluded like upstream's PluginsPanel | `qt/options/base.py` |
+| `SettingsPanel.SettingEntry` collected via instrumented addCheckbox/addRow/registerSearchEntry | `_collect_search()` scans the built page: body QLabels heading a row + QCheckBoxes are entries; unlabelled controls register by tooltip (the proxy rows' "Proxy host" etc. -- upstream's registerSearchEntry equivalent) | `qt/options/base.py` |
+| Hit anchor reveal | `_flash_anchor()` highlights the widget at the recorded dialog coords for ~900ms (pages fit whole, so no scroll needed) | `qt/options/base.py` |
+
+Bugs found and fixed while building the indexer:
+- `UpdatesPage.build` connected `self._show_result`/`self._check_now` --
+  page-class methods that do not exist on the Options shell
+  (`cls.build(self)` runs with the shell as self): navigating to
+  Updates CRASHED. Now module-level `_check_now(shell)`/`_show_result(shell)`.
+- `InternetPage`/`ServicesPage` grew SIZE without CHROME: the footer
+  rule/buttons stayed at the 362px coordinates and the new groups
+  overlapped them. Both now carry the grown-page CHROME.
+- The Languages page's two dictionary-auto checkboxes used
+  `QCheckBox(self, text)` (wrong arg order -> empty caption) + `move()`
+  in client coords (26px low, overlapping the rows beneath). Now
+  `QCheckBox(text)` + `put()` screenshot coords.
+- The Internet page's "Retry failed requests" checkbox was created
+  without `show()` -- invisible. Now uses the `check()` helper.
+
+Pinned by `tests/regress_options_search.py` (16 assertions).
+
+## Remaining .tmp surfaces audit -- dialogs, recorder, snipping tool
+
+| .tmp surface | Port | Verdict |
+|---|---|---|
+| `SnippingToolDialog` + `ScreenCaptureController` (region select -> OCR, keys S/C/Enter/arrows/Esc/Delete) | `qt/ocr_pick.py` RegionPicker + `app.py` OCR flow | ported (native 6.10 keys, same single `_grab_png` path) |
+| `HotkeyRecorderDialog` (modal recorder: special-key buttons, live modifier preview, conflict check) | `qt/options/hotkeys.py` `_Recorder` eventFilter + `_conflicting_key` dialog | equivalent: same key coverage (F1-F24, arrows, nav keys, Esc-arm, Delete-unbind), conflict prompt, enable toggle. Divergence: .tmp's clickable special-key chips + live combo preview are conveniences; the port records by pressing the chord on the row |
+| `InfoDialog` (About) | `QtApp.show_about` via tray | ported |
+| `UpdateDialog` | `update_check.show_update_result` shared by tray/manual/startup auto-check | ported |
+| `LanguageEditorDialog` (disabled languages) | Languages page disabled-language UI | ported |
+| `DynamicPluginSettingsDialog` | Extensions page generic ext settings | ported |
+| `QuickDictionaryDialog` | `qt/dictionary.py` DictionaryWindow (native 6.10 window model) | divergence recorded |
+
+Every .tmp UI surface, use case, plugin role, and Configuration field
+is now either ported or recorded as an architectural divergence.

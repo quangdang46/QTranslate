@@ -436,7 +436,9 @@ class ExtensionAPI:
         return self._manager.add_listener(self._ext_id, event, fn)
 
     def register_provider(self, name, fn, replaces=None):
-        return self._manager.register(name, fn, replaces=replaces)
+        out = self._manager.register(name, fn, replaces=replaces)
+        self._manager._own(self._ext_id, "provider", name, fn, replaces)
+        return out
 
     def register_theme(self, name, record, replaces=None):
         """Register a theme colour record (Slice 9a).
@@ -448,7 +450,9 @@ class ExtensionAPI:
         ``replaces`` names a built-in theme id; enabling it is the
         caller's decision (D18), never implicit.
         """
-        return self._manager.register_theme(name, record, replaces=replaces)
+        out = self._manager.register_theme(name, record, replaces=replaces)
+        self._manager._own(self._ext_id, "theme", name, record, replaces)
+        return out
 
     def register_ui(self, kind, slot, contribution, replaces=None):
         """Register a UI contribution (menu / panel / popup slot).
@@ -468,8 +472,11 @@ class ExtensionAPI:
         # verbatim (2026-10-24).
         manifest = self._manager._manifests.get(self._ext_id) or {}
         label = str(manifest.get("name") or self._ext_id or "")
-        return self._manager.register_ui(kind, slot, contribution,
-                                         replaces=replaces, label=label)
+        out = self._manager.register_ui(kind, slot, contribution,
+                                        replaces=replaces, label=label,
+                                        owner=self._ext_id)
+        self._manager._own(self._ext_id, "ui", kind, slot, label)
+        return out
 
     # ---- the four capability tables -----------------------------------
     # Each registers into a live table the app reads, the same way
@@ -479,25 +486,36 @@ class ExtensionAPI:
 
     def register_dictionary(self, name, fn, replaces=None):
         """``fn(word, src, tgt)`` -- a dictionary provider."""
-        return self._manager.register_dictionary(name, fn,
-                                                 replaces=replaces)
+        out = self._manager.register_dictionary(name, fn,
+                                                replaces=replaces)
+        self._manager._own(self._ext_id, "table", "DICT_EXT", name, fn)
+        return out
 
     def register_tts(self, name, fn, replaces=None):
         """``fn(text, lang, slow=False)`` -- a speech backend."""
-        return self._manager.register_tts(name, fn, replaces=replaces)
+        out = self._manager.register_tts(name, fn, replaces=replaces)
+        self._manager._own(self._ext_id, "table", "TTS_EXT", name, fn)
+        return out
 
     def register_ocr(self, name, fn, replaces=None):
         """``fn(image_bytes, lang, api_key) -> str`` -- a text recogniser."""
-        return self._manager.register_ocr(name, fn, replaces=replaces)
+        out = self._manager.register_ocr(name, fn, replaces=replaces)
+        self._manager._own(self._ext_id, "table", "OCR_EXT", name, fn)
+        return out
 
     def register_spell(self, name, fn, replaces=None):
         """``fn(text, lang) -> list`` -- a spell suggester."""
-        return self._manager.register_spell(name, fn, replaces=replaces)
+        out = self._manager.register_spell(name, fn, replaces=replaces)
+        self._manager._own(self._ext_id, "table", "SPELL_EXT", name, fn)
+        return out
 
     def register_workflow(self, name, fn, replaces=None):
         """``fn(text, src, tgt) -> text`` -- runs after a translation."""
-        return self._manager.register_workflow(name, fn,
-                                               replaces=replaces)
+        out = self._manager.register_workflow(name, fn,
+                                              replaces=replaces)
+        self._manager._own(self._ext_id, "table", "WORKFLOW_EXT",
+                           name, fn)
+        return out
 
     def get_hotkeys(self):
         """Expose the hotkey table (name -> combo string) for extensions."""
@@ -625,8 +643,41 @@ class ExtensionManager:
         self._last_report = []  # the last load_dir outcome list (the UI reads it)
         self._listeners = {}    # event -> [(ext_id, fn)]
         self._ui = None      # ui_slots.UISlotRegistry, created on first use
+        # Live enable/disable bookkeeping: what each extension id owns
+        # on every writable surface, the folder it loaded from, and the
+        # TRANSLATORS contents at construction (the built-in baseline a
+        # disable rebuilds back to).
+        self._owned = {}         # ext_id -> {"providers","replaces_bases",
+                                #   "themes","theme_bases","tables","ui"}
+        self._ext_folders = {}   # ext_id -> folder path
+        self._table_baseline = dict(self._rg.TRANSLATORS)
         for name in self._rg.TRANSLATORS:
             self._providers[name] = self._rg.TRANSLATORS[name]
+        # The ai-services plugin's AIDictionaryService port
+        # (services/ai_translate.dict_lookup) joins DICT_EXT as a
+        # built-in contribution: id-less like extension entries, so it
+        # stays eligible in dictionary_search, and it raises before any
+        # network I/O while the AI endpoint is unconfigured. Not tracked
+        # in _owned -- it is core, not an extension, so disable() never
+        # removes it.
+        try:
+            from qtranslate.services import ai_translate as _AI
+            self._rg.DICT_EXT.setdefault(
+                "ai-dictionary",
+                lambda w, sl, tl: _AI.dict_lookup(
+                    w, sl or "en", tl or ""))
+        except Exception:
+            pass
+        # plugins/google-services GoogleDictionaryService port
+        # (services/google_dict.lookup): the gtx dictionary data types
+        # (bd/ex/md) -- pos-tagged glosses, examples, synonyms.
+        try:
+            from qtranslate.services import google_dict as _GD
+            self._rg.DICT_EXT.setdefault(
+                "google-dict",
+                lambda w, sl, tl: _GD.lookup(w, sl or "en", tl or ""))
+        except Exception:
+            pass
 
     # -- registration ---------------------------------------------------
     def register(self, name, fn, replaces=None):
@@ -707,7 +758,7 @@ class ExtensionManager:
         return self._register_in("WORKFLOW_EXT", name, fn)
 
     def register_ui(self, kind, slot, contribution, replaces=None,
-                    label=None):
+                    label=None, owner=""):
         """Register a UI contribution into the ``ui_slots`` registry.
 
         Lazily creates the registry so a headless caller that never touches
@@ -721,7 +772,7 @@ class ExtensionManager:
             from qtranslate.ui_slots import UISlotRegistry
             self._ui = UISlotRegistry()
         return self._ui.add(kind, slot, contribution, replaces=replaces,
-                            label=label)
+                            label=label, owner=owner)
 
     @property
     def ui_slots(self):
@@ -814,6 +865,209 @@ class ExtensionManager:
                 fn(payload)
             except BaseException:           # noqa: BLE001
                 continue
+
+    # -- live enable/disable ---------------------------------------------
+    #
+    # The Options → Extensions checkbox used to persist Extensions.Disabled
+    # and wait for a restart. ``disable``/``enable`` now apply the same
+    # switch to the running process: every registration an extension made
+    # is attributed to its id (``_own``), so disabling removes exactly
+    # those entries from every writable surface and ``_rebuild`` puts
+    # TRANSLATORS back to the built-in baseline plus whatever remains.
+
+    def _own(self, ext_id, kind, *args):
+        """Attribute one registration to ``ext_id`` for live removal."""
+        if not ext_id:
+            return
+        slot = self._owned.setdefault(ext_id, {
+            "providers": {}, "replaces_bases": set(), "themes": {},
+            "theme_bases": set(), "tables": {}, "ui": []})
+        if kind == "provider":
+            name, fn, replaces = args
+            slot["providers"][name] = (fn, replaces)
+            if replaces:
+                slot["replaces_bases"].add(replaces)
+        elif kind == "theme":
+            name, record, replaces = args
+            slot["themes"][name] = (record, replaces)
+            if replaces:
+                slot["theme_bases"].add(replaces)
+        elif kind == "table":
+            table_name, name, fn = args
+            slot["tables"].setdefault(table_name, {})[name] = fn
+        elif kind == "ui":
+            slot["ui"].append(args)          # (kind, slot, label)
+
+    def _apply_providers(self, reg, before):
+        """The commit() write, shared with _rebuild: providers into the
+        live table, declared overrides under their built-in id, alias
+        propagation (rule b), router cache dropped."""
+        table = reg.TRANSLATORS
+        self._drop_unresolved_alias_conflicts()
+        for name, fn in self._providers.items():
+            table[name] = fn
+        for base, winner in self._replaces.items():
+            fn = self._providers.get(winner)
+            if fn is None:
+                continue
+            table[base] = fn
+            replaced = before.get(base)
+            if replaced is not None:
+                for key, val in before.items():
+                    if val is replaced:
+                        table[key] = fn
+                        self._providers[key] = fn
+        reset = getattr(reg, "reset_router", None)
+        if reset is not None:
+            reset()
+        return reg
+
+    def _rebuild(self, registry=None):
+        """Restore TRANSLATORS to the built-in baseline, then re-apply
+        every provider/override still owned by ENABLED extensions.
+
+        ``commit`` only ever adds; a live disable needs subtraction, so
+        the table is rebuilt from ``_table_baseline`` (the TRANSLATORS
+        contents when this manager was constructed) instead of diffed.
+        """
+        reg = registry if registry is not None else self._rg
+        table = reg.TRANSLATORS
+        baseline = self._table_baseline
+        for key in list(table.keys()):
+            if key not in baseline:
+                del table[key]
+        for key, val in baseline.items():
+            table[key] = val
+        return self._apply_providers(reg, dict(baseline))
+
+    def disable(self, ext_id):
+        """Remove everything ``ext_id`` registered, live.
+
+        Providers, themes, the five registry dispatch tables, event
+        listeners, UI slot contributions and override claims all lose
+        exactly this extension's entries; TRANSLATORS is rebuilt so a
+        provider the extension owned disappears from the service strip
+        and the fallback chain without a restart. Returns True when the
+        id was known (loaded or previously disabled this session).
+        """
+        own = self._owned.pop(ext_id, None)
+        if own is None and ext_id not in self._manifests \
+                and ext_id not in self._ext_folders:
+            return False
+        own = own or {"providers": {}, "replaces_bases": set(),
+                      "themes": {}, "theme_bases": set(), "tables": {},
+                      "ui": []}
+        owned_names = set(own["providers"])
+        removed_fns = {fn for fn, _r in own["providers"].values()}
+        for name, (fn, _replaces) in own["providers"].items():
+            if self._providers.get(name) is fn:
+                self._providers.pop(name, None)
+        # commit()'s alias propagation also writes the winner's callable
+        # under the BUILT-IN names it replaced (``_providers['google'] =
+        # ext_fn``), so popping the ext's own names is not enough: any
+        # providers entry still pointing at a removed callable is put
+        # back to its built-in baseline callable.
+        for key, val in self._table_baseline.items():
+            if self._providers.get(key) in removed_fns:
+                self._providers[key] = val
+        for base in own["replaces_bases"]:
+            if self._replaces.get(base) in owned_names:
+                self._replaces.pop(base, None)
+        owned_theme_names = set(own["themes"])
+        for name, (record, _replaces) in own["themes"].items():
+            if self._themes.get(name) is record:
+                self._themes.pop(name, None)
+        for base in own["theme_bases"]:
+            if self._theme_replaces.get(base) in owned_theme_names:
+                self._theme_replaces.pop(base, None)
+        for table_name, entries in own["tables"].items():
+            table = getattr(self._rg, table_name, None)
+            if table is None:
+                continue
+            for name, fn in entries.items():
+                if table.get(name) is fn:
+                    table.pop(name, None)
+        for event in list(self._listeners):
+            kept = [(e, f) for e, f in self._listeners[event]
+                    if e != ext_id]
+            if kept:
+                self._listeners[event] = kept
+            else:
+                del self._listeners[event]
+        if self._ui is not None:
+            self._ui.remove_owner(ext_id)
+        for base in list(self._claims):
+            kept = [e for e in self._claims[base] if e != ext_id]
+            if kept:
+                self._claims[base] = kept
+            else:
+                del self._claims[base]
+        self._rebuild()
+        return True
+
+    def enable(self, ext_id, importer=None, saved=None, disabled=None):
+        """Re-run the folder's ``register(api)`` and rebuild the table.
+
+        The inverse of ``disable``: the extension's folder is imported
+        again through the same fail-open ``_load_one`` path the startup
+        loader uses, so a bad extension disables itself with a reason
+        instead of half-registering. Returns the load outcome dict, or
+        None when the id is unknown to this manager.
+        """
+        folder = self._ext_folders.get(ext_id)
+        if folder is None:
+            return None
+        importer = importer or import_entrypoint
+        outcome = self._load_one(folder, None, importer,
+                                 saved=read_saved_overrides() if saved is None
+                                 else saved,
+                                 disabled=disabled)
+        # Keep the UI's report honest: swap this id's row for the new
+        # outcome so the page shows loaded/disabled without a restart.
+        self._last_report = [
+            outcome if r.get("id") == ext_id else r
+            for r in self._last_report] or [outcome]
+        if outcome.get("status") == "loaded":
+            self._rebuild()
+        return outcome
+
+    def install_folder(self, src, importer=None):
+        """Copy an extension folder into the user extensions dir and
+        load it live -- the port of upstream's PluginsPanel "Install
+        plugin" action (a JAR there, a folder here).
+
+        The manifest is validated BEFORE anything is copied; the copy
+        lands under ``self._extensions_dir`` (unique-ified on a name
+        clash), then goes through the same fail-open ``_load_one`` path
+        startup uses. Returns the load outcome dict, or raises
+        ``ManifestError``/``ValueError`` for an unusable source.
+        """
+        import shutil
+        manifest = read_manifest(src)          # raises ManifestError
+        ext_id = manifest["id"]
+        if ext_id in self._ext_folders:
+            raise ValueError(
+                "Extension '%s' is already installed." % ext_id)
+        base = self._extensions_dir
+        if not base:
+            raise ValueError("No extensions directory configured.")
+        os.makedirs(base, exist_ok=True)
+        name = os.path.basename(os.path.normpath(src)) or ext_id
+        dest = os.path.join(base, name)
+        n = 1
+        while os.path.exists(dest):
+            dest = os.path.join(base, "%s-%d" % (name, n))
+            n += 1
+        shutil.copytree(src, dest)
+        importer = importer or import_entrypoint
+        outcome = self._load_one(
+            dest, None, importer,
+            saved=read_saved_overrides(),
+            disabled=read_disabled_extensions())
+        self._last_report = list(self._last_report) + [outcome]
+        if outcome.get("status") == "loaded":
+            self._rebuild()
+        return outcome
 
     # -- enablement -----------------------------------------------------
     def enabled(self):
@@ -969,25 +1223,8 @@ class ExtensionManager:
         Returns the registry module used.
         """
         reg = registry if registry is not None else self._rg
-        table = reg.TRANSLATORS
-        before = dict(table)
-        self._drop_unresolved_alias_conflicts()
-        for name, fn in self._providers.items():
-            table[name] = fn
-        for base, winner in self._replaces.items():
-            fn = self._providers.get(winner)
-            if fn is None:
-                continue
-            table[base] = fn
-            replaced = before.get(base)
-            if replaced is not None:
-                for key, val in before.items():
-                    if val is replaced:
-                        table[key] = fn
-                        self._providers[key] = fn
-        reset = getattr(reg, "reset_router", None)
-        if reset is not None:
-            reset()
+        before = dict(reg.TRANSLATORS)
+        self._apply_providers(reg, before)
         return reg
 
     # -- directory loading (Slice 7) ------------------------------------
@@ -1115,6 +1352,7 @@ class ExtensionManager:
                     "reason": str(exc)}
 
         ext_id = manifest["id"]
+        self._ext_folders[ext_id] = folder
         if disabled and ext_id in disabled:
             # The user's own switch (Options → Extensions). OFF means the
             # folder is not even imported: no code runs, no table is
@@ -1164,6 +1402,7 @@ class ExtensionManager:
                 self._ui._slots = {k: list(v)
                                    for k, v in snap["ui"].items()}
             self._manifests.pop(ext_id, None)
+            self._owned.pop(ext_id, None)
 
         box = {}
 

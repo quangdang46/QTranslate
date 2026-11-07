@@ -6,8 +6,8 @@ and the dictionary services, each with its icon, and the four buttons
 under the list.
 """
 
-from .base import OptionsBase, cfg_load, button, check, hline, label, \
-    panel, rect
+from .base import OptionsBase, cfg_load, button, check, combo, hline, \
+    label, panel, rect
 from ..widgets import HEADING, HEADING_LINE, icon
 from qtranslate_style import DIM, FACE, THUMB, WINDOW
 
@@ -60,6 +60,17 @@ SERVICE_ICON_BY_NAME = {
 
 class ServicesPage(OptionsBase):
     SEL = 3
+    # Grew for the port-owned "Service presets" and "Preferred
+    # services" groups below the measured list (same precedent as
+    # Basics/Languages/Advanced).
+    SIZE = (644, 486)
+    CHROME = dict(OptionsBase.CHROME)
+    CHROME["panel"] = (4, 29, 142, 448)
+    CHROME["shadow_row"] = (3, 477, 144, 1)
+    CHROME["rule"] = (482, 3, 638)
+    CHROME["buttons"] = {k: (x, y + 124, w, sh)
+                         for k, (x, y, w, sh)
+                         in OptionsBase.CHROME["buttons"].items()}
 
     def build(self):
         lst = panel(self, 155, 31, 481, 272)
@@ -145,6 +156,51 @@ class ServicesPage(OptionsBase):
         self.btn_remove.setStyleSheet("color:%s" % DIM)
         # The sunken frame's 1px white shadow, under the list.
         rect(self, 154, 303, 483, 1, WINDOW)
+
+        # ---- Service presets (.tmp ServicesPanel preset row) --------
+        # Port-owned: a named bundle of {translator, comparison set}.
+        # Picking one applies it to the running app immediately.
+        label(self, 167, 322, "Service presets", color=HEADING, size=12)
+        hline(self, 322, 470, 608, HEADING_LINE)
+        self._preset_names = _preset_names()
+        self._preset_combo = combo(
+            self, 167, 340, 230, "", values=self._preset_names or [""])
+        self._preset_combo.setEnabled(bool(self._preset_names))
+        self._preset_combo.activated.connect(
+            lambda _i: _apply_preset(self))
+        self.btn_pnew = button(self, 405, 339, 70, "New", shadow=True)
+        self.btn_pnew.clicked.connect(lambda: _preset_new(self))
+        self.btn_ren = button(self, 480, 339, 70, "Rename", shadow=True)
+        self.btn_ren.clicked.connect(lambda: _preset_rename(self))
+        self.btn_pdel = button(self, 555, 339, 70, "Delete", shadow=True)
+        self.btn_pdel.clicked.connect(lambda: _preset_delete(self))
+        hint = label(
+            self, 167, 368,
+            "A preset saves the translator and comparison services; "
+            "choosing one switches the app to it.", color=DIM)
+        hint.setWordWrap(True)
+        _refresh_presets(self)
+
+        # ---- Preferred services (.tmp per-role service selection) --
+        # The port resolves TTS/spell/OCR through fallback chains, so a
+        # role "selection" is a preferred-first backend; "Auto" keeps
+        # the default order. Writes General.PreferredServices.
+        label(self, 167, 404, "Preferred services", color=HEADING,
+              size=12)
+        hline(self, 404, 500, 608, HEADING_LINE)
+        prefs = _preferred()
+        for row, (role, text, values) in enumerate(_PREF_ROWS):
+            y = 422 + 22 * row
+            label(self, 167, y + 2, text)
+            cb = combo(self, 265, y, 190, "", values=values)
+            # Stored value is a backend key; the display rows are
+            # index-aligned with _PREF_VALUES (0 == "Auto" both ways).
+            vals = _PREF_VALUES.get(role) or []
+            cur = prefs.get(role) or ""
+            if cur in vals:
+                cb.setCurrentIndex(vals.index(cur))
+            cb.activated.connect(
+                lambda _i, r=role, c=cb: _set_preferred(self, r, c))
 
     # ------------------------------------------------------------- wiring
     # NB: build() runs on the SHELL instance, so page behaviour lives in
@@ -268,3 +324,188 @@ def _remove_dict(shell):
     except Exception:
         return
     _rebuild(shell)
+
+
+# ------------------------------------------------------- service presets
+# .tmp ServicesPanel: preset combo + New/Rename/Delete + hint. A preset
+# bundles the translator and the comparison set; applying it calls
+# QtApp.apply_preset which also marks General.ActivePresetId.
+
+def _cfg():
+    from qtranslate import config as _C
+    return _C.load() or {}
+
+
+def _save(cfg):
+    from qtranslate import config as _C
+    _C.save(cfg)
+
+
+def _preset_names():
+    from qtranslate import presets as _P
+    try:
+        return [p["name"] for p in _P.presets(_cfg())]
+    except Exception:
+        return []
+
+
+def _preset_by_name(name):
+    from qtranslate import presets as _P
+    for p in _P.presets(_cfg()):
+        if p["name"] == name:
+            return p
+    return None
+
+
+def _current_selection(shell):
+    """What "New" snapshots: the app's live translator + the checked
+    comparison set (falling back to the stored config)."""
+    app = getattr(shell, "app", None)
+    translator = getattr(app, "service", "") if app else ""
+    comparison = []
+    try:
+        from qtranslate import presets as _P
+        snap = _P.snapshot(_cfg())
+        comparison = snap["comparison"]
+        if not translator:
+            translator = snap["translator"]
+    except Exception:
+        pass
+    return translator, comparison
+
+
+def _apply_preset(shell):
+    name = shell._preset_combo.currentText()
+    p = _preset_by_name(name)
+    app = getattr(shell, "app", None)
+    if p is None:
+        return
+    if app is not None and hasattr(app, "apply_preset"):
+        app.apply_preset(p)
+    else:
+        # Options opened without a live app: still persist the choice.
+        from qtranslate import presets as _P
+        cfg = _cfg()
+        _P.apply(cfg, p)
+        _save(cfg)
+
+
+def _preset_new(shell):
+    from PySide6.QtWidgets import QInputDialog
+    name, ok = QInputDialog.getText(
+        shell, "New preset", "Preset name:")
+    if not ok or not str(name).strip():
+        return
+    from qtranslate import presets as _P
+    translator, comparison = _current_selection(shell)
+    cfg = _cfg()
+    _P.create(cfg, name, translator, comparison)
+    _save(cfg)
+    _refresh_presets(shell)
+
+
+def _preset_rename(shell):
+    name = shell._preset_combo.currentText()
+    p = _preset_by_name(name)
+    if p is None:
+        return
+    from PySide6.QtWidgets import QInputDialog
+    new, ok = QInputDialog.getText(
+        shell, "Rename preset", "Preset name:", text=name)
+    if not ok or not str(new).strip():
+        return
+    from qtranslate import presets as _P
+    cfg = _cfg()
+    _P.rename(cfg, p["id"], new)
+    _save(cfg)
+    _refresh_presets(shell)
+
+
+def _preset_delete(shell):
+    name = shell._preset_combo.currentText()
+    p = _preset_by_name(name)
+    if p is None:
+        return
+    from PySide6.QtWidgets import QMessageBox
+    if QMessageBox.question(
+            shell, "Delete preset",
+            "Delete preset '%s'?" % p["name"]) != \
+            QMessageBox.StandardButton.Yes:
+        return
+    from qtranslate import presets as _P
+    cfg = _cfg()
+    _P.delete(cfg, p["id"])
+    _save(cfg)
+    _refresh_presets(shell)
+
+
+# (role, row label, combo values -- index 0 is always "Auto")
+_PREF_ROWS = (
+    ("tts", "Text to speech",
+     ["Auto", "Google", "Bing", "System voice"]),
+    ("spell", "Spell checker",
+     ["Auto", "System", "Bing", "Google", "AI"]),
+    ("ocr", "Text recognition",
+     ["Auto", "Vision (macOS)", "Tesseract", "OCR.space",
+      "Google Vision", "AI"]),
+)
+
+_PREF_VALUES = {
+    "tts": ["", "google", "bing", "system"],
+    "spell": ["", "system", "bing", "google", "ai"],
+    "ocr": ["", "vision", "tesseract", "ocrspace", "google-vision",
+            "ai"],
+}
+
+
+def _preferred():
+    try:
+        v = (_cfg().get("General", {}) or {}).get("PreferredServices")
+        return v if isinstance(v, dict) else {}
+    except Exception:
+        return {}
+
+
+def _set_preferred(shell, role, combo_w):
+    try:
+        cfg = _cfg()
+        g = cfg.setdefault("General", {})
+        prefs = g.setdefault("PreferredServices", {})
+        if not isinstance(prefs, dict):
+            prefs = g["PreferredServices"] = {}
+        vals = _PREF_VALUES.get(role) or []
+        idx = combo_w.currentIndex()
+        prefs[role] = vals[idx] if 0 <= idx < len(vals) else ""
+        _save(cfg)
+    except Exception:
+        pass
+
+
+def _refresh_presets(shell):
+    """Refill the combo and select the active preset, if any."""
+    from qtranslate import presets as _P
+    try:
+        combo_w = shell._preset_combo
+        combo_w.blockSignals(True)
+        combo_w.clear()
+        cfg = _cfg()
+        ps = _P.presets(cfg)
+        names = [p["name"] for p in ps]
+        for n in names:
+            combo_w.addItem(n)
+        combo_w.setEnabled(bool(names))
+        active = _P.active_id(cfg)
+        for p in ps:
+            if p["id"] == active:
+                combo_w.setCurrentIndex(names.index(p["name"]))
+                break
+        else:
+            if names:
+                combo_w.setCurrentIndex(0)
+    except Exception:
+        pass
+    finally:
+        try:
+            combo_w.blockSignals(False)
+        except Exception:
+            pass

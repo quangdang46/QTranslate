@@ -125,7 +125,36 @@ def _extension_ocr(image_bytes, lang, api_key):
     return None
 
 
-def _macos_vision_ocr(image_bytes: bytes) -> str | None:
+# ``ocr_text``'s ``lang`` argument is an ocr.space 3-letter code
+# (OCR_LANGUAGES values: chs/cht/fre/ger/...). The offline backends
+# speak different code spaces, so both maps are keyed by the ocr.space
+# code. Unmapped codes fall back the same way native does: tesseract
+# gets "eng", Vision keeps its own language detection (upstream's
+# AUTO -> "" path in MacVisionOcrBackend).
+
+# ocr.space code -> tesseract traineddata name.
+_TESS_LANG = {
+    "ara": "ara", "bul": "bul", "chs": "chi_sim", "cht": "chi_tra",
+    "hrv": "hrv", "cze": "ces", "dan": "dan", "dut": "nld",
+    "eng": "eng", "fin": "fin", "fre": "fra", "ger": "deu",
+    "gre": "ell", "hun": "hun", "ita": "ita", "jpn": "jpn",
+    "kor": "kor", "nor": "nor", "pol": "pol", "por": "por",
+    "rus": "rus", "spa": "spa", "swe": "swe", "tur": "tur",
+    "vie": "vie",
+}
+
+# ocr.space code -> Vision recognitionLanguages tag, for the languages
+# VNRecognizeTextRequest supports.
+_VISION_LANG = {
+    "ara": "ar-SA", "dan": "da-DK", "dut": "nl-NL", "eng": "en-US",
+    "fre": "fr-FR", "ger": "de-DE", "ita": "it-IT", "jpn": "ja-JP",
+    "kor": "ko-KR", "pol": "pl-PL", "por": "pt-BR", "rus": "ru-RU",
+    "spa": "es-ES", "tur": "tr-TR", "vie": "vi-VN",
+    "chs": "zh-Hans", "cht": "zh-Hant",
+}
+
+
+def _macos_vision_ocr(image_bytes: bytes, lang: str = "eng") -> str | None:
     """Offline OCR through macOS Vision (the .tmp system-ocr plugin's
     macOS half). Returns the recognized text, or None when Vision is
     unavailable or finds nothing -- callers then fall back to the
@@ -142,6 +171,9 @@ def _macos_vision_ocr(image_bytes: bytes) -> str | None:
         req.setRecognitionLevel_(
             Vision.VNRequestTextRecognitionLevelAccurate)
         req.setUsesLanguageCorrection_(True)
+        tag = _VISION_LANG.get((lang or "").lower())
+        if tag:
+            req.setRecognitionLanguages_([tag])
         ok, _err = handler.performRequests_error_([req], None)
         if not ok:
             return None
@@ -156,12 +188,97 @@ def _macos_vision_ocr(image_bytes: bytes) -> str | None:
         return None
 
 
-def _offline_ocr(image_bytes: bytes) -> str | None:
-    """Platform offline recognizer, when one exists (macOS Vision;
-    Windows.Media.Ocr would slot in here for the Windows build)."""
+def _tesseract_ocr(image_bytes: bytes, lang: str = "eng") -> str | None:
+    """Offline OCR through the tesseract CLI -- the .tmp
+    system-services LinuxTesseractBackend (and the Windows fallback
+    path) equivalent. Used when the platform's native recognizer is
+    absent or finds nothing; returns None when tesseract is not
+    installed so the caller falls through to the cloud endpoint."""
+    import shutil
+    import subprocess
+    exe = shutil.which("tesseract")
+    if not exe:
+        return None
+    # ``lang`` is already an ocr.space code here; translate it into
+    # tesseract's traineddata namespace (chs->chi_sim, fre->fra, ...).
+    tess_lang = _TESS_LANG.get((lang or "").lower(), "eng")
+    try:
+        proc = subprocess.run(
+            [exe, "stdin", "stdout", "-l", tess_lang],
+            input=image_bytes, capture_output=True, timeout=30)
+    except Exception:
+        return None
+    if proc.returncode != 0:
+        return None
+    text = proc.stdout.decode("utf-8", "replace").strip()
+    return text or None
+
+
+def _offline_ocr(image_bytes: bytes, lang: str = "eng") -> str | None:
+    """Platform offline recognizer chain: macOS Vision first (native,
+    best quality), then the tesseract CLI when installed -- the same
+    role LinuxTesseractBackend plays upstream."""
     import sys
     if sys.platform == "darwin":
-        return _macos_vision_ocr(image_bytes)
+        out = _macos_vision_ocr(image_bytes, lang)
+        if out is not None:
+            return out
+    return _tesseract_ocr(image_bytes, lang)
+
+
+# .tmp ServiceRole.OCR selections, reduced to the backends this port
+# has: the platform offline engines, the ocr.space cloud endpoint,
+# Google Cloud Vision and the AI vision model. "" / unknown = the
+# default order below.
+_OCR_STAGES = ("vision", "tesseract", "ocrspace", "google-vision", "ai")
+
+
+def _preferred_ocr():
+    try:
+        from qtranslate import config as _C
+        v = (_C.general_setting("PreferredServices", {}) or {}
+             ).get("ocr")
+        return v if v in _OCR_STAGES else ""
+    except Exception:
+        return ""
+
+
+def _ocr_stage(name, image_bytes, lang, api_key):
+    """One OCR backend -> text or None/"" (None = unavailable, "" =
+    ran but found nothing -- both let the chain continue)."""
+    if name == "vision":
+        import sys
+        if sys.platform != "darwin":
+            return None
+        return _macos_vision_ocr(image_bytes, lang)
+    if name == "tesseract":
+        return _tesseract_ocr(image_bytes, lang)
+    if name == "ocrspace":
+        try:
+            obj = ocr_space(image_bytes, api_key, lang)
+            return (obj["ParsedResults"][0]["ParsedText"].strip()
+                    or "")
+        except Exception:
+            return None
+    if name == "google-vision":
+        # plugins/google-services GoogleOCRService: Cloud Vision
+        # TEXT_DETECTION, gated on General.GoogleVisionApiKey like the
+        # Kotlin plugin's conditional service registration.
+        try:
+            from qtranslate.services import google_vision as _GV
+            res = _GV.extract_text(image_bytes, lang)
+            return res[0] if res else ""
+        except Exception:
+            return None
+    if name == "ai":
+        # ai-services AIVisionOcrService port: last in the default
+        # order; raises before any network I/O while AI settings are
+        # unconfigured, so an unconfigured install costs nothing.
+        try:
+            from qtranslate.services import ai_translate as _AI
+            return (_AI.vision_ocr(image_bytes, lang).get("text") or "")
+        except Exception:
+            return ""
     return None
 
 
@@ -170,19 +287,22 @@ def ocr_text(image_bytes: bytes, api_key: str = "helloworld",
     """Convenience: return just the parsed text of the first result.
 
     Order: extension recognizers, then the platform OFFLINE engine
-    (macOS Vision -- private, no key, no network), then the ocr.space
-    cloud endpoint. An offline hit skips the cloud call entirely."""
+    (macOS Vision, then tesseract), then the ocr.space cloud endpoint,
+    then Google Cloud Vision (when keyed), then the AI vision model
+    as a last resort. ``General.PreferredServices.ocr`` promotes one
+    stage to the front; an earlier hit skips every later, more
+    expensive stage."""
     ext = _extension_ocr(image_bytes, lang, api_key)
     if ext is not None:
         return ext
-    off = _offline_ocr(image_bytes)
-    if off is not None:
-        return off
-    obj = ocr_space(image_bytes, api_key, lang)
-    try:
-        return obj["ParsedResults"][0]["ParsedText"].strip()
-    except (KeyError, IndexError, TypeError):
-        return ""
+    pref = _preferred_ocr()
+    order = ([pref] if pref else []) + [s for s in _OCR_STAGES
+                                      if s != pref]
+    for stage in order:
+        out = _ocr_stage(stage, image_bytes, lang, api_key)
+        if out:
+            return out
+    return ""
 
 
 if __name__ == "__main__":

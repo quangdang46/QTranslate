@@ -46,32 +46,38 @@ class UpdatesPage(OptionsBase):
         panel(self, 153, 63, 481, 230)
         if not hasattr(self, "_update_bridge"):
             self._update_bridge = _UpdateBridge()
-            self._update_bridge.result.connect(self._show_result)
+            # cls.build(self) runs with the SHELL as self, so the
+            # result slot must be a closure -- a bound UpdatesPage
+            # method does not exist on the shell's class.
+            self._update_bridge.result.connect(
+                lambda res: _show_result(self, res))
         b = button(self, 524, 300, 110, "Check now")
         self._check_btn = b
-        b.clicked.connect(lambda _checked=False: self._check_now())
+        b.clicked.connect(lambda _checked=False: _check_now(self))
 
-    def _check_now(self):
-        btn = getattr(self, "_check_btn", None)
-        if btn is not None:
-            btn.setEnabled(False)
-            btn.setText("Checking…")
-        bridge = self._update_bridge
 
-        def work():
-            # Never raises: check_for_update maps every failure to an
-            # "error" result the UI can show.
-            bridge.result.emit(update_check.check_for_update())
+def _check_now(shell):
+    btn = getattr(shell, "_check_btn", None)
+    if btn is not None:
+        btn.setEnabled(False)
+        btn.setText("Checking…")
+    bridge = shell._update_bridge
 
-        threading.Thread(target=work, daemon=True,
-                         name="qtranslate-update-check").start()
+    def work():
+        # Never raises: check_for_update maps every failure to an
+        # "error" result the UI can show.
+        bridge.result.emit(update_check.check_for_update())
 
-    def _show_result(self, res):
-        btn = getattr(self, "_check_btn", None)
-        if btn is not None:
-            btn.setEnabled(True)
-            btn.setText("Check now")
-        # The dialog itself lives in update_check so the tray's manual
-        # check and the startup auto-check show the same thing; `self`
-        # keeps the old parenting (the Options dialog).
-        update_check.show_update_result(self, res)
+    threading.Thread(target=work, daemon=True,
+                     name="qtranslate-update-check").start()
+
+
+def _show_result(shell, res):
+    btn = getattr(shell, "_check_btn", None)
+    if btn is not None:
+        btn.setEnabled(True)
+        btn.setText("Check now")
+    # The dialog itself lives in update_check so the tray's manual
+    # check and the startup auto-check show the same thing; `shell`
+    # keeps the old parenting (the Options dialog).
+    update_check.show_update_result(shell, res)

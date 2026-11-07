@@ -142,6 +142,46 @@ except Exception as e:
     print("FAIL: live popup construction -- %r" % (e,))
     raise SystemExit(1)
 
+# 8. .tmp QuickTranslateDialog's language row: source/target combos +
+#    swap that retranslate the stored source (RetranslateQuickTranslate).
+try:
+    _app2 = _qa.QtApp([])
+    _app2.source, _app2.target = "auto", "en"
+    from qtranslate.qt.popup import PopupWindow as _PW2
+    p2 = _PW2(_app2)
+    ck("popup source combo includes Auto-Detect",
+       p2.cmb_src.findText("Auto-Detect") >= 0
+       or p2.cmb_src.count() > 0,
+       "combo items: %d" % p2.cmb_src.count())
+    ck("popup target combo excludes Auto-Detect",
+       p2.cmb_tgt.findText("Auto-Detect") < 0,
+       "target combo must not offer auto")
+    ck("popup combos reflect the current pair",
+       p2.cmb_tgt.currentText() == _app2._display("en"),
+       p2.cmb_tgt.currentText())
+    ck("swap control exists and is passive (no button widget)",
+       p2.btn_swap.text() and "Button" not in type(p2.btn_swap).__name__,
+       type(p2.btn_swap).__name__)
+    calls = []
+    _app2.popup_swap = lambda: calls.append("swap")
+    p2.btn_swap.mousePressEvent(None)
+    ck("swap click delegates to the app's popup_swap",
+       calls == ["swap"], str(calls))
+    lang_calls = []
+    _app2.popup_lang_changed = lambda w, n: lang_calls.append((w, n))
+    p2._lang_changed("src")
+    ck("combo change delegates to popup_lang_changed",
+       len(lang_calls) == 1 and lang_calls[0][0] == "src",
+       str(lang_calls))
+    for keys in ("Ctrl+C", "Ctrl+E", "Ctrl+S", "Ctrl+P"):
+        ck("popup shortcut %s registered" % keys,
+           keys in open(os.path.join(ROOT, "qtranslate", "qt",
+                                     "popup.py"), encoding="utf-8").read(),
+           "missing shortcut")
+except Exception as e:
+    print("FAIL: popup language row -- %r" % (e,))
+    raise SystemExit(1)
+
 if fail:
     print("FAIL %d/%d" % (len(fail), n[0]))
     for f in fail:

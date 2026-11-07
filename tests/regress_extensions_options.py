@@ -203,8 +203,12 @@ try:
            X.read_disabled_extensions(cfg=_cfg()) == [], repr(_cfg()))
 
         labels = [l.text() for l in page.findChildren(QLabel)]
-        ck("the restart hint is shown",
-           any("restart" in t.lower() for t in labels), str(labels)[:120])
+        # Live enable/disable landed: the toggle applies through
+        # ExtensionManager.disable/enable immediately, so the hint no
+        # longer promises a restart.
+        ck("the apply-immediately hint is shown",
+           any("immediately" in t.lower() for t in labels),
+           str(labels)[:120])
         page.close()
     finally:
         config.DEFAULT_PATH = saved_default

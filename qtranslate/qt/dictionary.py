@@ -99,7 +99,11 @@ class DictionaryWindow(Base):
     def __init__(self, app):
         super().__init__()
         self.app = app
-        self.setWindowTitle("Dictionary")
+        try:
+            from qtranslate.locale import ui_caption
+            self.setWindowTitle(ui_caption(5, "Dictionary"))
+        except Exception:
+            self.setWindowTitle("Dictionary")
         self._build()
 
     # ---------------------------------------------------------------- build
@@ -286,6 +290,12 @@ class DictionaryWindow(Base):
         self.out.setPlainText("querying %d dictionaries..."
                               % len(services))
 
+        # .tmp LookupSessions.DictionaryLookupSession: a new search
+        # cancels the previous one's delivery -- a slow earlier query
+        # must never overwrite a newer result.
+        self._search_gen = getattr(self, "_search_gen", 0) + 1
+        gen = self._search_gen
+
         def work():
             try:
                 cards, summary = DS.search(word, exact=exact,
@@ -296,6 +306,8 @@ class DictionaryWindow(Base):
             html = DS.render(cards, word) if cards else ""
 
             def _show():
+                if gen != getattr(self, "_search_gen", 0):
+                    return
                 if html:
                     self.out.setHtml(html)
                 else:

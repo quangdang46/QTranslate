@@ -171,10 +171,22 @@ def _play_mp3_bytes_darwin(data: bytes, block: bool = True) -> None:
         raise
 
 
-def _speak_darwin(text: str, slow: bool = False) -> None:
-    """Offline speech on macOS: the ``say`` command (no SAPI/comtypes)."""
+def _speak_darwin(text: str, lang: str = "", slow: bool = False) -> None:
+    """Offline speech on macOS: the ``say`` command (no SAPI/comtypes).
+
+    VoiceLocaleMapper port: pick an installed voice covering ``lang``
+    when one exists; the system default voice otherwise.
+    """
     import subprocess
     cmd = ["say"]
+    voice = None
+    try:
+        from qtranslate.services import system_tts
+        voice = system_tts.preferred_voice(lang)
+    except Exception:
+        voice = None
+    if voice:
+        cmd += ["-v", voice]
     if slow:
         cmd += ["-r", "120"]
     cmd.append(text)
@@ -211,19 +223,39 @@ def play_text(text: str, lang: str = "vi", block: bool = True,
         return "extension:" + backend
     import sys
     sys.path.insert(0, ".")
-    from qtranslate.tts import google_tts
+    from qtranslate.tts import bing_tts, google_tts
     is_darwin = sys.platform == "darwin"
+    backend_name = "afplay" if is_darwin else "bass"
+    # .tmp ServiceRole.TTS: General.PreferredServices.tts promotes one
+    # backend; "system" goes straight to the offline voice. Unknown or
+    # empty keeps the google -> bing order.
     try:
-        data = google_tts(text, lang, slow=slow)
-        if is_darwin:
-            _play_mp3_bytes_darwin(data, block=block)
-        else:
-            play_mp3_bytes(data, block=block)
-        return "afplay" if is_darwin else "bass"
-    except Exception as e:
-        print(f"online TTS failed ({e}); falling back to offline voice")
+        from qtranslate import config as _C
+        pref = ((_C.general_setting("PreferredServices", {}) or {})
+                .get("tts") or "")
+    except Exception:
+        pref = ""
+    fetches = [("google", google_tts), ("bing", bing_tts)]
+    if pref == "system":
+        fetches = []
+    elif pref in ("google", "bing"):
+        fetches.sort(key=lambda kv: kv[0] != pref)
+    for name, fetch in fetches:
+        try:
+            data = fetch(text, lang, slow=slow)
+        except Exception as e:
+            print(f"{name} tts failed ({e}); trying next backend")
+            continue
+        try:
+            if is_darwin:
+                _play_mp3_bytes_darwin(data, block=block)
+            else:
+                play_mp3_bytes(data, block=block)
+            return backend_name
+        except Exception as e:
+            print(f"{name} tts playback failed ({e}); trying next")
     if is_darwin:
-        _speak_darwin(text, slow=slow)
+        _speak_darwin(text, lang=lang, slow=slow)
         return "say"
     from qtranslate.sapi import speak
     speak(text, rate=-4 if slow else 0)

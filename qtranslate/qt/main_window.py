@@ -17,8 +17,8 @@ from __future__ import annotations
 import os
 
 from PySide6.QtCore import Qt, QSize, QEvent, QTimer
-from PySide6.QtGui import (QAction, QColor, QFont, QIcon, QKeySequence,
-                           QPalette, QShortcut)
+from PySide6.QtGui import (QAction, QActionGroup, QColor, QFont, QIcon,
+                           QKeySequence, QPalette, QShortcut, QTextCursor)
 from PySide6.QtWidgets import (QComboBox, QLabel, QMenu, QPushButton,
                                QTextEdit)
 
@@ -49,16 +49,18 @@ PANE_FONT_PX = 12
 def _pane_font():
     """``(family, point_size, pixel_size)`` for the two text panes.
 
-    ``resolve_font`` owns the config contract (empty name -> platform
-    default, garbage size -> 9, clamp at 6). TextSize is a POINT size
+    ``resolve_editor_font`` owns the config contract (empty editor
+    name -> inherit ``General.FontName``/``TextSize``, garbage size
+    -> 9, clamp at 6) -- the .tmp uiFont/editorFont split. TextSize
+    is a POINT size
     while the pane stylesheet is in pixels, so the pixel size is scaled
     off the measured 12px-at-9pt pair -- the same grid
     ``qtranslate_style._ui_font`` uses for the controls.
     """
     try:
         from qtranslate import config as _cfg
-        from qtranslate.fonts import resolve_font
-        name, size = resolve_font((_cfg.load() or {}).get("General", {}))
+        from qtranslate.fonts import resolve_editor_font
+        name, size = resolve_editor_font(_cfg.load() or {})
     except Exception:
         name, size = PANE_FONT_FALLBACK
     return name, size, max(6, int(round(PANE_FONT_PX * size / 9.0)))
@@ -106,6 +108,36 @@ def default_source_text() -> str:
     return "\n".join(lines)
 
 
+def _cycle_target(win):
+    """Ctrl+L: advance the target combo one language, wrapping around.
+
+    The combo's items ARE the enabled target names, so stepping the
+    index steps the language; ``_tgt_changed`` then persists it through
+    the same path a manual pick takes.
+    """
+    try:
+        cmb = win.cmb_tgt
+        n = cmb.count()
+        if n < 2:
+            return
+        cmb.setCurrentIndex((cmb.currentIndex() + 1) % n)
+    except Exception:
+        pass
+
+
+def _copy_translation(win):
+    """Ctrl+Shift+C (.tmp COPY_TRANSLATION, LOCAL): the whole result
+    text to the clipboard -- not just the current selection."""
+    try:
+        text = win.out.toPlainText()
+        if not text:
+            return
+        from PySide6.QtWidgets import QApplication
+        QApplication.clipboard().setText(text)
+    except Exception:
+        pass
+
+
 class MainWindow(Base):
     """The main window: nav row, source pane, splitter, tool row, result
     pane, provider strip."""
@@ -116,7 +148,11 @@ class MainWindow(Base):
     def __init__(self, app):
         super().__init__()
         self.app = app
-        self.setWindowTitle("QTranslate")
+        try:
+            from qtranslate.locale import ui_caption
+            self.setWindowTitle(ui_caption(1, "QTranslate"))
+        except Exception:
+            self.setWindowTitle("QTranslate")
         self.setAcceptDrops(True)
         # Native's main window is user-resizable and remembers its
         # geometry between runs (the main-window audit). ``Base`` pins
@@ -232,10 +268,138 @@ class MainWindow(Base):
             "#pane{background:transparent;border:none;color:%s;"
             'font-family:"%s";font-size:%dpx;}'
             % (self._mw_text, pane_family, pane_px))
-        put(self, self.out, 8, 245, 503, 147)
         self.out.document().setDefaultFont(QFont(pane_family, pane_pts))
         self.out.document().setDocumentMargin(0)
         self.out.setPlainText(EMPTY_RESULT)
+        # Native keeps the back-translation in its OWN pane below the
+        # result (Contents.EditBackTranslation is a separate stored
+        # field, and General.BackTranslationSplitterPos records the
+        # divider). The port used to concatenate with an invented
+        # "--- back-translation ---" marker; the marker now only rides
+        # inside the combined string until set_result() splits it.
+        from PySide6.QtWidgets import (QSplitter, QVBoxLayout, QWidget)
+        self.result_box = QWidget(self)
+        put(self, self.result_box, 8, 245, 503, 147)
+        self._split = QSplitter(Qt.Vertical, self.result_box)
+        # .tmp's inline definition: a one-line gloss under a
+        # single-word translation. The label lives in a wrapper around
+        # the result edit so the splitter still sees one widget.
+        from PySide6.QtWidgets import QLabel
+        self.out_wrap = QWidget()
+        _ow = QVBoxLayout(self.out_wrap)
+        _ow.setContentsMargins(0, 0, 0, 0)
+        _ow.setSpacing(0)
+        _ow.addWidget(self.out, 1)
+        self.defn = QLabel(self.out_wrap)
+        self.defn.setStyleSheet(
+            "color:#666666;font-size:10px;padding:0 2px;")
+        self.defn.setTextFormat(Qt.PlainText)
+        self.defn.setWordWrap(True)
+        self.defn.setVisible(False)
+        _ow.addWidget(self.defn)
+        self._split.addWidget(self.out_wrap)
+        self.back = QTextEdit()
+        self.back.setObjectName("pane")
+        self.back.setAcceptRichText(False)
+        self.back.setFrameShape(QTextEdit.NoFrame)
+        self.back.setReadOnly(True)
+        self.back.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.back.setStyleSheet(
+            "#pane{background:transparent;border:none;color:%s;"
+            'font-family:"%s";font-size:%dpx;}'
+            % (self._mw_text, pane_family, pane_px))
+        self.back.document().setDefaultFont(QFont(pane_family, pane_pts))
+        self.back.document().setDocumentMargin(0)
+        self.back.setPlainText("")
+        # .tmp's ExtraOutputPanel: the lower pane is ONE extra-output
+        # surface with three mutually-exclusive modes -- backward
+        # translation (native's EditBackTranslation), AI summary and AI
+        # rewrite. A slim header carries the mode toggles plus the
+        # option gear (length/style, and the input/output source).
+        from PySide6.QtWidgets import (QHBoxLayout, QPushButton,
+                                       QToolButton)
+        self.extra_wrap = QWidget()
+        _ev = QVBoxLayout(self.extra_wrap)
+        _ev.setContentsMargins(0, 0, 0, 0)
+        _ev.setSpacing(0)
+        self.extra_bar = QWidget(self.extra_wrap)
+        _eb = QHBoxLayout(self.extra_bar)
+        _eb.setContentsMargins(4, 1, 4, 1)
+        _eb.setSpacing(4)
+        self._extra_buttons = {}
+        for _mid, _lbl in (("back", "Back"), ("summary", "Summary"),
+                           ("rewrite", "Rewrite"), ("compare", "Compare")):
+            b = QPushButton(_lbl, self.extra_bar)
+            b.setCheckable(True)
+            b.setAutoExclusive(True)
+            b.setFlat(True)
+            b.setCursor(Qt.PointingHandCursor)
+            b.setStyleSheet(
+                "QPushButton{border:1px solid #bfbfbf;border-radius:3px;"
+                "padding:0 6px;font-size:10px;color:#333333;}"
+                "QPushButton:checked{background:#d0d0d0;"
+                "border-color:#909090;}")
+            b.clicked.connect(
+                lambda _c=False, m=_mid: self.set_extra_mode(m))
+            self._extra_buttons[_mid] = b
+            _eb.addWidget(b)
+        _eb.addStretch(1)
+        self.extra_src_btn = QToolButton(self.extra_bar)
+        self.extra_src_btn.setText("Out")
+        self.extra_src_btn.setToolTip(
+            "Extra output source: translated text (Out) or "
+            "original text (In)")
+        self.extra_src_btn.setStyleSheet(
+            "QToolButton{border:1px solid #bfbfbf;border-radius:3px;"
+            "padding:0 5px;font-size:10px;color:#333333;}")
+        self.extra_src_btn.clicked.connect(self._cycle_extra_source)
+        self.extra_gear = QToolButton(self.extra_bar)
+        self.extra_gear.setText("⚙")
+        self.extra_gear.setToolTip("Extra output options")
+        self.extra_gear.setStyleSheet(
+            "QToolButton{border:1px solid #bfbfbf;border-radius:3px;"
+            "padding:0 5px;font-size:10px;color:#333333;}")
+        self.extra_gear.clicked.connect(self._extra_options_menu)
+        _eb.addWidget(self.extra_src_btn)
+        _eb.addWidget(self.extra_gear)
+        # .tmp MainContentView's extra-output listen button
+        # (ListenToText TextSource.ExtraOutput).
+        self.extra_listen = QToolButton(self.extra_bar)
+        self.extra_listen.setText("🔊")
+        self.extra_listen.setToolTip("Listen to extra output")
+        self.extra_listen.setStyleSheet(
+            "QToolButton{border:1px solid #bfbfbf;border-radius:3px;"
+            "padding:0 5px;font-size:10px;color:#333333;}")
+        self.extra_listen.clicked.connect(
+            lambda _c=False: app._speak_extra())
+        _eb.addWidget(self.extra_listen)
+        _ev.addWidget(self.extra_bar)
+        _ev.addWidget(self.back)
+        self._split.addWidget(self.extra_wrap)
+        self._split.setStretchFactor(0, 3)
+        self._split.setStretchFactor(1, 2)
+        self.extra_wrap.setVisible(False)
+        # Sync the checked button + option visibility with the stored
+        # mode before anything can query it.
+        self._extra_mode = "back"
+        try:
+            self._sync_extra_mode()
+        except Exception:
+            pass
+        _rl = QVBoxLayout(self.result_box)
+        _rl.setContentsMargins(0, 0, 0, 0)
+        _rl.setSpacing(0)
+        _rl.addWidget(self._split)
+        # Native's BackTranslationSplitterPos: remember the divider.
+        self._split.splitterMoved.connect(self._save_split_pos)
+        try:
+            from qtranslate import config as _cfg
+            _pos = int(((_cfg.load() or {}).get("General", {}) or {})
+                       .get("BackTranslationSplitterPos", 0) or 0)
+            if _pos > 40:
+                self._split.setSizes([_pos, 147 - _pos])
+        except Exception:
+            pass
         icon(self, 473, 372, "ui_icons", "headphone")
         hline(self, 392, 4, 512, self._mw_frame)
         hline(self, 393, 5, 511, "#ffffff")
@@ -275,6 +439,37 @@ class MainWindow(Base):
         self._sc_back.activated.connect(app.on_back)
         self._sc_fwd = QShortcut(QKeySequence("Alt+Right"), self)
         self._sc_fwd.activated.connect(app.on_forward)
+
+        # .tmp LOCAL hotkeys (HotkeyBinding scope=LOCAL, Swing InputMap):
+        # window-scoped shortcuts that only fire while the main window
+        # has focus -- QShortcut's WindowShortcut context gives exactly
+        # that. Defaults verbatim from HotkeyBinding.DEFAULTS.
+        self._sc_go = QShortcut(QKeySequence("Ctrl+Enter"), self)
+        self._sc_go.activated.connect(app.on_go)
+        self._sc_opts = QShortcut(QKeySequence("Ctrl+,"), self)
+        self._sc_opts.activated.connect(lambda: app.open_options())
+        self._sc_swap = QShortcut(QKeySequence("Ctrl+Shift+S"), self)
+        self._sc_swap.activated.connect(app.on_swap)
+        self._sc_hist = QShortcut(QKeySequence("Ctrl+Shift+H"), self)
+        self._sc_hist.activated.connect(app.open_history)
+        self._sc_doc = QShortcut(QKeySequence("Ctrl+Shift+D"), self)
+        self._sc_doc.activated.connect(app.open_document_translation)
+        self._sc_copy = QShortcut(QKeySequence("Ctrl+Shift+C"), self)
+        self._sc_copy.activated.connect(lambda: _copy_translation(self))
+        self._sc_clear = QShortcut(QKeySequence("Ctrl+Shift+X"), self)
+        self._sc_clear.activated.connect(lambda: self.src.clear())
+        # CYCLE_TARGET_LANGUAGE (.tmp LOCAL, Ctrl+L): step the target
+        # combo to the next enabled language, wrapping.
+        self._sc_cycle = QShortcut(QKeySequence("Ctrl+L"), self)
+        self._sc_cycle.activated.connect(lambda: _cycle_target(self))
+        # FOCUS_INPUT/OUTPUT/EXTRA_OUTPUT: Alt+1/2/3.
+        for _key, _w in (("Alt+1", self.src), ("Alt+2", self.out),
+                         ("Alt+3", self.back)):
+            _sc = QShortcut(QKeySequence(_key), self)
+            _sc.activated.connect(
+                lambda w=_w: (w.setFocus(),
+                              w.moveCursor(
+                                  QTextCursor.MoveOperation.End)))
 
         # Native's menus 2/3/4: right-click in the panes and on the combos.
         # Qt draws the standard edit menu for a QTextEdit by itself; the
@@ -324,7 +519,7 @@ class MainWindow(Base):
                        getattr(self, "btn_go", None)):
             if widget is not None:
                 widget.setVisible(top)
-        for widget in (self.out,):
+        for widget in (getattr(self, "result_box", None) or self.out,):
             widget.setVisible(middle)
         for widget in getattr(self, "tabs", ()) or ():
             widget.setVisible(services)
@@ -338,7 +533,8 @@ class MainWindow(Base):
             from PySide6.QtWidgets import QWidget as _W
             oy = self.ORIGIN[1]
             keep = {w for w in (
-                self.src, self.out, getattr(self, "cmb_src", None),
+                self.src, getattr(self, "result_box", None) or self.out,
+                getattr(self, "cmb_src", None),
                 getattr(self, "cmb_tgt", None), getattr(self, "btn_new",
                 None), getattr(self, "btn_swap", None),
                 getattr(self, "btn_go", None), self.btn_back,
@@ -452,6 +648,65 @@ class MainWindow(Base):
         except Exception:
             return False
 
+    def _maybe_remove_line_breaks(self):
+        """Advanced.RemoveLineBreaks on the VISIBLE pane.
+
+        .tmp UpdateInputText runs prepareInputText on every input
+        change -- PDF-copied text lands in the pane already flattened
+        (\\n->space, \\r dropped, double space collapsed, trimmed), not
+        merely flattened at request time. The request layer
+        (reliability.normalize_request) does the same for paths that
+        bypass the pane; this keeps what the user SEES identical.
+        blockSignals breaks the textChanged recursion; the result is
+        stable after one pass (Kotlin's replace is also single-pass).
+        """
+        try:
+            cur = self.src.toPlainText() or ""
+            # Cheap shape check BEFORE any config access: plain text
+            # with no newline/CR/double-space/edge-whitespace can never
+            # change, so the common keystroke costs nothing.
+            if ("\n" not in cur and "\r" not in cur and "  " not in cur
+                    and cur == cur.strip()):
+                return
+            # The flag is cached against the file's mtime: a stat per
+            # qualifying keystroke, a full JSON parse only when the
+            # user actually edited Options.json (same "no disk read per
+            # character" rule the instant flag documents).
+            from qtranslate import config as _C
+            path = getattr(_C, "DEFAULT_PATH", "") or ""
+            try:
+                mtime = os.path.getmtime(path)
+            except Exception:
+                mtime = -1
+            cache = getattr(self, "_rlb_cache", None)
+            if cache is None or cache[0] != mtime:
+                try:
+                    val = bool(((_C.load() or {}).get("Advanced", {})
+                                or {}).get("RemoveLineBreaks", False))
+                except Exception:
+                    val = False
+                cache = self._rlb_cache = [mtime, val]
+            if not cache[1]:
+                return
+            cleaned = (cur.replace("\n", " ").replace("\r", "")
+                       .replace("  ", " ").strip())
+            if cleaned == cur:
+                return
+            pos = self.src.textCursor().position()
+            self.src.blockSignals(True)
+            try:
+                self.src.setPlainText(cleaned)
+            finally:
+                self.src.blockSignals(False)
+            try:
+                cur2 = self.src.textCursor()
+                cur2.setPosition(min(pos, len(cleaned)))
+                self.src.setTextCursor(cur2)
+            except Exception:
+                pass
+        except Exception:
+            pass
+
     def _src_text_changed(self):
         """Arm the instant-translation debounce on every edit.
 
@@ -460,6 +715,7 @@ class MainWindow(Base):
         character, and a toggle flipped mid-pause should apply to the
         pending request anyway.
         """
+        self._maybe_remove_line_breaks()
         timer = getattr(self, "_instant_timer", None)
         if timer is None:
             timer = QTimer(self)
@@ -468,6 +724,30 @@ class MainWindow(Base):
             timer.timeout.connect(self._instant_translate)
             self._instant_timer = timer
         timer.start()
+        self._maybe_auto_cleanup()
+
+    def _maybe_auto_cleanup(self):
+        """Menu-1 item 61 "Auto-cleanup of translation"
+        (``General.AutoCleanupTranslation``, default off): an emptied
+        source pane clears the result and back-translation panes too,
+        so a stale translation cannot linger under fresh input.
+        History browsing is exempt -- the panes show a saved entry,
+        not live output."""
+        try:
+            # Cheap checks first: the config load below must not run
+            # per keystroke (same rule the instant flag documents).
+            if (self.src.toPlainText() or "").strip():
+                return
+            if self._browsing_history():
+                return
+            if not self._general_flag("AutoCleanupTranslation", False):
+                return
+            for w in (getattr(self, "out", None),
+                      getattr(self, "back", None)):
+                if w is not None and (w.toPlainText() or "").strip():
+                    w.clear()
+        except Exception:
+            pass
 
     def _instant_translate(self):
         """The debounce fired: translate the CURRENT pane text, once."""
@@ -569,7 +849,9 @@ class MainWindow(Base):
             return full
         return full[:2] + "..."
 
-    def _nav_menu(self):
+    def _build_nav_menu(self):
+        """Construct the nav menu WITHOUT exec'ing it (tests inspect
+        the actions); ``_nav_menu`` pops it modally."""
         m = QMenu(self)
         m.setStyleSheet(
             "QMenu{background:#f9f9f9;border:1px solid #e5e5e5;}"
@@ -603,11 +885,11 @@ class MainWindow(Base):
             act.setEnabled(False)
             m.addAction(act)
 
-        # Spell checking has a suggest backend (registry.google_suggest)
-        # but no consumer in this front end; Backward translation,
-        # Extended, Clear-on-DnD, Auto-cleanup and Save-on-exit have no
-        # port-side operation at all -- all drawn disabled.
-        dead(10, "Spell checking")
+        # Spell checking IS live: bing_spell.check feeds corrections and
+        # the source pane's context menu offers "Spelling suggestions"
+        # (.tmp PerformSpellCheckUseCase + InputTextPanel). Extended has
+        # no port-side operation -- drawn disabled.
+        toggle(10, "Spell checking", "SpellChecking", True)
         toggle(20, "Instant translation", "InstantTranslation", False)
         # Backward translation IS live: _start_translation passes
         # General.BackTranslation into engine.translate's back_translate
@@ -617,9 +899,16 @@ class MainWindow(Base):
         # Read phonetically IS live: engine.translate appends the
         # romanization when General.ReadPhonetically is on (J7).
         toggle(50, "Read phonetically", "ReadPhonetically", False)
-        dead(60, "Clear input on Drag && Drop")
-        dead(61, "Auto-cleanup of translation")
-        dead(62, "Save contents on exit")
+        # Items 60/61/62 are live too: _drop_text honours
+        # ClearInputOnDragDrop (drop replaces vs appends),
+        # _maybe_auto_cleanup honours AutoCleanupTranslation (emptied
+        # source clears the result panes), and _contents_enabled gates
+        # the Contents.* persist/restore on SaveContentsOnExit.
+        toggle(60, "Clear input on Drag && Drop",
+               "ClearInputOnDragDrop", True)
+        toggle(61, "Auto-cleanup of translation",
+               "AutoCleanupTranslation", False)
+        toggle(62, "Save contents on exit", "SaveContentsOnExit", True)
         # The three Show*Pane toggles: apply_pane_visibility already
         # reads these keys; this is the UI that was missing.
         toggle(65, "Show top pane", "ShowTopPane", True,
@@ -633,6 +922,36 @@ class MainWindow(Base):
                "MinimizeToTrayOnMinimize", False)
         toggle(82, "Minimize to system tray on close",
                "MinimizeToTrayOnClose", False)
+        # Items 85-88: the "On startup" group -- a disabled caption plus
+        # three exclusive actions writing General.MainWindowStartupAction
+        # (0=Show window, 1=Minimize to tray, 2=Restore previous state).
+        # The startup path in qt/app.py reads the same key; a config
+        # without it derives the action from MainWindowShowOnLoad.
+        head = QAction(lab.get(85, "On startup"), self)
+        head.setEnabled(False)
+        m.addAction(head)
+        try:
+            from qtranslate import config as _C
+            _g = (_C.load() or {}).get("General", {})
+            _v = _g.get("MainWindowStartupAction")
+            if _v is None:
+                _v = 0 if _g.get("MainWindowShowOnLoad", True) else 1
+            _act = int(_v)
+        except Exception:
+            _act = 0
+        grp = QActionGroup(self)
+        grp.setExclusive(True)
+        for item_id, default, val in [
+                (86, "Show window", 0),
+                (87, "Minimize to tray", 1),
+                (88, "Restore previous state", 2)]:
+            act = QAction(lab.get(item_id, default), self)
+            act.setCheckable(True)
+            act.setChecked(_act == val)
+            act.triggered.connect(
+                lambda _c=False, v=val: self._set_startup_action(v))
+            grp.addAction(act)
+            m.addAction(act)
         m.addSeparator()
         for item_id, default, fn in [
                 (90, "Dictionary", app.open_dictionary),
@@ -645,14 +964,111 @@ class MainWindow(Base):
             m.addAction(act)
         # Native's startup-action group (85..88) is a four-way choice,
         # not a toggle; it stays unimplemented rather than faked.
-        dead(130, "Help")
+        # Item 130 "Help" is live: .tmp OptionsPopupMenu.helpSubmenu --
+        # How to use / Contact us / Check for updates / auto-check.
+        help_menu = m.addMenu(lab.get(130, "Help"))
+        how = QAction("How to use", help_menu)
+        how.triggered.connect(lambda _c=False: self._show_help())
+        help_menu.addAction(how)
+        contact = QAction("Contact us", help_menu)
+        contact.triggered.connect(lambda _c=False: self._contact_us())
+        help_menu.addAction(contact)
+        help_menu.addSeparator()
+        from qtranslate import update_check as _UC
+        chk = QAction("Check for updates", help_menu)
+        chk.triggered.connect(lambda _c=False: _UC.check_now(app))
+        help_menu.addAction(chk)
+        auto = QAction("Automatically check for updates", help_menu)
+        auto.setCheckable(True)
+        try:
+            from qtranslate import config as _C
+            auto.setChecked(bool((_C.load() or {}).get("Update", {})
+                                 .get("CheckForUpdates", True)))
+        except Exception:
+            pass
+        auto.triggered.connect(lambda on: self._set_auto_update(on))
+        help_menu.addAction(auto)
         act = QAction(lab.get(140, "Exit"), self)
         act.triggered.connect(lambda _c=False: app.quit())
         m.addAction(act)
         # The nav menu is native's menu id 1 (ui_slots "main"): an
         # extension may add entries to it.
         m = append_extensions(m, self, app, "main")
+        return m
+
+    def _set_startup_action(self, value):
+        """Persist ``General.MainWindowStartupAction`` (0/1/2) -- the
+        "On startup" radio group; the next launch's window visibility
+        is decided in ``qt/app.py``'s startup block."""
+        try:
+            from qtranslate import config
+            cfg = config.load() or {}
+            g = cfg.setdefault("General", {})
+            g["MainWindowStartupAction"] = int(value)
+            # Keep the legacy bool coherent for anything still reading it.
+            g["MainWindowShowOnLoad"] = (int(value) == 0)
+            config.save(cfg)
+        except Exception:
+            pass
+
+    def _show_help(self):
+        """Help -> How to use: the bundled help.txt in a dialog."""
+        from PySide6.QtWidgets import QMessageBox
+        try:
+            here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            with open(os.path.join(here, "assets", "locales", "English",
+                                   "help.txt"), encoding="utf-8-sig") as f:
+                text = f.read().strip()
+        except Exception:
+            text = ("Double Ctrl => Show main window\n"
+                    "Ctrl+Q => Translate selected text\n"
+                    "Ctrl+E => Listen to selected text")
+        QMessageBox.information(self, "QTranslate -- How to use", text)
+
+    def _contact_us(self):
+        """Help -> Contact us: the project's page in the browser."""
+        try:
+            from PySide6.QtGui import QDesktopServices
+            from PySide6.QtCore import QUrl
+            QDesktopServices.openUrl(QUrl("https://github.com/ahatem/QTranslate"))
+        except Exception:
+            pass
+
+    def _set_auto_update(self, on):
+        """Help -> auto-check toggle: Update.CheckForUpdates, the same
+        key the Updates options page writes."""
+        try:
+            from qtranslate import config
+            cfg = config.load() or {}
+            cfg.setdefault("Update", {})["CheckForUpdates"] = bool(on)
+            config.save(cfg)
+        except Exception:
+            pass
+
+    def _nav_menu(self):
+        m = self._build_nav_menu()
         m.exec(self.btn_nav.mapToGlobal(self.btn_nav.rect().bottomLeft()))
+
+    def _search_images(self):
+        """Context-menu "Search images": the selected word, else the
+        word under the cursor -- .tmp InputTextPanel's rule."""
+        import re as _re
+        cur = self.src.textCursor()
+        word = (cur.selectedText() or "").strip()
+        if not word or any(c.isspace() for c in word):
+            word = ""
+            pos = cur.position()
+            text = self.src.toPlainText()
+            m = None
+            for m in _re.finditer(r"\w+", text):
+                if m.start() <= pos <= m.end():
+                    word = m.group(0)
+                    break
+            if not word and text:
+                # cursor sits between words -- take the word before it
+                before = _re.findall(r"\w+", text[:pos])
+                word = before[-1] if before else ""
+        self.app.open_image_search(word)
 
     def _pane_menu(self, which):
         """Native's pane menus: menu 2 in the source pane, menu 3 in the
@@ -669,6 +1085,11 @@ class MainWindow(Base):
         lab = pack_labels(3 if which == "result" else 2)
         m = QMenu(self)
         if which == "source":
+            # .tmp inserts the spelling-suggestions submenu at the TOP
+            # of the source pane's menu when the click lands on a
+            # correction that has suggestions.
+            self._add_spelling_menu(m)
+        if which == "source":
             ops = [
                 (10, "Undo", self.src.undo if self.src.isUndoRedoEnabled()
                  else None),
@@ -683,6 +1104,9 @@ class MainWindow(Base):
                 (75, "Translate", app.on_go),
                 (80, "Dictionary search for",
                  lambda: app.open_dictionary()),
+                # Native's InputTextPanel puts "Search images" beside
+                # "Find in dictionary" -- same word, same question.
+                (85, "Search images", self._search_images),
                 (90, "Listen",
                  lambda: app._speak(self.src.toPlainText())),
             ]
@@ -715,6 +1139,29 @@ class MainWindow(Base):
                                if which == "source"
                                else pane.viewport().rect().center())
         m.exec(pos)
+
+    def _add_spelling_menu(self, m):
+        """"Spelling suggestions" submenu for the correction under the
+        cursor (.tmp InputTextPanel.buildSpellingMenu)."""
+        try:
+            pos = self.src.textCursor().position()
+            corr = self.app.spell_correction_at(pos)
+        except Exception:
+            return
+        if not corr or not corr.get("suggestions"):
+            return
+        from PySide6.QtWidgets import QMenu
+        sub = QMenu("Spelling suggestions", m)
+        for sug in corr["suggestions"]:
+            act = sub.addAction(sug)
+            act.triggered.connect(
+                lambda _c=False, c=corr, s=sug:
+                    self.app.apply_spell_correction(c, s))
+        # Called before the ops are added, so addMenu lands the submenu
+        # at the top exactly where .tmp's menu.insert(spellingMenu, 0)
+        # puts it; the separator mirrors menu.insert(spellingMenuSeparator, 1).
+        m.addMenu(sub)
+        m.addSeparator()
 
     def _src_menu(self, _p):
         self._pane_menu("source")
@@ -825,11 +1272,70 @@ class MainWindow(Base):
         super().moveEvent(event)
         self._queue_geometry_save()
 
+    def _close_action(self):
+        """General.CloseAction tri-state (.tmp closeButtonBehavior:
+        ASK/MINIMIZE_TO_TRAY/EXIT). Absent, derive from the native
+        MinimizeToTrayOnClose flag so existing configs keep working."""
+        prefs = self._tray_prefs()
+        try:
+            v = str(prefs.get("CloseAction", "") or "").lower()
+        except Exception:
+            v = ""
+        if v in ("ask", "minimize", "exit"):
+            return v
+        return ("minimize" if prefs.get("MinimizeToTrayOnClose",
+                                        False) else "exit")
+
+    def _ask_close(self):
+        """The ASK branch's dialog (.tmp showCloseDialog): Minimize to
+        tray / Exit plus "Remember my choice", which persists
+        General.CloseAction so the dialog never asks twice."""
+        from PySide6.QtWidgets import (QCheckBox, QDialog, QDialogButtonBox,
+                                       QLabel, QVBoxLayout)
+        dlg = QDialog(self)
+        try:
+            from qtranslate.locale import ui_caption
+            dlg.setWindowTitle(ui_caption(1, "QTranslate"))
+        except Exception:
+            dlg.setWindowTitle("QTranslate")
+        lay = QVBoxLayout(dlg)
+        lay.addWidget(QLabel("Minimize to tray or exit?"))
+        remember = QCheckBox("Remember my choice")
+        lay.addWidget(remember)
+        box = QDialogButtonBox()
+        min_btn = box.addButton("Minimize to tray",
+                                QDialogButtonBox.AcceptRole)
+        exit_btn = box.addButton("Exit", QDialogButtonBox.DestructiveRole)
+        lay.addWidget(box)
+        choice = {"v": None}
+        min_btn.clicked.connect(lambda: choice.update(v="minimize"))
+        exit_btn.clicked.connect(lambda: choice.update(v="exit"))
+        box.rejected.connect(dlg.reject)
+        dlg.exec()
+        v = choice["v"]
+        if v and remember.isChecked():
+            try:
+                from qtranslate import config as _C
+                cfg = _C.load() or {}
+                cfg.setdefault("General", {})["CloseAction"] = v
+                _C.save(cfg)
+            except Exception:
+                pass
+        return v
+
     def closeEvent(self, event):
-        """General.MinimizeToTrayOnClose: native keeps running in the
-        tray instead of quitting when the window closes."""
+        """General.CloseAction / MinimizeToTrayOnClose: native keeps
+        running in the tray instead of quitting when the window
+        closes; "ask" shows the .tmp close dialog first."""
         self._write_geometry()
-        if self._tray_prefs().get("MinimizeToTrayOnClose", False):
+        action = self._close_action()
+        if action == "ask":
+            choice = self._ask_close()
+            if choice is None:
+                event.ignore()
+                return
+            action = choice
+        if action == "minimize":
             event.ignore()
             self.hide()
             return
@@ -849,12 +1355,232 @@ class MainWindow(Base):
         super().changeEvent(event)
 
     # ------------------------------------------------------------- painting
+    def _save_split_pos(self, _pos, _idx):
+        """Persist the result/back divider (General.BackTranslation-
+        SplitterPos -- the native option's own key)."""
+        try:
+            from qtranslate import config
+            cfg = config.load() or {}
+            cfg.setdefault("General", {})[
+                "BackTranslationSplitterPos"] = int(
+                    self._split.sizes()[0])
+            config.save(cfg)
+        except Exception:
+            pass
+
+    def set_result(self, text):
+        """Route a (possibly combined) result into the two panes.
+
+        The engine's back-translation arrives inside the result string
+        behind the port's BACKTRANSLATION_MARKER; native stores it as
+        the separate Contents.EditBackTranslation field, which is what
+        the lower pane shows. A result with no marker hides the pane.
+        """
+        try:
+            from qtranslate import reliability as _REL
+            main, back = _REL.split_backtranslation(text or "")
+        except Exception:
+            main, back = (text or ""), ""
+        # In the AI modes the lower pane belongs to the extra-output
+        # worker -- writing the back-translation here would flash the
+        # wrong content before the summary/rewrite lands.
+        if self.extra_mode() != "back":
+            back = ""
+        for w, t in ((self.out, main or (text or "")),
+                     (self.back, back)):
+            try:
+                w.blockSignals(True)
+                w.setPlainText(t)
+                w.blockSignals(False)
+            except Exception:
+                pass
+        try:
+            if self.extra_mode() == "back":
+                self.set_extra_visible(bool(back))
+        except Exception:
+            pass
+
+    # ------------------------------------------------------ extra output
+    # .tmp ExtraOutputType: the lower pane is one surface with modes.
+    # "back" is the port's default so existing installs keep the
+    # native EditBackTranslation behaviour; "summary"/"rewrite" are the
+    # ai-services plugin's Summarizer/Rewriter roles; "compare" is the
+    # port's surface for .tmp's ParallelComparisonUseCase rows (native
+    # has no comparison feature at all).
+    _EXTRA_TYPE_KEYS = {"back": "BackwardTranslate",
+                        "summary": "Summarize",
+                        "rewrite": "Rewrite",
+                        "compare": "Compare"}
+    _EXTRA_TYPE_MODES = {v: k for k, v in _EXTRA_TYPE_KEYS.items()}
+
+    def _extra_cfg(self):
+        try:
+            from qtranslate import config as _C
+            return (_C.load() or {}).get("General", {}) or {}
+        except Exception:
+            return {}
+
+    def extra_mode(self):
+        """"back" | "summary" | "rewrite" -- the active extra-output
+        mode (General.ExtraOutputType; absent/unknown -> "back")."""
+        return self._EXTRA_TYPE_MODES.get(
+            self._extra_cfg().get("ExtraOutputType") or "",
+            "back")
+
+    def _sync_extra_mode(self):
+        mode = self.extra_mode()
+        self._extra_mode = mode
+        for mid, btn in getattr(self, "_extra_buttons", {}).items():
+            try:
+                btn.blockSignals(True)
+                btn.setChecked(mid == mode)
+                btn.blockSignals(False)
+            except Exception:
+                pass
+        # The gear + source toggle only matter for the AI modes --
+        # .tmp hides configure when the active type declares no
+        # options (backward translation has none).
+        ai_mode = mode in ("summary", "rewrite")
+        for w in (getattr(self, "extra_gear", None),
+                  getattr(self, "extra_src_btn", None)):
+            try:
+                if w is not None:
+                    w.setVisible(ai_mode)
+            except Exception:
+                pass
+        try:
+            self.extra_src_btn.setText(
+                "In" if self._extra_cfg().get(
+                    "ExtraOutputSource") == "Input" else "Out")
+        except Exception:
+            pass
+
+    def set_extra_mode(self, mode):
+        """Persist General.ExtraOutputType and ask the app to refresh
+        the extra output for the current texts (like .tmp's
+        RefreshExtraOutput -- the translation itself is NOT redone)."""
+        if mode not in self._EXTRA_TYPE_KEYS:
+            return
+        try:
+            from qtranslate import config as _C
+            cfg = _C.load() or {}
+            cfg.setdefault("General", {})[
+                "ExtraOutputType"] = self._EXTRA_TYPE_KEYS[mode]
+            _C.save(cfg)
+        except Exception:
+            pass
+        self._sync_extra_mode()
+        app = getattr(self, "app", None)
+        if app is not None:
+            try:
+                app.refresh_extra_output()
+            except Exception:
+                pass
+
+    def _cycle_extra_source(self):
+        """ExtraOutputSource Input|Output toggle (the In/Out button)."""
+        try:
+            from qtranslate import config as _C
+            cfg = _C.load() or {}
+            g = cfg.setdefault("General", {})
+            g["ExtraOutputSource"] = (
+                "Output" if g.get("ExtraOutputSource") == "Input"
+                else "Input")
+            _C.save(cfg)
+        except Exception:
+            pass
+        self._sync_extra_mode()
+        app = getattr(self, "app", None)
+        if app is not None:
+            try:
+                app.refresh_extra_output()
+            except Exception:
+                pass
+
+    _EXTRA_OPTIONS = {
+        "summary": ("SummaryLength",
+                    [("SHORT", "Short"), ("MEDIUM", "Medium"),
+                     ("LONG", "Long")], "MEDIUM"),
+        "rewrite": ("RewriteStyle",
+                    [("FORMAL", "Formal"), ("CASUAL", "Casual"),
+                     ("CONCISE", "Concise"), ("DETAILED", "Detailed"),
+                     ("SIMPLIFIED", "Simplified")], "FORMAL"),
+    }
+
+    def _extra_options_menu(self):
+        """The gear popup: the active mode's option list, checkable,
+        persisted to General.SummaryLength / General.RewriteStyle."""
+        from PySide6.QtWidgets import QMenu
+        mode = self.extra_mode()
+        spec = self._EXTRA_OPTIONS.get(mode)
+        if spec is None:
+            return
+        key, choices, default = spec
+        menu = QMenu(self)
+        current = self._extra_cfg().get(key) or default
+        for value, label in choices:
+            act = menu.addAction(label)
+            act.setCheckable(True)
+            act.setChecked(value == current)
+            act.triggered.connect(
+                lambda _c=False, k=key, v=value: self._set_extra_option(k, v))
+        menu.exec(self.extra_gear.mapToGlobal(
+            self.extra_gear.rect().bottomLeft()))
+
+    def _set_extra_option(self, key, value):
+        try:
+            from qtranslate import config as _C
+            cfg = _C.load() or {}
+            cfg.setdefault("General", {})[key] = value
+            _C.save(cfg)
+        except Exception:
+            pass
+        app = getattr(self, "app", None)
+        if app is not None:
+            try:
+                app.refresh_extra_output()
+            except Exception:
+                pass
+
+    def set_extra_visible(self, visible):
+        """Show/hide the whole extra-output wrap (bar + pane)."""
+        try:
+            self.extra_wrap.setVisible(bool(visible))
+        except Exception:
+            pass
+
+    def set_inline_definition(self, text):
+        """The one-line gloss under the result (.tmp inlineDefinition);
+        hidden when empty -- every failure is silent like upstream."""
+        try:
+            self.defn.setText(text or "")
+            self.defn.setVisible(bool((text or "").strip()))
+        except Exception:
+            pass
+
+    def set_extra_text(self, text, visible=None):
+        """Fill the extra pane for summary/rewrite modes (the back
+        mode's content arrives through set_result's marker split)."""
+        try:
+            self.back.blockSignals(True)
+            self.back.setPlainText(text or "")
+            self.back.blockSignals(False)
+        except Exception:
+            pass
+        if visible is None:
+            visible = bool((text or "").strip())
+        self.set_extra_visible(visible)
+
     def render(self, text: str, back: str = ""):
         """Fill the result pane (and the back-translation pane, when the
         port has one)."""
-        self.out.setPlainText(text or "")
         if back:
-            self.app.render_back(back)
+            try:
+                from qtranslate import reliability as _REL
+                text = (text or "") + _REL.BACKTRANSLATION_MARKER + back
+            except Exception:
+                text = (text or "") + "\n\n" + back
+        self.set_result(text)
         # .tmp SwapLanguagesUseCase refuses a blank result -- and the
         # button itself goes dead with it, so the affordance matches
         # the behaviour instead of inviting a click that no-ops.
@@ -922,6 +1648,15 @@ class MainWindow(Base):
                             return
                     except Exception:
                         continue
+                # DroppedContentClassifier order: images first, then
+                # DOCUMENTS (.docx/.pdf/.txt/.srt/.vtt -> the document
+                # translation dialog), everything else falls through
+                # to the text-file branch below.
+                from qtranslate import document as _DOC
+                if _DOC.format_of(path) is not None:
+                    app.open_document_translation(path)
+                    event.acceptProposedAction()
+                    return
                 # A dropped TEXT file goes into the source pane; binary
                 # files that fail a strict decode are skipped rather
                 # than pasted in as mojibake.
@@ -931,18 +1666,38 @@ class MainWindow(Base):
                     text = raw.decode("utf-8")
                     if not text.strip():
                         continue
-                    self.src.setPlainText(text[:20000])
+                    self._drop_text(text[:20000])
                     event.acceptProposedAction()
                     return
                 except (UnicodeDecodeError, OSError):
                     continue
             if mime.hasText():
-                self.src.setPlainText(mime.text()[:20000])
+                self._drop_text(mime.text()[:20000])
                 event.acceptProposedAction()
                 return
         except Exception:
             pass
         event.ignore()
+
+    def _drop_text(self, text):
+        """Put dropped text into the source pane.
+
+        Menu-1 item 60 "Clear input on Drag && Drop"
+        (``General.ClearInputOnDragDrop``, default on): ON clears the
+        pane first -- the drop REPLACES the input; OFF keeps the
+        existing text and appends the drop after a newline. (Native's
+        exact drag semantics are not recoverable from the port's
+        references; the label's plain reading is implemented.)
+        """
+        try:
+            cur = self.src.toPlainText() or ""
+            if self._general_flag("ClearInputOnDragDrop", True):
+                self.src.setPlainText(text)
+            else:
+                self.src.setPlainText(
+                    (cur + "\n" + text) if cur.strip() else text)
+        except Exception:
+            self.src.setPlainText(text)
 
     def set_service_title(self, name: str):
         self.lbl_service.setText(name)

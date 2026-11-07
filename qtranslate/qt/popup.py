@@ -87,6 +87,9 @@ MAX_WIDTH = 598
 # 2162: the client starts at y 23 and the first body line's glyphs start
 # at y 47 -- a 24px header.
 HEADER_H = 24
+# .tmp QuickTranslateDialog's top panel carries the language row
+# (source combo, swap, target combo) between the header and the body.
+LANG_ROW_H = 22
 # The provider strip, shown only while the pointer is over the window.
 # 2163: the buttons span y 55..76, so 22px.
 STRIP_H = 22
@@ -265,9 +268,96 @@ class PopupWindow(QWidget):
         self.lbl_text.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.lbl_text.setStyleSheet("background:transparent;color:%s;"
                                     "border:none;" % self._pop_text)
+        # .tmp QuickTranslateDialog text panes take the EDITOR font
+        # (editorFontConfig), not the UI font -- same resolution the
+        # main window's panes use (qtranslate.fonts.resolve_editor_font).
+        try:
+            from qtranslate.fonts import resolve_editor_font
+            _ef, _es = resolve_editor_font()
+            _ef_px = max(6, int(round(12 * _es / 9.0)))
+            _f = QFont(_ef or self.font().family())
+            _f.setPixelSize(_ef_px)
+            self.lbl_text.setFont(_f)
+        except Exception:
+            pass
+
+        # .tmp DefinitionStrip (showDivider=true for the popup): the
+        # one-line dictionary gloss under a single-word result. Read-only
+        # SELECTABLE text like the result itself, drawn in the disabled
+        # label colour with a hairline above it, hidden while blank.
+        # ClickFocus = mouse-selectable without becoming a Tab stop
+        # (.tmp skipFocusTraversal).
+        self.defn = _PopupText("", self)
+        self.defn.setReadOnly(True)
+        self.defn.setFrameShape(QTextEdit.NoFrame)
+        self.defn.setFocusPolicy(Qt.ClickFocus)
+        self.defn.setStyleSheet(
+            "background:transparent;color:%s;border:none;"
+            "border-top:1px solid %s;" % (POPUP_ICON, POPUP_BORDER))
+        try:
+            self.defn.setFont(self.lbl_text.font())
+        except Exception:
+            pass
+        self._defn_text = ""
+
+        # .tmp QuickTranslateDialog's CompareBoard: when comparison is
+        # eligible (>=2 effective translators) the quick popup shows
+        # every secondary's answer under the primary result -- same
+        # DefinitionStrip mechanics, capped harder because cards are
+        # longer than a gloss.
+        self.compare = _PopupText("", self)
+        self.compare.setReadOnly(True)
+        self.compare.setFrameShape(QTextEdit.NoFrame)
+        self.compare.setFocusPolicy(Qt.ClickFocus)
+        self.compare.setStyleSheet(
+            "background:transparent;color:%s;border:none;"
+            "border-top:1px solid %s;" % (self._pop_text, POPUP_BORDER))
+        try:
+            self.compare.setFont(self.lbl_text.font())
+        except Exception:
+            pass
+        self._cmp_text = ""
+
+        # .tmp QuickTranslateDialog's language row: source combo,
+        # swap button, target combo -- changing either re-runs the
+        # translation (RetranslateQuickTranslate) and persists the
+        # preferred languages exactly like the main window's pickers.
+        # The swap control is a passive QLabel like the header icons --
+        # ui_match pins popup-no-buttons, so no real button widgets here.
+        from PySide6.QtWidgets import QComboBox
+        self._lang_bar = QWidget(self)
+        self._lang_bar.setStyleSheet("background:transparent;")
+        self.cmb_src = QComboBox(self._lang_bar)
+        self.cmb_tgt = QComboBox(self._lang_bar)
+        self.btn_swap = QLabel("⇄", self._lang_bar)
+        self.btn_swap.setStyleSheet(
+            "background:transparent;color:%s;" % self._pop_icon)
+        self.btn_swap.setCursor(Qt.PointingHandCursor)
+        self.btn_swap.setToolTip("Swap languages")
+        self.btn_swap.mousePressEvent = (
+            lambda _e: self._app_call("popup_swap"))
+        for c in (self.cmb_src, self.cmb_tgt):
+            c.setStyleSheet(
+                "QComboBox{font-size:10px;padding:0 2px;}")
+            c.setMaxVisibleItems(12)
+        self.cmb_src.activated.connect(
+            lambda _i: self._lang_changed("src"))
+        self.cmb_tgt.activated.connect(
+            lambda _i: self._lang_changed("tgt"))
+        # .tmp popup keyboard shortcuts (WHEN_IN_FOCUSED_WINDOW):
+        # Ctrl+C copy, Ctrl+E listen, Ctrl+S swap, Ctrl+P pin.
+        from PySide6.QtGui import QShortcut, QKeySequence
+        for keys, fn in (("Ctrl+C", self._icon_copy),
+                         ("Ctrl+E", self._icon_listen),
+                         ("Ctrl+S", lambda: self._app_call("popup_swap")),
+                         ("Ctrl+P", self._toggle_pin)):
+            sc = QShortcut(QKeySequence(keys), self)
+            sc.setContext(Qt.WindowShortcut)
+            sc.activated.connect(fn)
 
         self._strip = self._provider_strip()
         self._spin = _Spinner(self)
+        self.sync_languages()
         self._loading = False
         # Floating-popup state (.tmp FloatingPopupBehavior): a pinned
         # popup never auto-hides and wears the accent border; a header
@@ -551,9 +641,21 @@ class PopupWindow(QWidget):
         if getattr(self, "_loading", False):
             return
         app = self.app
-        text = getattr(self, "_result_text", "") or ""
-        if app is not None and text:
-            app._speak(text)
+        # .tmp MainAppFrame wires the popup's listen to
+        # ListenToText(TextSource.Input) -- the SOURCE text in the
+        # source language ("most often used to check how the original
+        # word is pronounced"), not the translation.
+        text = getattr(self, "_source_text", "") or ""
+        if app is None or not text:
+            return
+        lang = ""
+        try:
+            src = getattr(app, "source", "") or ""
+            lang = (getattr(app, "_detected_src", "")
+                    if src == "auto" else src) or ""
+        except Exception:
+            lang = ""
+        app._speak(text, lang)
 
     def _icon_copy(self):
         if getattr(self, "_loading", False):
@@ -645,6 +747,11 @@ class PopupWindow(QWidget):
             pair = (self.app.popup_pair(res.provider_used)
                     if self.app else "")
             self.set_text(text, res.text, pair)
+            if self.app is not None:
+                try:
+                    self.app._popup_inline_definition(text, res.text)
+                except Exception:
+                    pass
             # This path bypasses push_hist, so emit the extension event
             # here too -- a strip re-translation is a translation done.
             if self.app is not None:
@@ -741,9 +848,38 @@ class PopupWindow(QWidget):
                              int(scr.availableGeometry().height() * 0.55))
         except Exception:
             pass
+        # .tmp DefinitionStrip height is measured at the REAL width --
+        # a wrapping pane asked at its old width clips or squeezes flat.
+        # Glosses are capped ~150 chars upstream, so ~3 lines is the
+        # ceiling; the rest would mean the lookup returned garbage.
+        body_top = HEADER_H + LANG_ROW_H
+        defn_txt_h = 0
+        if self._defn_text:
+            try:
+                defn_txt_h = min(
+                    _measure(self._defn_text, max(40, w - 2 * PAD),
+                             self.defn.font()), 72)
+            except Exception:
+                defn_txt_h = 0
+        defn_block = (defn_txt_h + 6) if defn_txt_h else 0
+
+        # Comparison cards sit under the gloss; measured at the real
+        # width like the definition, capped at ~8 lines -- beyond that
+        # the popup stops being a popup.
+        cmp_txt_h = 0
+        if self._cmp_text:
+            try:
+                cmp_txt_h = min(
+                    _measure(self._cmp_text, max(40, w - 2 * PAD),
+                             self.compare.font()), 120)
+            except Exception:
+                cmp_txt_h = 0
+        cmp_block = (cmp_txt_h + 6) if cmp_txt_h else 0
+
         # The strip row is reserved whether or not the pointer is on the
         # window (see ``_provider_strip``), so hovering never resizes it.
-        h = HEADER_H + body_h + 2 * PAD + STRIP_H
+        h = (body_top + body_h + defn_block + cmp_block
+             + 2 * PAD + STRIP_H)
 
         # Appearance.PopupAutoSize off (.tmp applySize): the popup keeps
         # the last size it was saved with -- the w/h inside the same
@@ -753,6 +889,13 @@ class PopupWindow(QWidget):
             if saved:
                 w = max(MIN_WIDTH, int(saved[0]))
                 h = max(HEADER_H + 24, int(saved[1]))
+                # The fixed frame must still hold header + body +
+                # definition + strip: shrink the scrollable result
+                # first, the definition keeps its measured height.
+                room = (h - body_top - 2 * PAD - STRIP_H
+                        - defn_block - cmp_block)
+                if body_h > max(20, room):
+                    body_h = max(20, room)
 
         self.setFixedSize(w, h)
         self.btn_close.setGeometry(PAD, 4, 12, 16)
@@ -762,14 +905,81 @@ class PopupWindow(QWidget):
         x0 = w - ICON_MARGIN - ICON_STEP * n
         for i, q in enumerate(self._header):
             q.setGeometry(x0 + ICON_STEP * i, 4, 16, 16)
-        self.lbl_text.setGeometry(PAD, HEADER_H, w - 2 * PAD, body_h)
+        # The language row sits between header and body (.tmp's
+        # source/swap/target panel): combos sized to their content,
+        # swap centred between them.
+        try:
+            self._lang_bar.setGeometry(0, HEADER_H, w, LANG_ROW_H)
+            self._lang_bar.show()
+            self.cmb_src.setGeometry(PAD, 2, 78, LANG_ROW_H - 4)
+            self.btn_swap.setGeometry(PAD + 80, 2, 24, LANG_ROW_H - 4)
+            self.cmb_tgt.setGeometry(PAD + 108, 2, 78, LANG_ROW_H - 4)
+        except Exception:
+            pass
+        self.lbl_text.setGeometry(PAD, body_top, w - 2 * PAD, body_h)
+        if defn_txt_h:
+            self.defn.setPlainText(self._defn_text)
+            self.defn.setGeometry(PAD, body_top + body_h + 3,
+                                  w - 2 * PAD, defn_txt_h + 4)
+            self.defn.show()
+        else:
+            self.defn.hide()
+        if cmp_txt_h:
+            self.compare.setPlainText(self._cmp_text)
+            self.compare.setGeometry(
+                PAD, body_top + body_h + defn_block + 3,
+                w - 2 * PAD, cmp_txt_h + 4)
+            self.compare.show()
+        else:
+            self.compare.hide()
         self._strip.setGeometry(1, h - STRIP_H - 1, w - 2, STRIP_H)
+
+    def _app_call(self, name, *args):
+        fn = getattr(getattr(self, "app", None), name, None)
+        if callable(fn):
+            try:
+                return fn(*args)
+            except Exception:
+                return None
+        return None
+
+    def _lang_changed(self, which):
+        combo = self.cmb_src if which == "src" else self.cmb_tgt
+        self._app_call("popup_lang_changed", which, combo.currentText())
+
+    def sync_languages(self):
+        """Fill the language row from the app's live names and point the
+        combos at the current pair (.tmp renders the combos from state
+        on every emission)."""
+        app = getattr(self, "app", None)
+        if app is None:
+            return
+        try:
+            sname = app._display(app.source) if app.source != "auto" \
+                else app._display("auto")
+            tname = app._display(app.target)
+            for combo, names, cur in (
+                    (self.cmb_src, app.source_names(), sname),
+                    (self.cmb_tgt, app.target_names(), tname)):
+                combo.blockSignals(True)
+                combo.clear()
+                for n in names:
+                    combo.addItem(n)
+                if cur and combo.findText(cur) < 0:
+                    combo.addItem(cur)
+                if cur:
+                    combo.setCurrentText(cur)
+                combo.blockSignals(False)
+        except Exception:
+            pass
 
     def set_loading(self, source: str, pair: str = ""):
         """.tmp's loading state: the popup opens immediately with the
         source text and a spinner while the translation is in flight,
         instead of leaving the user staring at nothing."""
         self._source_text = source
+        self._defn_text = ""
+        self._cmp_text = ""
         self._paint_strip()
         self._fill(source, "Translating…", pair or (source or "")[:40])
         # _fill() clears the flag -- the loading state only counts AFTER
@@ -779,12 +989,13 @@ class PopupWindow(QWidget):
             self.lbl_text.setPlainText("Translating…")
             self.lbl_text.setStyleSheet(
                 "background:transparent;color:%s;border:none;" % self._pop_icon)
+            body_top = HEADER_H + LANG_ROW_H
             self.lbl_text.setGeometry(
-                PAD + 26, HEADER_H,
+                PAD + 26, body_top,
                 max(40, self.width() - 2 * PAD - 26),
                 self.lbl_text.height())
-            self._spin.move(PAD + 4, HEADER_H + (self.height()
-                           - HEADER_H - STRIP_H) // 2 - 9)
+            self._spin.move(PAD + 4, body_top + (self.height()
+                           - body_top - STRIP_H) // 2 - 9)
             self._spin.show()
         except Exception:
             pass
@@ -799,8 +1010,64 @@ class PopupWindow(QWidget):
         if provider:
             self._active_service = provider
         self._paint_strip()
+        # A new translation invalidates the previous gloss; the app's
+        # inline-definition lookup repopulates it when it lands.
+        self._defn_text = ""
+        self._cmp_text = ""
+        self._defn_fill = (source, result, pair)
         self._fill(source, result, pair)
         self._extension_body(source, result, pair)
+
+    def set_comparison(self, text):
+        """.tmp QuickTranslateDialog comparison cards: blank hides,
+        anything else shows the per-service answers under the result.
+        Same re-layout + on-screen clamp as the definition gloss."""
+        self._cmp_text = text or ""
+        fill = getattr(self, "_defn_fill", None)
+        if not fill:
+            return
+        try:
+            self._fill(*fill)
+        except Exception:
+            pass
+        if self.isVisible() and self._cmp_text:
+            try:
+                from PySide6.QtGui import QGuiApplication as _QGA
+                scr = _QGA.screenAt(self.frameGeometry().center()) \
+                    or _QGA.primaryScreen()
+                if scr is not None:
+                    a = scr.availableGeometry()
+                    g = self.geometry()
+                    if g.bottom() > a.bottom():
+                        self.move(g.x(), a.bottom() - g.height())
+            except Exception:
+                pass
+
+    def set_inline_definition(self, text):
+        """.tmp DefinitionStrip.render: blank hides, anything else shows
+        the gloss under the result. The lookup lands asynchronously, so
+        this re-lays the window out around the NEW height -- and keeps
+        it on screen when the growth would push the bottom edge off."""
+        self._defn_text = text or ""
+        fill = getattr(self, "_defn_fill", None)
+        if not fill:
+            return
+        try:
+            self._fill(*fill)
+        except Exception:
+            pass
+        if self.isVisible() and self._defn_text:
+            try:
+                from PySide6.QtGui import QGuiApplication as _QGA
+                scr = _QGA.screenAt(self.frameGeometry().center()) \
+                    or _QGA.primaryScreen()
+                if scr is not None:
+                    a = scr.availableGeometry()
+                    g = self.geometry()
+                    if g.bottom() > a.bottom():
+                        self.move(g.x(), a.bottom() - g.height())
+            except Exception:
+                pass
 
     def _extension_body(self, source: str, result: str, pair: str):
         """Let an extension render the popup's body instead."""
@@ -911,6 +1178,16 @@ class PopupWindow(QWidget):
                     pass
             pos = event.globalPos() if hasattr(event, "globalPos") else None
             if pos is not None and not self.geometry().contains(pos):
+                # .tmp closePopupsOnClickOutside (default on): the
+                # Options -> Appearance checkbox can keep the popup
+                # open through outside clicks.
+                try:
+                    from qtranslate import config as _C
+                    ap = ((_C.load() or {}).get("Appearance", {}) or {})
+                    if not bool(ap.get("ClosePopupsOnClickOutside", True)):
+                        return False
+                except Exception:
+                    pass
                 try:
                     self.hide()
                 except Exception:

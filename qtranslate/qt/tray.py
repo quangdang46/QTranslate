@@ -16,10 +16,27 @@ from __future__ import annotations
 from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import QMenu, QSystemTrayIcon
 
-# The three mouse modes, in native's order. The names are native's own
-# strings -- the English lang.json, ids 60/70/71 -- and the index is
-# native's General.MouseMode (DAT_005493F8).
+# The three mouse modes, in native's order. The names come from the UI
+# language pack (menu 5, item ids 60/70/71 -- the English lang.json is
+# only the fallback) and the index is native's General.MouseMode
+# (DAT_005493F8).
 MOUSE_MODES = ("Show icon", "Show translation", "Show translation and read")
+# Menu-5 item id per mode, parallel to MOUSE_MODES (English lang.json
+# ids 60/70/71).
+MOUSE_MODE_IDS = (60, 70, 71)
+
+
+def _ml(item_id: int, default: str) -> str:
+    """One tray-menu label (menu 5) in the configured UI language."""
+    try:
+        from qtranslate import locale
+        pack = locale.ui_pack()
+        for k, v in locale.menu_labels(pack, 5):
+            if k == item_id:
+                return v
+    except Exception:
+        pass
+    return default
 
 
 class Tray:
@@ -71,13 +88,24 @@ class Tray:
         f.setBold(True)
         head.setFont(f)
 
-        for text, slot in (("Show main window", app.show_main_window),
-                           ("Dictionary", app.open_dictionary),
-                           ("Text recognition", app.open_ocr),
-                           ("History", app.open_history),
-                           ("Keyboard", app.open_keyboard),
-                           ("Options...", app.open_options),
-                           ("About QTranslate", app.show_about)):
+        # Native entries carry menu-5 item ids; the port additions
+        # (Image search, Translate document, Check for updates, Show
+        # main window, extension entries) have no pack id and stay
+        # English.
+        for text, slot in (
+                ("Show main window", app.show_main_window),
+                (_ml(10, "Dictionary"), app.open_dictionary),
+                # system_tray_menu.image_search sits between
+                # dictionary and text recognition upstream.
+                ("Image search", app.open_image_search),
+                (_ml(5, "Text recognition"), app.open_ocr),
+                # TrayPopupMenu.translateDocument sits
+                # between text recognition and history.
+                ("Translate document", app.open_document_translation),
+                (_ml(20, "History"), app.open_history),
+                (_ml(30, "Keyboard"), app.open_keyboard),
+                (_ml(80, "Options..."), app.open_options),
+                (_ml(90, "About QTranslate"), app.show_about)):
             act = menu.addAction(text)
             act.triggered.connect(lambda _c=False, s=slot: s())
 
@@ -90,25 +118,25 @@ class Tray:
 
         menu.addSeparator()
 
-        self.act_hotkeys = menu.addAction("Enable global hotkeys")
+        self.act_hotkeys = menu.addAction(_ml(36, "Enable global hotkeys"))
         self.act_hotkeys.setCheckable(True)
         self.act_hotkeys.setChecked(self._hotkeys_on)
         self.act_hotkeys.triggered.connect(self._toggle_hotkeys)
 
-        sub = menu.addMenu("Mouse mode")
+        sub = menu.addMenu(_ml(40, "Mouse mode"))
         # macOS: a left click on the tray icon does NOT reliably emit
         # Trigger when a context menu is set (the menu eats the press),
         # so the capture on/off switch lives inside the Mouse-mode
         # submenu as its first entry -- the top-level order stays the
         # native one the regression pins.
-        self.act_capture = sub.addAction("Enabled")
+        self.act_capture = sub.addAction(_ml(50, "Enabled"))
         self.act_capture.setCheckable(True)
         self.act_capture.setChecked(self._armed)
         self.act_capture.triggered.connect(self._toggle_capture)
         sub.addSeparator()
         self._mode_actions = {}
-        for mode in MOUSE_MODES:
-            act = sub.addAction(mode)
+        for mode, mid in zip(MOUSE_MODES, MOUSE_MODE_IDS):
+            act = sub.addAction(_ml(mid, mode))
             act.setCheckable(True)
             act.setChecked(mode == self._mouse_mode)
             act.triggered.connect(
@@ -130,7 +158,7 @@ class Tray:
         if ext_sub is not None:
             menu.addMenu(ext_sub)
         menu.addSeparator()
-        act = menu.addAction("Exit")
+        act = menu.addAction(_ml(100, "Exit"))
         act.triggered.connect(self.quit)
         return menu
 

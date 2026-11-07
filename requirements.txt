@@ -21,3 +21,8 @@ pyperclip==1.11.0
 # Optional (offline speech-input via Windows SAPI shared recognizer;
 # app explains when absent):
 # comtypes
+
+# Document translation (core/document port): PDF text extraction and
+# DOCX paragraph rewriting.
+pypdf==6.1.3
+python-docx==1.2.0

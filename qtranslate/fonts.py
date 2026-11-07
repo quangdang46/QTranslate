@@ -35,3 +35,37 @@ def resolve_font(cfg_general=None, platform="win32", size_delta=0):
     except Exception:
         size = DEFAULT_SIZE
     return name, max(MIN_SIZE, size + size_delta)
+
+
+def resolve_editor_font(cfg=None, platform="darwin"):
+    """``(name, size)`` for the text-editing surfaces.
+
+    .tmp AppearancePanel splits the UI font (``uiFontConfig``) from the
+    editor font (``editorFontConfig``/``editorFallbackFontConfig``):
+    controls take the UI font, the source/output text panes take the
+    editor font. The port's native keys are ``General.FontName``/
+    ``TextSize`` (UI) and ``General.EditorFontName``/``EditorTextSize``
+    (editor). An empty editor name inherits the UI font -- the
+    pre-split behaviour -- so existing configs are unchanged.
+
+    ``cfg`` is the whole Options.json dict (or None for the live
+    config); ``platform`` follows ``resolve_font``'s convention.
+    """
+    try:
+        if cfg is None:
+            from qtranslate import config as _C
+            cfg = _C.load() or {}
+    except Exception:
+        cfg = {}
+    g = (cfg or {}).get("General", {}) or {}
+    name = (g.get("EditorFontName", "") or "").strip()
+    if not name:
+        return resolve_font(g, platform=platform)
+    try:
+        size = int(g.get("EditorTextSize", "") or "")
+    except Exception:
+        try:
+            size = int(g.get("TextSize", DEFAULT_SIZE))
+        except Exception:
+            size = DEFAULT_SIZE
+    return name, max(MIN_SIZE, size)

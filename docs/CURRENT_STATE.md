@@ -78,11 +78,11 @@ override_picker.py` since the tkinter front end was deleted) picks the winner �
 | `qtranslate/common.py` | 356 lines | 1:1 port of `Common.js` (RequestData/ResponseData, capability bitmask, helpers) |
 | `qtranslate/config.py` | 247 lines | `Options.json` model, hotkey decode, service ids/order |
 | `qtranslate/session.py` | 179 lines | Session/token scrape (Bing, Promt), net timeout/proxy |
-| `qtranslate/services/` | 12 provider modules + `dictionary.py` + `ocr.py` + `spell.py` | provider ports |
+| `qtranslate/services/` | 22 modules | provider ports + `dictionary.py` + `ocr.py` + `spell.py`/`bing_spell.py`/`system_spell.py` + `commons_images.py` |
 | `qtranslate/win32app.py` | 203 lines | Native Win32 DLG129 re-creation (pywin32) |
 | `qtranslate/{theme,locale,history,layout,xdxf,tts,player,sapi,headless,exclusions}.py` | small | feature modules |
 | `docs/NATIVE_ARCH.md` | 1649 lines | native binary RE analysis |
-| `tests/` | 152 files | 152 `regress_*.py` suites (headless unless named), plus `ui_match.py`, `smoke_dict.py`, `live_providers.py`, `live_bass.py`. Sweep them with `python -I tools/run_suites.py` (exit-code judged, not grep) — see §Test suites in `README.md`. The runner reports **152 suites** (it also runs `smoke_*`/`ui_match` entries that are not `regress_*`) |
+| `tests/` | 175 files | 175 `regress_*.py` suites (headless unless named), plus `ui_match.py`, `smoke_dict.py`, `live_providers.py`, `live_bass.py`. Sweep them with `python -I tools/run_suites.py` (exit-code judged, not grep) — see §Test suites in `README.md`. The runner reports **177 suites** (it also runs `smoke_*`/`ui_match` entries that are not `regress_*`) |
 
 **[verified]** Language: Python, Qt/PySide6 UI (tkinter deleted `6636686`), stdlib `urllib` for HTTP; optional
 deps only (`keyboard`, `pyperclip` required; `pystray`, `Pillow`, `comtypes`,

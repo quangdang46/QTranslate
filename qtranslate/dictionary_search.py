@@ -201,3 +201,107 @@ def render(cards, word: str) -> str:
         return _DR.render_cards(cards, word)
     except Exception:
         return ""
+
+
+# ------------------------------------------------------------------
+# Inline definition (.tmp FetchInlineDefinitionUseCase): a one-line
+# gloss that sits under a single-word translation. It is a glance,
+# not a lookup -- quick, quiet, and every failure ends the same way:
+# no definition and nothing said about it.
+# ------------------------------------------------------------------
+
+_FIRST_SENSE_BUDGET = 120      # Kotlin FIRST_SENSE_BUDGET
+_SECOND_SENSE_THRESHOLD = 60   # Kotlin SECOND_SENSE_THRESHOLD
+_TOTAL_BUDGET = 150            # Kotlin TOTAL_BUDGET
+_SENTENCE_ENDINGS = set(".!?۔؟…")
+
+
+def _plain(frag: str) -> str:
+    """HTML fragment -> visible text (tags out, entities in, ws flat)."""
+    import html as _h
+    import re as _re
+    txt = _re.sub(r"<[^>]+>", " ", frag or "")
+    txt = _h.unescape(txt)
+    return _re.sub(r"\s+", " ", txt).strip()
+
+
+def _senses(frag: str):
+    """Per-entry blocks of a dictionary fragment -> plain-text senses.
+
+    Fragments are per-service HTML; <li>/<div> blocks are the closest
+    thing to the Kotlin response's ``definitions`` list. Blocks that
+    strip to nothing (headers, scripts) are dropped, and the caller
+    keeps at most three.
+    """
+    import re as _re
+    out = []
+    # <li> entries are senses; <div> blocks are only a fallback --
+    # service fragments also wrap headers/metadata in divs, and those
+    # are not definitions.
+    for pattern in (r"<li[^>]*>(.*?)</li>", r"<div[^>]*>(.*?)</div>"):
+        for m in _re.finditer(pattern, frag or "", _re.S | _re.I):
+            txt = _plain(m.group(1))
+            if txt:
+                out.append(txt)
+            if len(out) >= 3:
+                break
+        if out:
+            break
+    if out:
+        return out
+    # No block markup: the whole fragment is one blob of text.
+    txt = _plain(frag)
+    return [txt] if txt else []
+
+
+def _elide(text: str, budget: int) -> str:
+    """Kotlin elide: cut at a word boundary, drop dangling punctuation."""
+    if len(text) <= budget:
+        return text
+    cut = text[:budget]
+    boundary = cut.rfind(" ")
+    kept = cut[:boundary] if boundary > budget // 2 else cut
+    return kept.rstrip(" ,;:.،؛") + "…"
+
+
+def _within_budget(meanings):
+    """Kotlin withinBudget: first sense always, a second only when it
+    still fits -- the difference between a glance and a paragraph."""
+    if not meanings:
+        return ""
+    first = _elide(meanings[0], _FIRST_SENSE_BUDGET)
+    if len(meanings) == 1 or len(first) > _SECOND_SENSE_THRESHOLD:
+        return first
+    sep = " " if first[-1:] in _SENTENCE_ENDINGS else " · "
+    combined = first + sep + meanings[1]
+    return combined if len(combined) <= _TOTAL_BUDGET else first
+
+
+def inline_definition(word: str, src: str = "", tgt: str = "") -> str:
+    """The one-line gloss for ``word``, or "".
+
+    ``word`` must already be a single token -- the caller decides which
+    side of the translation to ask about (Kotlin's Candidate order:
+    translated word first, source word as fallback). The lookup fans
+    out through the same ``search`` the dictionary window uses, so
+    enabled dictionaries, offline XDXF and extension dictionaries all
+    answer; the first non-empty card wins.
+    """
+    word = (word or "").strip()
+    if len(word) < 2 or any(c.isspace() for c in word):
+        return ""
+    try:
+        cards, _summary = search(word, exact=True,
+                                 target=(tgt or "vi"))
+    except Exception:
+        return ""
+    for _kind, _title, frag in cards:
+        try:
+            senses = _senses(frag)
+        except Exception:
+            continue
+        if senses:
+            out = _within_budget(senses)
+            if out:
+                return out
+    return ""

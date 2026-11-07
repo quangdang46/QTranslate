@@ -7,7 +7,10 @@ SupportedLanguages. Live behavior (gtx + dict-chrome-ex fallback)
 verified 2026-10-07.
 """
 import json
+import random
 import sys
+import threading
+import time
 import urllib.parse
 import urllib.request
 from qtranslate import common
@@ -357,6 +360,16 @@ def translate(text: str, sl: str = "auto", tl: str = "en", tkk: str = "0.0",
     mean editing every provider table entry and the retry loop.
     """
     import urllib.error
+    # plugins/google-services GoogleTranslatorService: when a Cloud
+    # Translation API key is configured (General.GoogleTranslateApiKey),
+    # the official v2 endpoint is tried first; any failure falls
+    # through to the unofficial gtx path below.
+    api_key = _google_api_key()
+    if api_key:
+        try:
+            return _official_translate(text, sl, tl, api_key)
+        except Exception:
+            pass
     if tkk == "0.0":
         tkk = Options.get("GoogleTkk", "0.0")
     text = limit_source(text)
@@ -376,22 +389,40 @@ def translate(text: str, sl: str = "auto", tl: str = "en", tkk: str = "0.0",
         service_host() + path, data=data,
         headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
                  "Accept": "*/*", "Accept-Language": "en-US;q=0.8,en;q=0.6"})
-    try:
-        with common.http_open(req) as r:
-            obj = parse_json_lenient(r.read().decode("utf-8"))
-            b, _, _, g = _translate_response(obj, sl, tl)
-            # J7's phonetics source. The request has always asked for
-            # `dt=rm`, and this line has always parsed it — the value was
-            # then discarded for nine months. Now reported through the
-            # caller's own sink rather than module state.
-            if out is not None:
-                out[0] = g or ""
+    # GoogleEndpointHealth port: an open circuit skips the throttled
+    # primary entirely; the dict-chrome-ex fallback below serves instead.
+    permit = ENDPOINT_HEALTH.try_acquire()
+    if permit is not None:
+        try:
+            with common.http_open(req) as r:
+                obj = parse_json_lenient(r.read().decode("utf-8"))
+                b, _, _, g = _translate_response(obj, sl, tl)
+                # J7's phonetics source. The request has always asked for
+                # `dt=rm`, and this line has always parsed it — the value was
+                # then discarded for nine months. Now reported through the
+                # caller's own sink rather than module state.
+                if out is not None:
+                    out[0] = g or ""
+                else:
+                    set_romanization(g)
+                ENDPOINT_HEALTH.record_success(permit)
+                return b
+        except urllib.error.HTTPError as e:
+            if e.code == 429:
+                ENDPOINT_HEALTH.record_failure(
+                    permit, rate_limited=True,
+                    retry_after=(getattr(e, "headers", None) or {})
+                    .get("Retry-After"))
+            elif e.code >= 500:
+                ENDPOINT_HEALTH.record_failure(permit)
             else:
-                set_romanization(g)
-            return b
-    except urllib.error.HTTPError as e:
-        if e.code != 429:
-            raise
+                raise
+        except Exception:
+            # Network/parse failures are endpoint-transient upstream too:
+            # they feed the breaker and still fall back below.
+            ENDPOINT_HEALTH.record_failure(permit)
+        finally:
+            ENDPOINT_HEALTH.release(permit)
     fb = ("/translate_a/single?client=dict-chrome-ex&sl={}&tl={}&dt=t&q={}"
           .format(sl, tl, q))
     req = urllib.request.Request(
@@ -406,6 +437,141 @@ def translate(text: str, sl: str = "auto", tl: str = "en", tkk: str = "0.0",
         set_romanization("")
     with common.http_open(req) as r:
         return _parse(parse_json_lenient(r.read().decode("utf-8")))
+
+
+class _GoogleEndpointHealth:
+    """Port of GoogleEndpointHealth.kt -- synchronous.
+
+    The unofficial primary host throttles intermittently; while the
+    circuit is open callers skip it entirely and use the fallback, so a
+    throttled endpoint never costs a request timeout per call. Shared
+    by the translator and the spell checker (google_spell consults the
+    same singleton), like upstream.
+    """
+
+    FAILURE_THRESHOLD = 2
+    BASE_COOLDOWN_MS = 2_000
+    MAX_COOLDOWN_MS = 60_000
+    MAX_DOUBLINGS = 5
+    JITTER_MS = 1_000
+
+    def __init__(self, clock=None, jitter=None):
+        self._lock = threading.Lock()
+        self._clock = clock or (lambda: time.time() * 1000)
+        self._jitter = jitter or (lambda: random.randint(0,
+                                                        self.JITTER_MS))
+        self._healthy = True
+        self._generation = 0
+        self._failures = 0
+        self._open_count = 0
+        self._open_until = 0.0
+        self._probe_in_flight = False
+
+    def try_acquire(self):
+        """-> (generation, is_probe) permit, or None -> use fallback."""
+        with self._lock:
+            if self._healthy:
+                return (self._generation, False)
+            if (self._clock() >= self._open_until
+                    and not self._probe_in_flight):
+                self._healthy = False
+                self._probe_in_flight = True
+                return (self._generation, True)
+            return None
+
+    def record_success(self, permit):
+        gen, is_probe = permit
+        with self._lock:
+            if gen != self._generation:
+                return
+            if is_probe:
+                self._healthy = True
+                self._failures = 0
+                self._open_count = 0
+                self._open_until = 0.0
+                self._probe_in_flight = False
+                self._generation += 1
+            else:
+                self._failures = 0
+
+    def record_failure(self, permit, rate_limited=False,
+                       retry_after=None):
+        gen, is_probe = permit
+        with self._lock:
+            if gen != self._generation:
+                return
+            if is_probe:
+                self._open_cooldown(retry_after)
+                return
+            self._failures += 1
+            if rate_limited or self._failures >= self.FAILURE_THRESHOLD:
+                self._open_cooldown(retry_after)
+
+    def release(self, permit):
+        """A permit that produced no outcome (e.g. cancelled request)."""
+        gen, is_probe = permit
+        with self._lock:
+            if gen != self._generation or not is_probe:
+                return
+            self._probe_in_flight = False
+            self._open_until = self._clock() + self._cooldown(None)
+            self._generation += 1
+
+    def _open_cooldown(self, retry_after):
+        self._open_count += 1
+        self._open_until = self._clock() + self._cooldown(retry_after)
+        self._probe_in_flight = False
+        self._generation += 1
+
+    def _cooldown(self, retry_after):
+        backoff = self.BASE_COOLDOWN_MS
+        for _ in range(min(self._open_count - 1, self.MAX_DOUBLINGS)):
+            backoff = min(backoff * 2, self.MAX_COOLDOWN_MS)
+        retry_ms = None
+        try:
+            if retry_after is not None:
+                retry_ms = max(0, int(retry_after)) * 1000
+        except (TypeError, ValueError):
+            retry_ms = None
+        if retry_ms is not None:
+            return max(retry_ms, backoff)
+        return backoff + self._jitter()
+
+
+# Shared by translate() and google_spell.check() -- see the class
+# docstring; upstream shares one tracker between both services.
+ENDPOINT_HEALTH = _GoogleEndpointHealth()
+
+
+def _google_api_key() -> str:
+    """General.GoogleTranslateApiKey -- the plugins/google-services
+    ``translateApiKey`` secret (optional Cloud Translation quota)."""
+    try:
+        from qtranslate import config as _C
+        return str((_C.load() or {}).get("General", {})
+                   .get("GoogleTranslateApiKey", "") or "")
+    except Exception:
+        return ""
+
+
+def _official_translate(text: str, sl: str, tl: str, api_key: str) -> str:
+    """GoogleTranslatorService.translateWithOfficialAPI:
+    POST translation.googleapis.com/language/translate/v2?key=...
+    ``source`` is omitted for auto (the API rejects "auto")."""
+    body = {"q": text, "target": tl, "format": "text"}
+    if sl and sl != "auto":
+        body["source"] = sl
+    req = urllib.request.Request(
+        "https://translation.googleapis.com/language/translate/v2?key="
+        + urllib.parse.quote(api_key),
+        data=json.dumps(body).encode(),
+        headers={"Content-Type": "application/json; charset=utf-8"})
+    with common.http_open(req) as r:
+        obj = json.loads(r.read().decode("utf-8"))
+    translations = ((obj.get("data") or {}).get("translations")) or []
+    if not translations:
+        raise ValueError("no translation in official response")
+    return translations[0].get("translatedText") or ""
 
 
 def listen_url(text: str, lang: str = "en", slow: bool = False) -> str:

@@ -144,6 +144,9 @@ DEFAULT_APPEARANCE = {
     "PopupIcons": 30, "ColorText": 0, "PopupAutoFocus": False,
     "ThemeName": "", "PopupAutoPos": True, "PopupTimeout": 0,
     "ColorBack": 15790320,
+    # Menu-181 "ClosePopupsOnClickOutside" (.tmp PopupsPanel, default
+    # on) and the .tmp AppearancePanel uiScale (75-300, step 25).
+    "ClosePopupsOnClickOutside": True, "UiScale": 100,
 }
 DEFAULT_ADVANCED = {
     "EnableSlowerListening": True, "OcrApiKey": "",
@@ -153,7 +156,11 @@ DEFAULT_ADVANCED = {
     "RemoveLineBreaks": False, "PreferredDomain": "com",
     "GoogleDomain": "com",
 }
-DEFAULT_INTERNET = {"Timeout": 10000}
+# .tmp NetworkConfig defaults: retry on, 2 retries, 1s initial delay,
+# per-host timeout overrides keyed by hostname (seconds).
+DEFAULT_INTERNET = {"Timeout": 10000, "RetryEnabled": True,
+                    "MaxRetries": 2, "RetryDelayMs": 1000,
+                    "HostTimeouts": {}}
 DEFAULT_PROXY = {"ProxyType": 0, "Scheme": 0, "Host": "", "Port": 0,
                  "Username": "", "Password": ""}
 
@@ -304,6 +311,10 @@ def default_config() -> dict:
         },
         "Advanced": dict(DEFAULT_ADVANCED),
         "Appearance": dict(DEFAULT_APPEARANCE),
+        # .tmp imageSearch* fields (qt/image_search.py reads them via
+        # setdefault; declared here so a fresh Options.json is complete).
+        "ImageSearch": {"AutoPosition": True, "Transparency": 5,
+                        "LastKnownPosition": "", "LastKnownSize": ""},
         "Internet": dict(DEFAULT_INTERNET),
         "HotKeys": {
             "EnableHotKeys": True,
@@ -369,6 +380,27 @@ def default_config() -> dict:
             "ShowTopPane": True,
             "ShowMiddlePane": True,
             "ShowServicesPane": True,
+            # Menu-181 toggles (native ids 0x8063/0x8077/0x8075) and
+            # the startup-action group (85-88) plus its quit-time
+            # persistence key; editor-font split (.tmp
+            # editorFontConfig). See RE_COVERAGE_CHECKLIST legacy-menu
+            # pass for semantics.
+            "ClearInputOnDragDrop": True,
+            "AutoCleanupTranslation": False,
+            "SaveContentsOnExit": True,
+            # .tmp Configuration.dictionaryAutoSource /
+            # isDictionaryAutoPopupEnabled (AutoLookupCoordinator gates
+            # the whole auto-lookup -- inline gloss AND the visible
+            # dictionary panel refresh -- on the popup flag).
+            "DictionaryAutoSource": "TRANSLATED",
+            # .tmp StandardOptions.SUMMARY_LENGTH / REWRITE_STYLE --
+            # the extra-output pane's AI modes read these verbatim.
+            "SummaryLength": "MEDIUM",
+            "RewriteStyle": "FORMAL",
+            "DictionaryAutoPopup": True,
+            "LastWindowVisible": False,
+            "EditorFontName": "",
+            "EditorTextSize": 0,
             # Menu-1 toggle consumed by main_window's instant-translate
             # debounce (.tmp observeInstantTranslation, 350 ms).
             "InstantTranslation": False,

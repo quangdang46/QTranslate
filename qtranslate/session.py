@@ -4,10 +4,22 @@ before calling serviceTranslateRequest (see docs/NATIVE_ARCH.md, UtilsDispatch).
 This module reproduces that bootstrap step with plain urllib + regex so the
 Python ports of Microsoft/Promt/Baidu/Youdao can run standalone.
 """
+import datetime
+import email.utils
+import random
 import re
+import socket
+import time
+import urllib.error
+import urllib.parse
 import urllib.request
 
 _UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+
+# .tmp KtorHttpClient retry contract: 429 retries any method; 5xx only
+# for RFC 9110-idempotent methods (a retried POST could bill twice).
+_IDEMPOTENT_METHODS = {"GET", "HEAD", "OPTIONS", "PUT", "DELETE"}
+_MAX_RETRY_AFTER_SECONDS = 600
 
 
 def net_options() -> dict:
@@ -21,13 +33,36 @@ def net_options() -> dict:
         from qtranslate import config as _C
         cfg = _C.load()
     except Exception:
-        return {"timeout": 10.0, "proxy": None}
-    inet = cfg.get("Internet", {})
-    px = cfg.get("Proxy", {})
+        cfg = {}
+        inet, px = {}, {}
+    else:
+        inet = cfg.get("Internet", {})
+        px = cfg.get("Proxy", {})
     try:
         timeout = float(inet.get("Timeout", 10000)) / 1000.0
     except Exception:
         timeout = 10.0
+    # .tmp NetworkConfig: shared retry policy for every provider.
+    # RetryEnabled/MaxRetries/RetryDelayMs/HostTimeouts are the port's
+    # keys for upstream's retryEnabled/maxRetries/
+    # retryInitialDelaySeconds/hostTimeoutSeconds.
+    try:
+        retry_enabled = bool(inet.get("RetryEnabled", True))
+    except Exception:
+        retry_enabled = True
+    try:
+        max_retries = max(0, min(10, int(inet.get("MaxRetries", 2))))
+    except Exception:
+        max_retries = 2
+    try:
+        retry_delay = max(0.1, float(inet.get("RetryDelayMs", 1000))
+                          / 1000.0)
+    except Exception:
+        retry_delay = 1.0
+    try:
+        host_timeouts = dict(inet.get("HostTimeouts") or {})
+    except Exception:
+        host_timeouts = {}
     proxy = None
     try:
         # Native ProxyType (W11/1135): 0=system, 1=none, 2=manual,
@@ -48,24 +83,108 @@ def net_options() -> dict:
             proxy = f"{scheme}://{auth}{host}:{port}"
     except Exception:
         proxy = None
-    return {"timeout": timeout, "proxy": proxy}
+    return {"timeout": timeout, "proxy": proxy,
+            "retry_enabled": retry_enabled, "max_retries": max_retries,
+            "retry_delay": retry_delay, "host_timeouts": host_timeouts}
+
+
+def _host_timeout(opts: dict, url: str):
+    """.tmp hostTimeoutSeconds: per-host request timeout override, in
+    seconds. Returns None when the URL's host names no override."""
+    try:
+        host = urllib.parse.urlparse(url).hostname or ""
+        secs = (opts.get("host_timeouts") or {}).get(host)
+        if secs is not None:
+            return max(1.0, float(secs))
+    except Exception:
+        pass
+    return None
+
+
+def _retry_after_seconds(err: urllib.error.HTTPError):
+    """Retry-After in whole seconds, capped at .tmp's 600. Accepts the
+    delta-seconds and HTTP-date forms; anything else is no hint."""
+    try:
+        raw = (err.headers or {}).get("Retry-After")
+    except Exception:
+        raw = None
+    if not raw:
+        return None
+    raw = raw.strip()
+    try:
+        secs = int(raw)
+        if secs >= 0:
+            return min(secs, _MAX_RETRY_AFTER_SECONDS)
+    except ValueError:
+        pass
+    try:
+        when = email.utils.parsedate_to_datetime(raw)
+        secs = (when - datetime.datetime.now(
+            when.tzinfo)).total_seconds()
+        if secs > 0:
+            return min(int(secs), _MAX_RETRY_AFTER_SECONDS)
+    except Exception:
+        pass
+    return None
+
+
+def _retryable(err: urllib.error.HTTPError, method: str) -> bool:
+    """.tmp retryIf: 429 retries ANY method (the server refused without
+    acting); 5xx retries only idempotent methods -- replaying a POST
+    could bill or duplicate the work."""
+    code = getattr(err, "code", 0) or 0
+    return code == 429 or (500 <= code <= 599
+                           and method.upper() in _IDEMPOTENT_METHODS)
+
+
+def _open_once(req, opener, proxy, timeout):
+    if opener is not None:
+        return opener.open(req, timeout=timeout)
+    if proxy:
+        import urllib.parse as _up
+        scheme = _up.urlparse(proxy).scheme
+        ph = {scheme: proxy}
+        return urllib.request.build_opener(
+            urllib.request.ProxyHandler(ph)).open(
+                req, timeout=timeout)
+    return urllib.request.urlopen(req, timeout=timeout)
 
 
 def _net_open(req, opener=None, data=None):
-    """Open with Options.json Timeout + Proxy (native curl behavior)."""
+    """Open with Options.json Timeout + Proxy (native curl behavior),
+    plus .tmp's shared retry policy: exponential backoff honouring
+    Retry-After, 429 any-method / 5xx idempotent-only."""
     opts = net_options()
     if data is not None:
         req.data = data
-    if opener is not None:
-        return opener.open(req, timeout=opts["timeout"])
-    if opts["proxy"]:
-        import urllib.parse as _up
-        scheme = _up.urlparse(opts["proxy"]).scheme
-        ph = {scheme: opts["proxy"]}
-        return urllib.request.build_opener(
-            urllib.request.ProxyHandler(ph)).open(
-                req, timeout=opts["timeout"])
-    return urllib.request.urlopen(req, timeout=opts["timeout"])
+    timeout = _host_timeout(opts, req.full_url) or opts["timeout"]
+    attempts = 1 + (opts["max_retries"] if opts["retry_enabled"] else 0)
+    proxy = opts["proxy"]
+    method = (req.get_method() or "GET").upper()
+    for i in range(attempts):
+        try:
+            return _open_once(req, opener, proxy, timeout)
+        except urllib.error.HTTPError as e:
+            if i == attempts - 1 or not _retryable(e, method):
+                raise
+            wait = _retry_after_seconds(e)
+            if wait is None:
+                # exponentialDelay: base * 2^attempt + jitter, like
+                # upstream's "twice the last, plus jitter".
+                wait = (opts["retry_delay"] * (2 ** i)
+                        + random.uniform(0, opts["retry_delay"] * 0.25))
+            time.sleep(min(wait, _MAX_RETRY_AFTER_SECONDS))
+        except (urllib.error.URLError, TimeoutError, ConnectionError,
+                socket.timeout, OSError) as e:
+            # Network-level failures (DNS, refused, reset, read timeout)
+            # are safe to retry for every method -- nothing reached the
+            # server to duplicate. HTTPError is a URLError subclass and
+            # is handled above, so this only sees transport failures.
+            if i == attempts - 1:
+                raise
+            wait = (opts["retry_delay"] * (2 ** i)
+                    + random.uniform(0, opts["retry_delay"] * 0.25))
+            time.sleep(min(wait, _MAX_RETRY_AFTER_SECONDS))
 
 
 def _jar_opener():
@@ -134,6 +253,11 @@ def bing_session() -> dict:
     # and tlookupv3 (.2) — keep both, defaulting live.
     _iids = re.findall(r'data-iid="(translator\.[\w.]+)"', html)
     iid = _iids[0] if _iids else "translator.5023"
+    # tspellcheckv3 wants the page-embedded MUID as its ONLY cookie
+    # (.tmp BingAuthManager.parseAuthFromHtml scrapes `muid":"..."`;
+    # verified live 2026-11: the full Set-Cookie jar answers
+    # {"correctedText":""}, MUID alone returns corrections).
+    _muid = re.search(r'muid":\s*"(.*?)"', html)
     if not ig or not abuse:
         raise RuntimeError("Could not scrape Bing session (page layout changed?)")
     return {
@@ -145,6 +269,7 @@ def bing_session() -> dict:
         "cookie": cookie,
         "iid": iid,
         "iids": _iids,
+        "muid": _muid.group(1) if _muid else "",
         "opener": opener,  # reuse: same cookie jar for the translate call
     }
 

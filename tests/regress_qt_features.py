@@ -46,6 +46,12 @@ try:
     import tempfile as _tf, os as _os
     _appmod.HISTORY_PATH = _os.path.join(
         _tf.mkdtemp(prefix="qt_feat_"), "History.json")
+    # Same for Options.json: tray/menu labels follow the UI-language
+    # pack, so pin a throwaway English config (also keeps any
+    # write-through off the user's real file).
+    from qtranslate import config as _C
+    _C.DEFAULT_PATH = _os.path.join(
+        _tf.mkdtemp(prefix="qt_feat_opt_"), "Options.json")
     from qtranslate.qt.main_window import MainWindow
 except Exception as exc:                       # noqa: BLE001
     print("SKIP regress_qt_features: the Qt front end does not import (%s)" % exc)
@@ -174,12 +180,13 @@ try:
         app._persist_language = _real_persist
         app.on_go = _real_go
 
-    # --- 4. the Options dialog and its ten pages -------------------------
-    # Nine native pages plus Extensions, the port's own (native has no
-    # extension system to copy the page from).
+    # --- 4. the Options dialog and its eleven pages ----------------------
+    # Nine native pages plus Extensions and Comparison, the port's own
+    # (native has neither an extension system nor a comparison feature
+    # to copy the pages from).
     from qtranslate.qt import options as opt
 
-    ck("the Options dialog knows all ten pages", len(opt.PAGES) == 10,
+    ck("the Options dialog knows all eleven pages", len(opt.PAGES) == 11,
        str(sorted(opt.PAGES)))
     for name, cls in sorted(opt.PAGES.items()):
         try:
@@ -194,8 +201,17 @@ try:
            "%s vs %s" % ((page.width(), page.height()), cls.SIZE))
     ck("the Hotkeys page is the one with its own size",
        opt.HotkeysPage.SIZE == (650, 362), str(opt.HotkeysPage.SIZE))
-    ck("the other pages share the Options size",
-       opt.AppearancePage.SIZE == (644, 362), str(opt.AppearancePage.SIZE))
+    # Pages with port-owned groups carry their own SIZE (the native
+    # capture left no room): Basics/Advanced/Languages/Services grew
+    # for close-action, API keys, rules/pins, presets; Appearance grew
+    # for the image-search + outside-click rows.
+    ck("grown pages keep their own sizes",
+       opt.AppearancePage.SIZE == (644, 536)
+       and opt.LanguagesPage.SIZE == (644, 512)
+       and opt.ServicesPage.SIZE == (644, 486),
+       "%s %s %s" % (opt.AppearancePage.SIZE,
+                     opt.LanguagesPage.SIZE,
+                     opt.ServicesPage.SIZE))
 
     # The sidebar swaps the body IN PLACE: the same window, the same
     # sidebar, the page's own widgets replaced. (It used to open a new
@@ -222,8 +238,8 @@ try:
     app.qapp.processEvents()
     ck("the page can be swapped back", basics._page_name == "Basics",
        basics._page_name)
-    ck("the window keeps the shared Options size after the swap",
-       (basics.width(), basics.height()) == (644, 362),
+    ck("the window keeps the page's own Options size after the swap",
+       (basics.width(), basics.height()) == opt.BasicsPage.SIZE,
        "%dx%d" % (basics.width(), basics.height()))
 
     # --- 5. the other windows -------------------------------------------

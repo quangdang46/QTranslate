@@ -35,6 +35,20 @@ class BasicsPage(OptionsBase):
 
     SEL = 0
 
+    # The "Translation" + "Window" groups (auto-copy mode, upstream
+    # TranslationPanel; close-button behavior, upstream LayoutPanel)
+    # need 90px more than the native capture left at the bottom; the
+    # page and its chrome grow by the same delta (AdvancedPage sets
+    # the precedent).
+    SIZE = (644, 452)
+    CHROME = dict(OptionsBase.CHROME)
+    CHROME["panel"] = (4, 29, 142, 414)
+    CHROME["shadow_row"] = (3, 443, 144, 1)
+    CHROME["rule"] = (448, 3, 638)
+    CHROME["buttons"] = {k: (x, y + 90, w, sh)
+                         for k, (x, y, w, sh)
+                         in OptionsBase.CHROME["buttons"].items()}
+
     def build(self):
         general = cfg_section("General")
         # AutoDetection goes through the merged read: a partial
@@ -136,3 +150,79 @@ class BasicsPage(OptionsBase):
               bool(general.get("ExpandHistoryItems", False))
               ).toggled.connect(
             lambda v: cfg_set("General", "ExpandHistoryItems", bool(v)))
+
+        # OCR settings that had readers but no writer: SaveImagePath is
+        # honoured by the OCR pick window and window (empty = temp dir);
+        # OcrLanguage is the Google-language index (17 = en) the OCR
+        # window's own picker also edits.
+        from .base import field
+        ocr = cfg_section("Ocr")
+        group(self, 152, 292, 484, 62, "OCR")
+        label(self, 158, 314, "Save images to:")
+        f_dir = field(self, 387, 305, 238, 20,
+                      str(ocr.get("SaveImagePath", "")))
+        f_dir.setPlaceholderText("(temporary folder)")
+        f_dir.editingFinished.connect(
+            lambda: cfg_set("Ocr", "SaveImagePath", f_dir.text().strip()))
+        label(self, 158, 340, "OCR language:")
+        from qtranslate.services.google_translate import SUPPORTED_LANGS \
+            as _GL
+        _ocr_langs = [(i, c) for i, c in enumerate(_GL)
+                      if isinstance(c, str) and c != "auto"]
+        _names = [c for _, c in _ocr_langs]
+        try:
+            _cur_i = int(ocr.get("OcrLanguage", 17))
+        except Exception:
+            _cur_i = 17
+        _cur = _GL[_cur_i] if 0 <= _cur_i < len(_GL) else "en"
+        c_lang = combo(self, 387, 331, 238,
+                       _cur if _cur in _names else "en", values=_names)
+        c_lang.currentTextChanged.connect(
+            lambda v: cfg_set(
+                "Ocr", "OcrLanguage",
+                next((i for i, c in _ocr_langs if c == v), 17)))
+
+        # .tmp TranslationPanel autoCopyTranslation: OFF /
+        # QUICK_TRANSLATE_ONLY / ALL. Stored under General so the
+        # merged read picks it up like every other port-owned key.
+        group(self, 152, 366, 484, 40, "Translation")
+        label(self, 158, 388, "Auto-copy translation:")
+        _modes = [("off", "Off"),
+                  ("quick", "Quick translations only"),
+                  ("all", "All translations")]
+        c_copy = combo(self, 387, 379, 238,
+                       dict(_modes).get(
+                           str(general.get("AutoCopyTranslation",
+                                           "off")).lower(), "Off"),
+                       values=[v for _k, v in _modes])
+        c_copy.currentTextChanged.connect(
+            lambda v: cfg_set(
+                "General", "AutoCopyTranslation",
+                next((k for k, vv in _modes if vv == v), "off")))
+
+        # .tmp LayoutPanel closeButtonBehavior: ASK (default upstream)
+        # / MINIMIZE_TO_TRAY / EXIT. Stored as General.CloseAction;
+        # absent, closeEvent derives it from the native
+        # MinimizeToTrayOnClose flag so existing configs keep working.
+        group(self, 152, 410, 484, 32, "Window")
+        label(self, 158, 430, "Close button:")
+        _close_modes = [("ask", "Ask to minimize or exit"),
+                        ("minimize", "Minimize to tray"),
+                        ("exit", "Exit")]
+        try:
+            _cur_close = str(general.get("CloseAction", "")
+                             or "").lower()
+        except Exception:
+            _cur_close = ""
+        if _cur_close not in ("ask", "minimize", "exit"):
+            _cur_close = ("minimize" if general.get(
+                "MinimizeToTrayOnClose", False) else "exit")
+        c_close = combo(self, 387, 421, 238,
+                        dict(_close_modes).get(_cur_close,
+                                               "Exit"),
+                        values=[v for _k, v in _close_modes])
+        c_close.currentTextChanged.connect(
+            lambda v: cfg_set(
+                "General", "CloseAction",
+                next((k for k, vv in _close_modes if vv == v),
+                     "exit")))

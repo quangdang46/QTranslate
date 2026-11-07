@@ -30,10 +30,10 @@ from PySide6.QtWidgets import QMenu
 
 
 def pack_labels(menu_id: int) -> dict:
-    """``{item_id: text}`` for one native menu, from the English pack."""
+    """``{item_id: text}`` for one native menu, in the UI language."""
     try:
         from qtranslate import locale
-        pack = locale.load_pack("English")
+        pack = locale.ui_pack()
         return {k: v for k, v in locale.menu_labels(pack, menu_id)
                 if isinstance(k, int)}
     except Exception:

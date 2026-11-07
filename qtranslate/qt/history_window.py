@@ -61,7 +61,11 @@ class HistoryWindow(Base):
     def __init__(self, app):
         super().__init__()
         self.app = app
-        self.setWindowTitle("History")
+        try:
+            from qtranslate.locale import ui_caption
+            self.setWindowTitle(ui_caption(3, "History"))
+        except Exception:
+            self.setWindowTitle("History")
         self._sel = -1
         self._build()
 
@@ -124,8 +128,8 @@ class HistoryWindow(Base):
         ent = list(self.app.history)[real]
         m = QMenu(self)
         try:
-            from qtranslate.locale import load_pack
-            pack = load_pack("English")
+            from qtranslate.locale import ui_pack
+            pack = ui_pack()
         except Exception:
             pack = {}
         ops = {"open": self._open_entry, "copy_tr": self._copy_tr,

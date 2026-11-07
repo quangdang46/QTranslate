@@ -339,7 +339,7 @@ import re as _re
 _pgcls = {}
 for _name in opts.PAGES:
     _pgcls[_name] = opts.PAGES[_name].SEL
-check("pages-9", len(opts.PAGES) == 10, str(len(opts.PAGES)))
+check("pages-9", len(opts.PAGES) == 11, str(len(opts.PAGES)))
 # The TEMPLATE order is Basics, Internet, Services, Languages,
 # Appearance, Exceptions, Hotkeys, Advanced, Updates -- but that is the
 # order the dialog TEMPLATE lists the pages in, not the order the
@@ -350,13 +350,15 @@ check("pages-9", len(opts.PAGES) == 10, str(len(opts.PAGES)))
 check("pages-order",
       list(_pgcls) == ["Basics", "Hotkeys", "Internet", "Services",
                        "Languages", "Appearance", "Exceptions",
-                       "Advanced", "Updates", "Extensions"],
+                       "Advanced", "Updates", "Extensions",
+                       "Comparison"],
       str(list(_pgcls)))
 check("pages-ids",
       [_pgcls[p] for p in ("Basics", "Hotkeys", "Internet", "Services",
                            "Languages", "Appearance", "Exceptions",
-                           "Advanced", "Updates", "Extensions")]
-      == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                           "Advanced", "Updates", "Extensions",
+                           "Comparison")]
+      == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
       str([_pgcls[p] for p in ("Basics", "Hotkeys", "Internet", "Services",
                                "Languages", "Appearance", "Exceptions",
                                "Advanced", "Updates", "Extensions")]))

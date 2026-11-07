@@ -57,6 +57,38 @@ ck("the view declares the pane font through the shared resolver",
 ck("the view keeps the same fallback face",
    '("Tahoma", 9' in _view, _view[:200])
 
+# ---- .tmp uiFont/editorFont split (editorFontConfig) ----
+from qtranslate.fonts import resolve_editor_font
+
+# Empty editor name inherits the UI font -- pre-split configs unchanged.
+ck("editor font inherits UI font when unset",
+   resolve_editor_font({"General": {"FontName": "Consolas",
+                                    "TextSize": 11}}, platform="win32")
+   == ("Consolas", 11))
+ck("editor font name+size honored",
+   resolve_editor_font({"General": {"EditorFontName": "Menlo",
+                                    "EditorTextSize": "14",
+                                    "FontName": "Consolas",
+                                    "TextSize": "11"}},
+                       platform="darwin") == ("Menlo", 14))
+ck("editor name alone falls back to UI size",
+   resolve_editor_font({"General": {"EditorFontName": "Menlo",
+                                    "TextSize": "12"}},
+                       platform="darwin") == ("Menlo", 12))
+ck("editor size clamps at 6",
+   resolve_editor_font({"General": {"EditorFontName": "Menlo",
+                                    "EditorTextSize": "2"}},
+                       platform="darwin") == ("Menlo", 6))
+ck("garbage editor size falls back to TextSize",
+   resolve_editor_font({"General": {"EditorFontName": "Menlo",
+                                    "EditorTextSize": "huge",
+                                    "TextSize": "13"}},
+                       platform="darwin") == ("Menlo", 13))
+# The Qt panes consume the editor resolution (not the UI one).
+from qtranslate.qt.main_window import _pane_font
+ck("_pane_font returns the measured triple",
+   len(_pane_font()) == 3 and _pane_font()[2] >= 6)
+
 if fails:
     print("FAIL %d" % len(fails))
     for f in fails:

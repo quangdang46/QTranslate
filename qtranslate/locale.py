@@ -143,3 +143,68 @@ if __name__ == "__main__":
     print(vi["LanguageNativeName"], "|", t(vi, "Strings", 174))
     print("dialog 1 caption:", window_caption(vi, 1))
     print("menu 1 first label:", menu_labels(vi, 1)[0])
+
+
+def ui_pack(locales_dir: str = LOCALES_DIR) -> dict:
+    """The pack for the configured UI language (``General.LocaleFoderName``).
+
+    Every consumer that used to hardcode ``load_pack("English")`` goes
+    through here so the Basics page's language combo actually changes
+    the labels. A missing/garbage setting or unreadable pack falls back
+    to English -- an untranslated UI is the native behaviour for a
+    broken pack too.
+    """
+    name = "English"
+    try:
+        from qtranslate import config as _C
+        name = str((_C.load() or {}).get("General", {})
+                   .get("LocaleFoderName") or "English")
+    except Exception:
+        pass
+    try:
+        return load_pack(name, locales_dir)
+    except Exception:
+        if name != "English":
+            try:
+                return load_pack("English", locales_dir)
+            except Exception:
+                pass
+        return {}
+
+
+# The Options page captions live in the Windows section under ids 10-18
+# (Basics..Updates, the nine native pages). Port-owned pages --
+# Extensions, Comparison -- have no native id and stay English.
+PAGE_CAPTION_IDS = {"Basics": 10, "Internet": 11, "Services": 12,
+                    "Languages": 13, "Appearance": 14, "Exceptions": 15,
+                    "Hotkeys": 16, "Advanced": 17, "Updates": 18}
+
+
+def ui_caption(dialog_id: int, default: str = "") -> str:
+    """Window/page caption ``dialog_id`` in the configured UI language."""
+    return window_caption(ui_pack(), dialog_id, default)
+
+
+def ui_page_caption(page_name: str) -> str:
+    """Sidebar caption for an Options page (English when unported)."""
+    did = PAGE_CAPTION_IDS.get(page_name)
+    return ui_caption(did, page_name) if did else page_name
+
+
+def ui_control_caption(dialog_id: int, control_id: int,
+                      default: str = "") -> str:
+    """A dialog control's caption (Windows section ``Controls`` pairs).
+
+    e.g. the Options dialog (id 2) carries ``[[1,"OK"],[2,"Cancel"],
+    [1049,"Apply"]]`` -- the three footer buttons.
+    """
+    try:
+        for member in ui_pack().get("Windows", ()):
+            if isinstance(member, dict) and member.get("Id") == dialog_id:
+                for pair in member.get("Controls", ()):
+                    if (isinstance(pair, list) and len(pair) > 1
+                            and pair[0] == control_id):
+                        return pair[1]
+    except Exception:
+        pass
+    return default
