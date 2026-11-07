@@ -685,6 +685,7 @@ class PopupWindow(QWidget):
         self._strip_icons = []
         self._strip_labels = []
         self._strip_names = []
+        self._strip_has_icon = []
         names = []
         try:
             names = self.app.ordered_services() if self.app else []
@@ -699,8 +700,11 @@ class PopupWindow(QWidget):
 
             ico = QLabel(w)
             icon_name = _strip_icon_name(name)
+            has_icon = False
             if icon_name:
-                ico.setPixmap(icons.pixmap("service_icons", icon_name))
+                pm = icons.pixmap("service_icons", icon_name)
+                has_icon = not pm.isNull()
+                ico.setPixmap(pm)
                 ico.setGeometry(65 * i + 4, 3, 16, 16)
 
             lab = QLabel(w)
@@ -721,6 +725,7 @@ class PopupWindow(QWidget):
             self._strip_icons.append(ico)
             self._strip_labels.append(lab)
             self._strip_names.append(name)
+            self._strip_has_icon.append(has_icon)
         self._paint_strip()
         return w
 
@@ -1104,10 +1109,27 @@ class PopupWindow(QWidget):
         reserved. Split from enterEvent because a popup that opens
         UNDER THE CURSOR never gets an enter event -- the operator's
         report (2026-10-24): the strip looked missing. ``showEvent``
-        checks the cursor itself now."""
-        for group in ("_strip_buttons", "_strip_icons", "_strip_labels"):
-            for w in getattr(self, group, None) or ():
-                (w.show if on else w.hide)()
+        checks the cursor itself now. The shown cells honour .tmp's
+        ``serviceSelectorAppearance``: ICONS_ONLY keeps the name only
+        when the service has no icon, TEXT_ONLY drops the icons."""
+        try:
+            from qtranslate import config as _C
+            mode = _C.service_selector_appearance()
+        except Exception:
+            mode = "ICONS_AND_TEXT"
+        for b, ico, lab, has_icon in zip(
+                getattr(self, "_strip_buttons", ()),
+                getattr(self, "_strip_icons", ()),
+                getattr(self, "_strip_labels", ()),
+                getattr(self, "_strip_has_icon", ())):
+            if not on:
+                b.hide()
+                ico.hide()
+                lab.hide()
+                continue
+            b.show()
+            ico.setVisible(mode != "TEXT_ONLY" and has_icon)
+            lab.setVisible(mode != "ICONS_ONLY" or not has_icon)
 
     def enterEvent(self, event):                # noqa: N802 (Qt name)
         self._hovering = True

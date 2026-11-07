@@ -325,6 +325,22 @@ All five were resolved and folded into `PROJECT_VISION.md`:
 > manifest's `settings_schema` does not declare is refused. Pinned by
 > `tests/regress_extensions_options.py` (21).
 
+> **PluginContext parity (landed 2026-11-07).** The api now covers the
+> portable subset of upstream's `PluginContext`: `api.data_dir` is a
+> per-extension directory under `<app data>/extensions_data/<id>/`
+> (created on access, id sanitised against traversal); `api.notify(
+> severity, title, message)` posts through a host-registered hook or
+> the optional `qtranslate.notify` module and honestly no-ops when
+> neither exists; `api.http_get(url)` / `api.http_post(url, data=…,
+> json=…)` are thin wrappers over `session._net_open`, so the user's
+> proxy/timeout/retry policy applies; and `api.on_load(fn)` /
+> `api.on_unload(fn)` / `api.on_settings_changed(fn)` are lifecycle
+> hooks mapped onto load, disable and `set_setting` (a raising
+> `on_load` fails the load fail-open). NOT ported, recorded as
+> divergences in `RE_COVERAGE_CHECKLIST.md`: `SecretStore` (no secrets
+> mechanism exists to scope), plugin localization, and JAR fingerprint
+> integrity. Pinned by `tests/regress_ext_api.py` (25).
+
 > **The SDK package (landed 2026-10-23).** `sdksrc/` is the standalone
 > `qtranslate-sdk` distribution: the contracts, `Result`, the slot names,
 > the language index and `FakeAPI`. It has no dependencies and imports no

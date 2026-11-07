@@ -15,9 +15,10 @@ from __future__ import annotations
 import threading
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFrame, QLabel, QTextEdit
+from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QPushButton,
+                               QTextEdit, QWidget)
 
-from qtranslate_style import DIM
+from qtranslate_style import ACCENT, BORDER, DIM
 
 from .context_menus import build as build_menu
 from .widgets import (Base, button, combo, field, icon, label, panel, put,
@@ -159,6 +160,25 @@ class DictionaryWindow(Base):
         self.out.setReadOnly(True)
         self.out.setStyleSheet("QTextEdit{background:transparent;border:none;}")
         put(self, self.out, 1, 56, 444, 250)
+        # The window's client geometry for the result pane, with and
+        # without the chip strip: while chips are up they take the top
+        # 22px of the result area and the pane shrinks to make room.
+        # (put() coordinates are screenshot coordinates; these are the
+        # client-space setGeometry() tuples.)
+        self._out_full = (0, 25, 444, 250)
+        self._out_chips = (0, 47, 444, 228)
+        self._chip_active = ""
+
+        # ---- the word-chip strip (.tmp DictionaryChipController) --------
+        # Multi-word input ("alpha, beta gamma") becomes one clickable
+        # chip per word; clicking a chip looks THAT word up. Hidden
+        # until a multi-word search needs it.
+        self.chip_strip = put(self, QWidget(), 1, 56, 444, 20)
+        chip_lay = QHBoxLayout(self.chip_strip)
+        chip_lay.setContentsMargins(0, 0, 0, 0)
+        chip_lay.setSpacing(4)
+        chip_lay.addStretch(1)
+        self.chip_strip.hide()
 
         # ---- the service strip (capture y 307..328) ---------------------
         services = self._services()
@@ -255,6 +275,25 @@ class DictionaryWindow(Base):
         word = self.inp.text().strip()
         if not word:
             return
+        # .tmp DictionaryPanel.triggerLookup: a multi-word field becomes
+        # a chip per word and the FIRST word is looked up; the field
+        # keeps the whole input. A single word (or one that parses to a
+        # single chip word) searches as before, with no chips.
+        from qtranslate import dictionary_search as _DS
+        words = _DS.parse_words(word)
+        if len(words) > 1:
+            self._show_chips(words)
+            self._chip_active = words[0]
+            self._paint_chips()
+            self._lookup(words[0])
+        else:
+            self._clear_chips()
+            self._lookup(word)
+
+    def _lookup(self, word):
+        """Run the dictionary lookup for ``word`` (the body of the old
+        ``do_search``): history append, service selection, worker
+        thread."""
         # A fresh (non-history) search appends to the walk list; stepping
         # with < > re-enters do_search with _qpos already set, so those
         # re-queries do not append duplicates.
@@ -315,6 +354,75 @@ class DictionaryWindow(Base):
             self.app._on_ui(_show)
 
         threading.Thread(target=work, daemon=True).start()
+
+    # ------------------------------------------------------------- chips
+    def _show_chips(self, words):
+        """One chip per word of a multi-word search (.tmp ``setup()``)."""
+        lay = self.chip_strip.layout()
+        while lay.count():
+            item = lay.takeAt(0)
+            w = item.widget()
+            if w is not None:
+                w.setParent(None)
+                w.deleteLater()
+        lay.addStretch(1)
+        for i, word in enumerate(words):
+            if i:
+                lay.addSpacing(4)
+            lay.addWidget(self._chip_button(word))
+        self.chip_strip.show()
+        self.out.setGeometry(*self._out_chips)
+
+    def _clear_chips(self):
+        lay = self.chip_strip.layout()
+        while lay.count():
+            item = lay.takeAt(0)
+            w = item.widget()
+            if w is not None:
+                w.setParent(None)
+                w.deleteLater()
+        lay.addStretch(1)
+        self._chip_active = ""
+        self.chip_strip.hide()
+        self.out.setGeometry(*self._out_full)
+
+    def _chip_button(self, word):
+        """One chip: a small button that looks ``word`` up on click
+        (.tmp's JToggleButton, minus the toggle -- the port keeps a
+        plain click)."""
+        b = QPushButton(word)
+        b.setObjectName("dictchip")
+        b.setCursor(Qt.PointingHandCursor)
+        b.setFocusPolicy(Qt.NoFocus)
+        b.setFixedHeight(18)
+        b.setFixedWidth(b.fontMetrics().horizontalAdvance(word) + 18)
+        b.setStyleSheet(
+            "QPushButton#dictchip{background:#f5f5f5;"
+            "border:1px solid %s;border-radius:8px;padding:0 8px;}"
+            "QPushButton#dictchip:hover{background:#e8e8e8;}"
+            "QPushButton#dictchip[selected=\"true\"]{"
+            "background:#e5f1fb;border-color:%s;}" % (BORDER, ACCENT))
+        b.setProperty("selected", "false")
+        b.clicked.connect(lambda _=False, w=word: self._chip_lookup(w))
+        return b
+
+    def _chip_lookup(self, word):
+        """A chip click: the field takes the word and THAT word alone is
+        looked up; the strip stays up so the other chips remain
+        clickable (.tmp's ``onWordSelected``)."""
+        self.inp.setText(word)
+        self._chip_active = word
+        self._paint_chips()
+        self._lookup(word)
+
+    def _paint_chips(self):
+        """Mark the chip for the word the last lookup asked for."""
+        for b in self.chip_strip.findChildren(QPushButton):
+            on = b.text() == self._chip_active
+            if b.property("selected") != ("true" if on else "false"):
+                b.setProperty("selected", "true" if on else "false")
+                b.style().unpolish(b)
+                b.style().polish(b)
 
     def _step_query(self, delta):
         """Walk the search history with the < > buttons."""

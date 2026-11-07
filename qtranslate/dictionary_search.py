@@ -69,6 +69,30 @@ def dictionary_language(cfg: dict | None = None) -> str:
     return code
 
 
+def parse_words(text: str, limit: int = 20) -> list:
+    """The word split behind the dictionary chip strip (.tmp
+    ``DictionaryChipController.parseWords``).
+
+    The input is split on commas and whitespace; a token becomes a chip
+    word only when it is at least two characters of letters,
+    apostrophes and hyphens. Duplicates collapse (first occurrence
+    wins) and the strip is capped at ``limit`` chips.
+    """
+    import re as _re
+    out = []
+    for tok in _re.split(r"[\s,]+", text or ""):
+        w = tok.strip()
+        if len(w) < 2:
+            continue
+        if not all(c.isalpha() or c in "'-" for c in w):
+            continue
+        if w not in out:
+            out.append(w)
+        if len(out) >= limit:
+            break
+    return out
+
+
 def service_key(display_name: str) -> str:
     """The registry key for a dictionary service's display name."""
     # Extension dictionaries (``api.register_dictionary``) have no

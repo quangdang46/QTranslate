@@ -135,6 +135,74 @@ HOTKEY_NAMES = [
     "HotKeyDictionary", "HotKeyHistory",
     "HotKeyPopupWindow", "HotKeyMainWindow",
 ]
+
+# Hotkey presets -- ported from .tmp's core/settings/data/HotkeyPresets.kt
+# and ui-swing HotkeyDraftOperations.replacePreset/clearForCustom.
+# LEGACY is HotkeyBinding.DEFAULTS (the classic QTranslate chords);
+# MODERN moves the GLOBAL actions to Ctrl+Shift+<key>; CUSTOM is every
+# binding cleared -- upstream's "start from scratch" choice, and the
+# state HotkeyPresets.identify reports for any hand-edited set.
+#
+# Only .tmp GLOBAL actions with a native HotKey* name appear here: the
+# LOCAL-scope .tmp actions already live as fixed QShortcuts in
+# qt/main_window.py, and binding them system-wide a second time would
+# fire both. HotKeyListenTranslation (the port's second listen gesture,
+# no .tmp action) stays unbound so the two never share a chord. Values
+# use the Options.json packing (mods << 8) | vk -- mods 1=Alt 2=Ctrl
+# 4=Shift 8=Win; bit15 is the "Double" prefix carried by HotKeyMainWindow.
+HOTKEY_PRESETS = {
+    "LEGACY": {
+        "HotKeyMainWindow": 0x8000,       # Double Ctrl, no chord
+        "HotKeyPopupWindow": 0x251,       # Ctrl+Q
+        "HotKeyListenText": 0x245,        # Ctrl+E
+        "HotKeyTextRecognition": 0x249,   # Ctrl+I
+        "HotKeyReplaceSelection": 0x654,  # Ctrl+Shift+T
+        "HotKeyDictionary": 0x244,        # Ctrl+D
+    },
+    "MODERN": {
+        "HotKeyMainWindow": 0x8000,
+        "HotKeyPopupWindow": 0x651,       # Ctrl+Shift+Q
+        "HotKeyListenText": 0x64C,        # Ctrl+Shift+L
+        "HotKeyTextRecognition": 0x64F,   # Ctrl+Shift+O
+        "HotKeyReplaceSelection": 0x652,  # Ctrl+Shift+R
+        "HotKeyDictionary": 0x644,        # Ctrl+Shift+D
+    },
+    # CUSTOM clears every binding, HotKeyMainWindow's Double prefix
+    # included (upstream clearForCustom drops isDoubleCtrlEnabled too).
+    "CUSTOM": {},
+}
+HOTKEY_PRESET_ORDER = ("LEGACY", "MODERN", "CUSTOM")
+
+
+def hotkey_preset_values(kind: str) -> dict:
+    """Every HotKey* name -> the preset's dword (0 = unbound)."""
+    preset = HOTKEY_PRESETS.get(kind) or {}
+    return {name: preset.get(name, 0) for name in HOTKEY_NAMES}
+
+
+def hotkey_preset_kind(hotkeys: dict) -> str:
+    """Which preset a HotKeys section's bindings match (.tmp
+    HotkeyPresets.identify): LEGACY or MODERN on an exact match over all
+    seventeen bindings, CUSTOM for anything else -- a hand-edited set
+    included."""
+    hk = hotkeys or {}
+    for kind in ("LEGACY", "MODERN"):
+        want = hotkey_preset_values(kind)
+        if all(int(hk.get(name, 0) or 0) == want[name]
+               for name in HOTKEY_NAMES):
+            return kind
+    return "CUSTOM"
+
+
+def apply_hotkey_preset(hotkeys: dict, kind: str) -> dict:
+    """A HotKeys section with the preset's bindings written over it
+    (.tmp HotkeyDraftOperations.replacePreset). CUSTOM clears every
+    binding. EnableHotKeys and any non-binding keys are preserved."""
+    out = dict(hotkeys or {})
+    out.update(hotkey_preset_values(kind))
+    return out
+
+
 # Full defaults verified vs real Options.json (missing keys fall back
 # via .get at use sites; these document the true native defaults).
 DEFAULT_APPEARANCE = {
@@ -319,28 +387,11 @@ def default_config() -> dict:
         "HotKeys": {
             "EnableHotKeys": True,
             # The native's own file carries ALL SEVENTEEN hotkey keys
-            # (EnableHotKeys plus these), and an unbound one is 0. The
-            # two the RE recovered with their codes are the replace-
-            # selection (Alt + W) and the popup (Ctrl + Q); the rest are
-            # unbound in the native's saved file, so they stay 0 rather
-            # than being invented here.
-            "HotKeySpeechInput": 0,
-            "HotKeyDictionaryClipboard": 0,
-            "HotKeyTextRecognition": 0,
-            "HotKeySwitchMouseMode": 0,
-            "HotKeyTranslateClipboardInMainWindow": 0,
-            "HotKeyTranslateClipboard": 0,
-            "HotKeyTranslateClipboardInPopupWindow": 0,
-            "HotKeyCopyTranslation": 0,
-            "HotKeyReplaceSelection": 343,
-            "HotKeyListenTranslation": 0,
-            "HotKeyConvertTextLayout": 0,
-            "HotKeyKeyboard": 0,
-            "HotKeyListenText": 0,
-            "HotKeyDictionary": 0,
-            "HotKeyHistory": 0,
-            "HotKeyPopupWindow": 593,
-            "HotKeyMainWindow": 0,
+            # (EnableHotKeys plus these), and an unbound one is 0. A
+            # fresh install starts on the LEGACY preset -- .tmp's own
+            # default (HotkeyBinding.DEFAULTS) -- so the Hotkeys page's
+            # preset combo identifies it as Legacy, not Custom.
+            **hotkey_preset_values("LEGACY"),
         },
         "OfflineDictionaries": [],
         "Ocr": {
@@ -380,6 +431,15 @@ def default_config() -> dict:
             "ShowTopPane": True,
             "ShowMiddlePane": True,
             "ShowServicesPane": True,
+            # .tmp toolbarVisibility.isHistoryBarVisible/
+            # isLanguageBarVisible (the back/forward pair and the
+            # language tool row; ShowServicesPane above is .tmp's
+            # isServicesPanelVisible under its native name) and
+            # Configuration.serviceSelectorAppearance -- the provider
+            # strip's icon/text mix, .tmp's own enum names.
+            "ShowHistoryBar": True,
+            "ShowLanguageBar": True,
+            "ServiceSelectorAppearance": "ICONS_AND_TEXT",
             # Menu-181 toggles (native ids 0x8063/0x8077/0x8075) and
             # the startup-action group (85-88) plus its quit-time
             # persistence key; editor-font split (.tmp
@@ -541,6 +601,16 @@ def expand_history_items() -> bool:
     entry to show its detail rows when set (default False, the native
     file's own value). Consumer: ``qt/history_window.py`` ``_fill``."""
     return bool(general_setting("ExpandHistoryItems", False))
+
+
+def service_selector_appearance(default: str = "ICONS_AND_TEXT") -> str:
+    """``General.ServiceSelectorAppearance`` -- .tmp's
+    ``ServiceSelectorAppearance`` (ICONS_ONLY / ICONS_AND_TEXT /
+    TEXT_ONLY): the provider strip's icon/text mix. Absent or unknown
+    values fall back to .tmp's own default, ICONS_AND_TEXT."""
+    v = str(general_setting("ServiceSelectorAppearance", default) or "")
+    return v if v in ("ICONS_ONLY", "ICONS_AND_TEXT", "TEXT_ONLY") \
+        else default
 
 
 def write_default_options_if_missing() -> None:

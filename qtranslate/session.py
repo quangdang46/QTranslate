@@ -150,14 +150,20 @@ def _open_once(req, opener, proxy, timeout):
     return urllib.request.urlopen(req, timeout=timeout)
 
 
-def _net_open(req, opener=None, data=None):
+def _net_open(req, opener=None, data=None, timeout=None):
     """Open with Options.json Timeout + Proxy (native curl behavior),
     plus .tmp's shared retry policy: exponential backoff honouring
-    Retry-After, 429 any-method / 5xx idempotent-only."""
+    Retry-After, 429 any-method / 5xx idempotent-only.
+
+    ``timeout`` (seconds) overrides the configured per-request timeout
+    for this one call -- the extension HTTP helpers use it; every other
+    caller leaves it None and gets the configured value.
+    """
     opts = net_options()
     if data is not None:
         req.data = data
-    timeout = _host_timeout(opts, req.full_url) or opts["timeout"]
+    if timeout is None:
+        timeout = _host_timeout(opts, req.full_url) or opts["timeout"]
     attempts = 1 + (opts["max_retries"] if opts["retry_enabled"] else 0)
     proxy = opts["proxy"]
     method = (req.get_method() or "GET").upper()

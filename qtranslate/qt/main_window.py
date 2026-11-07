@@ -406,6 +406,10 @@ class MainWindow(Base):
 
         # ---- the provider strip (capture y 397..418) --------------------
         self.tabs = []
+        # (button, icon, label, has_icon) per cell -- .tmp's
+        # serviceSelectorAppearance picks which of icon/text each cell
+        # shows; the widgets are siblings of the button, not children.
+        self._strip_cells = []
         names = app.ordered_services()
         for i, name in enumerate(names):
             self.tabs.append(self._strip_button(i, name, len(names)))
@@ -512,13 +516,22 @@ class MainWindow(Base):
         top = bool(general.get("ShowTopPane", True))
         middle = bool(general.get("ShowMiddlePane", True))
         services = bool(general.get("ShowServicesPane", True))
-        for widget in (self.src, getattr(self, "cmb_src", None),
+        # .tmp toolbarVisibility: isLanguageBarVisible hides the whole
+        # tool row (.tmp's LanguageSelectionBar: clear, source, swap,
+        # target, translate), isHistoryBarVisible the back/forward pair
+        # (its TranslationHistoryBar's navigation half -- the port has
+        # no status line or image/document buttons to hide).
+        langbar = bool(general.get("ShowLanguageBar", True))
+        histbar = bool(general.get("ShowHistoryBar", True))
+        if self.src is not None:
+            self.src.setVisible(top)
+        for widget in (getattr(self, "cmb_src", None),
                        getattr(self, "cmb_tgt", None),
                        getattr(self, "btn_new", None),
                        getattr(self, "btn_swap", None),
                        getattr(self, "btn_go", None)):
             if widget is not None:
-                widget.setVisible(top)
+                widget.setVisible(top and langbar)
         for widget in (getattr(self, "result_box", None) or self.out,):
             widget.setVisible(middle)
         for widget in getattr(self, "tabs", ()) or ():
@@ -559,6 +572,30 @@ class MainWindow(Base):
                     child.setVisible(services)
         except Exception:
             pass
+        for w in (getattr(self, "btn_back", None),
+                  getattr(self, "btn_fwd", None)):
+            if w is not None:
+                w.setVisible(histbar)
+        self._apply_selector_appearance(services)
+
+    def _apply_selector_appearance(self, services_visible=True):
+        """.tmp ``serviceSelectorAppearance`` on the provider strip:
+        ICONS_ONLY shows the icon alone (the name stays when the
+        service has no icon, like .tmp's rebuildClassic), TEXT_ONLY
+        drops the icons, ICONS_AND_TEXT keeps both."""
+        try:
+            from qtranslate import config
+            mode = config.service_selector_appearance()
+        except Exception:
+            mode = "ICONS_AND_TEXT"
+        for _b, ico, lab, has_icon in getattr(self, "_strip_cells", ()):
+            try:
+                ico.setVisible(bool(services_visible)
+                               and mode != "TEXT_ONLY" and has_icon)
+                lab.setVisible(bool(services_visible)
+                               and (mode != "ICONS_ONLY" or not has_icon))
+            except Exception:
+                pass
 
     # The panel strips: pane slot -> the rect the strip is docked at, in
     # the window's client coordinates. The top pane's strip stops short
@@ -831,11 +868,15 @@ class MainWindow(Base):
         put(self, b, x, 397, w, 22)
         b.setProperty("service", name)
         b.clicked.connect(lambda _c=False, n=name: self.app.switch_service(n))
-        icon(self, x + 3, 400, "service_icons", STRIP_ICONS.get(name, name))
+        icon_name = STRIP_ICONS.get(name, name)
+        ico = icon(self, x + 3, 400, "service_icons", icon_name)
         lab = label(self, x + 27, 408, self._strip_label(name, w))
         lab.setFixedWidth(w - 30)
         lab.setProperty("service", name)
         lab.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        self._strip_cells.append(
+            (b, ico, lab,
+             not icons.pixmap("service_icons", icon_name).isNull()))
         return b
 
     def _strip_label(self, name, width):

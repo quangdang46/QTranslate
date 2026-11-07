@@ -25,7 +25,7 @@ from PySide6.QtWidgets import QMessageBox
 
 from qtranslate import config as _C
 
-from .base import OptionsBase, cfg_section, cfg_set, check, label
+from .base import OptionsBase, cfg_section, cfg_set, check, combo, label
 from ..widgets import panel, rect
 
 from qtranslate_style import FACE, THUMB
@@ -248,6 +248,50 @@ def _conflicting_key(key, code):
     return None
 
 
+# .tmp's preset combo labels (embedded_en.toml preset_label /
+# preset_legacy / preset_modern / preset_custom); the kind is the
+# config.HOTKEY_PRESETS name. The shown preset is identified from the
+# bindings themselves, so a hand-edited set reports Custom like
+# upstream's HotkeyPresets.identify.
+_PRESET_LABELS = {"LEGACY": "Legacy QTranslate", "MODERN": "Modern",
+                  "CUSTOM": "Custom"}
+_PRESET_KINDS = {text: kind for kind, text in _PRESET_LABELS.items()}
+
+
+def _reregister(shell):
+    """Re-register so new bindings are live without a restart."""
+    try:
+        from .. import hotkeys as _HK
+        app = getattr(shell, "app", None)
+        _HK.uninstall()
+        if app is not None:
+            app.hotkeys = _HK.install(app)
+    except Exception:
+        pass
+
+
+def _apply_preset(shell, kind):
+    """Bulk-rebind every HotKey* to the preset (.tmp
+    HotkeyDraftOperations.replacePreset), persist, re-register and
+    repaint the rows -- the same tail _save_binding runs for one key."""
+    try:
+        cfg = _C.load() or {}
+        cfg["HotKeys"] = _C.apply_hotkey_preset(
+            cfg.get("HotKeys") or {}, kind)
+        _C.save(cfg)
+    except Exception:
+        return
+    _reregister(shell)
+    for key, _action in ROWS:
+        _refresh_label(shell, key)
+
+
+def _preset_chosen(shell, pc):
+    kind = _PRESET_KINDS.get(pc.currentText())
+    if kind:
+        _apply_preset(shell, kind)
+
+
 def _save_binding(shell, key, code):
     if code:
         other = _conflicting_key(key, code)
@@ -272,15 +316,7 @@ def _save_binding(shell, key, code):
                 _refresh_label(shell, key)
                 return
     cfg_set("HotKeys", key, int(code))
-    # Re-register so the new binding is live without a restart.
-    try:
-        from .. import hotkeys as _HK
-        app = getattr(shell, "app", None)
-        _HK.uninstall()
-        if app is not None:
-            app.hotkeys = _HK.install(app)
-    except Exception:
-        pass
+    _reregister(shell)
     shell._hk_recording = None
     shell._hk_esc_armed = False
     lab = (getattr(shell, "_hk_labels", {}) or {}).get(key)
@@ -344,6 +380,15 @@ class HotkeysPage(OptionsBase):
         en = check(self, 159, 41, "Enable hotkeys",
                    bool(hk.get("EnableHotKeys", True)))
         en.toggled.connect(lambda v: _enable_toggled(self, v))
+        # .tmp's preset combo (KeyboardPanel.kt): LEGACY/MODERN
+        # bulk-rebind every HotKey*; CUSTOM clears them all. Sits on
+        # the "Enable hotkeys" row -- the native page has no room for
+        # an assignments group of its own.
+        label(self, 280, 41, "Hotkey preset")
+        pc = combo(self, 368, 30, 145,
+                   _PRESET_LABELS[_C.hotkey_preset_kind(hk)],
+                   h=18, values=list(_PRESET_LABELS.values()))
+        pc.activated.connect(lambda _i: _preset_chosen(self, pc))
         # The list: 481 wide, 267 tall, with the vertical scrollbar's
         # track down the right and the horizontal one's along the
         # bottom. MEASURED off capture 2126.

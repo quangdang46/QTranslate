@@ -249,12 +249,28 @@ class DocumentTranslationDialog(QDialog):
         if err is not None:
             self.primary.setText("Translate")
             self.status.setText("Failed: %s" % err)
+            # The dialog's status line dies with the dialog; the
+            # notification bus is what still reaches the user after it
+            # closes (the .tmp NotificationBus role).
+            try:
+                self.app.notify("error", "Document translation failed",
+                                str(err), code="document.failed",
+                                source="document")
+            except Exception:
+                pass
             return
         self._done_output = out
         self.progress.setValue(100)
         self.pct.setText("100%")
         self.primary.setText("Open")
         self.status.setText("Completed: %s" % os.path.basename(out))
+        try:
+            self.app.notify("info", "Document translation",
+                            "Completed: %s" % os.path.basename(out),
+                            code="document.completed",
+                            source="document")
+        except Exception:
+            pass
 
     def translation_context_changed(self):
         """Mirror upstream: a finished/failed run resets to READY when

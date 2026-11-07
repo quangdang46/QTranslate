@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 import threading
 import time
 import urllib.error
@@ -63,12 +64,122 @@ def is_newer(tag: str, current: str = APP_VERSION) -> bool:
     return new > old
 
 
+# ---------------------------------------------------------------------------
+# Release asset selection -- the port of the Kotlin ``ReleaseAssets.kt``
+# contract (``selectDownload``) plus ``Updater.downloadUrlFor``.
+#
+# A GitHub release carries the application alongside auxiliary files, and
+# "first asset" is never the answer: GitHub lists assets alphabetically, so
+# first has always meant an alphabetically-early non-app file. Matching is by
+# name and deliberately narrow, per platform family. An asset this cannot
+# identify is far more likely to be something else, so the caller falls back
+# to the release page where a person can choose -- there is NO first-asset
+# fallback and there must never be one.
+#
+# The preference lists are data-driven: each platform family tries its own
+# package shape first, then the portable archive, then the bare app JAR
+# (kept from the Kotlin contract for parity; this port ships no JARs).
+# ---------------------------------------------------------------------------
+
+# `QTranslate-App-1.4.0.jar` -- the Kotlin app with no plugins, last resort.
+_APP_ONLY = re.compile(r"QTranslate-App-\d[^-]*\.jar", re.IGNORECASE)
+
+_ASSET_PREFERENCE = {
+    # The port targets macOS first: a .dmg/.zip carrying "macos"/"mac"/"osx"
+    # in the name wins, then any versioned portable archive.
+    "darwin": [
+        re.compile(r"QTranslate-\d[^-]*-(?:macos|mac|osx)(?![a-zA-Z])"
+                   r"[^ ]*\.(?:dmg|zip)", re.IGNORECASE),
+        re.compile(r"QTranslate-\d[^-]*\.(?:dmg|zip)", re.IGNORECASE),
+        _APP_ONLY,
+    ],
+    # Windows: the packaged build (bundled runtime / installer payload)
+    # first, then the portable archive -- the Kotlin ordering.
+    "windows": [
+        re.compile(r"QTranslate-\d[^-]*-win(?:dows)?(?![a-zA-Z])"
+                   r"[^ ]*\.(?:zip|7z|exe)", re.IGNORECASE),
+        re.compile(r"QTranslate-\d[^-]*\.zip", re.IGNORECASE),
+        _APP_ONLY,
+    ],
+    # Linux: AppImage/tarball/deb/rpm carrying "linux" in the name, then a
+    # bare AppImage or portable zip.
+    "linux": [
+        re.compile(r"QTranslate-\d[^-]*-linux(?![a-zA-Z])[^ ]*"
+                   r"\.(?:appimage|tar\.gz|zip|deb|rpm)", re.IGNORECASE),
+        re.compile(r"QTranslate-\d[^-]*\.appimage", re.IGNORECASE),
+        re.compile(r"QTranslate-\d[^-]*\.zip", re.IGNORECASE),
+        _APP_ONLY,
+    ],
+}
+
+
+def _platform_key(platform: str | None = None) -> str:
+    """Normalise a platform hint (or the running platform) to a key of
+    ``_ASSET_PREFERENCE``. Unknown hints fall through to "linux" -- the
+    conservative non-Windows/non-macOS branch, matching the Kotlin
+    ``onWindows`` boolean's else arm."""
+    if platform:
+        p = platform.strip().lower()
+        if p in ("darwin", "mac", "macos", "osx"):
+            return "darwin"
+        if p in ("win", "windows", "win32"):
+            return "windows"
+        return "linux"
+    if sys.platform == "darwin":
+        return "darwin"
+    if sys.platform in ("win32", "cygwin"):
+        return "windows"
+    return "linux"
+
+
+def select_download_asset(asset_names, platform: str | None = None
+                          ) -> str | None:
+    """The asset name a user on this platform should be given, or ``None``
+    when none is recognisable (caller falls back to the release page).
+
+    ``platform`` is injectable for tests; ``None`` means the running
+    platform. The first preference shape with a match wins; within a shape
+    the release's own asset order is preserved.
+    """
+    prefs = _ASSET_PREFERENCE.get(_platform_key(platform),
+                                  _ASSET_PREFERENCE["linux"])
+    for rx in prefs:
+        for name in asset_names or []:
+            if rx.search(str(name)):
+                return str(name)
+    return None
+
+
+def _download_url_for(data: dict, platform: str | None = None) -> str:
+    """The ``browser_download_url`` of the selected asset, or ``""``.
+
+    Port of ``Updater.downloadUrlFor``: when no asset is recognisable the
+    result is empty and the dialog offers the release page instead -- an
+    unrecognised name is far more likely to be a plugin or auxiliary file
+    than the application, and handing someone that while calling it an
+    update is worse than asking them to choose.
+    """
+    assets = data.get("assets")
+    if not isinstance(assets, list):
+        return ""
+    by_name = {}
+    for a in assets:
+        if isinstance(a, dict):
+            name = str(a.get("name") or "").strip()
+            url = str(a.get("browser_download_url") or "").strip()
+            if name and url:
+                by_name[name] = url
+    chosen = select_download_asset(list(by_name), platform=platform)
+    return by_name.get(chosen, "") if chosen else ""
+
+
 def _error(message: str) -> dict:
     return {"status": "error", "error": message,
-            "version": "", "notes": "", "url": ""}
+            "version": "", "notes": "", "url": "", "download_url": ""}
 
 
-def check_for_update(timeout: int = TIMEOUT_SECONDS) -> dict:
+def check_for_update(timeout: int = TIMEOUT_SECONDS,
+                     platform: str | None = None) -> dict:
     """Query the latest GitHub release.
 
     Returns a dict::
@@ -77,6 +188,9 @@ def check_for_update(timeout: int = TIMEOUT_SECONDS) -> dict:
          "version": latest tag (e.g. "v1.5.0"),
          "notes":   release notes body (may be ""),
          "url":     release page URL,
+         "download_url": platform-appropriate release asset URL, or ""
+                        when no asset is recognisable (the dialog then
+                        offers the release page instead),
          "error":   safe human-readable message on "error"}
 
     Never raises for network/parse failures — the caller is a UI
@@ -120,12 +234,13 @@ def check_for_update(timeout: int = TIMEOUT_SECONDS) -> dict:
     if len(notes) > MAX_NOTES_CHARS:
         notes = notes[:MAX_NOTES_CHARS].rstrip() + "\n…"
     url = str(data.get("html_url") or "").strip()
+    download_url = _download_url_for(data, platform=platform)
 
     if is_newer(tag):
         return {"status": "update", "version": tag, "notes": notes,
-                "url": url, "error": ""}
+                "url": url, "download_url": download_url, "error": ""}
     return {"status": "current", "version": tag, "notes": notes,
-            "url": url, "error": ""}
+            "url": url, "download_url": download_url, "error": ""}
 
 
 # ---------------------------------------------------------------------------
@@ -225,13 +340,23 @@ def show_update_result(app, res: dict) -> None:
             "A new version %s is available "
             "(you have %s).\n\n%s"
             % (res.get("version", "?"), APP_VERSION, notes))
+        # Mirrors the Kotlin UpdateDialog: "Download" opens the
+        # platform-appropriate release asset (present only when
+        # check_for_update recognised one), "Open release page" is the
+        # fallback -- and the only option when no asset matched.
+        dl_btn = None
         open_btn = None
+        if res.get("download_url"):
+            dl_btn = box.addButton("Download", QMessageBox.AcceptRole)
         if res.get("url"):
             open_btn = box.addButton(
                 "Open release page", QMessageBox.AcceptRole)
         box.addButton(QMessageBox.Close)
         box.exec()
-        if open_btn is not None and box.clickedButton() is open_btn:
+        clicked = box.clickedButton()
+        if dl_btn is not None and clicked is dl_btn:
+            QDesktopServices.openUrl(QUrl(res["download_url"]))
+        elif open_btn is not None and clicked is open_btn:
             QDesktopServices.openUrl(QUrl(res["url"]))
     elif status == "current":
         QMessageBox.information(

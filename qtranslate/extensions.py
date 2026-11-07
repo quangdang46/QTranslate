@@ -375,6 +375,11 @@ _API_METHODS = (
     "register_ocr", "register_spell", "register_workflow", "register_ui",
     "get_hotkeys", "get_hotkey_info", "get_tray_icons", "get_services",
     "get_languages", "get_config", "get_app_info",
+    # The PluginContext-parity surface (data dir, notify, http, lifecycle
+    # hooks). ``data_dir`` is a read-only property and is deliberately not
+    # listed: sealing it would setattr over a property descriptor.
+    "notify", "http_get", "http_post",
+    "on_load", "on_unload", "on_settings_changed",
 )
 
 
@@ -627,13 +632,103 @@ class ExtensionAPI:
             "name": "QTranslate",
         }
 
+    # ---- PluginContext parity (GAP_AUDIT_2 item 5) --------------------
+    #
+    # The .tmp PluginContext gives every plugin a scoped data directory,
+    # a notify bridge, a host-configured HTTP client and lifecycle
+    # hooks. The port maps them onto what exists here: ``data_dir`` is a
+    # per-extension folder under the user data dir, ``notify`` bridges
+    # to the app's notification surface (a host-registered hook first,
+    # then the ``qtranslate.notify`` NotificationBus module),
+    # ``http_get``/``http_post`` are
+    # thin wrappers over ``session._net_open`` so proxy/timeout/retry
+    # settings apply, and the ``on_*`` hooks fire on the load/unload/
+    # settings paths the manager already owns.
+
+    @property
+    def data_dir(self):
+        """This extension's private data directory (``str`` path).
+
+        ``<app data>/extensions_data/<ext id>/`` -- the port of upstream's
+        ``plugins_data/<pluginId>``. Created on first access and unique
+        per extension id; the extension must keep its files inside it.
+        """
+        return self._manager.data_dir_for(self._ext_id)
+
+    def notify(self, severity="info", title="", message=""):
+        """Post a user notification through the host's surface.
+
+        ``severity`` is ``"info"`` (default), ``"warning"`` or
+        ``"error"``; anything else is coerced to ``"info"``. Returns
+        True when a surface accepted the message. With no notification
+        module and no registered hook this is an honest no-op (False) --
+        extensions must not treat notification as guaranteed delivery.
+        """
+        return self._manager.notify(self._ext_id, severity, title,
+                                    message)
+
+    def http_get(self, url, headers=None, timeout=None):
+        """GET ``url`` through the host's shared HTTP path.
+
+        Goes through ``session._net_open``, so the user's proxy,
+        timeout and retry policy apply exactly as they do for built-in
+        providers. Returns the decoded body (UTF-8, errors replaced).
+        HTTP errors raise ``urllib.error.HTTPError`` after retries --
+        the extension catches what it cares about.
+        """
+        return self._manager.http_request("GET", url, headers=headers,
+                                          timeout=timeout)[1]
+
+    def http_post(self, url, data=None, headers=None, json=None,
+                  timeout=None):
+        """POST ``url`` through the host's shared HTTP path.
+
+        ``data`` is bytes or a string (encoded UTF-8); ``json`` is an
+        object serialised with ``Content-Type: application/json``
+        (``json`` wins over ``data`` when both are given). Same return
+        and error contract as :meth:`http_get`.
+        """
+        return self._manager.http_request(
+            "POST", url, data=data, headers=headers, json_body=json,
+            timeout=timeout)[1]
+
+    # ---- lifecycle hooks (upstream Plugin.initialize/onEnable/
+    # onDisable/onSettingsChanged mapped onto the load paths) -----------
+    #
+    # ``register(api)`` itself is the port's ``initialize``: it runs once
+    # per load. The hooks below subscribe callables fired by the
+    # manager: ``on_load`` after every successful load (including a
+    # live re-enable, matching upstream's per-enable onEnable),
+    # ``on_unload`` when the extension is disabled, and
+    # ``on_settings_changed`` after a successful ``set_setting``.
+    # ``on_load``/``on_unload`` receive ``api``; ``on_settings_changed``
+    # receives ``(key, value)``. A raising
+    # ``on_load`` fails the load (fail-open, §7); ``on_unload`` and
+    # ``on_settings_changed`` exceptions are skipped, never fatal.
+
+    def on_load(self, fn):
+        """``fn(api)`` after each successful load/enable of this ext."""
+        return self._manager.add_hook(self._ext_id, "load", fn)
+
+    def on_unload(self, fn):
+        """``fn(api)`` when this extension is disabled."""
+        return self._manager.add_hook(self._ext_id, "unload", fn)
+
+    def on_settings_changed(self, fn):
+        """``fn(key, value)`` after a successful ``set_setting``."""
+        return self._manager.add_hook(self._ext_id, "settings", fn)
+
 
 class ExtensionManager:
     """Manager over ``registry``: built-ins plus loaded extensions."""
 
-    def __init__(self, registry=None):
+    def __init__(self, registry=None, data_dir=None):
         from qtranslate import registry as _RG
         self._rg = registry if registry is not None else _RG
+        # Explicit override for the extensions_data base (tests, unusual
+        # installs). None -> derived from the loaded extensions dir, then
+        # the platform app-data dir (see ``_data_dir_base``).
+        self._data_dir = data_dir
         self._providers = {}
         self._replaces = {}
         self._claims = {}
@@ -642,6 +737,15 @@ class ExtensionManager:
         self._manifests = {}    # ext id -> the manifest that loaded it
         self._last_report = []  # the last load_dir outcome list (the UI reads it)
         self._listeners = {}    # event -> [(ext_id, fn)]
+        # PluginContext-parity state: lifecycle hooks per ext id
+        # ({"load","unload","settings"} -> [fn]), the api each loaded ext
+        # was handed (unload hooks receive it), and an optional host
+        # notify hook (``set_notify_hook``) consulted before the lazy
+        # ``qtranslate.notify`` import.
+        self._hooks = {}        # ext_id -> {"load": [], "unload": [],
+                                #           "settings": []}
+        self._ext_apis = {}     # ext_id -> the ExtensionAPI it got
+        self._notify_hook = None
         self._ui = None      # ui_slots.UISlotRegistry, created on first use
         # Live enable/disable bookkeeping: what each extension id owns
         # on every writable surface, the folder it loaded from, and the
@@ -833,6 +937,9 @@ class ExtensionManager:
         mine = settings.setdefault(ext_id, {})
         mine[key] = value
         _C.save(cfg, path)
+        # Upstream's onSettingsChanged: the extension hears about its
+        # own writes (fail-open -- a hook raise never loses the save).
+        self._fire_settings_hooks(ext_id, key, value)
         return value
 
     # -- events (api.on) --------------------------------------------------
@@ -863,6 +970,195 @@ class ExtensionManager:
         for fn in self.listeners(event):
             try:
                 fn(payload)
+            except BaseException:           # noqa: BLE001
+                continue
+
+    # -- PluginContext parity: data dir, notify, http, lifecycle ---------
+
+    def _data_dir_base(self):
+        """Where ``extensions_data`` lives, or None when unresolvable.
+
+        Order: the explicit ``data_dir`` ctor arg (tests), then a
+        sibling of the loaded extensions dir -- ``<app data>/
+        extensions`` -> ``<app data>/extensions_data``, which is where
+        ``platforms.*.extensions_dir()`` points in production -- then
+        the platform app-data dir directly for an api used outside
+        ``load_dir``.
+        """
+        if self._data_dir:
+            return self._data_dir
+        ext_dir = getattr(self, "_extensions_dir", None)
+        if ext_dir:
+            return os.path.join(
+                os.path.dirname(os.path.abspath(ext_dir)),
+                "extensions_data")
+        try:
+            from qtranslate import platforms as _P
+            return os.path.join(_P.current().app_data(),
+                                "extensions_data")
+        except Exception:                   # noqa: BLE001
+            return None
+
+    def data_dir_for(self, ext_id):
+        """Create + return ``<base>/extensions_data/<ext id>/``.
+
+        The id is sanitised to ``[0-9A-Za-z_-]`` (same rule as the
+        importer's module names) so a manifest id can never traverse
+        out of the data root. Raises ``RuntimeError`` when no base can
+        be resolved -- an honest failure the extension sees, not a
+        silent write to a shared location.
+        """
+        base = self._data_dir_base()
+        if base is None:
+            raise RuntimeError(
+                "no extensions data directory available on this host")
+        safe = re.sub(r"[^0-9A-Za-z_-]", "_", str(ext_id or "ext"))
+        path = os.path.join(base, safe)
+        os.makedirs(path, exist_ok=True)
+        return path
+
+    # -- notify bridge ---------------------------------------------------
+    #
+    # Two delivery paths, in order: a host-registered hook
+    # (``set_notify_hook`` -- the wiring a front end installs without
+    # this module importing UI code), then the optional
+    # ``qtranslate.notify`` module (the NotificationBus port). The lazy
+    # import tolerates the module not existing and probes a few call
+    # shapes; the canonical one is
+    # ``notify.notify(severity=..., title=..., body=..., source=<ext>)``
+    # -- exactly ``qtranslate/notify.py``'s signature.
+
+    _NOTIFY_SEVERITIES = ("info", "warning", "error")
+
+    def set_notify_hook(self, fn):
+        """Register ``fn(ext_id, severity, title, message) -> bool|None``.
+
+        The host's own notification surface installs itself here; it is
+        consulted before the ``qtranslate.notify`` fallback. ``None``
+        clears it.
+        """
+        self._notify_hook = fn
+
+    def notify(self, ext_id, severity, title, message):
+        """Deliver one extension notification; True when accepted."""
+        sev = str(severity or "info").lower()
+        if sev not in self._NOTIFY_SEVERITIES:
+            sev = "info"
+        title = str(title or "")
+        message = str(message or "")
+        hook = self._notify_hook
+        if hook is not None:
+            try:
+                hook(ext_id, sev, title, message)
+                return True
+            except Exception:               # noqa: BLE001
+                return False
+        try:
+            from qtranslate import notify as _N
+        except Exception:                   # noqa: BLE001
+            return False
+        for name in ("notify", "post", "show", "emit",
+                     "notify_message"):
+            fn = getattr(_N, name, None)
+            if not callable(fn):
+                continue
+            for call in (
+                    lambda f=fn: f(severity=sev, title=title,
+                                   body=message, source=ext_id),
+                    lambda f=fn: f(severity=sev, title=title,
+                                   message=message, plugin=ext_id),
+                    lambda f=fn: f(sev, title, message),
+                    lambda f=fn: f(title, message, sev)):
+                try:
+                    call()
+                    return True
+                except TypeError:
+                    continue
+                except Exception:           # noqa: BLE001
+                    return False
+        return False
+
+    # -- scoped HTTP ------------------------------------------------------
+
+    def http_request(self, method, url, data=None, headers=None,
+                     json_body=None, timeout=None):
+        """One HTTP request through ``session._net_open``.
+
+        Returns ``(status, text)`` -- status from the response, text
+        decoded UTF-8 with errors replaced. ``timeout`` overrides the
+        configured per-request timeout for this call only. The shared
+        opener means proxy, timeout and retry policy are the user's,
+        not the extension's -- the same contract upstream's
+        ``PluginContext.http`` states.
+        """
+        import urllib.request
+        from qtranslate import session as _S
+        if json_body is not None:
+            import json as _json
+            data = _json.dumps(json_body).encode("utf-8")
+            headers = dict(headers or {})
+            headers.setdefault("Content-Type", "application/json")
+        elif isinstance(data, str):
+            data = data.encode("utf-8")
+        req = urllib.request.Request(
+            url, data=data, headers=dict(headers or {}),
+            method=str(method).upper())
+        with _S._net_open(req, data=data, timeout=timeout) as r:
+            status = getattr(r, "status", None) or \
+                getattr(r, "code", None) or 200
+            raw = r.read()
+        try:
+            text = raw.decode("utf-8")
+        except UnicodeDecodeError:
+            text = raw.decode("utf-8", errors="replace")
+        return int(status), text
+
+    # -- lifecycle hooks ---------------------------------------------------
+
+    def add_hook(self, ext_id, kind, fn):
+        """Subscribe ``fn`` to one of this extension's lifecycle hooks.
+
+        ``kind`` is ``"load"`` / ``"unload"`` / ``"settings"``. Like
+        ``add_listener``, a bad kind or non-callable raises at REGISTER
+        time so fail-open disables the extension instead of silently
+        never firing.
+        """
+        if kind not in ("load", "unload", "settings"):
+            raise ValueError("unknown lifecycle hook %r" % (kind,))
+        if not callable(fn):
+            raise TypeError("lifecycle hook %r is not callable" % (kind,))
+        slot = self._hooks.setdefault(
+            ext_id, {"load": [], "unload": [], "settings": []})
+        slot[kind].append(fn)
+        return kind
+
+    def _fire_load_hooks(self, ext_id, api):
+        """Run an extension's ``on_load`` hooks; first raise propagates.
+
+        Called inside the loader's timed thread, so a hook that hangs
+        or raises fails the load exactly like a bad ``register`` --
+        the §7 fail-open contract covers the whole enable path.
+        """
+        for fn in list((self._hooks.get(ext_id) or {})
+                       .get("load", [])):
+            fn(api)
+
+    def _fire_unload_hooks(self, ext_id):
+        """Run ``on_unload`` hooks on disable; failures are skipped."""
+        slot = self._hooks.pop(ext_id, None)
+        api = self._ext_apis.pop(ext_id, None)
+        for fn in (slot or {}).get("unload", []):
+            try:
+                fn(api)
+            except BaseException:           # noqa: BLE001
+                continue
+
+    def _fire_settings_hooks(self, ext_id, key, value):
+        """Run ``on_settings_changed`` hooks; failures are skipped."""
+        for fn in list((self._hooks.get(ext_id) or {})
+                       .get("settings", [])):
+            try:
+                fn(key, value)
             except BaseException:           # noqa: BLE001
                 continue
 
@@ -957,6 +1253,10 @@ class ExtensionManager:
         own = own or {"providers": {}, "replaces_bases": set(),
                       "themes": {}, "theme_bases": set(), "tables": {},
                       "ui": []}
+        # Upstream's onDisable: the extension's unload hooks run before
+        # its registrations are removed, fail-open like every hook
+        # except on_load.
+        self._fire_unload_hooks(ext_id)
         owned_names = set(own["providers"])
         removed_fns = {fn for fn, _r in own["providers"].values()}
         for name, (fn, _replaces) in own["providers"].items():
@@ -1371,8 +1671,9 @@ class ExtensionManager:
 
         # Snapshot EVERY writable surface before register(api) runs --
         # providers, replaces, themes, the five live registry dispatch
-        # tables, event listeners, and UI slots.  A failed or timed-out
-        # extension must leave nothing behind (fail-open, §7).
+        # tables, event listeners, UI slots, lifecycle hooks and the
+        # handed-out api.  A failed or timed-out extension must leave
+        # nothing behind (fail-open, §7).
         snap = {
             "providers": dict(self._providers),
             "replaces": dict(self._replaces),
@@ -1385,6 +1686,9 @@ class ExtensionManager:
                           for e, v in self._listeners.items()},
             "ui": ({k: list(v) for k, v in self._ui._slots.items()}
                    if self._ui is not None else None),
+            "hooks": {eid: {k: list(v) for k, v in slot.items()}
+                      for eid, slot in self._hooks.items()},
+            "apis": dict(self._ext_apis),
         }
 
         def _rollback():
@@ -1401,8 +1705,14 @@ class ExtensionManager:
             elif self._ui is not None:
                 self._ui._slots = {k: list(v)
                                    for k, v in snap["ui"].items()}
+            self._hooks = snap["hooks"]
+            self._ext_apis = snap["apis"]
             self._manifests.pop(ext_id, None)
             self._owned.pop(ext_id, None)
+
+        # The api this load hands out is remembered so ``on_unload``
+        # hooks receive it on disable; a failed load rolls it back.
+        self._ext_apis[ext_id] = api
 
         box = {}
 
@@ -1410,6 +1720,10 @@ class ExtensionManager:
             try:
                 register = importer(folder, manifest)
                 register(api)
+                # Upstream's onEnable: load hooks run inside the same
+                # timed window as register(), so a raising or hanging
+                # hook fails the load through the normal path.
+                self._fire_load_hooks(ext_id, api)
                 box["ok"] = True
             except BaseException as exc:  # noqa: BLE001
                 box["exc"] = exc

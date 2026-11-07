@@ -84,7 +84,7 @@ class ExtensionAPI:
     unit-tested with the host's behaviour stubbed (``FakeAPI`` in the
     test harness). The REAL object an extension receives at runtime is
     the host's ``qtranslate.extensions.ExtensionAPI``, which implements
-    the same three methods.
+    the same surface.
     """
 
     def register_provider(self, name, fn, replaces=None):
@@ -127,6 +127,52 @@ class ExtensionAPI:
             "register_workflow needs a host; the real ExtensionAPI is "
             "passed to register() at runtime")
 
+    # -- PluginContext parity (host: qtranslate.extensions.ExtensionAPI)
+
+    @property
+    def data_dir(self):
+        """This extension's private data directory (``str`` path)."""
+        raise ExtensionError(
+            "data_dir needs a host; the real ExtensionAPI is passed to "
+            "register() at runtime")
+
+    def notify(self, severity="info", title="", message=""):
+        """Post a user notification; True when a surface accepted it."""
+        raise ExtensionError(
+            "notify needs a host; the real ExtensionAPI is passed to "
+            "register() at runtime")
+
+    def http_get(self, url, headers=None, timeout=None):
+        """GET ``url`` through the host's shared HTTP path -> body text."""
+        raise ExtensionError(
+            "http_get needs a host; the real ExtensionAPI is passed to "
+            "register() at runtime")
+
+    def http_post(self, url, data=None, headers=None, json=None,
+                  timeout=None):
+        """POST ``url`` through the host's shared HTTP path -> body text."""
+        raise ExtensionError(
+            "http_post needs a host; the real ExtensionAPI is passed to "
+            "register() at runtime")
+
+    def on_load(self, fn):
+        """``fn(api)`` after each successful load/enable."""
+        raise ExtensionError(
+            "on_load needs a host; the real ExtensionAPI is passed to "
+            "register() at runtime")
+
+    def on_unload(self, fn):
+        """``fn(api)`` when the extension is disabled."""
+        raise ExtensionError(
+            "on_unload needs a host; the real ExtensionAPI is passed to "
+            "register() at runtime")
+
+    def on_settings_changed(self, fn):
+        """``fn(key, value)`` after a successful ``set_setting``."""
+        raise ExtensionError(
+            "on_settings_changed needs a host; the real ExtensionAPI is "
+            "passed to register() at runtime")
+
 
 class FakeAPI(ExtensionAPI):
     """A recording host API, for an extension's own tests.
@@ -144,6 +190,49 @@ class FakeAPI(ExtensionAPI):
         self.ocr = {}
         self.spell = {}
         self.workflows = {}
+        # PluginContext-parity recordings: a real temp dir, a notify
+        # log, recorded http calls (no network in the fake) and the
+        # lifecycle hooks an extension subscribed.
+        import tempfile
+        self._data_dir = tempfile.mkdtemp(prefix="qt-fake-ext-")
+        self.notifications = []
+        self.http_calls = []
+        self.load_hooks = []
+        self.unload_hooks = []
+        self.settings_hooks = []
+
+    @property
+    def data_dir(self):
+        return self._data_dir
+
+    def notify(self, severity="info", title="", message=""):
+        self.notifications.append({"severity": severity, "title": title,
+                                   "message": message})
+        return True
+
+    def http_get(self, url, headers=None, timeout=None):
+        self.http_calls.append({"method": "GET", "url": url,
+                                "headers": headers, "timeout": timeout})
+        return ""
+
+    def http_post(self, url, data=None, headers=None, json=None,
+                  timeout=None):
+        self.http_calls.append({"method": "POST", "url": url,
+                                "data": data, "json": json,
+                                "headers": headers, "timeout": timeout})
+        return ""
+
+    def on_load(self, fn):
+        self.load_hooks.append(fn)
+        return "load"
+
+    def on_unload(self, fn):
+        self.unload_hooks.append(fn)
+        return "unload"
+
+    def on_settings_changed(self, fn):
+        self.settings_hooks.append(fn)
+        return "settings"
 
     def register_provider(self, name, fn, replaces=None):
         self.providers[name] = {"fn": fn, "replaces": replaces}

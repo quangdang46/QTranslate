@@ -37,15 +37,17 @@ class BasicsPage(OptionsBase):
 
     # The "Translation" + "Window" groups (auto-copy mode, upstream
     # TranslationPanel; close-button behavior, upstream LayoutPanel)
-    # need 90px more than the native capture left at the bottom; the
+    # plus the "Toolbars"/"Service selector" groups (.tmp LayoutPanel's
+    # toolbarVisibility checkboxes and serviceSelectorAppearance combo)
+    # need 222px more than the native capture left at the bottom; the
     # page and its chrome grow by the same delta (AdvancedPage sets
     # the precedent).
-    SIZE = (644, 452)
+    SIZE = (644, 584)
     CHROME = dict(OptionsBase.CHROME)
-    CHROME["panel"] = (4, 29, 142, 414)
-    CHROME["shadow_row"] = (3, 443, 144, 1)
-    CHROME["rule"] = (448, 3, 638)
-    CHROME["buttons"] = {k: (x, y + 90, w, sh)
+    CHROME["panel"] = (4, 29, 142, 546)
+    CHROME["shadow_row"] = (3, 575, 144, 1)
+    CHROME["rule"] = (580, 3, 638)
+    CHROME["buttons"] = {k: (x, y + 222, w, sh)
                          for k, (x, y, w, sh)
                          in OptionsBase.CHROME["buttons"].items()}
 
@@ -226,3 +228,42 @@ class BasicsPage(OptionsBase):
                 "General", "CloseAction",
                 next((k for k, vv in _close_modes if vv == v),
                      "exit")))
+
+        # .tmp LayoutPanel "Toolbars & panels" + "Service selector":
+        # toolbarVisibility.isHistoryBarVisible/isLanguageBarVisible/
+        # isServicesPanelVisible and serviceSelectorAppearance. The
+        # pane toggles keep their native Show*Pane names; the history/
+        # language bars and the selector's icon/text mix are new
+        # General.* keys with .tmp's own semantics (the status bar and
+        # the dictionary panel have no port counterpart -- recorded
+        # divergences).
+        group(self, 152, 452, 484, 70, "Toolbars")
+        for cy, key, dflt in ((472, "ShowHistoryBar", True),
+                              (492, "ShowLanguageBar", True),
+                              (512, "ShowServicesPane", True)):
+            check(self, 160, cy, {
+                "ShowHistoryBar": "Show history bar",
+                "ShowLanguageBar": "Show language bar",
+                "ShowServicesPane": "Show services pane",
+            }[key], bool(general.get(key, dflt))).toggled.connect(
+                lambda v, k=key: (cfg_set("General", k, bool(v)),
+                                  notify_app(self.app)))
+
+        group(self, 152, 530, 484, 44, "Service selector")
+        label(self, 158, 552, "Button appearance:")
+        _app_modes = [("ICONS_ONLY", "Icons only"),
+                      ("ICONS_AND_TEXT", "Icons and text"),
+                      ("TEXT_ONLY", "Text only")]
+        _cur_app = str(general.get("ServiceSelectorAppearance",
+                                   "ICONS_AND_TEXT") or "")
+        if _cur_app not in ("ICONS_ONLY", "ICONS_AND_TEXT", "TEXT_ONLY"):
+            _cur_app = "ICONS_AND_TEXT"
+        c_app = combo(self, 387, 542, 238,
+                      dict(_app_modes).get(_cur_app, "Icons and text"),
+                      values=[v for _k, v in _app_modes])
+        c_app.currentTextChanged.connect(
+            lambda v: (cfg_set(
+                "General", "ServiceSelectorAppearance",
+                next((k for k, vv in _app_modes if vv == v),
+                     "ICONS_AND_TEXT")),
+                notify_app(self.app)))

@@ -257,6 +257,14 @@ def play_text(text: str, lang: str = "vi", block: bool = True,
     if is_darwin:
         _speak_darwin(text, lang=lang, slow=slow)
         return "say"
+    try:
+        # .tmp WindowsTtsBackend equivalent: SAPI SpVoice with
+        # VoiceLocaleMapper-style voice matching (comtypes, lazy).
+        from qtranslate.services import system_tts as _ST
+        if _ST.speak(text, lang=lang, slow=slow):
+            return "sapi"
+    except Exception:
+        pass
     from qtranslate.sapi import speak
     speak(text, rate=-4 if slow else 0)
     return "sapi"

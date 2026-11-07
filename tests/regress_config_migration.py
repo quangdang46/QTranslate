@@ -86,6 +86,10 @@ kcfg = {
     ],
     "preferredSourceLanguage": "auto",
     "preferredTargetLanguage": "fr",
+    "serviceSelectorAppearance": "TEXT_ONLY",
+    "toolbarVisibility": {"isHistoryBarVisible": False,
+                          "isLanguageBarVisible": False,
+                          "isServicesPanelVisible": True},
     "servicePresets": [{"id": "p", "name": "__default__",
                         "selectedServices": {}, "comparisonTranslatorIds": []}],
     "activeServicePresetId": "p",
@@ -120,6 +124,12 @@ ck("double-ctrl preserved as 0x8000", o["HotKeys"]["HotKeyMainWindow"] == 0x8000
 ck("auto -> index 1", o["AutoDetection"]["LanguageFirst"] == 1)
 ck("fr -> LanguageSecond", o["AutoDetection"]["LanguageSecond"] == 21,
    o["AutoDetection"].get("LanguageSecond"))
+ck("selector appearance mapped",
+   o["General"].get("ServiceSelectorAppearance") == "TEXT_ONLY")
+ck("history/language bars mapped",
+   o["General"].get("ShowHistoryBar") is False
+   and o["General"].get("ShowLanguageBar") is False
+   and o["General"].get("ShowServicesPane") is True)
 ck("options backup written", os.path.isfile(opts + ".bak"))
 ck("both markers written",
    os.path.isfile(os.path.join(tmp, ".migrated_from_kotlin"))
@@ -159,6 +169,9 @@ options["General"]["MinimizeToTrayOnMinimize"] = True
 options["General"]["MouseModeOn"] = True
 options["General"]["MouseMode"] = 2
 options["General"]["ShowServicesPane"] = False
+options["General"]["ShowHistoryBar"] = False
+options["General"]["ShowLanguageBar"] = False
+options["General"]["ServiceSelectorAppearance"] = "ICONS_ONLY"
 options["Appearance"]["PopupAutoSize"] = False
 options["Appearance"]["PopupAutoPos"] = False
 options["Appearance"]["Transparency"] = 128
@@ -186,6 +199,11 @@ ck("minimize behavior", k2.get("minimizeButtonBehavior") == "HIDE_TO_TRAY")
 ck("selection translate-and-read", k2.get("selectionBehavior") == "TRANSLATE_AND_READ")
 ck("services pane hidden",
    (k2.get("toolbarVisibility") or {}).get("isServicesPanelVisible") is False)
+ck("history/language bars pushed",
+   (k2.get("toolbarVisibility") or {}).get("isHistoryBarVisible") is False
+   and (k2.get("toolbarVisibility") or {}).get("isLanguageBarVisible") is False)
+ck("selector appearance pushed",
+   k2.get("serviceSelectorAppearance") == "ICONS_ONLY")
 ck("popup flags", k2.get("isPopupAutoSizeEnabled") is False
    and k2.get("isPopupAutoPositionEnabled") is False)
 ck("transparency pct", k2.get("popupTransparencyPercentage") == 50,

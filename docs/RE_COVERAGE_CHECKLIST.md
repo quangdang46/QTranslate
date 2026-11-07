@@ -958,12 +958,29 @@ deliberate divergence.
   JPanel composition; the port clones native 6.10's fixed window, so
   there is no layout engine to preset. Comparison output lives in the
   extra pane's "Compare" mode instead.
-- Quick-translate dictionary popup settings: `.tmp`'s dictionary is a
-  popup; the port's is a persistent window (native 6.10 model).
+- Quick-translate dictionary popup settings: `.tmp`'s dictionary hotkey
+  opens a floating popup; the port's dictionary is a persistent window
+  (native 6.10 model). Evaluated for popup-mode conversion in the
+  "QuickDictionaryDialog evaluation" pass below — divergence confirmed,
+  `quickDictionary*` fields stay unported.
 - `deepl-services`/`google-services` plugin *manifest* form: roles are
   registered by the service modules directly (the port has no plugin
   runtime for first-party providers); extension plugins use the
   manifest system.
+- `.tmp` `PluginContext` extras still unported (GAP_AUDIT_2 item 5,
+  partial pass 2026-11-07): plugin localization
+  (`PluginLocalization`/`PluginTextResolver` — extension strings have
+  no bundle/translation mechanism) and JAR fingerprint integrity
+  (`PluginFingerprintRepository` — extensions are Python source
+  folders, nothing signed to fingerprint). `SecretStore` is skipped
+  for the same reason: the port has no secrets mechanism at all —
+  API keys live in Options.json and `api.get_config` redacts them —
+  so there is nothing to scope. Ported in the same pass:
+  `api.data_dir` (`<app data>/extensions_data/<id>/`), `api.notify`
+  (host hook or lazy `qtranslate.notify`), `api.http_get`/`http_post`
+  (over `session._net_open`, user proxy/timeout/retry apply) and the
+  `api.on_load`/`on_unload`/`on_settings_changed` lifecycle hooks;
+  pinned by `tests/regress_ext_api.py`.
 - PDF layout-aware translation: needs a renderer/font pipeline
   (PDFBox equivalent); text-only mode reports an honest error.
 - Windows/Linux OCR/spell/TTS backends: port targets macOS first;
@@ -991,8 +1008,9 @@ port's architecture supports them.
 | `popupIdleTimeoutSeconds` | `Appearance.PopupTimeout` auto-hide delay combo (native key, seconds) | `qt/options/appearance.py`, `qt/popup.py` |
 | `popupTransparencyPercentage`/`isPopupAutoSizeEnabled`/`isPopupAutoPositionEnabled` | `Appearance.Transparency` (0-255 alpha), `PopupAutoSize`, `PopupAutoPos` | native keys, same panel |
 | `uiFontConfig`/`editorFontConfig`/`editorFallbackFontConfig` | Single-font contract: `General.FontName`/`TextSize` resolve through `qtranslate.fonts.resolve_font` for BOTH controls (`qtranslate_style._ui_font`) and panes (`_pane_font`) | `qtranslate/fonts.py`, Basics page font rows — divergence: `.tmp` splits UI/editor/fallback fonts; the port keeps native 6.10's one font |
-| `quickDictionary*` popup fields | N/A — `.tmp` dictionary is a popup; the port's is a persistent window (native 6.10 model) | recorded divergence above |
-| `isDictionaryAutoPopupEnabled`, `donationNudgeShown`, `interfaceLanguage`, `toolbarVisibility`, `layoutPresetId`, `serviceSelector*` | recorded divergences (promo/i18n/layout-engine/selector-style — see table above) | — |
+| `quickDictionary*` popup fields (`isQuickDictionaryAutoPositionEnabled`, `isQuickDictionaryPinned`, `quickDictionaryIdleTimeoutSeconds`, `quickDictionaryLastKnownPosition/Size`, `quickDictionaryTransparencyPercentage`) | N/A — `.tmp` dictionary hotkey is a floating popup; the port's is a persistent window (native 6.10 model). Conversion evaluated and rejected — see "QuickDictionaryDialog evaluation" pass below | recorded divergence |
+| `serviceSelectorAppearance`, `toolbarVisibility.isHistoryBarVisible`/`isLanguageBarVisible`/`isServicesPanelVisible` | `General.ServiceSelectorAppearance` (ICONS_ONLY/ICONS_AND_TEXT/TEXT_ONLY -- main-window strip cells AND the popup's hover strip, with .tmp's no-icon name fallback), `General.ShowHistoryBar`/`ShowLanguageBar`/`ShowServicesPane` (back/forward pair, tool row, provider strip) | `qtranslate/config.py::service_selector_appearance`, `qt/main_window.py::apply_pane_visibility`, `qt/popup.py::_set_hover`, `qt/options/basics.py` Toolbars/Service selector groups, `qtranslate/migrate.py` both directions |
+| `isDictionaryAutoPopupEnabled`, `donationNudgeShown`, `interfaceLanguage`, `layoutPresetId`, `serviceSelectorStyle`, `toolbarVisibility.isStatusBarVisible`, `showDictionaryPanel` | recorded divergences (promo/i18n/layout-engine/selector-style/status-bar/dictionary-window — see table above) | — |
 
 Pinned by `tests/regress_image_search_prefs.py` (image-search
 geometry/opacity + uiScale env bridge), `tests/regress_qt_features.py`
@@ -1079,6 +1097,66 @@ assertions, incl. Kotlin's single-pass "  "->" " semantics).
 Pinned by `tests/regress_popup_smoke.py` (+10 assertions: combo
 population, auto exclusion, delegation, shortcut registration).
 
+## QuickDictionaryDialog evaluation -- popup vs persistent window (qt-v4m)
+
+Question: should the port's `DictionaryWindow` gain a floating-popup
+mode behind a setting, matching `.tmp`'s `QuickDictionaryDialog`?
+
+**What `.tmp` actually does.** `.tmp` ships THREE dictionary surfaces:
+`DictionaryPanel` (docked in the main window, `showDictionaryPanel`),
+`DictionaryDialog` (a persistent `JDialog` opened from menus), and
+`QuickDictionaryDialog` — the floating popup that IS the dictionary
+hotkey target: `HotkeyAction.SHOW_DICTIONARY` (Ctrl+D, GLOBAL) is
+labelled "open floating dictionary popup" (`HotkeyBinding.kt:18`) and
+`MainAppFrame.onShowDictionary` dispatches `MainIntent.ShowQuickDictionary`
+with the mouse-captured `selectedText`. The popup is a
+`FloatingPopupBehavior` window: undecorated, always-on-top,
+auto-positions near the cursor, idle-hides with a fade unless pinned,
+draggable/resizable, with the six `quickDictionary*` Configuration
+fields (auto-position, pinned, idle timeout, last position/size,
+transparency). Its content is a REDUCED UI: a service `JComboBox`, word
+chips, and `DictionaryResultView` — no history walk, no service strip,
+no strip/":" menus.
+
+**Why popup mode was rejected for the port.**
+
+- `DictionaryWindow` (`qt/dictionary.py`) is a native 6.10 clone: every
+  widget is `put()` at absolute coordinates measured off capture 2132
+  inside a fixed `Base` window. It cannot be reparented into a frameless
+  auto-hide shell — a popup variant would be a SECOND layout duplicating
+  the module, not a mode of the same window.
+- The popup mechanics the port already has (frameless/tool-window flags,
+  `WA_MacAlwaysShowToolWindow`, cursor placement with screen flip,
+  pin/drag/idle-hide, `WindowPopupPlacement` persistence, outside-click
+  dismissal) live inside `PopupWindow` (`qt/popup.py`) entangled with
+  translate state — `_fill`, the provider strip, the compare board,
+  `Appearance.Popup*` keys. There is no shared `FloatingPopupBehavior`
+  equivalent to reuse; extracting one is a refactor beyond this bead,
+  and duplicating ~300 lines for a second consumer is exactly the
+  abstraction the agent guide warns against.
+- The port's dictionary workflows have NO popup counterpart: the `<`/`>`
+  search-history walk (`_queries`/`_step_query`), the service strip with
+  "Show info"/"Remove dictionary" menus, the ":" menu -> History window,
+  and free resize. `.tmp`'s popup itself lacks all of these — porting it
+  would DROP features, not wrap them.
+- `.tmp` keeps BOTH surfaces (popup for the hotkey, `DictionaryDialog`
+  for menus); the port's single persistent window already covers the
+  persistent role, and the quick-translate popup already carries the
+  adjacent quick-lookup affordance (the one-line inline-definition
+  gloss plus the book icon seeding `_dict_word` -> `open_dictionary`).
+- Trigger mismatch: `.tmp`'s hotkey is fed by mouse-capture selection;
+  the port's `HotKeyDictionary` opens bare and `HotKeyDictionaryClipboard`
+  seeds from the clipboard. Matching `.tmp` would need the selection
+  pipeline wired into the dictionary hotkey first — plumbing for a
+  surface that was rejected anyway.
+
+**Net:** the divergence stands and is final for this pass. The port
+keeps the native 6.10 persistent-window model; `quickDictionary*`
+fields remain unported (recorded above). If a floating dictionary is
+wanted later, the clean path is extracting a shared popup-behavior base
+from `PopupWindow` and building a purpose-laid-out popup — a feature
+proposal, not a parity gap.
+
 ## NetworkConfig pass -- shared retry policy + per-host timeouts
 
 | .tmp source | Port | Where |
@@ -1126,9 +1204,17 @@ registry/LaunchAgent via `startup_entry()`), `mainWindowSize`/
 (serialization internals).
 
 Recorded divergences (architectural, not gaps):
-- `layoutPresetId`, `toolbarVisibility`, `serviceSelectorStyle`/
-  `serviceSelectorAppearance` -- .tmp's composable layout engine and
-  selector chrome have no counterpart in the native-6.10-clone window.
+- `layoutPresetId`, `serviceSelectorStyle` -- .tmp's composable
+  layout engine and its ENHANCED selector (per-role dropdown pickers,
+  `TranslatorSelector.rebuildEnhanced`) have no counterpart in the
+  native-6.10-clone window. The port's provider strip IS .tmp's
+  CLASSIC arrangement, so `serviceSelectorAppearance` and the
+  `toolbarVisibility` bar flags ported cleanly
+  (`General.ServiceSelectorAppearance`, `ShowHistoryBar`,
+  `ShowLanguageBar`; `isServicesPanelVisible` was already
+  `ShowServicesPane`). Still divergent: `isStatusBarVisible` (the
+  port has no status bar) and `showDictionaryPanel` (the dictionary
+  is a separate window -- see below).
 - `quickDictionary*` fields and `showDictionaryPanel` -- .tmp's
   dictionary is a popup/dock; the port's is a separate window (native
   6.10 model). The auto-refresh coordinator still only touches a
@@ -1176,7 +1262,7 @@ Pinned by `tests/regress_options_search.py` (16 assertions).
 | `SnippingToolDialog` + `ScreenCaptureController` (region select -> OCR, keys S/C/Enter/arrows/Esc/Delete) | `qt/ocr_pick.py` RegionPicker + `app.py` OCR flow | ported (native 6.10 keys, same single `_grab_png` path) |
 | `HotkeyRecorderDialog` (modal recorder: special-key buttons, live modifier preview, conflict check) | `qt/options/hotkeys.py` `_Recorder` eventFilter + `_conflicting_key` dialog | equivalent: same key coverage (F1-F24, arrows, nav keys, Esc-arm, Delete-unbind), conflict prompt, enable toggle. Divergence: .tmp's clickable special-key chips + live combo preview are conveniences; the port records by pressing the chord on the row |
 | `InfoDialog` (About) | `QtApp.show_about` via tray | ported |
-| `UpdateDialog` | `update_check.show_update_result` shared by tray/manual/startup auto-check | ported |
+| `UpdateDialog` | `update_check.show_update_result` shared by tray/manual/startup auto-check; platform-asset "Download" button (`select_download_asset`, port of `ReleaseAssets.kt`) | ported |
 | `LanguageEditorDialog` (disabled languages) | Languages page disabled-language UI | ported |
 | `DynamicPluginSettingsDialog` | Extensions page generic ext settings | ported |
 | `QuickDictionaryDialog` | `qt/dictionary.py` DictionaryWindow (native 6.10 window model) | divergence recorded |

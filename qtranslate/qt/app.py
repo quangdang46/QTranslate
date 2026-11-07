@@ -216,6 +216,11 @@ class QtApp:
         self._mouse_hook = False
         self._bridge = _MouseBridge(self)
         self._ui = _UiInvoker()
+        # The notification surface (port of .tmp NotificationBus): every
+        # feature posts through ``self.notify`` / ``qtranslate.notify``,
+        # and the toast stack below surfaces it on the UI thread.
+        from . import notify as _qt_notify
+        _qt_notify.attach(self)
         # Every background request the app starts (Translate, Ctrl+Q,
         # Alt+W, the clipboard hotkey), so ``wait_for_translation`` can
         # wait for all of them rather than one bookkeeping slot.
@@ -268,6 +273,17 @@ class QtApp:
             apply_style(self.qapp, theme=record)
         except Exception:
             pass
+
+    def notify(self, severity, title, body, code=None, source=None):
+        """Post a user-facing notification (port of .tmp's
+        ``ScopedPluginContext.notify`` -> ``NotificationBus.post``).
+
+        Safe from any thread: the bus fans out on the posting thread and
+        the toast surface marshals to the UI thread itself. ``severity``
+        is a ``qtranslate.notify.Severity`` or its string value.
+        """
+        from qtranslate import notify as _N
+        _N.notify(severity, title, body, code=code, source=source)
 
     def _on_ui(self, fn):
         """Run ``fn`` on the UI thread.
@@ -3382,6 +3398,20 @@ def main(argv=None):
             _loaded = sum(1 for r in _ext if r["status"] == "loaded")
             _disabled = sum(1 for r in _ext if r["status"] == "disabled")
             print("extensions: %d loaded, %d disabled" % (_loaded, _disabled))
+            # A disabled extension is exactly the kind of thing the
+            # notification surface exists for: it failed validation or
+            # registration, the user did not ask for silence, and the
+            # report used to live only in this stdout line.
+            try:
+                for _r in _ext:
+                    if _r.get("status") == "disabled":
+                        app.notify(
+                            "warning", "Extension disabled",
+                            "%s: %s" % (_r.get("id") or _r.get("path"),
+                                        _r.get("reason") or "unknown"),
+                            code="extension.disabled", source="extensions")
+            except Exception:
+                pass                    # notifications never block startup
         # The manager holds the UI and theme contributions, so the view
         # can actually show what an extension registered.
         app.ext_manager = last_manager()

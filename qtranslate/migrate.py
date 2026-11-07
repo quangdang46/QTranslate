@@ -457,9 +457,23 @@ def _apply_kotlin_to_options(kcfg: dict, options: dict) -> list:
             applied.append("General.MouseMode")
 
     toolbar = kcfg.get("toolbarVisibility")
-    if isinstance(toolbar, dict) and isinstance(toolbar.get("isServicesPanelVisible"), bool):
-        general["ShowServicesPane"] = toolbar["isServicesPanelVisible"]
-        applied.append("General.ShowServicesPane")
+    if isinstance(toolbar, dict):
+        for kt_key, py_key in (
+                ("isServicesPanelVisible", "ShowServicesPane"),
+                ("isHistoryBarVisible", "ShowHistoryBar"),
+                ("isLanguageBarVisible", "ShowLanguageBar")):
+            if isinstance(toolbar.get(kt_key), bool):
+                general[py_key] = toolbar[kt_key]
+                applied.append("General." + py_key)
+
+    # .tmp Configuration.serviceSelectorAppearance -> the provider
+    # strip's icon/text mix (serviceSelectorStyle's ENHANCED picker has
+    # no port counterpart and is not carried).
+    sel_app = kcfg.get("serviceSelectorAppearance")
+    if isinstance(sel_app, str) and sel_app in (
+            "ICONS_ONLY", "ICONS_AND_TEXT", "TEXT_ONLY"):
+        general["ServiceSelectorAppearance"] = sel_app
+        applied.append("General.ServiceSelectorAppearance")
 
     # ---- Appearance ----
     for kt_key, py_key in (
@@ -684,11 +698,22 @@ def _apply_options_to_kotlin(options: dict, kcfg: dict) -> list:
             kcfg["selectionBehavior"] = "OFF"
         applied.append("General.MouseModeOn/MouseMode")
 
-    if "ShowServicesPane" in general and isinstance(general.get("ShowServicesPane"), bool):
-        toolbar = dict(kcfg.get("toolbarVisibility") or {})
-        toolbar["isServicesPanelVisible"] = general["ShowServicesPane"]
-        kcfg["toolbarVisibility"] = toolbar
-        applied.append("General.ShowServicesPane")
+    toolbar = None
+    for py_key, kt_key in (
+            ("ShowServicesPane", "isServicesPanelVisible"),
+            ("ShowHistoryBar", "isHistoryBarVisible"),
+            ("ShowLanguageBar", "isLanguageBarVisible")):
+        if py_key in general and isinstance(general.get(py_key), bool):
+            if toolbar is None:
+                toolbar = dict(kcfg.get("toolbarVisibility") or {})
+            toolbar[kt_key] = general[py_key]
+            kcfg["toolbarVisibility"] = toolbar
+            applied.append("General." + py_key)
+
+    if general.get("ServiceSelectorAppearance") in (
+            "ICONS_ONLY", "ICONS_AND_TEXT", "TEXT_ONLY"):
+        kcfg["serviceSelectorAppearance"] = general["ServiceSelectorAppearance"]
+        applied.append("General.ServiceSelectorAppearance")
 
     # ---- Appearance ----
     for py_key, kt_key in (

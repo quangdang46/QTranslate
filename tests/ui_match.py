@@ -210,8 +210,11 @@ real_hk = [k for k in _defaults.get("HotKeys", {}) if k != "EnableHotKeys"]
 check("hotkey-names==real",
       sorted(C.HOTKEY_NAMES) == sorted(real_hk),
       repr(real_hk))
+# Fresh installs ship the LEGACY hotkey preset (.tmp HotkeyPresets;
+# qt-4xy), so the default ReplaceSelection is Ctrl+Shift+T, not the
+# native file's observed Alt+W.
 code = _defaults.get("HotKeys", {}).get("HotKeyReplaceSelection", 0)
-check("hotkey-decode-343", C.format_hotkey(code) == "Alt + W",
+check("hotkey-decode-legacy", C.format_hotkey(code) == "Ctrl + Shift + T",
       repr(C.format_hotkey(code)))
 check("hotkey-decode-593",
       C.format_hotkey(593) == "Ctrl + Q",
