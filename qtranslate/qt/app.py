@@ -1223,8 +1223,20 @@ class QtApp:
                 return
             if icon.contains_point(x, y):
                 return
-            self._on_ui(lambda: icon.dismiss()
-                        if icon.is_showing() else None)
+            # The tap sees this press BEFORE Qt delivers the click to
+            # the icon. Dismissing synchronously raced _clicked: a press
+            # ON the icon could be judged outside (or the dismiss landed
+            # first), clearing _text so the click translated nothing --
+            # "click icon, it just vanishes". Defer the outside-dismiss
+            # one beat: a real icon click hides the icon itself inside
+            # _clicked, and the deferred check then sees it gone.
+            def _defer_dismiss(icon=icon, x=x, y=y):
+                try:
+                    if icon.is_showing() and not icon.contains_point(x, y):
+                        icon.dismiss()
+                except Exception:
+                    pass
+            self._on_ui(lambda: QTimer.singleShot(100, _defer_dismiss))
         except Exception:
             pass
 
@@ -1651,8 +1663,17 @@ class QtApp:
             pass
 
     def hotkey_popup(self):
-        """Native's Ctrl+Q: translate the SELECTED text, in the popup."""
+        """Native's Ctrl+Q: translate the SELECTED text, in the popup.
+
+        Operator rule (2026-11-07): the selection-translate triggers are
+        one-or-the-other -- while the mouse-capture mode is ON (icon /
+        translate-on-select), Ctrl+Q is inert. It only works when the
+        user has switched mouse capture OFF and drives selection
+        translate by hotkey alone."""
         try:
+            if not self._mouse_mode_off():
+                _dbg("hotkey_popup: mouse mode on, hotkey muted")
+                return
             _dbg("hotkey_popup triggered")
         except Exception:
             pass

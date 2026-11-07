@@ -78,9 +78,11 @@ class MouseIcon(QWidget):
         lab.setGeometry((SIZE - BADGE) // 2, (SIZE - BADGE) // 2,
                         BADGE, BADGE)
         lab.setStyleSheet("background:transparent;")
-        lab.setAttribute(Qt.WA_TransparentForMouseEvents, False)
-        lab.mousePressEvent = self._clicked
-        self.mousePressEvent = self._clicked
+        # Clicks must reach the WIDGET's real virtual, not a
+        # per-instance attribute assignment (unreliable for Qt
+        # virtuals in PySide6): the label is transparent to the mouse
+        # and MouseIcon.mousePressEvent below does the work.
+        lab.setAttribute(Qt.WA_TransparentForMouseEvents, True)
         self.setStyleSheet(
             "MouseIcon { background: rgba(255,255,255,230);"
             " border: 1px solid rgba(0,0,0,60); border-radius: 8px; }"
@@ -178,6 +180,11 @@ class MouseIcon(QWidget):
         QTimer.singleShot(FADE_MS + 30, _done)
 
     # ---------------------------------------------------------------- click
+    def mousePressEvent(self, event):        # noqa: N802 (Qt name)
+        """Class-level virtual -- always dispatched, unlike the old
+        per-instance ``self.mousePressEvent = ...`` assignment."""
+        self._clicked(event)
+
     def _clicked(self, _e):
         text, self._text = self._text, ""
         try:
