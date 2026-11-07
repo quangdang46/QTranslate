@@ -496,6 +496,16 @@ class MainWindow(Base):
         # extension there is no strip at all, so the window is exactly
         # the native's pixels.
         self.panels = self._build_panels()
+
+        # ---- the status bar (.tmp toolbarVisibility.
+        # isStatusBarVisible): the slim strip under the provider
+        # buttons showing the latest bus notification. It lives BELOW
+        # the captured content, so showing it grows the window's
+        # minimum height rather than covering a widget.
+        from .statusbar import StatusBar, HEIGHT as _SB_H
+        self.statusbar = StatusBar(app, self)
+        self.statusbar.setVisible(False)
+        self._sb_extra = _SB_H + 4
         self.apply_pane_visibility()
 
     def apply_pane_visibility(self):
@@ -508,6 +518,9 @@ class MainWindow(Base):
         saves but does nothing is the exact shape the audit exists to
         catch. Qt hides the widgets the pane is made of.
         """
+        # The status bar reads its own merged flag, so it is applied
+        # even when the pane section below cannot be read.
+        self._apply_statusbar()
         try:
             from qtranslate import config
             general = (config.load() or {}).get("General", {})
@@ -551,7 +564,8 @@ class MainWindow(Base):
                 getattr(self, "cmb_tgt", None), getattr(self, "btn_new",
                 None), getattr(self, "btn_swap", None),
                 getattr(self, "btn_go", None), self.btn_back,
-                self.btn_fwd, self.lbl_service, self.btn_nav)
+                self.btn_fwd, self.lbl_service, self.btn_nav,
+                getattr(self, "statusbar", None))
                 if w is not None}
             keep.update(getattr(self, "tabs", ()) or ())
             keep.update((getattr(self, "panels", {}) or {}).values())
@@ -577,6 +591,48 @@ class MainWindow(Base):
             if w is not None:
                 w.setVisible(histbar)
         self._apply_selector_appearance(services)
+
+    # ------------------------------------------------------ status bar
+    def _apply_statusbar(self):
+        """``General.ShowStatusBar`` (.tmp toolbarVisibility.
+        isStatusBarVisible, upstream default true): show or hide the
+        bottom strip, and move the window's minimum height with it so
+        the strip never covers the provider buttons -- the captured
+        content ends 3px above the client floor, so the bar needs the
+        extra room rather than an overlay."""
+        sb = getattr(self, "statusbar", None)
+        if sb is None:
+            return
+        try:
+            visible = bool(self._general_flag("ShowStatusBar", True))
+        except Exception:
+            visible = True
+        try:
+            sb.setVisible(visible)
+        except Exception:
+            pass
+        try:
+            self.setMinimumSize(
+                self.SIZE[0],
+                self.SIZE[1] + (int(getattr(self, "_sb_extra", 0))
+                               if visible else 0))
+        except Exception:
+            pass
+        self._place_statusbar()
+
+    def _place_statusbar(self):
+        """Dock the strip at the bottom edge; the window is resizable
+        and every other widget is pinned, so only the bar follows the
+        height."""
+        sb = getattr(self, "statusbar", None)
+        if sb is None:
+            return
+        try:
+            h = sb.height() or 18
+            sb.setGeometry(4, self.height() - h - 2,
+                           max(60, self.width() - 8), h)
+        except Exception:
+            pass
 
     def _apply_selector_appearance(self, services_visible=True):
         """.tmp ``serviceSelectorAppearance`` on the provider strip:
@@ -1307,6 +1363,7 @@ class MainWindow(Base):
 
     def resizeEvent(self, event):                 # noqa: N802 (Qt name)
         super().resizeEvent(event)
+        self._place_statusbar()
         self._queue_geometry_save()
 
     def moveEvent(self, event):                   # noqa: N802 (Qt name)

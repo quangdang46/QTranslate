@@ -78,11 +78,32 @@ class InternetPage(OptionsBase):
         f3.setToolTip("Proxy username")
         f3.editingFinished.connect(
             lambda: cfg_set("Proxy", "Username", f3.text()))
-        f4 = field(self, 441, 159, 186, 20,
-                   str(proxy.get("Password", "")), enabled=(idx == 2))
+        # Proxy.Password never lives in Options.json (.tmp keeps it in
+        # the SecretStore; port: qtranslate/secrets.py). The field shows
+        # the stored secret and writes back to the secrets file only.
+        try:
+            from qtranslate import secrets as _sec
+            from qtranslate import config as _cfg
+            _sp = _sec.path_for(_cfg.DEFAULT_PATH)
+            _px_pw = str(_sec.get(_sec.PROXY_PASSWORD_KEY, "",
+                                  path=_sp) or "")
+        except Exception:
+            _sp = None
+            _px_pw = ""
+        f4 = field(self, 441, 159, 186, 20, _px_pw, enabled=(idx == 2))
         f4.setToolTip("Proxy password")
-        f4.editingFinished.connect(
-            lambda: cfg_set("Proxy", "Password", f4.text()))
+        try:
+            from PySide6.QtWidgets import QLineEdit
+            f4.setEchoMode(QLineEdit.Password)
+        except Exception:
+            pass
+        def _pw_changed():
+            try:
+                from qtranslate import secrets as _sec
+                _sec.set(_sec.PROXY_PASSWORD_KEY, f4.text(), path=_sp)
+            except Exception:
+                pass
+        f4.editingFinished.connect(_pw_changed)
         self._px_fields += [f3, f4]
         combo(self, 162, 133, 78, "HTTP", enabled=False)
         # The scheme label sits where native's combo is; it is display

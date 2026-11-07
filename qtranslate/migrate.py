@@ -461,7 +461,8 @@ def _apply_kotlin_to_options(kcfg: dict, options: dict) -> list:
         for kt_key, py_key in (
                 ("isServicesPanelVisible", "ShowServicesPane"),
                 ("isHistoryBarVisible", "ShowHistoryBar"),
-                ("isLanguageBarVisible", "ShowLanguageBar")):
+                ("isLanguageBarVisible", "ShowLanguageBar"),
+                ("isStatusBarVisible", "ShowStatusBar")):
             if isinstance(toolbar.get(kt_key), bool):
                 general[py_key] = toolbar[kt_key]
                 applied.append("General." + py_key)
@@ -702,7 +703,8 @@ def _apply_options_to_kotlin(options: dict, kcfg: dict) -> list:
     for py_key, kt_key in (
             ("ShowServicesPane", "isServicesPanelVisible"),
             ("ShowHistoryBar", "isHistoryBarVisible"),
-            ("ShowLanguageBar", "isLanguageBarVisible")):
+            ("ShowLanguageBar", "isLanguageBarVisible"),
+            ("ShowStatusBar", "isStatusBarVisible")):
         if py_key in general and isinstance(general.get(py_key), bool):
             if toolbar is None:
                 toolbar = dict(kcfg.get("toolbarVisibility") or {})

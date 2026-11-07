@@ -187,6 +187,8 @@ try:
 
     # AutoLookupCoordinator's panel refresh: a VISIBLE dictionary
     # window follows the picked word; hidden or same-word is skipped.
+    # .tmp AutoLookupKey.mainVisible adds a second gate: the MAIN
+    # window must be visible too, so the test shows it first.
     class _FakeInp:
         def __init__(self):
             self.text_ = ""
@@ -216,8 +218,16 @@ try:
     ck("hidden dict: untouched",
        not app._dict.searches and app._dict.inp.text_ == "")
 
-    # Visible -> field set + search re-run; same word deduped.
+    # Visible dict but HIDDEN main window -> still untouched
+    # (.tmp "hidden main window does not update the dock").
     app._dict = _FakeDict(visible=True)
+    win.hide()
+    app._auto_dict_refresh("hello")
+    ck("hidden main: dock untouched",
+       not app._dict.searches and app._dict.inp.text_ == "")
+    win.show()
+
+    # Visible -> field set + search re-run; same word deduped.
     app._auto_dict_refresh("hello")
     app._auto_dict_refresh("hello")
     ck("visible dict: searched once",
@@ -227,6 +237,125 @@ try:
        app._dict.searches == ["hello", "world"],
        repr(app._dict.searches))
     app._dict = None
+
+    # ---- AutoLookupCoordinator retrigger (.tmp settingsState leg) ----
+    # An idle translated result + a DictionaryAuto* change re-runs the
+    # lookup once; a blank result or unchanged settings stay silent.
+    app._dict = None
+    got.clear()
+    _DS2.inline_definition = lambda w: got.append(w) or "g"
+    try:
+        app._show_main_result("hello", Res("hola"))
+        drain()
+        ck("baseline lookup on translated word", got == ["hola"],
+           repr(got))
+        got.clear()
+        # Unrelated _load_session (sig unchanged) -> no retrigger.
+        app._load_session()
+        drain()
+        ck("unchanged settings: no retrigger", not got, repr(got))
+        # DictionaryAutoSource TRANSLATED -> SOURCE retriggers with the
+        # SOURCE word now.
+        cfg = _C.load() or {}
+        cfg.setdefault("General", {})["DictionaryAutoSource"] = "SOURCE"
+        _C.save(cfg)
+        app._load_session()
+        drain()
+        ck("SOURCE change retriggers idle result",
+           got == ["hello"], repr(got))
+        got.clear()
+        # Re-enable path: popup flag off -> on retriggers too.
+        cfg["General"]["DictionaryAutoPopup"] = False
+        _C.save(cfg)
+        app._load_session()
+        drain()
+        ck("popup off: retrigger clears silently", not got, repr(got))
+        got.clear()
+        cfg["General"]["DictionaryAutoPopup"] = True
+        cfg["General"]["DictionaryAutoSource"] = "TRANSLATED"
+        _C.save(cfg)
+        app._load_session()
+        drain()
+        ck("popup re-enable retriggers idle result",
+           got == ["hola"], repr(got))
+        # Blank result -> settings change stays silent.
+        got.clear()
+        app._last_out_text = ""
+        cfg["General"]["DictionaryAutoSource"] = "SOURCE"
+        _C.save(cfg)
+        app._load_session()
+        drain()
+        ck("blank result: no retrigger", not got, repr(got))
+        cfg["General"]["DictionaryAutoSource"] = "TRANSLATED"
+        _C.save(cfg)
+        app._load_session()
+    finally:
+        _DS2.inline_definition = _orig
+        app._dict = None
+
+    # ---- .tmp QuickTranslate/ReplaceTranslationLineBreaksTest ----
+    # Advanced.RemoveLineBreaks cleans CAPTURED text before it is
+    # stored: \n -> space, lone \r DROPPED (joins neighbours), one
+    # "  "->" " pass, trim. The popup's stored source (_popup_src_full)
+    # is the cleaned text, and the translator sees the same string.
+    from qtranslate import reliability as _REL
+    ck("prepare: lone CR joins neighbours",
+       _REL.prepare_input_text("line two\rline", True)
+       == "line twoline")
+    ck("prepare: mixed CRLF/LF/CR",
+       _REL.prepare_input_text("line one\r\nline two\rline three", True)
+       == "line one line twoline three")
+    ck("prepare: whitespace around \\n is kept upstream-style",
+       _REL.prepare_input_text("a \n b", True) == "a  b")
+    ck("prepare: flag off is identity",
+       _REL.prepare_input_text("a\nb\rc", False) == "a\nb\rc")
+
+    cfg = _C.load() or {}
+    cfg.setdefault("Advanced", {})["RemoveLineBreaks"] = True
+    _C.save(cfg)
+    received = []
+    _orig_translate = app._translate
+    app._translate = lambda text, **kw: (
+        received.append(text) or Res("hola"))
+    # The popup's own inline gloss would otherwise hit the real
+    # dictionary fan-out; keep it silent like the blocks above.
+    _DS2.inline_definition = lambda w: ""
+    try:
+        raw = "line one\r\nline two\rline three"
+        app._translate_captured(raw)
+        app.wait_for_translation()
+        drain()
+        ck("quick popup stores CLEANED source",
+           app._popup_src_full == "line one line twoline three",
+           repr(app._popup_src_full))
+        ck("translator received cleaned text",
+           received == ["line one line twoline three"], repr(received))
+
+        # Replace-with-translation (Alt+W) cleans the same way.
+        import qtranslate.selection as _sel
+        import qtranslate.sendkeys as _sk
+        _orig_copy = _sel.copy_selection
+        _orig_write = _sk.write_text
+        _sel.copy_selection = lambda *a, **k: "one\ntwo\rthree"
+        typed = []
+        _sk.write_text = lambda t: typed.append(t) or True
+        try:
+            received.clear()
+            app.hotkey_replace_selection()
+            app.wait_for_translation()
+            drain()
+            ck("replace sends cleaned text",
+               received == ["one twothree"], repr(received))
+            ck("replace typed the translation", typed == ["hola"],
+               repr(typed))
+        finally:
+            _sel.copy_selection = _orig_copy
+            _sk.write_text = _orig_write
+    finally:
+        app._translate = _orig_translate
+        _DS2.inline_definition = _orig
+        cfg["Advanced"]["RemoveLineBreaks"] = False
+        _C.save(cfg)
 finally:
     _C.DEFAULT_PATH = _saved
     try:

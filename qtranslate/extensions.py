@@ -380,6 +380,11 @@ _API_METHODS = (
     # listed: sealing it would setattr over a property descriptor.
     "notify", "http_get", "http_post",
     "on_load", "on_unload", "on_settings_changed",
+    # Credentials (upstream SecretStore) and the localization lookup
+    # (upstream DisplayText resolution). Both must seal with the rest:
+    # a timed-out extension must not keep reading or writing secrets.
+    "secrets_get", "secrets_set", "secrets_delete", "secrets_contains",
+    "tr",
 )
 
 
@@ -717,6 +722,67 @@ class ExtensionAPI:
     def on_settings_changed(self, fn):
         """``fn(key, value)`` after a successful ``set_setting``."""
         return self._manager.add_hook(self._ext_id, "settings", fn)
+
+    # ---- credentials (upstream PluginContext.secrets / SecretStore) ---
+    #
+    # Upstream keeps a plugin's credentials in a SecretStore backed by a
+    # per-plugin key-value file, separate from SettingsStore so secrets
+    # can move to the OS keychain later and are never exported, logged
+    # or shown in settings UI. The port's equivalent is a JSON file
+    # inside THIS extension's own ``data_dir`` -- ``secrets.json`` --
+    # never Options.json. Same threat model as upstream: not encrypted,
+    # protected by the data directory's file permissions (0600).
+
+    def secrets_get(self, key, default=None):
+        """This extension's stored secret for ``key``, or ``default``.
+
+        Returns ``None`` (or ``default``) when unset; secrets written by
+        another extension are unreachable -- each id has its own file.
+        """
+        return self._manager.secrets_get(self._ext_id, key, default)
+
+    def secrets_set(self, key, value):
+        """Persist ``value`` as this extension's secret for ``key``.
+
+        ``key`` must be a non-empty string and ``value`` a string --
+        upstream's SecretStore is string-only, and silently stringifying
+        a dict would hide the extension's own bug. The file is written
+        atomically with owner-only permissions (0600 where the platform
+        honours them).
+        """
+        return self._manager.secrets_set(self._ext_id, key, value)
+
+    def secrets_delete(self, key):
+        """Remove this extension's secret for ``key``; no-op when absent."""
+        return self._manager.secrets_delete(self._ext_id, key)
+
+    def secrets_contains(self, key):
+        """Whether a secret is set, without requiring the caller to use it.
+
+        Mirrors upstream's ``SecretStore.contains``: lets an extension
+        report "no key configured" without pulling the value into scope.
+        """
+        return self._manager.secrets_contains(self._ext_id, key)
+
+    # ---- localization (upstream DisplayText resolution) ----------------
+
+    def tr(self, key, fallback="", *args):
+        """Translate ``key`` through this extension's own bundle.
+
+        Looks ``key`` up in ``localization/<lang>.toml`` files inside the
+        extension's folder for the active UI language (written tag, then
+        base language, then ``en`` -- upstream's chain, see
+        ``qtranslate.ext_i18n``). Returns the translation when found,
+        else ``fallback`` (or ``key`` itself when both are empty), with
+        ``*args`` applied printf-style (``%s``) to whichever string wins.
+
+        Divergence from upstream, documented in ``ext_i18n``: there is no
+        host-strings-first step (host packs are id-addressed, not
+        key-addressed) and no ``DisplayText`` object -- ``tr`` is the
+        whole contract.
+        """
+        return self._manager.ext_translate(self._ext_id, key, fallback,
+                                           args)
 
 
 class ExtensionManager:
@@ -1161,6 +1227,140 @@ class ExtensionManager:
                 fn(key, value)
             except BaseException:           # noqa: BLE001
                 continue
+
+    # -- credentials (upstream SecretStore port) ------------------------
+    #
+    # Upstream's ``ScopedSecretStore`` keeps each plugin's credentials in
+    # a ``<pluginId>.secrets`` key-value file, deliberately separate from
+    # settings so they can move to the OS keychain later and never ride
+    # along in exports, logs or the settings UI. The port's equivalent
+    # is ``secrets.json`` inside the extension's own ``data_dir`` --
+    # outside Options.json entirely, so ``get_config`` and every config
+    # dump are structurally incapable of leaking it. Writes are
+    # tmp+rename (same discipline as ``config.save``) and chmod 0600,
+    # best-effort: on filesystems without POSIX modes the file is still
+    # written, just without the extra protection.
+
+    _SECRETS_FILENAME = "secrets.json"
+
+    def _secrets_file(self, ext_id):
+        """``<data_dir>/<ext id>/secrets.json`` -- per-extension file."""
+        return os.path.join(self.data_dir_for(ext_id),
+                            self._SECRETS_FILENAME)
+
+    @staticmethod
+    def _chmod_private(path):
+        """Best-effort owner-only permissions (0600)."""
+        try:
+            os.chmod(path, 0o600)
+        except (OSError, AttributeError):
+            pass
+
+    def _load_secrets(self, ext_id):
+        """This extension's secret map; {} on any read problem.
+
+        A corrupt or hand-edited file yields {} rather than raising --
+        same fail-open rule as ``get_setting``: a broken store must not
+        take the extension down. A successfully read file is also
+        tightened to 0600 in case it was created by an older build or
+        copied in with loose permissions.
+        """
+        path = self._secrets_file(ext_id)
+        try:
+            with open(path, encoding="utf-8") as fh:
+                data = json.load(fh)
+        except Exception:                   # noqa: BLE001
+            return {}
+        if not isinstance(data, dict):
+            return {}
+        self._chmod_private(path)
+        return {str(k): v for k, v in data.items()
+                if isinstance(v, str)}
+
+    def _save_secrets(self, ext_id, data):
+        """Atomically write the secret map, owner-only where supported."""
+        path = self._secrets_file(ext_id)
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(data, fh)
+        self._chmod_private(tmp)
+        os.replace(tmp, path)
+        self._chmod_private(path)
+
+    @staticmethod
+    def _check_secret_key(key):
+        if not isinstance(key, str) or not key:
+            raise ValueError("secret key must be a non-empty string")
+
+    def secrets_get(self, ext_id, key, default=None):
+        """One extension's stored secret, or ``default``."""
+        if not ext_id:
+            return default
+        self._check_secret_key(key)
+        return self._load_secrets(ext_id).get(key, default)
+
+    def secrets_set(self, ext_id, key, value):
+        """Persist one extension's secret; returns ``value``.
+
+        String-only, like upstream's ``SecretStore.put``: a non-string
+        value raises ``TypeError`` at the call site (inside the
+        extension's own code) instead of being silently coerced.
+        """
+        if not ext_id:
+            raise ValueError("secrets_set needs an extension id")
+        self._check_secret_key(key)
+        if not isinstance(value, str):
+            raise TypeError("secret value must be a string")
+        data = self._load_secrets(ext_id)
+        data[key] = value
+        self._save_secrets(ext_id, data)
+        return value
+
+    def secrets_delete(self, ext_id, key):
+        """Remove one extension's secret; no-op when absent."""
+        if not ext_id:
+            return
+        self._check_secret_key(key)
+        data = self._load_secrets(ext_id)
+        if key in data:
+            del data[key]
+            self._save_secrets(ext_id, data)
+
+    def secrets_contains(self, ext_id, key):
+        """Whether a secret is present, without requiring its value."""
+        if not ext_id:
+            return False
+        self._check_secret_key(key)
+        return key in self._load_secrets(ext_id)
+
+    # -- localization (upstream DisplayText resolution port) ------------
+
+    def ext_translate(self, ext_id, key, fallback, args):
+        """Resolve ``key`` against the extension's own bundles.
+
+        The extension's install folder (``_ext_folders``) holds
+        ``localization/<tag>.toml``; ``qtranslate.ext_i18n`` walks the
+        active-language chain. Returns the formatted translation, else
+        the formatted ``fallback``, else ``key`` when both are empty --
+        the readable-string guarantee upstream's ``DisplayText.fallback``
+        states. ``args`` apply printf-style; a format mismatch falls
+        back to the unformatted string rather than raising into the
+        caller's UI path.
+        """
+        folder = self._ext_folders.get(ext_id)
+        try:
+            from qtranslate import ext_i18n as _I18N
+            text = _I18N.translate(folder, key) if folder else None
+        except Exception:                   # noqa: BLE001
+            text = None
+        if text is None:
+            text = str(fallback or "") or str(key or "")
+        if args:
+            try:
+                text = text % tuple(args)
+            except (TypeError, ValueError):
+                pass
+        return text
 
     # -- live enable/disable ---------------------------------------------
     #

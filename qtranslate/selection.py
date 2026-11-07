@@ -42,6 +42,14 @@ BACKOFF_START_MS = 8
 BACKOFF_CAP_MS = 320
 BACKOFF_STEPS = 8
 
+# .tmp SelectionCapture.restoreWithRetry: a BUSY clipboard is retried up
+# to 3 attempts, 50ms apart; any other restore failure is permanent and
+# fails after a single attempt. Either way a failed restore suppresses
+# the captured action -- the caller must never act on text copied while
+# the user's own clipboard could not be put back.
+RESTORE_MAX_ATTEMPTS = 3
+RESTORE_RETRY_DELAY_S = 0.05
+
 # Modifier-neutralization budget (.tmp TriggerNeutralizer waits 2000ms
 # and fails CLOSED). A still-held Shift at the deadline would turn the
 # synthesized copy into Ctrl+Shift+C -- a different chord delivered to
@@ -144,23 +152,28 @@ def last_reason() -> str:
 def copy_selection(backend=None, send=None, read=None, sequence=None,
                    sleep=None, pressed=None,
                    start_ms=BACKOFF_START_MS, cap_ms=BACKOFF_CAP_MS,
-                   steps=BACKOFF_STEPS) -> str:
+                   steps=BACKOFF_STEPS, snapshot=None, restore=None) -> str:
     """Synthesize Ctrl+C and return the text that copy produced.
 
     ``backend`` is the key backend to inject in tests (the ``keyboard``
     package by default); ``send``/``read``/``sequence``/``sleep``/
     ``pressed`` are the other seams, all defaulted, so the behaviour is
-    testable without a real clipboard or a real keystroke.
+    testable without a real clipboard or a real keystroke. ``snapshot``
+    and ``restore`` are the clipboard-snapshot seams, likewise defaulted
+    to ``clipboard.snapshot``/``clipboard.restore``.
 
     Returns ``""`` when nothing provably new was captured: modifiers
     still held at the neutralization deadline, a copy that cannot be
     proven on a platform WITH a sequence counter (``send`` refused --
     nothing was copied, the clipboard is stale by definition -- or a
-    delivered copy whose sequence never moved), or an empty clipboard
-    after a confirmed change. The clipboard-as-it-stands fallback
-    survives ONLY where the platform has no sequence counter at all
-    (the copy could not be proven either way -- the "copy could not be
-    attempted" semantic), pinned in ``tests/regress_selection_capture.py``.
+    delivered copy whose sequence never moved), an empty clipboard
+    after a confirmed change, or a clipboard that could not be restored
+    after the copy (.tmp ``CaptureFailure.RESTORE_FAILED`` -- the action
+    is NOT dispatched on unrestored clipboard state). The
+    clipboard-as-it-stands fallback survives ONLY where the platform
+    has no sequence counter at all (the copy could not be proven either
+    way -- the "copy could not be attempted" semantic), pinned in
+    ``tests/regress_selection_capture.py``.
     """
     from qtranslate import clipboard, sendkeys
 
@@ -169,6 +182,8 @@ def copy_selection(backend=None, send=None, read=None, sequence=None,
     read = read or clipboard.read_text
     sequence = sequence or clipboard.sequence
     sleep = sleep or _default_sleep
+    snapshot = snapshot or clipboard.snapshot
+    restore = restore or clipboard.restore
 
     # Neutralization (.tmp awaitCopyNeutral / TriggerNeutralizer): NO
     # contaminating modifier may still be held when the synthetic Copy
@@ -192,7 +207,7 @@ def copy_selection(backend=None, send=None, read=None, sequence=None,
     # Fail CLOSED when the snapshot fails: copying without a restore
     # path can destroy the user's clipboard contents.
     try:
-        snap = clipboard.snapshot()
+        snap = snapshot()
     except Exception:
         _LAST_REASON = "snapshot-failed"
         return ""
@@ -205,13 +220,48 @@ def copy_selection(backend=None, send=None, read=None, sequence=None,
             start_ms, cap_ms, steps)
         if not out and _LAST_REASON == "ok":
             _LAST_REASON = "empty-read"
-        return out
-    finally:
-        if snap is not None:
-            try:
-                clipboard.restore(snap)
-            except Exception:
-                pass
+    except Exception:
+        # The restore is still owed when the capture itself blew up;
+        # its result is moot once the exception propagates.
+        try:
+            _restore_with_retry(restore, snap, sleep)
+        except Exception:
+            pass
+        raise
+    if not _restore_with_retry(restore, snap, sleep):
+        # .tmp SelectionCapture: the copy landed but the user's
+        # clipboard could not be put back -- fail CLOSED. Returning the
+        # text here would dispatch an action on clipboard state the
+        # user did not leave there.
+        _LAST_REASON = "restore-failed"
+        return ""
+    return out
+
+
+def _restore_with_retry(restore, snap, sleep) -> bool:
+    """Restore the snapshot with .tmp ``restoreWithRetry`` semantics.
+
+    ``clipboard.ClipboardBusyError`` is the only retryable failure
+    (another process holds the clipboard open): retried up to
+    ``RESTORE_MAX_ATTEMPTS`` total, ``RESTORE_RETRY_DELAY_S`` apart. A
+    plain False or any other exception is permanent and fails after ONE
+    attempt. Never raises for restore failures; ``sleep``/``restore``
+    seam errors propagate to the caller's guard.
+    """
+    from qtranslate import clipboard as _cb
+    for attempt in range(1, RESTORE_MAX_ATTEMPTS + 1):
+        try:
+            if restore(snap):
+                return True
+            busy = False
+        except _cb.ClipboardBusyError:
+            busy = True
+        except Exception:
+            busy = False
+        if not busy or attempt >= RESTORE_MAX_ATTEMPTS:
+            return False
+        sleep(RESTORE_RETRY_DELAY_S)
+    return False
 
 
 def _capture_after_snapshot(backend, send, read, sequence, sleep,

@@ -17,6 +17,12 @@ from qtranslate.platforms import app_data_dir
 # `platforms.app_data_dir()` gives the same shape everywhere:
 # ``~/.config/QTranslate`` off Windows.
 DEFAULT_PATH = os.path.join(app_data_dir(), "Options.json")
+# The path the app actually ships with. ``load()`` only auto-migrates the
+# Kotlin DataStore when ``DEFAULT_PATH`` still points here -- tests and
+# tools reassign ``DEFAULT_PATH`` to throwaway files, and without this
+# guard every fresh temp config would get the user's REAL migrated
+# settings (locale, hotkeys, ...) injected into it.
+_BUILTIN_DEFAULT_PATH = DEFAULT_PATH
 
 
 def ensure_dir(path: str = None) -> None:
@@ -229,8 +235,14 @@ DEFAULT_ADVANCED = {
 DEFAULT_INTERNET = {"Timeout": 10000, "RetryEnabled": True,
                     "MaxRetries": 2, "RetryDelayMs": 1000,
                     "HostTimeouts": {}}
+# Proxy.Password is deliberately ABSENT: upstream keeps the proxy
+# password in a SecretStore, never in persisted config
+# (.tmp NetworkConfigMappingTest "the proxy password comes from the
+# secret store, not the config file"). The port's store is
+# qtranslate/secrets.py; config.load() migrates a legacy plaintext
+# value out of existing Options.json files.
 DEFAULT_PROXY = {"ProxyType": 0, "Scheme": 0, "Host": "", "Port": 0,
-                 "Username": "", "Password": ""}
+                 "Username": ""}
 
 
 def decode_hotkey(code: int) -> dict:
@@ -432,13 +444,15 @@ def default_config() -> dict:
             "ShowMiddlePane": True,
             "ShowServicesPane": True,
             # .tmp toolbarVisibility.isHistoryBarVisible/
-            # isLanguageBarVisible (the back/forward pair and the
-            # language tool row; ShowServicesPane above is .tmp's
-            # isServicesPanelVisible under its native name) and
-            # Configuration.serviceSelectorAppearance -- the provider
-            # strip's icon/text mix, .tmp's own enum names.
+            # isLanguageBarVisible/isStatusBarVisible (the back/forward
+            # pair, the language tool row and the bottom status strip;
+            # ShowServicesPane above is .tmp's isServicesPanelVisible
+            # under its native name) and Configuration.
+            # serviceSelectorAppearance -- the provider strip's
+            # icon/text mix, .tmp's own enum names.
             "ShowHistoryBar": True,
             "ShowLanguageBar": True,
+            "ShowStatusBar": True,
             "ServiceSelectorAppearance": "ICONS_AND_TEXT",
             # Menu-181 toggles (native ids 0x8063/0x8077/0x8075) and
             # the startup-action group (85-88) plus its quit-time
@@ -500,21 +514,26 @@ def load(path: str | None = None) -> dict:
     corrupt one is moved aside and also yields the defaults (the caller
     is then free to write a good file over it).
     """
+    is_default = path is None
     if path is None:
         path = DEFAULT_PATH
         # One-time bidirectional migration with the Kotlin .tmp app's
         # DataStore settings (qtranslate/migrate.py). Runs only for the real
-        # settings path -- explicit paths (tests, tools) never trigger it --
-        # is guarded to once per process, and swallows all errors so a
-        # migration problem can never stop the app from loading settings.
-        try:
-            from qtranslate import migrate as _migrate
-            _migrate.migrate_if_needed()
-        except Exception:
-            pass
+        # settings path -- explicit paths (tests, tools) never trigger it,
+        # and neither does a reassigned ``DEFAULT_PATH`` (tests point it at
+        # temp files; migrating there would import the user's real
+        # settings into every throwaway config). Guarded to once per
+        # process, and swallows all errors so a migration problem can
+        # never stop the app from loading settings.
+        if DEFAULT_PATH == _BUILTIN_DEFAULT_PATH:
+            try:
+                from qtranslate import migrate as _migrate
+                _migrate.migrate_if_needed()
+            except Exception:
+                pass
     try:
         with open(path, encoding="utf-8-sig") as f:
-            return json.load(f)
+            cfg = json.load(f)
     except FileNotFoundError:
         return default_config()
     except (OSError, ValueError):
@@ -526,6 +545,20 @@ def load(path: str | None = None) -> dict:
         except Exception:
             pass
         return default_config()
+    # One-time secrets migration, default path only (explicit paths --
+    # tests, tools -- never touch the real secrets store): a legacy
+    # Options.json may still carry Proxy.Password in plaintext; move it
+    # to secrets.json and rewrite the file without it. Runs only while
+    # the key is present, so the steady state costs nothing.
+    if is_default:
+        try:
+            from qtranslate import secrets as _secrets
+            if _secrets.migrate_options(
+                    cfg, path=_secrets.path_for(path)):
+                save(cfg)
+        except Exception:
+            pass
+    return cfg
 
 
 def save(cfg: dict, path: str | None = None) -> None:

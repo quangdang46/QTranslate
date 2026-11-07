@@ -138,6 +138,29 @@ def _retry_after_seconds(exc: BaseException) -> float | None:
     return parse_retry_after(get("Retry-After"))
 
 
+def _error_retry_after(exc: BaseException):
+    """The Retry-After hint carried ON the error (.tmp's
+    ``ServiceError.RateLimitError.retryAfterSeconds``).
+
+    ``session._net_open`` stamps ``exc.retry_after_seconds`` on every 429
+    it raises (delta-seconds or a future HTTP-date -> whole seconds,
+    capped at 600; past-date/absent/negative -> None). Errors that never
+    crossed that funnel (test doubles, foreign exceptions) fall back to
+    the header parse with the same "past date means unset" rule --
+    ``parse_retry_after`` floors a past date at 0.0 for SLEEP purposes,
+    which is not the same contract as the error hint.
+    """
+    hint = getattr(exc, "retry_after_seconds", None)
+    if hint is not None:
+        return hint
+    try:
+        from qtranslate import session as _S
+        return _S._retry_after_seconds(exc)
+    except Exception:
+        secs = _retry_after_seconds(exc)
+        return secs if secs and secs > 0 else None
+
+
 def classify(exc: BaseException | None, *, status: int | None = None) -> ErrorKind:
     """Put a provider failure into exactly one kind from §2.
 
@@ -289,6 +312,11 @@ class Failure:
     attempts: int = 1
     elapsed: float = 0.0
     fell_back: bool = False
+    # .tmp ServiceError.RateLimitError.retryAfterSeconds: the server's
+    # Retry-After hint carried ON the error (seconds), not only consumed
+    # by the retry sleep. Set only for RATE_LIMITED failures; None when
+    # the header was absent, a past HTTP-date, or negative.
+    retry_after: float | None = None
 
     @property
     def retryable(self) -> bool:
@@ -302,6 +330,8 @@ class Failure:
             parts.append(f"status={self.status}")
         if self.detail:
             parts.append(f"detail={self.detail}")
+        if self.retry_after is not None:
+            parts.append(f"retry_after={self.retry_after:g}s")
         return " ".join(parts)
 
 
@@ -530,6 +560,7 @@ def run_provider(fn, provider: str, *, policy: RetryPolicy | None = None,
     status = None
     detail = ""
     retry_after = None
+    retry_hint = None
 
     while True:
         attempt += 1
@@ -541,6 +572,8 @@ def run_provider(fn, provider: str, *, policy: RetryPolicy | None = None,
             detail = str(exc)[:200]
             retry_after = (_retry_after_seconds(exc)
                            if policy.honor_retry_after else None)
+            retry_hint = (_error_retry_after(exc)
+                          if kind is ErrorKind.RATE_LIMITED else None)
             if on_event is not None:
                 on_event(f"{provider} attempt {attempt} failed "
                          f"kind={kind.value}")
@@ -570,7 +603,8 @@ def run_provider(fn, provider: str, *, policy: RetryPolicy | None = None,
         if delay:
             sleep(delay)
 
-    return Failure(provider, kind, status, detail, attempt, clock() - started)
+    return Failure(provider, kind, status, detail, attempt,
+                   clock() - started, retry_after=retry_hint)
 
 
 class HealthState(enum.Enum):
@@ -847,6 +881,26 @@ def _failure_note(failures) -> str:
 # --------------------------------------------------------------------------
 
 
+def prepare_input_text(text, remove_line_breaks=False) -> str:
+    """(.tmp MainTranslationPolicy.prepareInputText) the input cleanup
+    every externally-supplied text goes through BEFORE it is stored or
+    sent: ``\\n`` -> space, ``\\r`` dropped outright (a lone CR joins its
+    neighbours -- "line two\\rline" -> "twoline"), ONE non-overlapping
+    pass of ``"  "`` -> ``" "``, then trim.
+
+    This is deliberately NOT ``\\s*\\n\\s*`` -> " ": that pattern eats
+    the whitespace upstream keeps ("a \\n b" keeps a double space) and
+    lets a lone ``\\r`` survive. Kotlin's ``String.replace`` chain is
+    single-pass, and Python's ``str.replace`` is the same single pass,
+    so the port is character-for-character identical.
+    """
+    text = text or ""
+    if remove_line_breaks:
+        text = (text.replace("\n", " ").replace("\r", "")
+                .replace("  ", " ").strip())
+    return text
+
+
 def normalize_request(text, src, tgt, *, remove_line_breaks=False,
                        max_chars=5000) -> tuple:
     """Apply the shaping transforms the live path applies, exactly once.
@@ -859,9 +913,7 @@ def normalize_request(text, src, tgt, *, remove_line_breaks=False,
     if not text:
         return "", src, tgt
     if remove_line_breaks:
-        import re
-
-        text = re.sub(r"\s*\n\s*", " ", text)
+        text = prepare_input_text(text, True)
     if max_chars:
         text = text[:max_chars]
     return text, src, tgt

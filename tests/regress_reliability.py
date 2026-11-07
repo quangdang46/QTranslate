@@ -532,6 +532,26 @@ check("RemoveLineBreaks did not run a second time",
       len(seen_by) >= 2 and all(s[1] == "line1 line2" for s in seen_by)
       and seen_by[0][1].count(" ") == 1, repr(seen_by))
 
+# .tmp MainTranslationPolicy.prepareInputText: \n -> space, a lone \r is
+# DROPPED (joins its neighbours), ONE non-overlapping "  "->" " pass,
+# trim. The old \s*\n\s* regex ate whitespace upstream keeps and let a
+# lone \r survive -- both are pinned here.
+_t, _s, _g = R.normalize_request(
+    "line one\r\nline two\rline three", "en", "vi",
+    remove_line_breaks=True)
+check("lone CR joins neighbours, CRLF collapses",
+      _t == "line one line twoline three", repr(_t))
+_t2, _, _ = R.normalize_request("a \n b", "en", "vi",
+                                remove_line_breaks=True)
+check("whitespace around \\n is NOT eaten (upstream keeps it)",
+      _t2 == "a  b", repr(_t2))
+_t3, _, _ = R.normalize_request("x\ry", "en", "vi",
+                                remove_line_breaks=True)
+check("lone CR never reaches the provider", _t3 == "xy", repr(_t3))
+check("prepare_input_text is the shared shaping helper",
+      R.prepare_input_text("p\r\nq\rs", True) == "p qs",
+      repr(R.prepare_input_text("p\r\nq\rs", True)))
+
 # The 5000-char cap is applied once, before any provider sees the text.
 seen_by.clear()
 long_text = "x" * 9000

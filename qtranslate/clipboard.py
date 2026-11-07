@@ -15,6 +15,14 @@ from __future__ import annotations
 CF_UNICODETEXT = 0xD  # 13, the format FUN_0043BE56 writes
 
 
+class ClipboardBusyError(RuntimeError):
+    """The clipboard stayed busy (another process holds it open) past the
+    bounded open retries. The ONLY retryable restore failure -- every
+    other restore failure is permanent. Selection capture retries this
+    up to its attempt bound, exactly like .tmp's IllegalStateException
+    branch in ``SelectionCapture.restoreWithRetry``."""
+
+
 def write_text(text) -> bool:
     """Write text to the clipboard; True on success (native FUN_0043BE56)."""
     try:
@@ -46,8 +54,22 @@ def sequence() -> int:
         import sys
         if sys.platform == "darwin":
             return _darwin_change_count()
-        from ctypes import windll as _wd
-        return int(_wd.user32.GetClipboardSequenceNumber())
+        import ctypes
+        fn = ctypes.windll.user32.GetClipboardSequenceNumber
+        # The API returns a DWORD -- UNSIGNED 32-bit. ctypes' default
+        # c_int restype reads values above 2^31 as NEGATIVE, which the
+        # capture poll would mistake for a counter blink (``now < 0``)
+        # and never see the wrap as a change. c_uint32 keeps the whole
+        # range positive so mark/check compare as plain unsigned
+        # integers, matching .tmp WindowsClipboardChangeMonitor whose
+        # tokens only ever compare for inequality.
+        fn.restype = ctypes.c_uint32
+        fn.argtypes = []
+        seq = int(fn())
+        # The API returns 0 on failure; upstream mark() maps 0 to
+        # "unavailable" -- a zero token would compare unequal to almost
+        # anything and fabricate changes.
+        return seq if seq else -1
     except Exception:
         return -1
 
@@ -85,7 +107,14 @@ def snapshot():
 
 
 def restore(token) -> bool:
-    """Put a ``snapshot()`` token back; True on success."""
+    """Put a ``snapshot()`` token back.
+
+    True on success, False on a PERMANENT failure, and raises
+    :class:`ClipboardBusyError` when the clipboard stayed busy past the
+    bounded open retries -- the one failure a caller may retry
+    (.tmp ``SelectionCapture.restoreWithRetry`` retries busy up to 3
+    attempts and fails fast on anything else).
+    """
     if token is None:
         return False
     try:
@@ -94,6 +123,8 @@ def restore(token) -> bool:
             return _darwin_restore(token)
         if sys.platform == "win32":
             return _win_restore(token)
+    except ClipboardBusyError:
+        raise
     except Exception:
         return False
     return False
@@ -276,7 +307,10 @@ def _win_restore(token) -> bool:
     import ctypes
     user32, kernel32 = _win32_apis()
     if not _win_open(user32):
-        return False
+        # OpenClipboard already retried its bounded busy window; still
+        # locked means another process holds the clipboard -- the one
+        # restore failure worth retrying (.tmp IllegalStateException).
+        raise ClipboardBusyError("clipboard still busy after open retries")
     ok = True
     try:
         if not user32.EmptyClipboard():

@@ -75,8 +75,16 @@ try:
     app.win = win
     ck("the main window has a source pane", hasattr(win, "src"))
     ck("the main window has a result pane", hasattr(win, "out"))
+    # .tmp isStatusBarVisible: the status strip lives BELOW the
+    # captured content, so a visible bar grows the client by exactly
+    # its reserved room (_sb_extra) instead of covering a widget.
+    _sb = getattr(win, "statusbar", None)
+    _sb_h = win._sb_extra if (_sb is not None
+                            and _sb.isVisibleTo(win)) else 0
     ck("the main window keeps the measured client size",
-       (win.width(), win.height()) == win.SIZE, str(win.SIZE))
+       (win.width(), win.height())
+       == (win.SIZE[0], win.SIZE[1] + _sb_h),
+       "%dx%d vs %s+%d" % (win.width(), win.height(), win.SIZE, _sb_h))
     ck("the main window's origin is the native's",
        win.ORIGIN == (1, 31), str(win.ORIGIN))
 

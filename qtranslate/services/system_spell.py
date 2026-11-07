@@ -21,18 +21,26 @@ correction list, context menu and apply path work unchanged:
 ``{"correctedText", "corrections": [{original, startIndex, endIndex,
 suggestions, type}]}``.
 
-Availability is honest: ``available()`` is False off-macOS/Windows or
-without the platform API, and ``check`` returns None then so the
-caller can fall back to the network backend.
+Availability is honest: ``available()`` is False off-macOS/Windows/
+Linux or without the platform backend, and ``check`` returns None
+then so the caller can fall back to the network backend.
+
+Linux: the .tmp ``LinuxSpellCheckerBackend`` shells out to an
+installed Ispell-protocol engine (enchant-2 preferred, hunspell
+fallback). This port uses ``aspell -a`` -- the same ``@(#)`` header
+and ``&``/``#`` finding rows, dependency-free and present on most
+desktop installs -- since it speaks the identical pipe protocol.
 """
 from __future__ import annotations
 
 import ctypes
+import re
+import subprocess
 import sys
 
 
 def available():
-    return sys.platform in ("darwin", "win32")
+    return sys.platform in ("darwin", "win32", "linux")
 
 
 def _checker():
@@ -59,6 +67,8 @@ def check(text, lang="en"):
     try:
         if sys.platform == "win32":
             return _check_win(text, lang)
+        if sys.platform == "linux":
+            return _check_linux(text, lang)
         checker = _checker()
         if checker is None:
             return None
@@ -393,3 +403,192 @@ def _check_win(text, lang):
             _release(factory.value)
         if owns_apartment:
             ole.CoUninitialize()
+
+
+# ------------------------------------------------------------- Linux
+# Port of LinuxSpellCheckerBackend's contract: discover an installed
+# Ispell-protocol engine, feed the text through ``-a`` pipe mode and
+# parse the ``@(#)`` header + ``&``/``#`` finding rows. Upstream picks
+# enchant-2 then hunspell; this port uses ``aspell``, which speaks the
+# same protocol with no extra dependency. Offsets arrive as 1-based
+# columns whose unit (chars/UTF-16/UTF-8 bytes) is engine-dependent,
+# so -- like upstream's ``sourceOffset`` -- every plausible
+# interpretation is tried and only a unique alignment is accepted.
+
+_ASPELL_DICTS = None
+
+# ``& word [line] column: sug, sug`` / ``# word [line] column``.
+_ISSUE = re.compile(
+    r"^([&#])\s+(.+?)\s+(?:(\d+)\s+)?(\d+)(?::\s*(.*))?$")
+
+
+def _aspell_exe():
+    """Path to aspell, or None when it is not installed."""
+    import shutil
+    try:
+        return shutil.which("aspell")
+    except Exception:
+        return None
+
+
+def _aspell_dicts(exe, timeout=5.0):
+    """Installed aspell dictionary names via ``aspell dump dicts``.
+
+    Cached per process; an empty set means discovery failed and the
+    caller should try the requested language anyway (aspell itself
+    reports a missing dictionary, which ``check`` turns into None)."""
+    global _ASPELL_DICTS
+    if _ASPELL_DICTS is not None:
+        return _ASPELL_DICTS
+    names = set()
+    try:
+        out = subprocess.run([exe, "dump", "dicts"], capture_output=True,
+                             text=True, timeout=timeout)
+        if out.returncode == 0:
+            for line in out.stdout.splitlines():
+                line = line.strip()
+                if line:
+                    names.add(line.split()[0])
+    except Exception:
+        pass
+    _ASPELL_DICTS = names
+    return names
+
+
+def _aspell_dict(lang, dicts):
+    """Best installed dictionary for ``lang``: exact tag (``-``/``_``
+    both tried), then base language, then any ``<base>_*`` variant.
+    None when nothing matches."""
+    tag = (lang or "").strip()
+    if not tag or tag.lower() in ("auto", "auto-detect", "auto_detect"):
+        tag = "en"
+    base = re.split(r"[-_]", tag)[0].lower()
+    cands = []
+    for v in (tag, tag.replace("-", "_"), tag.replace("_", "-")):
+        cands += [v, v.lower()]
+    cands.append(base)
+    for c in cands:
+        if c in dicts:
+            return c
+    for d in sorted(dicts):
+        dl = d.lower()
+        if dl == base or dl.startswith(base + "_") \
+                or dl.startswith(base + "-"):
+            return d
+    return None
+
+
+def _linux_source_offset(line, word, position):
+    """Map aspell's 1-based column to a Python str index.
+
+    Returns the index only when exactly one interpretation (char,
+    UTF-16 or UTF-8-byte column) places ``word`` at that spot -- the
+    same ambiguity rejection upstream's ``sourceOffset`` does."""
+    zero = position - 1
+    if zero < 0:
+        return None
+    cands = set()
+    if zero <= len(line):
+        cands.add(zero)                       # char column
+    cands.add(_utf16_to_py(line, zero))       # UTF-16 column
+    try:
+        prefix = line.encode("utf-8")[:zero].decode("utf-8")
+        if len(prefix.encode("utf-8")) == zero:
+            cands.add(len(prefix))            # UTF-8 byte column
+    except Exception:
+        pass
+    ok = [i for i in cands
+          if i + len(word) <= len(line)
+          and line[i:i + len(word)] == word]
+    return ok[0] if len(ok) == 1 else None
+
+
+def _ispell_findings(source, output):
+    """aspell ``-a`` output for ONE source line -> corrections with
+    UTF-16 offsets local to that line, or None on malformed output.
+
+    aspell's pipe mode is line-oriented (no cross-line context), so
+    ``_check_linux`` feeds one line per invocation and this parser
+    never has to guess which report block belongs to which line."""
+    if not output.startswith("@(#)"):
+        return None
+    reports = output.split("\n", 1)[1] if "\n" in output else ""
+    corrections = []
+    for row in reports.splitlines():
+        clean = row.rstrip("\r")
+        if not clean or clean[0] in "*+-":
+            continue
+        m = _ISSUE.match(clean.strip())
+        if not m:
+            return None  # malformed finding -> caller falls back
+        word = m.group(2)
+        try:
+            position = int(m.group(4))
+        except (TypeError, ValueError):
+            return None
+        idx = _linux_source_offset(source, word, position)
+        if idx is None:
+            return None  # unaligned offset -> caller falls back
+        start16 = _utf16_len(source[:idx])
+        end16 = start16 + _utf16_len(word)
+        suggestions = ([s.strip() for s in m.group(5).split(",")]
+                       if m.group(5) else [])
+        corrections.append({
+            "original": word,
+            "startIndex": start16,
+            "endIndex": end16,
+            "suggestions": suggestions[:5],
+            "type": "SPELLING",
+        })
+    return corrections
+
+
+def _check_linux(text, lang):
+    """Linux spell check via ``aspell -a`` (Ispell pipe protocol).
+
+    Returns the bing_spell-shaped dict, or None when aspell or a
+    matching dictionary is absent -- the caller then falls back to
+    the network backends. Text goes over stdin, never argv. Each
+    source line gets its own ``aspell -a`` run: the pipe protocol is
+    line-oriented, so this is semantically identical to one batch run
+    while keeping report->line mapping unambiguous."""
+    exe = _aspell_exe()
+    if not exe or not (text or "").strip():
+        return None
+    dicts = _aspell_dicts(exe)
+    tag = _aspell_dict(lang, dicts)
+    if tag is None:
+        if dicts:
+            return None  # known dictionaries, none for this language
+        # Discovery failed: try the base language and let aspell
+        # itself report a missing dictionary (-> nonzero -> None).
+        base = re.split(r"[-_]", (lang or "").strip())[0].lower()
+        tag = base if base and base not in ("auto", "autodetect") \
+            else "en"
+    corrections = []
+    line_start16 = 0
+    for raw_line in text.split("\n"):
+        line = raw_line[:-1] if raw_line.endswith("\r") else raw_line
+        if not line:
+            line_start16 += _utf16_len(raw_line) + 1
+            continue
+        try:
+            proc = subprocess.run(
+                [exe, "-a", "-l", tag],
+                input=line.encode("utf-8"), capture_output=True,
+                timeout=15)
+        except Exception:
+            return None
+        if proc.returncode != 0:
+            return None
+        found = _ispell_findings(
+            line, proc.stdout.decode("utf-8", "replace"))
+        if found is None:
+            return None
+        for c in found:
+            c["startIndex"] += line_start16
+            c["endIndex"] += line_start16
+            corrections.append(c)
+        line_start16 += _utf16_len(raw_line) + 1  # + '\n'
+    return {"correctedText": _corrected_text(text, corrections),
+            "corrections": corrections}

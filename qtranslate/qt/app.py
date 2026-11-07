@@ -370,6 +370,12 @@ class QtApp:
             self._refresh_language_combos()
         except Exception:
             pass
+        # .tmp AutoLookupCoordinator's settingsState leg: a DictionaryAuto*
+        # change retriggers the lookup for an idle translated result.
+        try:
+            self._auto_lookup_settings_check()
+        except Exception:
+            pass
 
     def _apply_cli(self):
         """An explicit launch wins over the remembered session.
@@ -705,6 +711,12 @@ class QtApp:
         if d is None or not word:
             return
         try:
+            # .tmp AutoLookupKey.mainVisible: a hidden main window
+            # still gets the inline gloss (dispatched unconditionally
+            # upstream) but must NOT touch the dictionary window.
+            win = getattr(self, "win", None)
+            if win is None or not win.isVisible():
+                return
             if not d.isVisible():
                 return
             if getattr(self, "_auto_dict_word", "") == word:
@@ -714,6 +726,70 @@ class QtApp:
             d.do_search()
         except Exception:
             pass
+
+    # ------------------------------------- auto-lookup retrigger
+    # .tmp AutoLookupCoordinator's combine(mainState, settingsState):
+    # a change to DictionaryAutoSource or isDictionaryAutoPopupEnabled
+    # (or the dictionary panel opening) re-fires the lookup -- but ONLY
+    # while the last result is an idle, non-blank translation
+    # (settingChangedIdle). The port has no state flow; Options Apply /
+    # OK / Cancel reaches the app through _load_session, which is where
+    # the signature check lives.
+    def _auto_lookup_sig(self):
+        """The settings keys upstream's AutoLookupKey diffs on."""
+        g = self._extra_cfg()
+        return (str(g.get("DictionaryAutoSource") or "TRANSLATED"),
+                bool(g.get("DictionaryAutoPopup", True)))
+
+    def _auto_lookup_idle(self):
+        """(.tmp settingChangedIdle) ``(src, out)`` of the last finished
+        main-window translation, or None while loading / when the
+        result is blank -- quick-translate never writes these fields
+        upstream either, so a popup answer cannot retrigger."""
+        out = getattr(self, "_last_out_text", "") or ""
+        if not out.strip():
+            return None
+        try:
+            if any(t.is_alive() for t in getattr(self, "_threads", [])):
+                return None
+        except Exception:
+            pass
+        return (getattr(self, "_last_src_text", "") or "", out)
+
+    def _auto_lookup_retrigger(self):
+        """Re-run the auto lookup once for the idle result."""
+        idle = self._auto_lookup_idle()
+        if idle is None:
+            return
+        try:
+            # Same upstream filter as the settings leg: the whole
+            # coordinator is gated on isDictionaryAutoPopupEnabled.
+            if not self._auto_lookup_sig()[1]:
+                return
+        except Exception:
+            pass
+        try:
+            self._refresh_inline_definition(idle[0], idle[1])
+        except Exception:
+            pass
+
+    def _auto_lookup_settings_check(self):
+        """Called from _load_session (the Options notify path): fire the
+        retrigger only when a DictionaryAuto* key actually changed
+        since the last check -- unrelated Apply clicks are silent."""
+        try:
+            sig = self._auto_lookup_sig()
+        except Exception:
+            return
+        prev = getattr(self, "_auto_lookup_sig_seen", None)
+        self._auto_lookup_sig_seen = sig
+        if prev is None or prev == sig:
+            return
+        # .tmp filter: !isDictionaryAutoPopupEnabled suppresses the
+        # emission entirely -- disabling must not even clear the gloss.
+        if not sig[1]:
+            return
+        self._auto_lookup_retrigger()
 
     def _inline_done(self, gen, gloss):
         if gen != getattr(self, "_inline_gen", 0):
@@ -958,8 +1034,9 @@ class QtApp:
         finished translation per ``General.AutoCopyTranslation`` —
         "off" never, "quick" only for the quick-translate surface,
         "all" for main/quick/OCR. Blank results never copy; instant
-        translation is excluded upstream in every mode (the port has
-        no instant pipeline feeding this hook)."""
+        translation is excluded upstream in every mode -- the port's
+        instant pipeline (main_window._instant_done) renders through
+        ``win.render`` and never reaches this hook."""
         try:
             mode = str(self._extra_cfg().get(
                 "AutoCopyTranslation", "off") or "off").lower()
@@ -1496,6 +1573,15 @@ class QtApp:
             except Exception:
                 pass
         self._dict.show()
+        # .tmp panelVisible false->true edge: opening the dictionary
+        # retriggers the auto lookup for an idle translated result.
+        # A fresh window has searched nothing yet, so the dedup word
+        # from a previous window must not suppress the refresh.
+        self._auto_dict_word = ""
+        try:
+            self._auto_lookup_retrigger()
+        except Exception:
+            pass
 
     def open_image_search(self, term=""):
         """Open the image search dialog (Wikimedia Commons).
@@ -2112,6 +2198,25 @@ class QtApp:
         except Exception:                   # noqa: BLE001 -- fail-open
             pass
 
+    def _prepared_capture(self, text):
+        """(.tmp ShowQuickTranslate / ReplaceTranslation ->
+        prepareInputText) externally captured text is cleaned BEFORE it
+        is stored or sent: with Advanced.RemoveLineBreaks on, the popup's
+        inputText -- and therefore ``_popup_src_full`` -- is the CLEANED
+        text, not the raw selection (.tmp QuickTranslateLineBreaksTest).
+        The request layer normalizes again; the chain is idempotent."""
+        try:
+            from qtranslate import config as _C
+            on = bool(((_C.load() or {}).get("Advanced", {}) or {})
+                      .get("RemoveLineBreaks", False))
+        except Exception:
+            on = False
+        try:
+            from qtranslate import reliability as _R
+            return _R.prepare_input_text(text, on)
+        except Exception:
+            return text
+
     def _translate_captured(self, text, speak=False):
         """Translate captured selection text and show the popup.
 
@@ -2122,6 +2227,7 @@ class QtApp:
         it lands, SOURCE reads the captured selection immediately in
         the source language while the translation still runs.
         """
+        text = self._prepared_capture(text)
         if speak and self._read_source() == "source":
             try:
                 lang = (self.source if self.source != "auto"
@@ -2954,6 +3060,12 @@ class QtApp:
                     except Exception:
                         pass
                     return
+                # .tmp ShowQuickTranslate: prepareInputText BEFORE the
+                # text becomes the popup's inputText / goes to the
+                # translator -- the stored source is the cleaned text.
+                text = self._prepared_capture(text)
+                if not text:
+                    return
                 try:
                     self._on_ui(lambda t=text: self._popup_loading(t))
                 except Exception:
@@ -3019,7 +3131,7 @@ class QtApp:
         text (not the selection) lands in the popup. Distinct from
         hotkey_popup (Ctrl+Q = selection) and from
         hotkey_translate_clipboard (result into the main window)."""
-        text = self._clipboard_text()
+        text = self._prepared_capture(self._clipboard_text())
         if not text:
             return
         try:
@@ -3056,6 +3168,10 @@ class QtApp:
                 # clipboard text must not be typed over the user's
                 # cursor.
                 text = (selection.copy_selection() or "").strip()
+                # .tmp ReplaceTranslation -> prepareInputText: the
+                # replace path cleans captured text the same way the
+                # quick popup does before it is translated.
+                text = self._prepared_capture(text)
                 _dbg("replace: copied len=%d" % len(text))
                 if not text:
                     return

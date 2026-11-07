@@ -171,6 +171,80 @@ def _play_mp3_bytes_darwin(data: bytes, block: bool = True) -> None:
         raise
 
 
+# Linux MP3 players, first usable wins (mpv/ffplay play anything;
+# mpg123/mpg321 are MP3-only but common on minimal installs).
+_LINUX_MP3_PLAYERS = (
+    ("mpv", ["--no-video", "--really-quiet", "--"]),
+    ("ffplay", ["-nodisp", "-autoexit", "-loglevel", "quiet"]),
+    ("mpg123", ["-q"]),
+    ("mpg321", ["-q"]),
+)
+
+
+def _linux_mp3_cmd():
+    """(name, argv-prefix) for the first installed Linux MP3 player."""
+    import shutil
+    for name, args in _LINUX_MP3_PLAYERS:
+        try:
+            exe = shutil.which(name)
+        except Exception:
+            exe = None
+        if exe:
+            return name, [exe] + args
+    return None, None
+
+
+def _play_mp3_bytes_linux(data: bytes, block: bool = True) -> str:
+    """Play MP3 bytes on Linux through the first available player.
+
+    Same temp-file + ``_current["proc"]`` contract as the darwin
+    afplay path: the Popen handle is registered so ``stop()`` can cut
+    playback off. Returns the player name used; raises when no player
+    exists so the caller can fall back to offline TTS.
+    """
+    import shlex
+    import subprocess
+    import tempfile
+    name, prefix = _linux_mp3_cmd()
+    if prefix is None:
+        raise RuntimeError(
+            "no Linux MP3 player found (mpv/ffplay/mpg123/mpg321)")
+    fd, path = tempfile.mkstemp(suffix=".mp3", prefix="qt_tts_")
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(bytes(data))
+        if block:
+            proc = subprocess.Popen(
+                prefix + [path],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            _current["proc"] = proc
+            try:
+                proc.wait()
+            finally:
+                if _current.get("proc") is proc:
+                    _current["proc"] = None
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+        else:
+            # Fire-and-forget: the temp file must outlive the player,
+            # so the wrapper shell removes it after playback ends.
+            script = " ".join(shlex.quote(a) for a in prefix) \
+                + ' "$1"; rm -f "$1"'
+            proc = subprocess.Popen(
+                ["sh", "-c", script, "sh", path],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            _current["proc"] = proc
+        return name
+    except Exception:
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+        raise
+
+
 def _speak_darwin(text: str, lang: str = "", slow: bool = False) -> None:
     """Offline speech on macOS: the ``say`` command (no SAPI/comtypes).
 
@@ -198,12 +272,79 @@ def _speak_darwin(text: str, lang: str = "", slow: bool = False) -> None:
         _current["proc"] = None
 
 
+def _speak_linux(text: str, lang: str = "", slow: bool = False) -> str | None:
+    """Offline speech on Linux: eSpeak/eSpeak-NG (the .tmp
+    LinuxTtsBackend contract) with VoiceLocaleMapper-style voice
+    matching, then speech-dispatcher's ``spd-say`` as a fallback
+    engine when no espeak binary exists.
+
+    Returns the backend name used ("espeak-ng"/"espeak"/"spd-say"),
+    or None when no engine is installed so the caller can fall
+    through. ``shutil.which`` guards every lookup: a missing binary
+    is silence-with-fallback, never a crash.
+    """
+    import shutil
+    import subprocess
+    exe = None
+    for cand in ("espeak-ng", "espeak"):
+        try:
+            exe = shutil.which(cand)
+        except Exception:
+            exe = None
+        if exe:
+            break
+    def _run(cmd):
+        """Popen + wait registered in _current; False on any failure."""
+        try:
+            proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL,
+                                    stderr=subprocess.DEVNULL)
+        except Exception:
+            return False
+        _current["proc"] = proc
+        try:
+            proc.wait()
+        except Exception:
+            pass
+        if _current.get("proc") is proc:
+            _current["proc"] = None
+        return True
+
+    if exe:
+        cmd = [exe]
+        try:
+            from qtranslate.services import system_tts
+            voice = system_tts.preferred_voice(lang)
+        except Exception:
+            voice = None
+        if voice:
+            cmd += ["-v", voice]
+        # espeak -s is words-per-minute (default 175); slow halves it.
+        cmd += ["-s", "110" if slow else "175"]
+        cmd.append(text)
+        if _run(cmd):
+            return exe.rsplit("/", 1)[-1]
+    try:
+        spd = shutil.which("spd-say")
+    except Exception:
+        spd = None
+    if spd:
+        cmd = [spd]
+        tag = (lang or "").strip()
+        if tag and tag.lower() not in ("auto", "autodetect"):
+            cmd += ["-l", tag.replace("_", "-")]
+        cmd.append(text)
+        if _run(cmd):
+            return "spd-say"
+    return None
+
+
 def play_text(text: str, lang: str = "vi", block: bool = True,
               slow: bool | None = None) -> str:
     """Online mp3 -> platform player; on any failure fall back to offline TTS.
 
     Mirrors native TaskListenText: serviceListenRequest mp3 first,
-    then the offline voice (SpVoice on Windows, ``say`` on macOS) when
+    then the offline voice (SpVoice on Windows, ``say`` on macOS,
+    espeak/spd-say on Linux) when
     the download fails. slow maps Advanced.EnableSlowerListening
     (clearer TTS); ``None`` reads the setting so EVERY caller honours it,
     not just the history window. Returns backend used.
@@ -225,7 +366,9 @@ def play_text(text: str, lang: str = "vi", block: bool = True,
     sys.path.insert(0, ".")
     from qtranslate.tts import bing_tts, google_tts
     is_darwin = sys.platform == "darwin"
-    backend_name = "afplay" if is_darwin else "bass"
+    is_linux = sys.platform.startswith("linux")
+    backend_name = "afplay" if is_darwin else ("linux" if is_linux
+                                             else "bass")
     # .tmp ServiceRole.TTS: General.PreferredServices.tts promotes one
     # backend; "system" goes straight to the offline voice. Unknown or
     # empty keeps the google -> bing order.
@@ -249,6 +392,8 @@ def play_text(text: str, lang: str = "vi", block: bool = True,
         try:
             if is_darwin:
                 _play_mp3_bytes_darwin(data, block=block)
+            elif is_linux:
+                backend_name = _play_mp3_bytes_linux(data, block=block)
             else:
                 play_mp3_bytes(data, block=block)
             return backend_name
@@ -257,6 +402,11 @@ def play_text(text: str, lang: str = "vi", block: bool = True,
     if is_darwin:
         _speak_darwin(text, lang=lang, slow=slow)
         return "say"
+    if is_linux:
+        # SAPI/PowerShell cannot speak on Linux; report honestly
+        # when no espeak/spd-say engine exists instead of claiming
+        # a backend that is a guaranteed no-op.
+        return _speak_linux(text, lang=lang, slow=slow) or ""
     try:
         # .tmp WindowsTtsBackend equivalent: SAPI SpVoice with
         # VoiceLocaleMapper-style voice matching (comtypes, lazy).

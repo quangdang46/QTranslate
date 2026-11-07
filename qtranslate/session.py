@@ -78,8 +78,24 @@ def net_options() -> dict:
             auth = ""
             if px.get("Username"):
                 import urllib.parse as _up
+                # .tmp NetworkConfigMappingTest: the proxy password
+                # lives in the SecretStore ("network.proxy.password"),
+                # never in persisted config. The plaintext px fallback
+                # covers Options.json files written before the
+                # secrets migration ran (config.load scrubs them).
+                pw = ""
+                try:
+                    from qtranslate import secrets as _sec
+                    from qtranslate import config as _cfg
+                    pw = _sec.get(
+                        _sec.PROXY_PASSWORD_KEY, "",
+                        path=_sec.path_for(_cfg.DEFAULT_PATH)) or ""
+                except Exception:
+                    pw = ""
+                if not pw:
+                    pw = px.get("Password", "") or ""
                 auth = _up.quote(px.get("Username", "")) + ":" + \
-                    _up.quote(px.get("Password", "")) + "@"
+                    _up.quote(pw) + "@"
             proxy = f"{scheme}://{auth}{host}:{port}"
     except Exception:
         proxy = None
@@ -171,6 +187,16 @@ def _net_open(req, opener=None, data=None, timeout=None):
         try:
             return _open_once(req, opener, proxy, timeout)
         except urllib.error.HTTPError as e:
+            if getattr(e, "code", None) == 429:
+                # .tmp ServiceError.RateLimitError.retryAfterSeconds: the
+                # hint rides ON the error object, not only the retry
+                # sleep. Past-date/absent/negative -> None (unset);
+                # delta-seconds and future HTTP-dates -> whole seconds,
+                # capped at _MAX_RETRY_AFTER_SECONDS.
+                try:
+                    e.retry_after_seconds = _retry_after_seconds(e)
+                except Exception:
+                    pass
             if i == attempts - 1 or not _retryable(e, method):
                 raise
             wait = _retry_after_seconds(e)
@@ -280,15 +306,40 @@ def bing_session() -> dict:
     }
 
 
-def bing_translate(text: str, sl: str = "en", tl: str = "vi") -> str:
-    """End-to-end Microsoft translate sharing one cookie jar (native-like).
+# .tmp BingAuthRecoveryTest contract: an auth rejection (HTTP 401/403,
+# or a body statusCode of 401/403 -- ttranslatev3 answers rejections as
+# {"statusCode": ..., "errorMessage": ...} objects, and the Kotlin test
+# scripts the code as a STRING) drops the rejected session, refreshes
+# once, and retries once. Never a loop; a non-auth rejection is not
+# retried; surfaced errors carry no token/key/MUID/user text.
+_AUTH_REJECT_CODES = (401, 403)
 
-    Scrape + translate through the SAME opener so engine-set cookies
-    (MUID/_EDGE_*) persist — this is what plain per-call urllib missed.
-    """
+
+def _status_code_of(obj):
+    """Body statusCode as an int (the endpoint sends it as a string)."""
+    if not isinstance(obj, dict):
+        return None
+    try:
+        return int(obj.get("statusCode"))
+    except (TypeError, ValueError):
+        return None
+
+
+def _auth_rejected(obj) -> bool:
+    return _status_code_of(obj) in _AUTH_REJECT_CODES
+
+
+def bing_auth_error(code):
+    """An auth rejection shaped like urllib's HTTPError so
+    reliability.classify reads AUTH_EXPIRED (.code). The message is a
+    fixed string -- never the token, key, MUID or the user's text."""
+    return urllib.error.HTTPError(
+        "https://www.bing.com/ttranslatev3", int(code),
+        "authentication rejected", {}, None)
+
+
+def _bing_translate_post(s: dict, text: str, sl: str, tl: str):
     import json
-    import urllib.parse
-    s = bing_session()
     path = ("/ttranslatev3?isVertical=1&IG={}&IID={}"
             .format(s["IG"], s["iid"]))
     body = ("text={}&fromLang={}&to={}&token={}&key={}"
@@ -302,7 +353,37 @@ def bing_translate(text: str, sl: str = "en", tl: str = "vi") -> str:
                  "Origin": "https://www.bing.com",
                  "Referer": "https://www.bing.com/translator"})
     with _net_open(req, s["opener"]) as r:
-        obj = json.loads(r.read().decode("utf-8"))
+        return json.loads(r.read().decode("utf-8"))
+
+
+def bing_translate(text: str, sl: str = "en", tl: str = "vi",
+                   _retried: bool = False) -> str:
+    """End-to-end Microsoft translate sharing one cookie jar (native-like).
+
+    Scrape + translate through the SAME opener so engine-set cookies
+    (MUID/_EDGE_*) persist — this is what plain per-call urllib missed.
+
+    Auth recovery (.tmp BingAuthRecoveryTest): an HTTP 401/403 or a body
+    ``statusCode`` of 401/403 drops the rejected session and retries ONCE
+    against a freshly scraped one; a second rejection surfaces as an
+    HTTPError(.code=401/403) so the router classifies AUTH_EXPIRED.
+    """
+    s = bing_session()
+    try:
+        obj = _bing_translate_post(s, text, sl, tl)
+    except urllib.error.HTTPError as e:
+        code = getattr(e, "code", None)
+        if code not in _AUTH_REJECT_CODES:
+            raise
+        if _retried:
+            raise
+        # The rejected token is dropped with the whole session: the
+        # recursive call scrapes a fresh IG/token/key/cookie jar.
+        return bing_translate(text, sl, tl, _retried=True)
+    if _auth_rejected(obj):
+        if _retried:
+            raise bing_auth_error(_status_code_of(obj))
+        return bing_translate(text, sl, tl, _retried=True)
     try:
         return obj[0]["translations"][0]["text"]
     except (KeyError, IndexError, TypeError):

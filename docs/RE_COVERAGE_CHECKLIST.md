@@ -163,8 +163,8 @@ exclusions check (`FUN_004631DE`/`FUN_004630C5`).
 | B1 17 global hotkeys register | `FUN_00405A17`: `RegisterHotKey(hwnd, id=word, mods=(word>>8)&0xF, vk=word&0xFF)`; pushes `id` into a list on success | VERIFIED | ported | `qtranslate/qt/hotkeys.py` `install()`; codec in `config.hotkey_combo` |
 | B2 Hotkey decode | `config.decode_hotkey` + smoke vectors | VERIFIED | ported | id=low byte, mods=(word>>8)&0xF. Artifact: `tests/regress_hotkey_decode.py` (10 assertions) pins the byte layout |
 | B3 Hotkey display string | `FUN_00403B48`: `"Double "` if bit15, then Ctrl(`FUN_00403D3C` 0x11)/Shift(0x10)/Alt(0x12)/Win, joined `" + "` (0x2B0020), then VK name — matches `config.format_hotkey` | VERIFIED | ported | "Double Ctrl + Q" |
-| B4 Hotkey dispatch + double-press | `FUN_0041786B` handler (`GetGUIThreadInfo`, mod mask) → `FUN_00417DCE(entry, table)` → task objects; double-press via the packed-mask (bit15) | VERIFIED | ported | see B evidence |
-| B5 HotKeyCtrl capture | `FUN_00408456` (subclass/init ctor, style bits 2/4/8) + `FUN_0040AA88` (key handler): `GetKeyState` for Ctrl/Shift/Alt/Win; Del/Backspace/Enter/Esc clear; otherwise pack via `FUN_0040ABC3`; **double-press** if same key within `SetTimer(GetDoubleClickTime())` → sets bit15 (`0x8000`) | VERIFIED | ported | rebind UI + double-press capture |
+| B4 Hotkey dispatch + double-press | `FUN_0041786B` handler (`GetGUIThreadInfo`, mod mask) → `FUN_00417DCE(entry, table)` → task objects; double-press via the packed-mask (bit15) | VERIFIED | ported | see B evidence. **2026-11-08 correction:** chord dispatch is ported, but the DOUBLE-PRESS gesture is NOT detected — `HotKeyMainWindow=0x8000` ("Double Ctrl") persists and displays correctly (`config.format_hotkey`, `migrate.py` `isDoubleCtrlEnabled`↔0x8000), yet `hotkey_combo(0x8000)` yields no combo so `qt/hotkeys.py::install` registers nothing, and no tap-pair detector exists (upstream `DoubleCtrlDetector`, ui-swing/.../input/, needs the `MainGlobalKeyListener`/`QInputBackend` raw key stream the port lacks). REAL-GAP, documented in `GAP_AUDIT_3.md` |
+| B5 HotKeyCtrl capture | `FUN_00408456` (subclass/init ctor, style bits 2/4/8) + `FUN_0040AA88` (key handler): `GetKeyState` for Ctrl/Shift/Alt/Win; Del/Backspace/Enter/Esc clear; otherwise pack via `FUN_0040ABC3`; **double-press** if same key within `SetTimer(GetDoubleClickTime())` → sets bit15 (`0x8000`) | VERIFIED | ported | rebind UI + double-press capture. **2026-11-08 correction:** `qt/options/hotkeys.py` records chords into the same `(mods<<8)|vk` packing, but a bare modifier press is ignored and there is no double-press path — the recorder can never SET bit15 (only the LEGACY/MODERN presets and `migrate.py` write 0x8000 today). The bit15 display half is ported (`format_hotkey` "Double …"); the capture half is a REAL-GAP (`GAP_AUDIT_3.md`) |
 | B6 In-window keys | `FUN_0042DC18` binds menu `0x8051` ("Reset") with accelerator string `L"Shift+Esc"` (`0051F43C`); RT_ACCELERATOR id 3 exists in `.rsrc` type dir 9 | VERIFIED | ported | menu-accelerator wiring confirmed; per-key global table parse not needed |
 
 ## C. Capture
@@ -742,7 +742,7 @@ is silently dropped.
 | M6 `Advanced` (10 keys) | `FUN_0045869F`: `OcrApiKey` +0x23C, `DefaultBrowserId` +0x224, `CopyAction` +0x228, `PreferredDomain` +0x230, `EnableSlowerListening` +0x235, … | VERIFIED | ported | OCR key, browser |
 | M7 `Application` (4 keys) | `FUN_0045869F`: `SaveHistoryPath` +0x240, `HistoryFilter` +0x244, `HistoryFilterFavorites` +0x248, `OptionsPageIndex` +0x24C | VERIFIED | ported | startup/history paths |
 | M8 `Internet` (1 key) | `FUN_0045869F`: section `Internet` → `Timeout` +0x194 | VERIFIED | ported | — |
-| M9 `Proxy` (6 keys) | `FUN_0045869F`: `ProxyType` +0x198, `Host` +0x19C, `Port` +0x1A0, `Username` +0x1A4, `Password` +0x1A8, `Scheme` +0x1B0 | VERIFIED | ported | password decoded (`FUN_004559E6`) |
+| M9 `Proxy` (6 keys) | `FUN_0045869F`: `ProxyType` +0x198, `Host` +0x19C, `Port` +0x1A0, `Username` +0x1A4, `Password` +0x1A8, `Scheme` +0x1B0 | VERIFIED | ported | password decoded (`FUN_004559E6`). **2026-11-08:** native 6.10 does persist `Proxy.Password` in Options.json, but `.tmp` keeps it in a SecretStore (`NetworkConfigMappingTest`); the port now follows `.tmp` — `qtranslate/secrets.py` (`network.proxy.password`, `secrets.json` 0600 beside Options.json), `config.load()` migrates legacy plaintext out, `session.py`/`qt/options/internet.py` use the store. The other 5 keys stay in Options.json |
 | M10 `HotKeys` (18 keys) | `FUN_0045869F`: `EnableHotKeys` +0x1B4 + 17 `HotKey*` dwords +0x1B6..+0x1D6 | VERIFIED | ported | — |
 | M11 `OfflineDictionaries` (list) | `FUN_0045869F`: `FUN_00440A08` array → `FUN_0041E3A3` into `+0x250` | VERIFIED | ported | empty on test box |
 | M12 `Dictionary` (3 keys) | `FUN_0045869F`: `ShowServicesPane` +0x180, `DictionaryExactSearch` +0x181, `DictionaryZoom` +0x184 | VERIFIED | ported | — |
@@ -967,24 +967,40 @@ deliberate divergence.
   registered by the service modules directly (the port has no plugin
   runtime for first-party providers); extension plugins use the
   manifest system.
-- `.tmp` `PluginContext` extras still unported (GAP_AUDIT_2 item 5,
-  partial pass 2026-11-07): plugin localization
-  (`PluginLocalization`/`PluginTextResolver` — extension strings have
-  no bundle/translation mechanism) and JAR fingerprint integrity
-  (`PluginFingerprintRepository` — extensions are Python source
-  folders, nothing signed to fingerprint). `SecretStore` is skipped
-  for the same reason: the port has no secrets mechanism at all —
-  API keys live in Options.json and `api.get_config` redacts them —
-  so there is nothing to scope. Ported in the same pass:
-  `api.data_dir` (`<app data>/extensions_data/<id>/`), `api.notify`
-  (host hook or lazy `qtranslate.notify`), `api.http_get`/`http_post`
-  (over `session._net_open`, user proxy/timeout/retry apply) and the
-  `api.on_load`/`on_unload`/`on_settings_changed` lifecycle hooks;
-  pinned by `tests/regress_ext_api.py`.
+- `.tmp` `PluginContext` extras (GAP_AUDIT_2 item 5): the portable
+  subset landed 2026-11-07/08 — `api.data_dir`
+  (`<app data>/extensions_data/<id>/`), `api.notify` (host hook or lazy
+  `qtranslate.notify`), `api.http_get`/`http_post` (over
+  `session._net_open`, user proxy/timeout/retry apply), the
+  `api.on_load`/`on_unload`/`on_settings_changed` lifecycle hooks,
+  `api.secrets_*` (per-extension `secrets.json` in the data dir at
+  0600, outside Options.json), and `api.tr` (extension-folder
+  `localization/<tag>.toml` bundles, active-language chain with
+  fallback; divergences in `qtranslate/ext_i18n.py`). Still unported:
+  JAR fingerprint integrity (`PluginFingerprintRepository` —
+  extensions are Python source folders, nothing signed to
+  fingerprint), upstream's host-strings-first `DisplayText`
+  resolution, the plugin-code `validate()` hook with host timeout
+  (`PluginValidateTimeoutTest` — GAP_AUDIT_3 row 3), per-plugin scoped
+  HTTP client isolation (the port shares the app's single
+  `session._net_open` policy rather than a per-plugin KtorHttpClient),
+  `SettingType` richness (schema kinds remain bool/number/string), and
+  `@reference`/`[meta]` TOML handling. Pinned by
+  `tests/regress_ext_api.py` and `tests/regress_ext_secrets_i18n.py`.
 - PDF layout-aware translation: needs a renderer/font pipeline
   (PDFBox equivalent); text-only mode reports an honest error.
 - Windows/Linux OCR/spell/TTS backends: port targets macOS first;
   `.tmp`'s Windows.Media.Ocr/hunspell/SAPI ports are future work.
+  Corollary (GAP_AUDIT_3 row 10): upstream's `OcrLineOrder` visual→
+  logical reorder exists ONLY for `Windows.Media.Ocr`, which reports
+  words in visual order; the port has no such backend, so there is no
+  visual-order input to reorder. Affects **Windows** (tesseract is the
+  offline fallback there; a future Windows.Media.Ocr port MUST carry
+  `OcrLineOrder` for Arabic+embedded-Latin lines) and is **UNVERIFIED
+  on macOS Vision** (`ocr.py` joins `topCandidates_(1).string()`
+  verbatim — whether Vision emits logical or visual order for
+  mixed-direction text was not tested). tesseract/cloud/AI stages
+  return engine reading order; no upstream contract applies.
 - Donation nudge: promotional dialog, not a translation feature.
 
 Pinned by `tests/regress_presets.py`, `tests/regress_local_hotkeys.py`,
@@ -1211,10 +1227,39 @@ Recorded divergences (architectural, not gaps):
   CLASSIC arrangement, so `serviceSelectorAppearance` and the
   `toolbarVisibility` bar flags ported cleanly
   (`General.ServiceSelectorAppearance`, `ShowHistoryBar`,
-  `ShowLanguageBar`; `isServicesPanelVisible` was already
-  `ShowServicesPane`). Still divergent: `isStatusBarVisible` (the
-  port has no status bar) and `showDictionaryPanel` (the dictionary
+  `ShowLanguageBar`, `ShowStatusBar`; `isServicesPanelVisible` was
+  already `ShowServicesPane`). `isStatusBarVisible` landed with
+  `qtranslate/qt/statusbar.py`: the port's status bar is the
+  notification half of upstream's `StatusBar` -- latest bus
+  notification chip (severity glyph + title/body, "Ready" when
+  empty) plus a click-to-list history menu standing in for
+  `NotificationPopover`; upstream's status-message pipeline
+  (`StatusCode`/`UpdateStatusBar`) and the loading progress bar
+  have no port counterpart and stay divergent. Still divergent:
+  `showDictionaryPanel` (the dictionary
   is a separate window -- see below).
+  **ENHANCED evaluated (qt-ldc, round 3): divergence confirmed, no
+  code.** `rebuildEnhanced` renders three labelled combos --
+  Translate / Dictionary / Voice -- each writing the active preset's
+  `selectedServices[role]`, plus a per-combo configure gear. Every
+  role's selection is already reachable in the port without a new
+  main-window widget: TRANSLATOR is the provider strip itself (main
+  window AND the popup's hover strip -- a combo would duplicate the
+  buttons one row up); TTS is the Options > Services "Preferred
+  services" combo (`General.PreferredServices.tts`, consumed by
+  `player.py`) -- the same page also covers spell and OCR, roles
+  ENHANCED does not even show inline; DICTIONARY has no honest
+  counterpart because .tmp picks ONE active dictionary plugin
+  (`LookupWordUseCase` -> `getActiveService<Dictionary>`) while the
+  port's `dictionary_search._enabled_dict_keys` fans out over every
+  enabled dictionary (`DictionariesOrder` minus
+  `DisabledDictionaries`), so the enable/order controls on the same
+  Options page are the equivalent -- there is no single-active-dict
+  slot for a picker to fill. `.tmp`'s own default IS ENHANCED
+  (`Configuration.kt` serviceSelectorStyle), but the port's strip is
+  a deliberate presentation choice matching its native-6.10 chrome;
+  building inline combos would add a redundant second way to set
+  values Options already owns.
 - `quickDictionary*` fields and `showDictionaryPanel` -- .tmp's
   dictionary is a popup/dock; the port's is a separate window (native
   6.10 model). The auto-refresh coordinator still only touches a

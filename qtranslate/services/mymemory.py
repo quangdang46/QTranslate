@@ -84,16 +84,36 @@ def _source_code(text, sl):
     return code
 
 
+def _paragraph_break(text: str) -> bool:
+    """Kotlin containsParagraphBreak: "\\n\\n" or "\\r\\n\\r\\n"."""
+    return "\n\n" in text or "\r\n\r\n" in text
+
+
 def _segments(text: str):
-    """Kotlin splits on 500 UTF-8 BYTES at char boundaries."""
+    """Kotlin Utf8Segmenter.split(text, 500).
+
+    Two rules, both byte-exact: a text that fits in 500 UTF-8 bytes AND
+    has no paragraph break stays ONE request; otherwise the text is cut
+    at code-point boundaries on the byte budget AND flushed right after
+    every ``\\n\\n`` paragraph break -- so "First.\\n\\nSecond." is two
+    requests even though it fits. Segments concatenate back to the
+    input losslessly (the ``\\n\\n`` stays at the end of its segment).
+    """
+    text = text or ""
+    if len(text.encode("utf-8")) <= MAX_QUERY_BYTES \
+            and not _paragraph_break(text):
+        return [text]
     out, cur, size = [], "", 0
     for ch in text:
         n = len(ch.encode("utf-8"))
-        if size + n > MAX_QUERY_BYTES and cur:
+        if cur and size + n > MAX_QUERY_BYTES:
             out.append(cur)
             cur, size = "", 0
         cur += ch
         size += n
+        if cur.endswith("\n\n"):
+            out.append(cur)
+            cur, size = "", 0
     if cur:
         out.append(cur)
     return out or [""]

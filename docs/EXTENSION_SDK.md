@@ -336,10 +336,27 @@ All five were resolved and folded into `PROJECT_VISION.md`:
 > proxy/timeout/retry policy applies; and `api.on_load(fn)` /
 > `api.on_unload(fn)` / `api.on_settings_changed(fn)` are lifecycle
 > hooks mapped onto load, disable and `set_setting` (a raising
-> `on_load` fails the load fail-open). NOT ported, recorded as
-> divergences in `RE_COVERAGE_CHECKLIST.md`: `SecretStore` (no secrets
-> mechanism exists to scope), plugin localization, and JAR fingerprint
-> integrity. Pinned by `tests/regress_ext_api.py` (25).
+> `on_load` fails the load fail-open). Pinned by
+> `tests/regress_ext_api.py` (25).
+>
+> **Secrets and extension strings (landed 2026-11-08).** The portable
+> subset of upstream's `SecretStore` and plugin localization:
+> `api.secrets_get(key, default)` / `api.secrets_set(key, value)` /
+> `api.secrets_delete(key)` / `api.secrets_contains(key)` keep each
+> extension's credentials in `secrets.json` inside its own `data_dir`
+> — never Options.json, written atomically at 0600 where the platform
+> honours modes, and unreachable through `get_config` or any config
+> dump. `api.tr(key, fallback, *args)` resolves dotted keys against the
+> extension's own `localization/<tag>.toml` bundles (same TOML shape
+> upstream's `LanguageTomlParser` produces) along the active-language
+> chain — written tag, base language, `en` — with printf-style `*args`
+> and `fallback` as the always-readable guarantee. Divergences from
+> upstream, documented in `qtranslate/ext_i18n.py`: no
+> host-strings-first step (host packs are id-addressed, not
+> key-addressed), no `DisplayText` object (`tr` is the whole contract),
+> no `@reference`/`[meta]` handling, and no JAR fingerprint integrity
+> (extensions are source folders, nothing signed). Pinned by
+> `tests/regress_ext_secrets_i18n.py` (29).
 
 > **The SDK package (landed 2026-10-23).** `sdksrc/` is the standalone
 > `qtranslate-sdk` distribution: the contracts, `Result`, the slot names,

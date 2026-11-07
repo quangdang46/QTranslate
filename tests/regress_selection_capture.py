@@ -34,6 +34,15 @@ def ck(name, cond, detail=""):
 
 
 from qtranslate import selection  # noqa: E402
+from qtranslate import clipboard as _clipboard_mod  # noqa: E402
+
+# Hermetic snapshot/restore: the real snapshot needs a GUI pasteboard
+# (PyObjC/AppKit on macOS, user32 on Windows) and the capture contract
+# under test here is the copy-poll/dispatch logic, not clipboard I/O.
+# ``regress_gap3_clipboard.py`` exercises the restore gate through the
+# ``snapshot``/``restore`` seams directly.
+_clipboard_mod.snapshot = lambda: object()
+_clipboard_mod.restore = lambda snap: True
 
 
 def drive(*, delivered=True, seq_after=None, clipboard_after="NEW",

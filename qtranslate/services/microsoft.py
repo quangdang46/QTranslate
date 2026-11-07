@@ -9,6 +9,7 @@ SupportedLanguages. Live behavior (shared cookie jar + dynamic IID
 from __future__ import annotations
 
 import json
+import urllib.error
 import urllib.parse
 import urllib.request
 from qtranslate import common
@@ -103,6 +104,12 @@ def _service_request(text, sl=AUTO_DETECT_LANGUAGE, tl=ENGLISH_LANGUAGE,
     - body gains tryFetchingGenderDebiasedTranslations=true
     - shared cookie jar (decompile insight FUN_00465A92) when opener given
     - body.statusCode 205 = token expired -> rescrape + retry once
+    - .tmp BingAuthRecoveryTest: HTTP 401/403 or a body statusCode of
+      401/403 (sent as a STRING by the endpoint) drops the rejected
+      token, refreshes the session once, and retries once -- never a
+      loop. A second auth rejection raises an HTTPError-shaped
+      AUTH_EXPIRED instead of the old silent empty; non-auth
+      rejections (400 & friends) are still returned untouched.
     """
     text = limit_source(text, 1000)
     sl_code = code_from_language(sl, SUPPORTED_LANGS) \
@@ -113,25 +120,53 @@ def _service_request(text, sl=AUTO_DETECT_LANGUAGE, tl=ENGLISH_LANGUAGE,
     body = ("text={}&fromLang={}&to={}&token={}&key={}"
             "&tryFetchingGenderDebiasedTranslations=true").format(
         encode_post_param(text), sl_code, tl_code, token, key)
-    if opener is not None:
-        req = urllib.request.Request(
-            HOST + path, data=body.encode("utf-8"),
-            headers={"Content-Type":
-                     "application/x-www-form-urlencoded; charset=utf-8",
-                     "Accept": "*/*", "Origin": "https://www.bing.com",
-                     "Referer": "https://www.bing.com/translator"})
-        with common.http_open(req, opener) as r:
-            obj = parse_json_lenient(read_response_text(r))
-    else:
-        obj = _post(path, body, cookie)
-    if (isinstance(obj, dict) and obj.get("statusCode") == 205
-            and not _retried):
+    try:
+        if opener is not None:
+            req = urllib.request.Request(
+                HOST + path, data=body.encode("utf-8"),
+                headers={"Content-Type":
+                         "application/x-www-form-urlencoded; charset=utf-8",
+                         "Accept": "*/*", "Origin": "https://www.bing.com",
+                         "Referer": "https://www.bing.com/translator"})
+            with common.http_open(req, opener) as r:
+                obj = parse_json_lenient(read_response_text(r))
+        else:
+            obj = _post(path, body, cookie)
+    except urllib.error.HTTPError as e:
+        code = getattr(e, "code", None)
+        if code in (401, 403) and not _retried:
+            return _refresh_and_retry(text, sl, tl, opener, iid)
+        raise
+    status = _status_code(obj)
+    if status in (205, 401, 403) and not _retried:
+        return _refresh_and_retry(text, sl, tl, opener, iid)
+    if status in (401, 403):
+        # The refresh already ran once and the endpoint rejected again:
+        # surface AUTH_EXPIRED, do not loop.
         from qtranslate import session as _sess
-        s = _sess.bing_session()
-        return _service_request(text, sl, tl, s["IG"], s["token"], s["key"],
-                                s["cookie"], opener, s.get("iid", iid),
-                                _retried=True)
+        raise _sess.bing_auth_error(status)
     return obj
+
+
+def _status_code(obj):
+    """ttranslatev3's statusCode as an int; the endpoint sends it as a
+    STRING (``{"statusCode":"401"}``), so coerce before comparing."""
+    if not isinstance(obj, dict):
+        return None
+    try:
+        return int(obj.get("statusCode"))
+    except (TypeError, ValueError):
+        return None
+
+
+def _refresh_and_retry(text, sl, tl, opener, iid):
+    """Drop the rejected token: re-scrape the Bing session and retry the
+    request ONCE (``_retried`` bounds the recovery -- it cannot loop)."""
+    from qtranslate import session as _sess
+    s = _sess.bing_session()
+    return _service_request(text, sl, tl, s["IG"], s["token"], s["key"],
+                            s["cookie"], opener, s.get("iid", iid),
+                            _retried=True)
 
 
 def get_response_obj(obj):

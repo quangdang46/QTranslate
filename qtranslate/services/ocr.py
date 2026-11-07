@@ -217,7 +217,8 @@ def _tesseract_ocr(image_bytes: bytes, lang: str = "eng") -> str | None:
 def _offline_ocr(image_bytes: bytes, lang: str = "eng") -> str | None:
     """Platform offline recognizer chain: macOS Vision first (native,
     best quality), then the tesseract CLI when installed -- the same
-    role LinuxTesseractBackend plays upstream."""
+    role LinuxTesseractBackend plays upstream. On Linux there is no
+    platform-gated recognizer, so tesseract is the whole chain."""
     import sys
     if sys.platform == "darwin":
         out = _macos_vision_ocr(image_bytes, lang)

@@ -173,6 +173,46 @@ class ExtensionAPI:
             "on_settings_changed needs a host; the real ExtensionAPI is "
             "passed to register() at runtime")
 
+    # -- credentials (host: per-extension secrets.json in data_dir) ------
+
+    def secrets_get(self, key, default=None):
+        """This extension's stored secret for ``key``, or ``default``."""
+        raise ExtensionError(
+            "secrets_get needs a host; the real ExtensionAPI is passed "
+            "to register() at runtime")
+
+    def secrets_set(self, key, value):
+        """Persist ``value`` (a string) as this extension's secret."""
+        raise ExtensionError(
+            "secrets_set needs a host; the real ExtensionAPI is passed "
+            "to register() at runtime")
+
+    def secrets_delete(self, key):
+        """Remove this extension's secret for ``key``; no-op when absent."""
+        raise ExtensionError(
+            "secrets_delete needs a host; the real ExtensionAPI is "
+            "passed to register() at runtime")
+
+    def secrets_contains(self, key):
+        """Whether a secret is set, without reading its value."""
+        raise ExtensionError(
+            "secrets_contains needs a host; the real ExtensionAPI is "
+            "passed to register() at runtime")
+
+    # -- localization (host: extension-folder localization/*.toml) ------
+
+    def tr(self, key, fallback="", *args):
+        """Translate ``key`` via this extension's own bundles.
+
+        Resolution: ``localization/<lang>.toml`` in the extension's
+        folder for the active UI language (written tag, base language,
+        then ``en``), else ``fallback`` (or ``key`` when both are
+        empty); ``*args`` apply printf-style to the winning string.
+        """
+        raise ExtensionError(
+            "tr needs a host; the real ExtensionAPI is passed to "
+            "register() at runtime")
+
 
 class FakeAPI(ExtensionAPI):
     """A recording host API, for an extension's own tests.
@@ -200,6 +240,11 @@ class FakeAPI(ExtensionAPI):
         self.load_hooks = []
         self.unload_hooks = []
         self.settings_hooks = []
+        # Secrets are recorded in memory (a fake has no secrets.json);
+        # tr() has no bundles, so it always renders the fallback -- the
+        # same contract the real api gives an extension with no
+        # localization/ folder.
+        self.secrets = {}
 
     @property
     def data_dir(self):
@@ -233,6 +278,30 @@ class FakeAPI(ExtensionAPI):
     def on_settings_changed(self, fn):
         self.settings_hooks.append(fn)
         return "settings"
+
+    def secrets_get(self, key, default=None):
+        return self.secrets.get(key, default)
+
+    def secrets_set(self, key, value):
+        if not isinstance(value, str):
+            raise TypeError("secret value must be a string")
+        self.secrets[key] = value
+        return value
+
+    def secrets_delete(self, key):
+        self.secrets.pop(key, None)
+
+    def secrets_contains(self, key):
+        return key in self.secrets
+
+    def tr(self, key, fallback="", *args):
+        text = str(fallback or "") or str(key or "")
+        if args:
+            try:
+                text = text % tuple(args)
+            except (TypeError, ValueError):
+                pass
+        return text
 
     def register_provider(self, name, fn, replaces=None):
         self.providers[name] = {"fn": fn, "replaces": replaces}
