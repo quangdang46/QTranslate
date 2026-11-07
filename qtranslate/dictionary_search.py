@@ -75,6 +75,40 @@ def service_key(display_name: str) -> str:
                             if display_name else "")
 
 
+def _enabled_dict_keys(cfg: dict | None = None):
+    """The registry keys of the ENABLED dictionary services.
+
+    ``DictionariesOrder`` ids minus ``DisabledDictionaries`` -- the same
+    set ``qt/dictionary.py::_enabled_dict_ids`` computes for the strip.
+    The settings file names dictionaries by numeric id and
+    ``config.DICT_DISPLAY`` maps id -> display name, which
+    ``service_key`` turns into the ``registry.DICTS`` key, so the filter
+    lands on the same names ``search()`` iterates.
+
+    Returns ``None`` when the config cannot be read: a broken settings
+    file must not silently empty the lookup, so the caller then skips
+    filtering entirely (every registry key stays eligible).
+    """
+    from qtranslate import config as _C
+    try:
+        if cfg is None:
+            cfg = _C.load() or {}
+        order = cfg.get("DictionariesOrder")
+        if order is None:
+            order = _C.DEFAULT_DICTIONARIES_ORDER
+        disabled = set(cfg.get("DisabledDictionaries") or [])
+        keys = set()
+        for i in order:
+            if i in disabled:
+                continue
+            name = _C.DICT_DISPLAY.get(i)
+            if name:
+                keys.add(service_key(name))
+        return keys
+    except Exception:
+        return None
+
+
 def search(word: str, exact: bool = True, services=None, target: str = "vi",
            cfg: dict | None = None):
     """Look ``word`` up. Returns ``(cards, summary)``.
@@ -84,7 +118,12 @@ def search(word: str, exact: bool = True, services=None, target: str = "vi",
     when the cards cannot be rendered as HTML.
 
     ``services`` is the list of display names to ask; None means every
-    dictionary the registry knows.
+    ENABLED dictionary the registry knows. ``DisabledDictionaries`` is
+    honoured here too, not only in the Qt window: headless and direct
+    callers used to fan out to every ``registry.DICTS`` entry and
+    resurrect services the user unchecked on the Services page. An
+    explicit ``services`` list is still honoured, but intersected with
+    the enabled set -- a disabled id cannot be queried by name either.
     """
     from qtranslate import dict_render as _DR
     from qtranslate import registry as _RG
@@ -113,10 +152,14 @@ def search(word: str, exact: bool = True, services=None, target: str = "vi",
     except Exception:
         pass
 
+    enabled_keys = _enabled_dict_keys(cfg)
     if services is None:
-        names = list(_RG.DICTS)
+        names = [k for k in _RG.DICTS
+                 if enabled_keys is None or k in enabled_keys]
     else:
         names = [service_key(n) for n in services]
+        if enabled_keys is not None:
+            names = [k for k in names if k in enabled_keys]
     for key in names:
         fn = _RG.DICTS.get(key)
         if fn is None:

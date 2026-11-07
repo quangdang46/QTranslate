@@ -37,8 +37,14 @@ class BasicsPage(OptionsBase):
 
     def build(self):
         general = cfg_section("General")
-        appearance = cfg_section("Appearance")
-        autodetect = cfg_section("AutoDetection")
+        # AutoDetection goes through the merged read: a partial
+        # Options.json must still show the native defaults (57/17/57),
+        # not fall back to index 0 -- the -1 sentinel, not a language.
+        try:
+            from qtranslate import config as _config
+            autodetect = _config.auto_detection()
+        except Exception:
+            autodetect = cfg_section("AutoDetection")
         group(self, 152, 35, 484, 130, "General")
         # Start-with-Windows: native's HKCU Run entry (row G). The
         # checkbox reads the real state and writes it back on toggle,
@@ -67,7 +73,8 @@ class BasicsPage(OptionsBase):
                        cur_font if cur_font in fonts else fonts[1],
                        values=fonts)
         c_font.currentTextChanged.connect(
-            lambda v: cfg_set("General", "FontName", v))
+            lambda v: (cfg_set("General", "FontName", v),
+                       notify_app(self.app)))
 
         label(self, 158, 121, "Text size:")
         sizes = [str(s) for s in (8, 9, 10, 11, 12, 14)]
@@ -76,23 +83,36 @@ class BasicsPage(OptionsBase):
                        cur_size if cur_size in sizes else "9",
                        values=sizes)
         c_size.currentTextChanged.connect(
-            lambda v: cfg_set("General", "TextSize",
-                              int(v) if v.isdigit() else 9))
+            lambda v: (cfg_set("General", "TextSize",
+                               int(v) if v.isdigit() else 9),
+                       notify_app(self.app)))
 
         group(self, 152, 148, 484, 48, "Auto-detect languages")
         # The two auto-detect slots are INDICES into the shared
-        # SupportedLanguages table (native's AutoDetection section).
+        # SupportedLanguages table exactly as native numbers it:
+        # index 0 is the -1 sentinel, so "vi" is 57 and "en" is 17
+        # (config.py's AutoDetection defaults, RE_COVERAGE_CHECKLIST
+        # row M21). Indexing a string-only filtered copy shifted every
+        # stored value by one -- the old code wrote 56 for "vi".
         from qtranslate.services.google_translate import SUPPORTED_LANGS
-        table = [c for c in SUPPORTED_LANGS if isinstance(c, str)]
         from qtranslate.languages import LANG_DISPLAY
+
+        raw = list(SUPPORTED_LANGS)
+        # (raw index, display name) for every selectable language; the
+        # display names are unique, so the name->index map is exact and
+        # a lookup miss can no longer write a silent 0.
+        pairs = [(i, LANG_DISPLAY.get(c, c))
+                 for i, c in enumerate(raw) if isinstance(c, str)]
+        names = [n for _i, n in pairs]
+        idx_of = {n: i for i, n in pairs}
+        name_of = {i: n for i, n in pairs}
 
         def _name_of(idx):
             try:
-                return LANG_DISPLAY.get(table[int(idx)], "")
+                return name_of.get(int(idx), "")
             except Exception:
                 return ""
 
-        names = [n for n in (LANG_DISPLAY.get(c, c) for c in table) if n]
         for cy, key, idx_key in ((170, "First language", "LanguageFirst"),
                                  (183, "Second language",
                                   "LanguageSecond")):
@@ -101,9 +121,7 @@ class BasicsPage(OptionsBase):
             cb = combo(self, 455, cy - 10, 175, cur, values=names)
             cb.currentTextChanged.connect(
                 lambda v, k=idx_key: cfg_set(
-                    "AutoDetection", k,
-                    table.index(_code_of(v))
-                    if _code_of(v) in table else 0))
+                    "AutoDetection", k, idx_of.get(v, 0)))
 
         group(self, 152, 208, 484, 70, "History")
         check(self, 160, 228, "Enable history",
@@ -118,8 +136,3 @@ class BasicsPage(OptionsBase):
               bool(general.get("ExpandHistoryItems", False))
               ).toggled.connect(
             lambda v: cfg_set("General", "ExpandHistoryItems", bool(v)))
-
-
-def _code_of(name):
-    from qtranslate.languages import LANG_CODES
-    return LANG_CODES.get(name, "")

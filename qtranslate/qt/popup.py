@@ -30,7 +30,9 @@ from PySide6.QtGui import (QColor, QCursor, QFont, QGuiApplication,
                            QPainter, QPalette, QPen)
 from PySide6.QtWidgets import QLabel, QWidget
 
-from qtranslate_style import ACCENT, POPUP_BORDER, POPUP_ICON, POPUP_TEXT
+from qtranslate_style import (ACCENT, POPUP_BORDER, POPUP_ICON, POPUP_TEXT,
+                             popup_colors, popup_frame_thickness,
+                             popup_icon_mask, popup_pin_when_dragging)
 
 from . import icons
 
@@ -195,20 +197,36 @@ class PopupWindow(QWidget):
             self.setFocusPolicy(Qt.StrongFocus)
         except Exception:
             pass
-        self.setStyleSheet("Popup{background:%s;border:1px solid %s;}"
-                           % (popup_bg(), POPUP_BORDER))
+        # Appearance.ColorBack/ColorText/ColorFrame + frame thickness:
+        # the Options page's popup-colour swatches finally reach the
+        # widget (the appearance audit's pending consumers).
+        try:
+            _cbg, _ctx, _cfr = popup_colors()
+        except Exception:
+            _cbg = _ctx = _cfr = None
+        self._pop_bg = _cbg or popup_bg()
+        self._pop_text = _ctx or POPUP_TEXT
+        self._pop_icon = _ctx or POPUP_ICON
+        self._pop_frame = _cfr or POPUP_BORDER
+        try:
+            self._pop_thick = popup_frame_thickness()
+        except Exception:
+            self._pop_thick = 1
+        self.setStyleSheet(
+            "Popup{background:%s;border:%dpx solid %s;}"
+            % (self._pop_bg, self._pop_thick, self._pop_frame))
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.setMouseTracking(True)
 
         self.btn_close = QLabel("✕", self)
         self.btn_close.setStyleSheet("background:transparent;color:%s;"
-                                     % POPUP_ICON)
+                                     % self._pop_icon)
         self.btn_close.setCursor(Qt.PointingHandCursor)
         self.btn_close.mousePressEvent = self._on_close_click
 
         self.lbl_pair = QLabel("", self)
         self.lbl_pair.setStyleSheet("background:transparent;color:%s;"
-                                    % POPUP_ICON)
+                                    % self._pop_icon)
 
         self._header = self._header_icons()
 
@@ -220,11 +238,25 @@ class PopupWindow(QWidget):
         self.lbl_text.setWordWrap(True)
         self.lbl_text.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         self.lbl_text.setStyleSheet("background:transparent;color:%s;"
-                                    "border:none;" % POPUP_TEXT)
+                                    "border:none;" % self._pop_text)
 
         self._strip = self._provider_strip()
         self._spin = _Spinner(self)
         self._loading = False
+        # Floating-popup state (.tmp FloatingPopupBehavior): a pinned
+        # popup never auto-hides and wears the accent border; a header
+        # drag marks the position manual and persists the rect as
+        # General.WindowPopupPlacement.
+        self._pinned = False
+        self._manually_moved = False
+        self._dragging = False
+        self._drag_offset = None
+        self._hovering = False
+        self._has_been_shown = False
+        self._star_icon = None
+        # The pair label is the header's drag surface: it spans most of
+        # the title row between the close mark and the icon row.
+        self.lbl_pair.mousePressEvent = self._header_press
         try:
             self._fill("", "", "")
         except Exception:
@@ -232,6 +264,173 @@ class PopupWindow(QWidget):
 
     def _on_close_click(self, event):
         """Clicking the X closes the popup (native behaviour)."""
+        try:
+            self.hide()
+        except Exception:
+            pass
+
+    # ------------------------------------------------------------- pin
+    def _toggle_pin(self):
+        """The star icon / Ctrl+P: pin or unpin the popup."""
+        self.set_pinned(not getattr(self, "_pinned", False))
+
+    def set_pinned(self, on):
+        """Pin state (.tmp FloatingPopupBehavior.isPinned +
+        applyPinBorder): a pinned popup never auto-hides -- not on the
+        idle timer, not on Escape -- and wears the accent border; the
+        star fills in as the on-screen tell."""
+        self._pinned = bool(on)
+        try:
+            self.setStyleSheet(
+                "Popup{background:%s;border:%dpx solid %s;}"
+                % (self._pop_bg,
+                   (self._pop_thick + 1) if self._pinned else self._pop_thick,
+                   ACCENT if self._pinned else self._pop_frame))
+            if self._star_icon is not None:
+                self._star_icon.setPixmap(icons.pixmap(
+                    "ui_icons", "star" if self._pinned else "star_off"))
+        except Exception:
+            pass
+        if self._pinned:
+            self._stop_idle_timer()
+        elif self.isVisible():
+            self._start_idle_timer()
+
+    # ------------------------------------------------------------- drag
+    def _header_press(self, event):
+        """A left-press on the title row starts a window drag
+        (.tmp FloatingPopupBehavior.installDrag on the top panel)."""
+        try:
+            if event.button() != Qt.LeftButton:
+                return
+            try:
+                gp = event.globalPosition().toPoint()
+            except Exception:
+                gp = QCursor.pos()
+            self._drag_offset = gp - self.frameGeometry().topLeft()
+            self._dragging = True
+            self.grabMouse()
+            self._stop_idle_timer()
+        except Exception:
+            pass
+
+    def mousePressEvent(self, event):             # noqa: N802 (Qt name)
+        # Only the header band drags; the body keeps its own events.
+        try:
+            if event.position().y() <= HEADER_H:
+                self._header_press(event)
+                return
+        except Exception:
+            pass
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):              # noqa: N802 (Qt name)
+        if self._dragging and self._drag_offset is not None:
+            try:
+                pos = event.globalPosition().toPoint() - self._drag_offset
+            except Exception:
+                pos = QCursor.pos() - self._drag_offset
+            self.move(pos)
+            return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):           # noqa: N802 (Qt name)
+        if self._dragging:
+            self._dragging = False
+            self._drag_offset = None
+            try:
+                self.releaseMouse()
+            except Exception:
+                pass
+            # A real drag marks the position manual (.tmp
+            # wasManuallyMoved): place() stops auto-positioning and
+            # the resting rect is persisted for PopupAutoPos=off.
+            self._manually_moved = True
+            self._save_popup_placement()
+            # Appearance.PopupPinWhenDragging (native's old
+            # QuickTranslateDialog): a dragged popup PINS -- the user
+            # moved it somewhere deliberate, so it must not auto-hide.
+            try:
+                if popup_pin_when_dragging() and not self._pinned:
+                    self.set_pinned(True)
+            except Exception:
+                pass
+            if not self._pinned:
+                self._start_idle_timer()
+        super().mouseReleaseEvent(event)
+
+    # -------------------------------------------------------- persistence
+    def _save_popup_placement(self):
+        """Persist the popup rect as General.WindowPopupPlacement --
+        the same WINDOWPLACEMENT blob the main and aux windows use
+        (placement.encode_placement). There is no app-level save hook,
+        so this writes through qtranslate.config directly."""
+        try:
+            from qtranslate import config as _C
+            from qtranslate.placement import encode_placement
+            g = self.geometry()
+            cfg = _C.load()
+            cfg.setdefault("General", {})["WindowPopupPlacement"] = \
+                encode_placement(g.x(), g.y(), g.width(), g.height())
+            _C.save(cfg)
+        except Exception:
+            pass
+
+    @staticmethod
+    def _appearance() -> dict:
+        try:
+            from qtranslate import config as _C
+            return _C.load().get("Appearance", {}) or {}
+        except Exception:
+            return {}
+
+    def _saved_popup_size(self):
+        """(w, h) from General.WindowPopupPlacement, or None."""
+        try:
+            from qtranslate import config as _C
+            from qtranslate.placement import decode_placement
+            rc = decode_placement(
+                _C.load().get("General", {})
+                .get("WindowPopupPlacement", ""))
+            if rc:
+                return (rc[2], rc[3])
+        except Exception:
+            pass
+        return None
+
+    # --------------------------------------------------------- idle-hide
+    def _start_idle_timer(self):
+        """(Re)arm the PopupTimeout countdown. Opt-in like before: a
+        zero timeout leaves the popup up until dismissed. Hover pauses
+        it (enterEvent/leaveEvent) and a pinned popup never arms it --
+        .tmp FloatingPopupBehavior.startIdleHide."""
+        if getattr(self, "_pinned", False):
+            return
+        try:
+            to = int(self._appearance().get("PopupTimeout", 0) or 0)
+        except Exception:
+            to = 0
+        timer = getattr(self, "_timer", None)
+        if timer is None:
+            timer = QTimer(self)
+            timer.setSingleShot(True)
+            timer.timeout.connect(self._on_idle_timeout)
+            self._timer = timer
+        else:
+            timer.stop()
+        if to > 0 and self.isVisible() and not self._hovering:
+            timer.start(to * 1000)
+
+    def _stop_idle_timer(self):
+        timer = getattr(self, "_timer", None)
+        if timer is not None:
+            timer.stop()
+
+    def _on_idle_timeout(self):
+        # Last check at fire time: pin or hover during the countdown
+        # still wins (.tmp checks isPinned again inside the timer).
+        if self._pinned or self._hovering:
+            return
         try:
             self.hide()
         except Exception:
@@ -257,19 +456,38 @@ class PopupWindow(QWidget):
         # the grey hollow star, which is native's "not in Favorites" mark.
         # Filling it in would claim a saved entry the user never made.
         out = []
+        try:
+            _mask = popup_icon_mask()
+        except Exception:
+            _mask = 30
+        # Appearance.PopupIcons bitmask (bits 1-4 over book/headphone/
+        # copy/translit; the star is not toggleable) -- the Options
+        # page's "Icons:" row finally hides what it unchecks.
+        _bits = {"book": 1 << 1, "headphone": 1 << 2,
+                 "copy": 1 << 3, "translit": 1 << 4}
         for name in ("star_off", "book", "headphone", "copy", "translit"):
+            if name in _bits and not (_mask & _bits[name]):
+                continue
             q = QLabel("", self)
             q.setStyleSheet("background:transparent;")
             q.setPixmap(icons.pixmap("ui_icons", name))
             q.setCursor(Qt.PointingHandCursor)
             # Native's header row is a toolbar, not decoration: book opens
             # the dictionary on the source, headphone speaks the result,
-            # copy puts the result on the clipboard. The star (favourite)
-            # and the transliteration mark have no backend in the port
-            # yet, so they stay inert rather than fake a reaction.
-            act = {"book": self._icon_dictionary,
+            # copy puts the result on the clipboard. The transliteration
+            # mark has no backend in the port yet, so it stays inert
+            # rather than faking a reaction; the star toggles the pin.
+            # The star is the pin toggle: .tmp's QuickTranslateDialog has
+            # a dedicated pin button in its top panel, and the port's
+            # header row has no spare slot, so the (otherwise inert)
+            # star_off mark takes the job -- click pins, filled star
+            # shows the pinned state.
+            act = {"star_off": self._toggle_pin,
+                   "book": self._icon_dictionary,
                    "headphone": self._icon_listen,
                    "copy": self._icon_copy}.get(name)
+            if name == "star_off":
+                self._star_icon = q
             if act is not None:
                 q.mousePressEvent = lambda _e, a=act: a()
             out.append(q)
@@ -433,7 +651,7 @@ class PopupWindow(QWidget):
             if not text:
                 continue
             q = QLabel(text[:2], self)
-            q.setStyleSheet("background:transparent;color:%s;" % POPUP_ICON)
+            q.setStyleSheet("background:transparent;color:%s;" % self._pop_icon)
             labels.append(q)
         return labels
 
@@ -466,6 +684,15 @@ class PopupWindow(QWidget):
         # window (see ``_provider_strip``), so hovering never resizes it.
         h = HEADER_H + body_h + 2 * PAD + STRIP_H
 
+        # Appearance.PopupAutoSize off (.tmp applySize): the popup keeps
+        # the last size it was saved with -- the w/h inside the same
+        # WindowPopupPlacement blob the position restore reads.
+        if not self._appearance().get("PopupAutoSize", True):
+            saved = self._saved_popup_size()
+            if saved:
+                w = max(MIN_WIDTH, int(saved[0]))
+                h = max(HEADER_H + 24, int(saved[1]))
+
         self.setFixedSize(w, h)
         self.btn_close.setGeometry(PAD, 4, 12, 16)
         self.lbl_pair.setGeometry(PAD + 16, 4, max(60, w - 190), 16)
@@ -488,7 +715,7 @@ class PopupWindow(QWidget):
         try:
             self.lbl_text.setText("Translating…")
             self.lbl_text.setStyleSheet(
-                "background:transparent;color:%s;border:none;" % POPUP_ICON)
+                "background:transparent;color:%s;border:none;" % self._pop_icon)
             self.lbl_text.setGeometry(
                 PAD + 26, HEADER_H,
                 max(40, self.width() - 2 * PAD - 26),
@@ -553,16 +780,31 @@ class PopupWindow(QWidget):
                 (w.show if on else w.hide)()
 
     def enterEvent(self, event):                # noqa: N802 (Qt name)
+        self._hovering = True
         self._set_hover(True)
+        # Hover pauses the idle-hide countdown (.tmp stops it while the
+        # pointer is inside).
+        self._stop_idle_timer()
         super().enterEvent(event)
 
     def leaveEvent(self, event):                # noqa: N802 (Qt name)
+        self._hovering = False
         self._set_hover(False)
+        if self.isVisible():
+            self._start_idle_timer()
         super().leaveEvent(event)
 
     def keyPressEvent(self, event):             # noqa: N802 (Qt name)
-        """Esc closes the popup (native's hotkey)."""
-        if event.key() == Qt.Key_Escape:
+        """Esc closes the popup (native's hotkey); Ctrl+P toggles the
+        pin. A pinned popup ignores Escape -- .tmp guards onDismiss
+        with !isPinned so a pinned answer is not one keystroke away
+        from gone."""
+        if (event.key() == Qt.Key_P
+                and event.modifiers() & Qt.ControlModifier):
+            self._toggle_pin()
+            return
+        if event.key() == Qt.Key_Escape and not getattr(self, "_pinned",
+                                                        False):
             try:
                 self.hide()
             except Exception:
@@ -593,12 +835,14 @@ class PopupWindow(QWidget):
         return False
 
     def showEvent(self, event):                 # noqa: N802 (Qt name)
+        self._has_been_shown = True
         # A popup that opens under the cursor (the common Ctrl+Q case --
         # it places at the pointer) never receives an enter event, so
         # the provider strip stayed hidden until the pointer left and
         # came back. Check on show instead.
         try:
             if self.underMouse():
+                self._hovering = True
                 self._set_hover(True)
         except Exception:
             pass
@@ -609,7 +853,24 @@ class PopupWindow(QWidget):
                 self.setFocus(Qt.ActiveWindowFocusReason)
         except Exception:
             pass
+        # place() runs before show(), when isVisible() is still False --
+        # the idle countdown arms here for the first show and re-arms
+        # per translation while already visible.
+        self._start_idle_timer()
         super().showEvent(event)
+
+    def hideEvent(self, event):                 # noqa: N802 (Qt name)
+        self._stop_idle_timer()
+        # Persist the resting rect on close (.tmp hideDialog ->
+        # onSavePosition/onSaveSize), but only once the popup has
+        # actually been shown -- a never-placed window would save a
+        # meaningless (0,0) origin.
+        if self._has_been_shown:
+            self._save_popup_placement()
+        # A closed popup re-arms auto-position for the next
+        # translation (.tmp resetManualMove on state reset).
+        self._manually_moved = False
+        super().hideEvent(event)
 
     @staticmethod
     def _auto_focus() -> bool:
@@ -654,7 +915,14 @@ class PopupWindow(QWidget):
         x = y = None
         screen = None
         try:
-            if _ap.get("PopupAutoPos", True):
+            # .tmp applyPosition: once the user has dragged the window
+            # it stops following the pointer, even with auto-position
+            # on -- a popup that jumped back after being moved would be
+            # fighting the person using it.
+            _auto_pos = bool(_ap.get("PopupAutoPos", True))
+            if _auto_pos and getattr(self, "_manually_moved", False):
+                _auto_pos = False
+            if _auto_pos:
                 p = QCursor.pos()
                 x, y = p.x() + 12, p.y() + 12
                 screen = QGuiApplication.screenAt(p)
@@ -691,10 +959,6 @@ class PopupWindow(QWidget):
                 self.move(x, y)
             except Exception:
                 pass
-        try:
-            _to = int(_ap.get("PopupTimeout", 0))
-        except Exception:
-            _to = 0
         # POPUP TIMEOUT IS OPT-IN and click-outside CLOSES the popup --
         # the operator's report (2026-10-24): the answer arrived, the
         # popup showed for five seconds and vanished while he was still
@@ -703,17 +967,9 @@ class PopupWindow(QWidget):
         # One QTimer for the popup's whole life: place() runs on every
         # translation, and re-creating it dropped the old timer's last
         # reference -- the same GC-of-live-Qt-object crash as the
-        # per-translation PopupWindow did.
-        timer = getattr(self, "_timer", None)
-        if timer is None:
-            timer = QTimer(self)
-            timer.setSingleShot(True)
-            timer.timeout.connect(self.hide)
-            self._timer = timer
-        else:
-            timer.stop()
-        if _to > 0:
-            timer.start(_to * 1000)
+        # per-translation PopupWindow did. _start_idle_timer re-arms it
+        # per translation and honours pin/hover (.tmp startIdleHide).
+        self._start_idle_timer()
         from PySide6.QtWidgets import QApplication as _QA
         # Install only one active filter — remove any previous instance on this
         # object before installing the fresh one. This prevents stale filters

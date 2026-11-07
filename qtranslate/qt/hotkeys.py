@@ -112,6 +112,46 @@ def _options_recording(app) -> bool:
         return False
 
 
+_suppress_supported = None
+
+
+def _add_hotkey_suppressed(keyboard, combo, safe) -> bool:
+    """Register ``combo`` with key suppression where the backend allows.
+
+    ``keyboard.add_hotkey`` gained a ``suppress`` parameter in 0.13
+    (it lives in ``blocking_hotkeys`` instead of ``nonblocking_hotkeys``,
+    so a fired hotkey no longer leaks its keys to the foreground app).
+    requirements.txt pins 0.13.5, but a zero-install run
+    (``uv run --with keyboard``) can resolve an older build, so the
+    parameter is detected from the signature and the call falls back to
+    the plain form rather than failing registration outright.
+    """
+    global _suppress_supported
+    if _suppress_supported is None:
+        try:
+            import inspect
+            _suppress_supported = ("suppress" in inspect.signature(
+                keyboard.add_hotkey).parameters)
+        except Exception:
+            _suppress_supported = False
+    try:
+        if _suppress_supported:
+            keyboard.add_hotkey(combo, safe, suppress=True)
+        else:
+            keyboard.add_hotkey(combo, safe)
+        return True
+    except TypeError:
+        # Signature lied (e.g. a wrapper without **kwargs) -- register
+        # without suppression rather than lose the hotkey entirely.
+        try:
+            keyboard.add_hotkey(combo, safe)
+            return True
+        except Exception:
+            return False
+    except Exception:
+        return False
+
+
 def install(app) -> list:
     """Register the hotkeys the settings file binds.
 
@@ -189,11 +229,8 @@ def install(app) -> list:
         # is not the action firing.
         safe = (lambda f: (lambda: None if _options_recording(app)
                            else app._on_ui(f)))(fn)
-        try:
-            keyboard.add_hotkey(combo, safe)
+        if _add_hotkey_suppressed(keyboard, combo, safe):
             bound.append("%s=%s" % (name, combo))
-        except Exception:
-            continue
     _log("install: bound=%r" % (bound,))
     return bound
 

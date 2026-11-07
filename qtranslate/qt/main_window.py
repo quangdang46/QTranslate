@@ -16,8 +16,8 @@ from __future__ import annotations
 
 import os
 
-from PySide6.QtCore import Qt, QSize, QEvent
-from PySide6.QtGui import QAction, QFont, QIcon
+from PySide6.QtCore import Qt, QSize, QEvent, QTimer
+from PySide6.QtGui import QAction, QFont, QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (QComboBox, QLabel, QMenu, QPushButton,
                                QTextEdit)
 
@@ -35,10 +35,44 @@ from .widgets import (Base, LINK, button, combo, extension_menu_entries,
 # Both were measured off the native capture -- the help line "Double Ctrl
 # => Show main window (with translation of selected text, if any)" is 418px
 # wide there, which is Tahoma 9pt and not Tahoma 8pt (363px).
-PANE_FONT = QFont("Tahoma", 9)
+#
+# The face itself is NOT hardcoded: General.FontName/TextSize resolve
+# through qtranslate.fonts.resolve_font -- the same contract
+# qtranslate_style._ui_font applies to the controls -- with the measured
+# Tahoma 9pt pair as the fallback.
+PANE_FONT_FALLBACK = ("Tahoma", 9)
+# The pane stylesheet's pixel size at the fallback's 9pt: 12px measured.
+PANE_FONT_PX = 12
+
+
+def _pane_font():
+    """``(family, point_size, pixel_size)`` for the two text panes.
+
+    ``resolve_font`` owns the config contract (empty name -> platform
+    default, garbage size -> 9, clamp at 6). TextSize is a POINT size
+    while the pane stylesheet is in pixels, so the pixel size is scaled
+    off the measured 12px-at-9pt pair -- the same grid
+    ``qtranslate_style._ui_font`` uses for the controls.
+    """
+    try:
+        from qtranslate import config as _cfg
+        from qtranslate.fonts import resolve_font
+        name, size = resolve_font((_cfg.load() or {}).get("General", {}))
+    except Exception:
+        name, size = PANE_FONT_FALLBACK
+    return name, size, max(6, int(round(PANE_FONT_PX * size / 9.0)))
+
 
 # The result pane starts with native's own "nothing came back" line.
 EMPTY_RESULT = "No data returned (timeout while sending data)."
+
+# Instant translation (.tmp MainStore.observeInstantTranslation):
+# INSTANT_TRANSLATION_DEBOUNCE_MS = 350, INSTANT_TRANSLATE_MIN_CHARS = 2
+# (AppConstants.kt). The flag is native menu 1/20, persisted as
+# Options.json General.InstantTranslation -- the same General.* slot
+# General.ReadPhonetically already uses for menu 1/50.
+INSTANT_DEBOUNCE_MS = 350
+INSTANT_MIN_CHARS = 2
 
 # The nine providers of the bottom strip. The ICON of each one was
 # recovered from the installer payload; the LABEL is the service's
@@ -106,6 +140,7 @@ class MainWindow(Base):
         rect(self, 5, 61, 507, 150, "#ffffff", "srcbg")
         vline(self, 4, 59, 212)
         vline(self, 511, 60, 212)
+        pane_family, pane_pts, pane_px = _pane_font()
         self.src = QTextEdit()
         self.src.setObjectName("pane")
         self.src.setAcceptRichText(False)
@@ -116,12 +151,12 @@ class MainWindow(Base):
         # drawn around it.
         self.src.setStyleSheet(
             "QTextEdit#pane{background:transparent;border:none;color:#000;"
-            'font-family:"Tahoma";font-size:12px;'
+            'font-family:"%s";font-size:%dpx;'
             "QScrollBar:vertical{background:#f0f0f0;width:16px;margin:0;}"
             "QScrollBar::handle:vertical{background:%s;margin:0 7px;"
-            "min-height:20px;}}" % THUMB)
+            "min-height:20px;}}" % (pane_family, pane_px, THUMB))
         put(self, self.src, 7, 61, 504, 150)
-        self.src.document().setDefaultFont(PANE_FONT)
+        self.src.document().setDefaultFont(QFont(pane_family, pane_pts))
         self.src.document().setDocumentMargin(0)
         self.src.setPlainText(default_source_text())
         icon(self, 451, 190, "ui_icons", "mic")
@@ -164,9 +199,10 @@ class MainWindow(Base):
         self.out.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.out.setStyleSheet(
             "#pane{background:transparent;border:none;color:#000;"
-            'font-family:"Tahoma";font-size:12px;}')
+            'font-family:"%s";font-size:%dpx;}'
+            % (pane_family, pane_px))
         put(self, self.out, 8, 245, 503, 147)
-        self.out.document().setDefaultFont(PANE_FONT)
+        self.out.document().setDefaultFont(QFont(pane_family, pane_pts))
         self.out.document().setDocumentMargin(0)
         self.out.setPlainText(EMPTY_RESULT)
         icon(self, 473, 372, "ui_icons", "headphone")
@@ -192,6 +228,22 @@ class MainWindow(Base):
         self.cmb_tgt.currentTextChanged.connect(self._tgt_changed)
         self.btn_back.clicked.connect(app.on_back)
         self.btn_fwd.clicked.connect(app.on_forward)
+
+        # Instant translation: every edit re-arms the debounce; the
+        # result renders through app._start_translation with a callback
+        # that never reaches push_hist, so instant answers do not flood
+        # the history (the gap .tmp's INSTANT origin creates).
+        self.src.textChanged.connect(self._src_text_changed)
+
+        # Session-history keys. Native walks the same entries the
+        # back/forward buttons do (Alt+Left/Right -- SERVICES_PAGE_
+        # PARITY §23); .tmp names the intents UndoTranslation /
+        # RedoTranslation but binds them to those same buttons, so
+        # Ctrl+Z stays the text pane's own undo and is NOT rebound here.
+        self._sc_back = QShortcut(QKeySequence("Alt+Left"), self)
+        self._sc_back.activated.connect(app.on_back)
+        self._sc_fwd = QShortcut(QKeySequence("Alt+Right"), self)
+        self._sc_fwd.activated.connect(app.on_forward)
 
         # Native's menus 2/3/4: right-click in the panes and on the combos.
         # Qt draws the standard edit menu for a QTextEdit by itself; the
@@ -288,6 +340,121 @@ class MainWindow(Base):
             out[name] = lbl
         return out
 
+    # ------------------------------------------------- instant translation
+    def _general_flag(self, key, default):
+        """One ``General`` key with the defaults document merged under the
+        file (``config.general_setting``), so a pre-key Options.json
+        still sees the default."""
+        try:
+            from qtranslate import config
+            return bool(config.general_setting(key, default))
+        except Exception:
+            return bool(default)
+
+    def _set_general_flag(self, key, on, after=None):
+        """Write one ``General`` flag back to Options.json, then run the
+        optional follow-up (the pane toggles re-apply visibility)."""
+        try:
+            from qtranslate import config
+            cfg = config.load() or {}
+            cfg.setdefault("General", {})[key] = bool(on)
+            config.save(cfg)
+        except Exception:
+            pass
+        if after is not None:
+            try:
+                after()
+            except Exception:
+                pass
+
+    def _instant_enabled(self):
+        return self._general_flag("InstantTranslation", False)
+
+    def _browsing_history(self):
+        """True while the panes show a history entry, not the live text.
+
+        ``app._nav_idx`` is the app's read-only cursor: ``len(history)``
+        means "now". While it sits inside the list the source pane holds
+        a TRUNCATED snapshot (``push_hist`` stores src[:120]), and an
+        instant retranslate of that would overwrite the result the user
+        is actually looking at.
+        """
+        try:
+            hist = getattr(self.app, "history", None) or []
+            idx = getattr(self.app, "_nav_idx", len(hist))
+            return bool(hist) and idx < len(hist)
+        except Exception:
+            return False
+
+    def _src_text_changed(self):
+        """Arm the instant-translation debounce on every edit.
+
+        The flag is read when the timer FIRES, not per keystroke: a
+        config.load() on every text change would be a disk read per
+        character, and a toggle flipped mid-pause should apply to the
+        pending request anyway.
+        """
+        timer = getattr(self, "_instant_timer", None)
+        if timer is None:
+            timer = QTimer(self)
+            timer.setSingleShot(True)
+            timer.setInterval(INSTANT_DEBOUNCE_MS)
+            timer.timeout.connect(self._instant_translate)
+            self._instant_timer = timer
+        timer.start()
+
+    def _instant_translate(self):
+        """The debounce fired: translate the CURRENT pane text, once."""
+        try:
+            # A hidden window cannot be typed into; the guard also keeps
+            # the debounce inert in headless runs that never show it.
+            if (not self.isVisible() or not self._instant_enabled()
+                    or self._browsing_history()):
+                return
+            text = self.src.toPlainText()
+            # .tmp clears the output the moment the input goes blank --
+            # no request is spent on an empty string.
+            if not text.strip():
+                self.out.setPlainText("")
+                return
+            if len(text.strip()) < INSTANT_MIN_CHARS:
+                return
+            # A request already in flight (manual Translate, a swap
+            # re-fire, an earlier instant answer) covers this text --
+            # _start_translation drops a second one anyway, so do not
+            # queue a stale duplicate behind it.
+            try:
+                if any(t.is_alive()
+                       for t in getattr(self.app, "_threads", ())):
+                    return
+            except Exception:
+                pass
+            self.app._start_translation(text, self._instant_done)
+        except Exception:
+            pass
+
+    def _instant_done(self, text, res):
+        """Render an instant result WITHOUT touching the history.
+
+        This is the callback ``app._start_translation`` invokes on the
+        UI thread; unlike ``app._show_main_result`` it never calls
+        ``push_hist``, which is what keeps instant answers out of the
+        persisted history (.tmp gates ``buildHistory`` on the request's
+        TranslationOrigin; the port's equivalent is simply not reaching
+        the history write).
+        """
+        try:
+            if self._browsing_history():
+                return
+            # The user kept typing while this was in flight: a newer
+            # debounce is armed and will answer with the CURRENT text,
+            # so a stale answer must not overwrite it.
+            if self.src.toPlainText() != text:
+                return
+            self.render(getattr(res, "text", "") or "")
+        except Exception:
+            pass
+
     # ------------------------------------------------------------- helpers
     def _nav_button(self, x, y, w, name):
         """One half of the joined back/forward button."""
@@ -335,18 +502,83 @@ class MainWindow(Base):
             "QMenu{background:#f9f9f9;border:1px solid #e5e5e5;}"
             "QMenu::item{padding:3px 24px 3px 38px;}"
             "QMenu::item:selected{background:#e5e5e5;}")
-        a = QAction("Dictionary", self)
-        a.triggered.connect(self.app.open_dictionary)
-        m.addAction(a)
-        a = QAction("History", self)
-        a.triggered.connect(self.app.open_history)
-        m.addAction(a)
-        a = QAction("Options", self)
-        a.triggered.connect(self.app.open_options)
-        m.addAction(a)
+        app = self.app
+        # Native's menu id 1 in full: the option TOGGLES first (items
+        # 10..88), then the window commands (90..140). The labels and the
+        # order come from the locale pack, so a translated UI gets
+        # translated entries -- the same rule the context menus follow.
+        lab = pack_labels(1)
+
+        def toggle(item_id, default, key, default_on, after=None):
+            """A checkable menu-1 toggle backed by a General.* key.
+
+            The state shown is the state Options.json holds (merged with
+            the defaults document), so the menu cannot disagree with the
+            file; ``after`` runs the live follow-up (pane visibility).
+            """
+            act = QAction(lab.get(item_id, default), self)
+            act.setCheckable(True)
+            act.setChecked(self._general_flag(key, default_on))
+            act.toggled.connect(
+                lambda on, k=key, f=after: self._set_general_flag(k, on, f))
+            m.addAction(act)
+
+        def dead(item_id, default):
+            """An item native has and the port does not implement yet:
+            drawn disabled, not dropped, so the gap stays visible."""
+            act = QAction(lab.get(item_id, default), self)
+            act.setEnabled(False)
+            m.addAction(act)
+
+        # Spell checking has a suggest backend (registry.google_suggest)
+        # but no consumer in this front end; Backward translation,
+        # Extended, Clear-on-DnD, Auto-cleanup and Save-on-exit have no
+        # port-side operation at all -- all drawn disabled.
+        dead(10, "Spell checking")
+        toggle(20, "Instant translation", "InstantTranslation", False)
+        # Backward translation IS live: _start_translation passes
+        # General.BackTranslation into engine.translate's back_translate
+        # path; popup/Alt+W deliberately bypass it.
+        toggle(30, "Backward translation", "BackTranslation", False)
+        dead(40, "Extended")
+        # Read phonetically IS live: engine.translate appends the
+        # romanization when General.ReadPhonetically is on (J7).
+        toggle(50, "Read phonetically", "ReadPhonetically", False)
+        dead(60, "Clear input on Drag && Drop")
+        dead(61, "Auto-cleanup of translation")
+        dead(62, "Save contents on exit")
+        # The three Show*Pane toggles: apply_pane_visibility already
+        # reads these keys; this is the UI that was missing.
+        toggle(65, "Show top pane", "ShowTopPane", True,
+               self.apply_pane_visibility)
+        toggle(70, "Show middle pane", "ShowMiddlePane", True,
+               self.apply_pane_visibility)
+        toggle(80, "Show services pane", "ShowServicesPane", True,
+               self.apply_pane_visibility)
+        # closeEvent/changeEvent already honour these two keys.
+        toggle(81, "Minimize to system tray on minimize",
+               "MinimizeToTrayOnMinimize", False)
+        toggle(82, "Minimize to system tray on close",
+               "MinimizeToTrayOnClose", False)
+        m.addSeparator()
+        for item_id, default, fn in [
+                (90, "Dictionary", app.open_dictionary),
+                (100, "History", app.open_history),
+                (110, "Keyboard", app.open_keyboard),
+                (120, "Options", app.open_options),
+                (125, "About QTranslate", app.show_about)]:
+            act = QAction(lab.get(item_id, default), self)
+            act.triggered.connect(lambda _c=False, f=fn: f())
+            m.addAction(act)
+        # Native's startup-action group (85..88) is a four-way choice,
+        # not a toggle; it stays unimplemented rather than faked.
+        dead(130, "Help")
+        act = QAction(lab.get(140, "Exit"), self)
+        act.triggered.connect(lambda _c=False: app.quit())
+        m.addAction(act)
         # The nav menu is native's menu id 1 (ui_slots "main"): an
         # extension may add entries to it.
-        m = append_extensions(m, self, self.app, "main")
+        m = append_extensions(m, self, app, "main")
         m.exec(self.btn_nav.mapToGlobal(self.btn_nav.rect().bottomLeft()))
 
     def _pane_menu(self, which):

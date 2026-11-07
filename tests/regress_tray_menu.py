@@ -48,8 +48,12 @@ for a in menu.actions():
 # The Qt menu leads with the disabled bold header ("QTranslate"), which
 # the tk/pystray menu could not draw -- it was the OS's own. The entries
 # keep native's order under it.
+# qt-v74 added the port's own "Check for updates..." after the native
+# entries (native has no update UI in the tray); the native order above
+# it is unchanged.
 WANT = ["QTranslate", "Show main window", "Dictionary", "Text recognition",
         "History", "Keyboard", "Options...", "About QTranslate",
+        "Check for updates...",
         "SEPARATOR", "Enable global hotkeys",
         "Mouse mode", "SEPARATOR", "Exit"]
 ck("tray menu carries every native entry",

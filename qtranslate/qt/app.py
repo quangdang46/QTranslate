@@ -106,6 +106,23 @@ def _dbg(msg):
             fh.write(msg + "\n")
     except Exception:
         pass
+    # The persistent app log: /tmp is wiped on reboot and the mouse log
+    # mixes unrelated traces, so the operator could not tell "hotkey
+    # never fired" from "popup failed silently". One rotating file in
+    # the config dir keeps every stage of the Ctrl+Q chain.
+    try:
+        import os as _os
+        path = _os.path.join(_os.path.expanduser("~/.config/QTranslate"),
+                             "app.log")
+        try:
+            if _os.path.getsize(path) > 1_000_000:
+                _os.replace(path, path + ".1")
+        except OSError:
+            pass
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write(msg + "\n")
+    except Exception:
+        pass
 
 
 def _history_path():
@@ -135,7 +152,10 @@ def _save_history(items):
     try:
         import json
         with open(_history_path(), "w", encoding="utf-8") as fh:
-            json.dump([list(x)[:3] for x in list(items)[-HISTORY_LIMIT:]],
+            # [:4] keeps the history window's favourite flag -- [:3]
+            # stripped every star on the next translation (history
+            # audit). Legacy 3-slot entries still round-trip.
+            json.dump([list(x)[:4] for x in list(items)[-HISTORY_LIMIT:]],
                       fh, ensure_ascii=False)
     except Exception:                       # noqa: BLE001 -- read-only disk
         pass
@@ -156,6 +176,12 @@ class QtApp:
         self.target = "vi"
         self.argv = list(argv or [])
         self.history = _load_history()
+        # History-nav cursor: len(history) means "the live panes". The
+        # snapshot below holds what the live panes showed before the
+        # first step away, so stepping forward past the newest entry
+        # restores it instead of leaving the last-browsed entry up.
+        self._nav_idx = len(self.history)
+        self._nav_live = None
         self.multi_services = set()
         self.win = None
         self.tray = None
@@ -344,13 +370,27 @@ class QtApp:
             return ["google", "microsoft", "promt", "babylon", "yandex",
                     "youdao", "baidu", "naver", "deepl"]
 
+    def _disabled_lang_names(self):
+        """Options->Languages unchecked set. The page wrote
+        ``DisabledLanguages`` for years while nothing read it -- the
+        combos must not offer a language the user disabled."""
+        try:
+            from qtranslate import config as _C
+            return set((_C.load() or {}).get("DisabledLanguages", [])
+                       or [])
+        except Exception:
+            return set()
+
     def source_names(self):
+        dis = self._disabled_lang_names()
         return [self._display("auto")] + [
             self._display(c) for c in self._lang_codes()
-            if c != "auto"]
+            if c != "auto" and self._display(c) not in dis]
 
     def target_names(self):
-        return [self._display(c) for c in self._lang_codes() if c != "auto"]
+        dis = self._disabled_lang_names()
+        return [self._display(c) for c in self._lang_codes()
+                if c != "auto" and self._display(c) not in dis]
 
     def _lang_codes(self):
         try:
@@ -391,7 +431,7 @@ class QtApp:
             return
         self.win.render(res.text)
         if res.text:
-            self.push_hist(self.service, text[:120], res.text[:200])
+            self.push_hist(self.service, text[:2000], res.text[:4000])
 
     def _spawn(self, name, work):
         """Run ``work`` on a tracked background thread.
@@ -446,7 +486,8 @@ class QtApp:
 
         def work():
             try:
-                res = self._translate(text)
+                res = self._translate(
+                    text, back_translate=self._back_translation_enabled())
             except Exception as exc:            # noqa: BLE001
                 try:
                     from qtranslate.core import Result
@@ -481,7 +522,7 @@ class QtApp:
         self.qapp.processEvents()
         return not any(t.is_alive() for t in self._threads)
 
-    def push_hist(self, svc, src, res):
+    def push_hist(self, svc, src, res, src_lang=None, tgt_lang=None):
         try:
             from qtranslate import config
             if not bool(config.load().get("General", {}).get(
@@ -489,11 +530,27 @@ class QtApp:
                 return
         except Exception:
             pass
-        self.history.append((svc, src, res))
+        # Slot layout: (service, src, res, fav, src_lang, tgt_lang). The
+        # History window owns slot 3 (the favourite flag) and reads
+        # entry[:3]; slots 4/5 carry the language pair the entry was
+        # translated with so history nav can restore the combos. They
+        # ride in memory only -- _save_history still writes [:4], so a
+        # persisted entry simply has no pair and nav falls back to the
+        # live one (the HistorySnapshot shape is qt-mef's bead).
+        # getattr, not attribute access: tests drive push_hist on bare
+        # stubs that carry only `history` (regress_enable_history).
+        if src_lang is None:
+            src_lang = getattr(self, "source", "") or ""
+        if tgt_lang is None:
+            tgt_lang = getattr(self, "target", "") or ""
+        self.history.append(
+            (svc, src, res, False, src_lang, tgt_lang))
         _save_history(self.history)
         # A fresh translation puts the nav cursor past the newest entry:
-        # back walks into history, forward returns to "now".
+        # back walks into history, forward returns to "now". Any browse
+        # snapshot is stale now -- the live state it held is gone.
         self._nav_idx = len(self.history)
+        self._nav_live = None
         # Every "a translation reached the UI" path funnels through
         # here, so this is the emit point for the extensions'
         # translation.done event. A test stub without the emitter stays
@@ -513,6 +570,11 @@ class QtApp:
             pass
 
     def on_new(self):
+        # New leaves the history walk: the cursor goes back to "now" so
+        # the browsing guard (main_window._browsing_history) cannot stay
+        # latched on a pane the user just cleared.
+        self._nav_idx = len(getattr(self, "history", []) or [])
+        self._nav_live = None
         self.win.src.clear()
 
     def on_swap(self):
@@ -548,6 +610,16 @@ class QtApp:
                 # only.
                 try:
                     translated = win.out.toPlainText().strip()
+                    # The EMPTY_RESULT placeholder is not a translation:
+                    # swapping it back into the source pane would feed
+                    # "No data returned..." to the engine (main-window
+                    # audit M1).
+                    try:
+                        from .main_window import EMPTY_RESULT as _ER
+                        if translated == _ER:
+                            translated = ""
+                    except Exception:
+                        pass
                 except Exception:
                     translated = ""
             self._persist_language()
@@ -633,8 +705,10 @@ class QtApp:
         """Walk the session's translation history in the main window.
 
         Back shows older entries, forward newer ones; stepping past the
-        newest returns to the live panes untouched. The entries are the
-        same (service, source, result) triples the History window lists.
+        newest restores the LIVE panes. The first step away snapshots
+        the live state (texts, service, language pair) so the return
+        trip lands exactly where the user left off instead of leaving
+        the last-browsed entry on screen (qt-lg6).
         """
         hist = list(getattr(self, "history", []) or [])
         if not hist or self.win is None:
@@ -643,15 +717,119 @@ class QtApp:
         new = cur + delta
         if new < 0 or new > len(hist):
             return
+        if cur == len(hist) and new < len(hist):
+            self._nav_live = self._live_snapshot()
         self._nav_idx = new
         if new == len(hist):
+            self._restore_live()
             return
         try:
-            _svc, src, res = hist[new][:3]
-            self.win.src.setPlainText(str(src))
-            self.win.out.setPlainText(str(res))
+            self._show_history_entry(hist[new])
         except Exception:
             pass
+
+    def _live_snapshot(self):
+        """What the live panes show right now, for the return trip."""
+        win = self.win
+        return {
+            "src": win.src.toPlainText() if win is not None else "",
+            "out": win.out.toPlainText() if win is not None else "",
+            "service": self.service,
+            "source": self.source,
+            "target": self.target,
+        }
+
+    def _apply_nav_pair(self, src, tgt):
+        """Point the pair state and combos at (src, tgt).
+
+        Unlike ``set_source_by_name``/``set_target_by_name`` this does
+        NOT persist: browsing history is a view change, and rewriting
+        Options.json's LanguageFrom/To on every Alt+Left would lose the
+        user's real pair to whatever entry they happened to look at.
+        Combo signals are blocked so the change handlers cannot fire
+        the persisting setters either.
+        """
+        if tgt == "auto":
+            # The target slot is concrete-only (same rule
+            # set_target_by_name enforces); a corrupt entry must not
+            # put auto back into it.
+            tgt = self._default_target_code()
+        self.source, self.target = src, tgt
+        win = self.win
+        if win is None:
+            return
+        for combo, code in ((getattr(win, "cmb_src", None), src),
+                            (getattr(win, "cmb_tgt", None), tgt)):
+            if combo is None:
+                continue
+            try:
+                combo.blockSignals(True)
+                combo.setCurrentText(self._display(code))
+                combo.blockSignals(False)
+            except Exception:
+                try:
+                    combo.blockSignals(False)
+                except Exception:
+                    pass
+
+    def _show_history_entry(self, entry):
+        """Restore one history entry: service, pair, and both panes."""
+        svc, src, res = entry[:3]
+        win = self.win
+        # The entry's provider drives the strip highlight and the
+        # service title through the same path a strip click takes.
+        if svc and svc != self.service:
+            try:
+                self.switch_service(svc)
+            except Exception:
+                pass
+        # Slots 4/5 (src_lang, tgt_lang) exist only on entries pushed
+        # by this session; a persisted triple keeps the current pair.
+        src_lang = entry[4] if len(entry) > 4 else ""
+        tgt_lang = entry[5] if len(entry) > 5 else ""
+        if src_lang or tgt_lang:
+            self._apply_nav_pair(src_lang or self.source,
+                                 tgt_lang or self.target)
+        # Signals blocked: the panes' textChanged would arm the
+        # instant-translation debounce for text the user is only
+        # browsing (_browsing_history already guards the fire, but a
+        # blocked write never arms it at all).
+        try:
+            win.src.blockSignals(True)
+            win.out.blockSignals(True)
+            win.src.setPlainText(str(src))
+            win.out.setPlainText(str(res))
+        finally:
+            try:
+                win.src.blockSignals(False)
+                win.out.blockSignals(False)
+            except Exception:
+                pass
+
+    def _restore_live(self):
+        """Step forward past the newest entry: the live state returns."""
+        snap = getattr(self, "_nav_live", None)
+        self._nav_live = None
+        if not snap:
+            return
+        win = self.win
+        if win is None:
+            return
+        try:
+            if snap.get("service") and snap["service"] != self.service:
+                self.switch_service(snap["service"])
+            self._apply_nav_pair(snap.get("source") or self.source,
+                                 snap.get("target") or self.target)
+            win.src.blockSignals(True)
+            win.out.blockSignals(True)
+            win.src.setPlainText(snap.get("src") or "")
+            win.out.setPlainText(snap.get("out") or "")
+        finally:
+            try:
+                win.src.blockSignals(False)
+                win.out.blockSignals(False)
+            except Exception:
+                pass
 
     def open_dictionary(self):
         from .dictionary import DictionaryWindow
@@ -1237,6 +1415,13 @@ class QtApp:
         return (selection.copy_selection() or "").strip()
 
     def quit(self):
+        # General.ClearHistoryOnExit (Basics page) -- consumed here so
+        # the setting finally does what its checkbox promises.
+        try:
+            from qtranslate import history as _hist
+            _hist.clear_history_on_exit(self)
+        except Exception:
+            pass
         self.qapp.quit()
 
     # ------------------------------------------------------- the hotkeys
@@ -1247,11 +1432,27 @@ class QtApp:
         except Exception:
             return ""
 
-    def _translate(self, text: str):
-        """Translate a piece of text with the current service and pair."""
+    def _translate(self, text: str, back_translate: bool = False):
+        """Translate a piece of text with the current service and pair.
+
+        ``back_translate`` is opt-in per call site: only the main-window
+        task honours General.BackTranslation. The popup and Alt+W paths
+        must NOT get it -- Alt+W types ``res.text`` verbatim into the
+        target app, so an appended back-translation would be typed too.
+        """
         from qtranslate import engine
-        res = engine.translate(self.service, text[:5000], self.target,
-                               self.source)
+        service = self.service
+        try:
+            # A disabled provider must not serve even as the PRIMARY --
+            # ordered_services() already applies DisabledServices, so a
+            # service missing from it falls back to the first enabled.
+            enabled = self.ordered_services()
+            if enabled and service not in enabled:
+                service = enabled[0]
+        except Exception:
+            pass
+        res = engine.translate(service, text[:5000], self.target,
+                               self.source, back_translate=back_translate)
         # The concrete source auto-detect resolved to -- the swap use
         # case (.tmp) needs it to give the target slot a real language.
         try:
@@ -1259,6 +1460,16 @@ class QtApp:
         except Exception:
             pass
         return res
+
+    def _back_translation_enabled(self) -> bool:
+        """General.BackTranslation (native menu 1/30): append the
+        translation-of-translation section to main-window results."""
+        try:
+            from qtranslate import config
+            return bool((config.load() or {}).get("General", {})
+                        .get("BackTranslation", False))
+        except Exception:
+            return False
 
     def popup_pair(self, provider: str = "") -> str:
         """The line native puts in the popup's title row.
@@ -1287,6 +1498,10 @@ class QtApp:
             pop.set_loading(text[:300], self.popup_pair())
             pop.place()
             pop.show()
+            try:
+                _dbg("popup loading shown visible=%s" % pop.isVisible())
+            except Exception:
+                pass
             if pop._auto_focus():
                 pop.activateWindow()
                 pop.setFocus()
@@ -1311,7 +1526,7 @@ class QtApp:
             except Exception:
                 pass
             try:
-                self.push_hist(self.service, text[:120], result[:200])
+                self.push_hist(self.service, text[:2000], result[:4000])
             except Exception:
                 pass
             try:
@@ -1329,6 +1544,10 @@ class QtApp:
                 pop.set_text(text[:300], result,
                              self.popup_pair(provider),
                              provider=provider or self.service)
+                try:
+                    _dbg("popup set_text done, placing")
+                except Exception:
+                    pass
                 pop.place()
                 try:
                     pop.raise_()
@@ -1377,6 +1596,14 @@ class QtApp:
             pass
         def work():
             try:
+                # Native gates the selection hotkeys on the foreground
+                # app too (the Exceptions list is not mouse-mode-only --
+                # the exceptions-page audit): an excluded app must not
+                # get its selection copied out from under it.
+                from qtranslate import exclusions as _ex
+                if _ex.foreground_excluded():
+                    _dbg("hotkey_popup: foreground excluded, skip")
+                    return
                 from qtranslate import selection
                 text = ""
                 try:
@@ -1440,6 +1667,19 @@ class QtApp:
         except Exception:
             pass
 
+    def hotkey_translate_clipboard(self):
+        text = self._clipboard_text()
+        if not text:
+            return
+        self._start_translation(text, self._show_clipboard_result)
+
+    def _show_clipboard_result(self, text, res):
+        """Show a clipboard translation in the main window (UI thread)."""
+        if self.win is None:
+            return
+        self.win.src.setPlainText(text[:2000])
+        self._show_main_result(text, res)
+
     def hotkey_popup_clipboard(self):
         """Native's 'translate clipboard in popup window': the CLIPBOARD
         text (not the selection) lands in the popup. Distinct from
@@ -1462,19 +1702,6 @@ class QtApp:
                     pass
         self._start_translation(text, done)
 
-    def hotkey_translate_clipboard(self):
-        text = self._clipboard_text()
-        if not text:
-            return
-        self._start_translation(text, self._show_clipboard_result)
-
-    def _show_clipboard_result(self, text, res):
-        """Show a clipboard translation in the main window (UI thread)."""
-        if self.win is None:
-            return
-        self.win.src.setPlainText(text[:2000])
-        self._show_main_result(text, res)
-
     def hotkey_replace_selection(self):
         """Native's Alt+W: translate the selection and type it back.
 
@@ -1483,6 +1710,10 @@ class QtApp:
         """
         def work():
             try:
+                from qtranslate import exclusions as _ex
+                if _ex.foreground_excluded():
+                    _dbg("replace: foreground excluded, skip")
+                    return
                 from qtranslate import selection
                 # Same rule as Ctrl+Q: the SELECTION only. "" means no
                 # selection landed -- there is nothing to replace, and
@@ -1517,7 +1748,7 @@ class QtApp:
             _dbg("replace: write_text -> %s" % (_ok,))
         except Exception as exc:               # noqa: BLE001
             _dbg("replace: write_text raised %r" % (exc,))
-        self.push_hist(self.service, text[:120], res.text[:200])
+        self.push_hist(self.service, text[:2000], res.text[:4000])
 
     def hotkey_copy_translation(self):
         """Copy the result pane's text to the clipboard."""
@@ -1593,7 +1824,38 @@ class QtApp:
         `qtranslate/speech_input.py`). The offline fallback is the
         Windows SAPI shared recogniser, which needs comtypes; without
         it the app says so rather than failing silently.
+
+        On macOS the port's own path is `qtranslate.speech_macos`
+        (SFSpeechRecognizer + AVAudioEngine, TCC-gated). recognize()
+        blocks up to its timeout, so it runs on a worker and the result
+        is applied on the UI thread -- same pattern as _start_translation.
         """
+        if sys.platform == "darwin":
+            try:
+                from qtranslate import speech_macos
+            except Exception:
+                speech_macos = None
+            if speech_macos is not None and speech_macos.available():
+                import threading
+
+                def work():
+                    try:
+                        text = speech_macos.recognize(timeout_s=10.0)
+                        reason = speech_macos.last_reason()
+                    except Exception as exc:        # noqa: BLE001
+                        text, reason = "", "recognition-error: %s" % exc
+
+                    def apply():
+                        if text:
+                            self.win.src.setPlainText(text)
+                        else:
+                            self.win.render("[speech input] %s"
+                                            % (reason or "no speech"))
+                    self._on_ui(apply)
+
+                threading.Thread(target=work, daemon=True,
+                                 name="qtranslate-speech").start()
+                return
         try:
             import comtypes.client  # type: ignore
         except ImportError:

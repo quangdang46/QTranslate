@@ -10,8 +10,16 @@ and the shadow the OS theme draws under it -- and a transparent button
 sits over each one so the row is still clickable.
 
 WIRED: every control reads/writes the ``Appearance`` section of
-Options.json (the keys ``qtranslate.qt.popup`` already consumes), and
-the theme combo applies the theme live through ``app.apply_theme``.
+Options.json. ``PopupAutoPos``/``PopupAutoFocus``/``PopupTimeout``/
+``Transparency`` are consumed live by ``qtranslate.qt.popup``; the theme
+combo applies live through ``app.apply_theme``. The rest --
+``PopupAutoSize``, ``PopupPinWhenDragging``,
+``PopupWindowFrameThickness``, the three colour swatches and the
+"Icons:" toggles -- persist correctly and are exposed to their
+consumers through the ``qtranslate_style`` helpers
+(``popup_auto_size``, ``popup_pin_when_dragging``,
+``popup_frame_thickness``, ``popup_colors``, ``popup_icon_mask``);
+``qtranslate.qt.popup`` is where they take effect.
 """
 
 import os
@@ -109,10 +117,34 @@ class AppearancePage(OptionsBase):
             lambda v: cfg_set("Appearance", "PopupWindowFrameThickness",
                               int(v) if v.isdigit() else 2))
         label(self, 158, 284, "Icons:")
+        # Native's row is four TOGGLE buttons (spec §5.4: "4 nút toggle
+        # 22×22 đang nhấn"), one per popup header icon the user can
+        # hide -- book, headphone, copy, transliteration (the star is
+        # not toggleable). The stored Appearance.PopupIcons int is the
+        # bitmask: bit 1..4 per icon, default 30 = all four shown.
+        # qtranslate_style.popup_icon_mask() exposes it; the popup is
+        # the pending consumer that hides the cleared icons.
+        try:
+            mask = int(ap.get("PopupIcons", 30))
+        except Exception:
+            mask = 30
         for i in range(4):
             x = 398 + 24 * i
             b = button(self, x, 274, 21, "", h=21)
             b.setObjectName("flat")
+            b.setCheckable(True)
+            bit = 1 << (i + 1)
+            b.setChecked(bool(mask & bit))
+            # The buttons are transparent overlays on the recovered
+            # artwork; the accent frame is the on-state, since the
+            # artwork PNG itself has no pressed look of its own.
+            b.setStyleSheet(
+                "QPushButton{border:none;background:transparent;padding:0;}"
+                if not (mask & bit) else
+                "QPushButton{border:1px solid #0078d7;background:transparent;"
+                "padding:0;}")
+            b.toggled.connect(
+                lambda on, k=i: _icon_toggled(self, k, on))
             from ..widgets import icon
             icon(self, x, 274, "ui_icons", "ap_icon%d" % (i + 1))
         # The three colour swatches: click opens the colour dialog and
@@ -125,18 +157,19 @@ class AppearancePage(OptionsBase):
                 (379, 86, "ColorBack", 15790320, _bgr(ap.get(
                     "ColorBack", 15790320))),
                 (549, 78, "ColorText", 0, _bgr(ap.get("ColorText", 0))),
-                (627, 0, "ColorFrame", 8023133, _bgr(ap.get(
+                (627, 16, "ColorFrame", 8023133, _bgr(ap.get(
                     "ColorFrame", 8023133)))]:
-            if w:
-                r = rect(self, x, 304, w, 18, rgb.name())
-                from PySide6.QtCore import Qt as _Qt
-                r.setCursor(_Qt.PointingHandCursor)
-                r.mousePressEvent = (lambda _e, k=key, wdg=r:
-                                     _pick_color(self, k, wdg))
-                self._swatches[key] = r
-        # The third swatch runs off the client's right edge in the
-        # capture; draw it where there is room (x 627 leaves 7px) --
-        # kept for parity, click target is the visible part.
+            # The frame-color swatch runs off the client's right edge
+            # in the native capture; the port draws the 16px that fits
+            # (x 627 + 16 = 643 of the 644px client) so the setting is
+            # actually reachable -- a zero-width rect was never created
+            # at all (audit C2).
+            r = rect(self, x, 304, w, 18, rgb.name())
+            from PySide6.QtCore import Qt as _Qt
+            r.setCursor(_Qt.PointingHandCursor)
+            r.mousePressEvent = (lambda _e, k=key, wdg=r:
+                                 _pick_color(self, k, wdg))
+            self._swatches[key] = r
 
 
 def _theme_changed(shell, name):
@@ -149,6 +182,17 @@ def _theme_changed(shell, name):
             app.apply_theme("" if name == "--- Default ---" else name)
     except Exception:
         pass
+
+
+def _icon_toggled(shell, index, on):
+    """Flip bit ``index + 1`` of Appearance.PopupIcons and persist."""
+    try:
+        mask = int(cfg_section("Appearance").get("PopupIcons", 30))
+    except Exception:
+        mask = 30
+    bit = 1 << (index + 1)
+    cfg_set("Appearance", "PopupIcons",
+            (mask | bit) if on else (mask & ~bit))
 
 
 def _pick_color(shell, key, swatch):

@@ -139,8 +139,9 @@ KNOWN_UNWIRED = {"sdk"}
 #                 uses pyperclip directly, BUT selection.copy_selection
 #                 reaches it for the sequence poll, so it left this set
 #                 2026-10-23 when the copy-capture engine landed.
-#   fonts      -- General.FontName/TextSize resolution; the Qt view uses
-#                 the measured fixed font
+#   fonts      -- LEFT this set 2026-11-07: main_window._pane_font()
+#                 resolves General.FontName/TextSize via
+#                 qtranslate.fonts.resolve_font (qt-46f)
 #   history    -- LEFT this set: HistoryWindow._save_as now calls the
 #                 csv/html/json/txt exporters (2026-11-07 audit), so the
 #                 module is wired again
@@ -149,7 +150,10 @@ KNOWN_UNWIRED = {"sdk"}
 #   updater    -- the update-manifest fetch; no view calls it
 #   override_ui and updater have no consumer at all; fonts is a gap to
 #   close in the Qt view, not dead code.
-KNOWN_UNWIRED |= {"fonts", "override_ui", "updater"}
+#   history_migrate -- NOT an orphan: history.py re-exports its
+#                 export/import aliases, so the .tmp DataStore
+#                 interchange (qt-mef) is wired through the package
+KNOWN_UNWIRED |= {"override_ui", "updater"}
 
 expected = sorted(ENTRY_POINTS | KNOWN_DEAD | KNOWN_UNWIRED)
 ck("orphan set is exactly the known one",

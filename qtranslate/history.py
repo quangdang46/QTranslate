@@ -8,6 +8,109 @@ Item signature historyItem(a,b,c,d,e,f,g) =
 import json as _json
 import os as _os
 
+# ------------------------------------------------------- persistence I/O
+# The History window's own save path. ``qtranslate.qt.app`` owns the
+# canonical ``_load_history``/``_save_history`` pair, but its writer
+# truncates every entry to ``list(x)[:3]`` -- which silently drops the
+# 4th "favorite" slot the History window toggles. These helpers persist
+# the same ``History.json`` file while keeping up to four slots, so a
+# starred entry survives a save issued from the window itself. Until
+# ``app._save_history`` is widened the same way, a later ``push_hist``
+# still strips the flag -- see the call-site note in
+# ``clear_history_on_exit``'s docstring / module docs.
+
+# Mirrors ``qtranslate.qt.app.HISTORY_LIMIT`` (500, oldest dropped).
+# Duplicated rather than imported: history.py is imported lazily and
+# must not pull in the Qt app module at import time.
+HISTORY_LIMIT = 500
+HISTORY_FILE_NAME = "History.json"
+
+
+def history_file_path():
+    """Resolve ``History.json``'s path.
+
+    Prefers ``qtranslate.qt.app._history_path`` so test harnesses that
+    monkeypatch ``app.HISTORY_PATH`` redirect this writer too; falls
+    back to ``app_data_dir()/History.json`` when the app module is not
+    importable (e.g. a headless context that only uses the exporters).
+    """
+    try:
+        from qtranslate.qt.app import _history_path as _app_path
+        path = _app_path()
+        if path:
+            return path
+    except Exception:                       # noqa: BLE001
+        pass
+    try:
+        from qtranslate.platforms import app_data_dir
+        return _os.path.join(app_data_dir(), HISTORY_FILE_NAME)
+    except Exception:                       # noqa: BLE001
+        return ""
+
+
+def save_history_items(items, limit=HISTORY_LIMIT):
+    """Persist ``items`` to ``History.json``, oldest first, capped.
+
+    Each entry keeps up to four slots: ``(service, source, result)``
+    plus the optional favorite flag the History window stores in slot
+    3. Returns True on success; persistence is best-effort like the
+    app's own writer, so failures return False rather than raise.
+    """
+    try:
+        path = history_file_path()
+        if not path:
+            return False
+        directory = _os.path.dirname(path)
+        if directory:
+            _os.makedirs(directory, exist_ok=True)
+        kept = [list(x)[:4] for x in list(items or [])[-limit:]]
+        with open(path, "w", encoding="utf-8") as fh:
+            _json.dump(kept, fh, ensure_ascii=False)
+        return True
+    except Exception:                       # noqa: BLE001 -- read-only disk
+        return False
+
+
+def clear_history_on_exit(app=None):
+    """Consume ``General.ClearHistoryOnExit`` at shutdown.
+
+    Native clears the persisted history when the app exits if the
+    setting is on (``qtranslate.config`` defaults it to True). Nothing
+    in ``qtranslate/`` called this before: the option was written by
+    the Settings page but never read, so history always survived a
+    restart.
+
+    ``app`` is the ``QtApp`` instance when the caller has one; its
+    in-memory ``history`` list is emptied too. Returns True when the
+    setting was on and the file was cleared (or already empty), False
+    when the setting is off or persistence failed.
+
+    CALL SITE NEEDED (this module cannot reach the event loop itself):
+    ``qtranslate/qt/app.py`` should invoke this once the Qt loop ends --
+    either at the top of ``QtApp.quit`` (app.py:~1270, which the tray's
+    Quit also funnels through) or immediately after
+    ``app.qapp.exec()`` returns in ``main()`` (app.py:~1867). A bare
+    ``atexit`` hook inside this module would NOT be reliable: the module
+    is imported lazily (first Save-as / history-window use), so it is
+    often absent from ``sys.modules`` at interpreter exit.
+    """
+    try:
+        from qtranslate import config as _C
+        enabled = bool((_C.load() or {}).get("General", {})
+                       .get("ClearHistoryOnExit", True))
+    except Exception:                       # noqa: BLE001
+        # The config default for this key is True; mirror it when the
+        # settings file cannot be read at all.
+        enabled = True
+    if not enabled:
+        return False
+    try:
+        if app is not None:
+            app.history = []
+    except Exception:                       # noqa: BLE001
+        pass
+    return save_history_items([])
+
 # ------------------------------------------------------------------- Csv.js
 CSV_DESCRIPTION = "CSV file"
 CSV_EXTENSION = "csv"
@@ -174,6 +277,25 @@ def json_export(items):
         out.append(json_item_end(src, s, i, total))
     out.append(json_footer())
     return "".join(out)
+
+
+# ------------------------------------------------------------ Kotlin compat
+# ``History.json`` <-> the .tmp port's ``HistorySnapshot`` DataStore
+# format lives in ``qtranslate.history_migrate`` (kept out of this file
+# so the exporters above stay a 1:1 native port). These thin aliases
+# keep the public names reachable from ``history``.
+def export_history_snapshots(path=None):
+    """``History.json`` -> list of HistorySnapshot-shaped dicts."""
+    from qtranslate import history_migrate
+    return history_migrate.export_history_snapshots(path)
+
+
+def import_history_snapshots(snapshots, path=None, limit=None):
+    """Merge HistorySnapshot dicts into ``History.json``; returns added."""
+    from qtranslate import history_migrate
+    kwargs = {} if limit is None else {"limit": limit}
+    return history_migrate.import_history_snapshots(
+        snapshots, path=path, **kwargs)
 
 
 # ------------------------------------------------------------------- Txt.js

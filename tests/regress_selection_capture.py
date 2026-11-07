@@ -114,16 +114,39 @@ ck("a copy that never lands returns empty, not stale clipboard",
 ck("the poll still ran its bounded backoff", len(_sleeps) == 8,
    repr(_sleeps))
 
-# --- Ctrl+C refused: no hang, and the clipboard is read as a fallback -----
+# --- Ctrl+C refused: fail CLOSED where a counter proves nothing copied --
+# sequence() returns a real number here, so the platform HAS a counter:
+# send() reporting not-delivered is proof the copy never went out, the
+# clipboard is therefore stale by definition, and the only honest answer
+# is "". (This is the macOS/Windows contract -- macOS changeCount exists,
+# so macOS is strictly fail-closed too.)
 _sleeps = []
 text = selection.copy_selection(
     backend=object(), send=lambda c: False, read=lambda: "OLD",
     sequence=lambda: 100, sleep=lambda s: _sleeps.append(s),
     pressed=lambda k: False)
-ck("a refused Ctrl+C returns instead of hanging", text == "OLD", repr(text))
+ck("a refused Ctrl+C on a counter platform returns empty, not stale",
+   text == "", repr(text))
 ck("a refused copy does not poll at all", _sleeps == [], repr(_sleeps))
 
-# --- no sequence counter (off Windows): one bounded pause, then read ------
+# --- Ctrl+C refused on a counter-LESS platform: the bounded fallback ----
+# sequence() returns -1 on BOTH the snapshot and the confirm probe, so
+# the copy's fate is unobservable -- the "copy could not be attempted"
+# semantic. One bounded read survives here (and ONLY here).
+_sleeps = []
+text = selection.copy_selection(
+    backend=object(), send=lambda c: False, read=lambda: "OLD",
+    sequence=lambda: -1, sleep=lambda s: _sleeps.append(s),
+    pressed=lambda k: False)
+ck("a refused Ctrl+C with no counter still reads once",
+   text == "OLD", repr(text))
+ck("a refused copy on a blind platform does not wait",
+   _sleeps == [], repr(_sleeps))
+
+# --- no sequence counter (off Windows/macOS): one bounded pause, read ---
+# Delivered copy + consistently -1 counter: nothing to poll, so one
+# bounded pause then a single read -- the copy could not be proven
+# either way, matching the pre-counter behaviour.
 _sleeps = []
 text = selection.copy_selection(
     backend=object(), send=lambda c: True, read=lambda: "NEW",
@@ -133,6 +156,29 @@ ck("without a sequence counter it still returns the text",
    text == "NEW", repr(text))
 ck("the fallback pause is bounded and short",
    len(_sleeps) == 1 and _sleeps[0] <= 0.25, repr(_sleeps))
+
+# --- a transient -1 is probed once, then treated as a real counter -----
+# First sample -1, probe returns 100: the platform DOES have a counter,
+# so the capture goes back to fail-closed polling. The probe doubles as
+# the baseline (it is taken before the copy goes out), the delivered
+# copy never moves it, and the answer is "" -- not stale clipboard.
+_seq_calls = {"n": 0}
+
+
+def blip_seq():
+    _seq_calls["n"] += 1
+    return -1 if _seq_calls["n"] == 1 else 100
+
+
+_sleeps = []
+text = selection.copy_selection(
+    backend=object(), send=lambda c: True, read=lambda: "OLD",
+    sequence=blip_seq, sleep=lambda s: _sleeps.append(s),
+    pressed=lambda k: False)
+ck("a transient -1 is confirmed by one probe, then fails closed",
+   text == "", repr(text))
+ck("the probe did not skip the bounded poll",
+   len(_sleeps) == 8, repr(_sleeps))
 
 # --- a modifier still held is waited for before Ctrl+C -------------------
 _seq = {"n": 0}

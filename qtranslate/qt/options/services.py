@@ -118,10 +118,12 @@ class ServicesPage(OptionsBase):
         rect(lst, 626, 51, 2, 153, THUMB)
         # The four buttons, measured off the capture: the two arrows are
         # 25px wide, the two wide ones 118. The arrows reorder the
-        # SELECTED dictionary inside DictionariesOrder; Add/Remove have
-        # no backend (native's picker adds custom dictionary URLs, which
-        # the port does not model), so they stay disabled rather than
-        # fake a reaction.
+        # SELECTED dictionary inside DictionariesOrder. Add registers an
+        # XDXF file in OfflineDictionaries -- the backend
+        # qtranslate.dictionary_search already queries -- and Remove
+        # drops the selected row from DictionariesOrder, the same write
+        # the dictionary window's strip menu makes. Both stay disabled
+        # until a row is selected (Remove) or are always live (Add).
         self._dict_sel = None
         self.btn_up = button(self, 156, 308, 25, "▲", enabled=False,
                              shadow=True)
@@ -129,11 +131,18 @@ class ServicesPage(OptionsBase):
                                shadow=True)
         self.btn_up.clicked.connect(lambda: _move_dict(self, -1))
         self.btn_down.clicked.connect(lambda: _move_dict(self, 1))
-        button(self, 219, 308, 118, "Add dictionary...", enabled=False,
-               shadow=True)
-        b = button(self, 342, 308, 118, "Remove dictionary", enabled=False,
-                   shadow=True)
-        b.setStyleSheet("color:%s" % DIM)
+        self.btn_add = button(self, 219, 308, 118, "Add dictionary...",
+                              enabled=True, shadow=True)
+        self.btn_add.setToolTip(
+            "Add an XDXF dictionary file (.xdxf/.xdx); offline "
+            "dictionaries are searched before the online ones")
+        self.btn_add.clicked.connect(lambda: _add_dict(self))
+        self.btn_remove = button(self, 342, 308, 118, "Remove dictionary",
+                                 enabled=False, shadow=True)
+        self.btn_remove.setToolTip(
+            "Remove the selected dictionary from the list")
+        self.btn_remove.clicked.connect(lambda: _remove_dict(self))
+        self.btn_remove.setStyleSheet("color:%s" % DIM)
         # The sunken frame's 1px white shadow, under the list.
         rect(self, 154, 303, 483, 1, WINDOW)
 
@@ -172,6 +181,8 @@ def _select_dict(shell, did, row):
         row.setStyleSheet("background:#cce4ff;")
         shell.btn_up.setEnabled(True)
         shell.btn_down.setEnabled(True)
+        if getattr(shell, "btn_remove", None) is not None:
+            shell.btn_remove.setEnabled(True)
     except Exception:
         pass
 
@@ -194,9 +205,66 @@ def _move_dict(shell, delta):
             return
         ids[i], ids[j] = ids[j], ids[i]
         _set_top("DictionariesOrder", ids)
-        # Rebuild the page in place: _show_page returns early on the
-        # same name, so clear it first.
-        shell._page_name = ""
-        shell._goto("Services")
+        _rebuild(shell)
     except Exception:
         pass
+
+
+def _rebuild(shell):
+    """Rebuild the page in place: _show_page returns early on the same
+    name, so clear it first."""
+    shell._page_name = ""
+    shell._goto("Services")
+
+
+def _add_dict(shell):
+    """"Add dictionary...": pick an XDXF file and register it.
+
+    The backend already exists -- ``qtranslate.dictionary_search``
+    prepends every path in ``OfflineDictionaries`` to the lookup
+    (``qtranslate/xdxf.py`` renders the articles) -- only the UI was
+    missing. The file joins the END of the offline list, so the most
+    recently added dictionary is searched last among the offline ones.
+    """
+    try:
+        from PySide6.QtWidgets import QFileDialog
+        path, _flt = QFileDialog.getOpenFileName(
+            shell, "Add dictionary", "",
+            "XDXF dictionaries (*.xdxf *.xdx);;All files (*)")
+    except Exception:
+        return
+    if not path:
+        return
+    try:
+        from qtranslate import config as _C
+        cfg = _C.load() or {}
+        offline = list(cfg.get("OfflineDictionaries") or [])
+        if path not in offline:
+            offline.append(path)
+            cfg["OfflineDictionaries"] = offline
+            _C.save(cfg)
+    except Exception:
+        return
+
+
+def _remove_dict(shell):
+    """"Remove dictionary": drop the selected row from
+    ``DictionariesOrder`` -- the same write the dictionary window's
+    strip menu makes (``qt/dictionary.py::_remove_dictionary``)."""
+    try:
+        did = getattr(shell, "_dict_sel", None)
+        if did is None:
+            return
+        from qtranslate import config as _C
+        cfg = _C.load() or {}
+        order = cfg.get("DictionariesOrder")
+        if order is None:
+            order = list(_C.DEFAULT_DICTIONARIES_ORDER)
+        ids = [i for i in order if i != did]
+        if len(ids) == len(order):
+            return
+        cfg["DictionariesOrder"] = ids
+        _C.save(cfg)
+    except Exception:
+        return
+    _rebuild(shell)

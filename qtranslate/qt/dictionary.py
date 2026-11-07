@@ -52,6 +52,32 @@ STRIP_Y, STRIP_H = 307, 22
 STRIP_X = 3
 
 
+def _enabled_dict_ids(cfg=None):
+    """The ``DictionariesOrder`` ids minus ``DisabledDictionaries``.
+
+    This is the consumption side of the Services page's dictionary
+    checkboxes: ``qt/options/services.py::_toggle_dict`` writes the
+    disabled set into Options.json and nothing else reads it. Both the
+    strip (``DictionaryWindow._services``) and the lookup fan-out
+    (``DictionaryWindow.do_search``) go through here, so a dictionary
+    unchecked on the Services page leaves the strip AND stops being
+    queried. A missing ``DictionariesOrder`` falls back to the default
+    order; an explicitly emptied one stays empty (the user removed
+    every row).
+    """
+    from qtranslate import config as _C
+    try:
+        if cfg is None:
+            cfg = _C.load() or {}
+        order = cfg.get("DictionariesOrder")
+        if order is None:
+            order = _C.DEFAULT_DICTIONARIES_ORDER
+        disabled = set(cfg.get("DisabledDictionaries") or [])
+        return [i for i in order if i not in disabled]
+    except Exception:
+        return list(_C.DEFAULT_DICTIONARIES_ORDER)
+
+
 class _Cell(QFrame):
     """One cell of the service strip; clicking it selects that
     dictionary."""
@@ -148,13 +174,17 @@ class DictionaryWindow(Base):
 
     # ------------------------------------------------------------- helpers
     def _services(self):
-        """The dictionary services, in the order the port keeps them."""
+        """The ENABLED dictionary services, in the order the port keeps
+        them.
+
+        ``DictionariesOrder`` minus ``DisabledDictionaries``: the
+        Services page's dictionary checkboxes write that set
+        (``options/services.py::_toggle_dict``) and this is where it is
+        read -- before this, the strip ignored the checkboxes entirely
+        (the Services-page audit, H1).
+        """
         from qtranslate import config
-        try:
-            cfg = config.load()
-            ids = cfg.get("DictionariesOrder") or config.DEFAULT_DICTIONARIES_ORDER
-        except Exception:
-            ids = config.DEFAULT_DICTIONARIES_ORDER
+        ids = _enabled_dict_ids()
         return [config.DICT_DISPLAY.get(i, "") for i in ids
                 if i in config.DICT_DISPLAY]
 
@@ -228,11 +258,19 @@ class DictionaryWindow(Base):
             exact = bool(cfg.get("DictionaryExactSearch", True))
         except Exception:
             cfg, exact = {}, True
-        services = [self.selected_service()] if self.selected_service() \
-            else None
+        # The selected cell wins; if it is not in the ENABLED set (the
+        # Services page unchecked it since this window was built) fall
+        # back to every enabled dictionary. Passing an explicit list --
+        # never None -- keeps dictionary_search.search() from fanning
+        # out to registry.DICTS and reviving the disabled ones.
+        from qtranslate import config as _C
+        enabled = [_C.DICT_DISPLAY.get(i) for i in _enabled_dict_ids(cfg)]
+        enabled = [n for n in enabled if n]
+        sel = self.selected_service()
+        services = [sel] if sel in enabled else list(enabled)
         target = getattr(self.app, "target", "en")
         self.out.setPlainText("querying %d dictionaries..."
-                              % (len(services) if services else 11))
+                              % len(services))
 
         def work():
             try:
@@ -327,8 +365,9 @@ class DictionaryWindow(Base):
         try:
             from qtranslate import config as _C
             cfg = _C.load() or {}
-            order = list(cfg.get("DictionariesOrder")
-                         or _C.DEFAULT_DICTIONARIES_ORDER)
+            order = cfg.get("DictionariesOrder")
+            if order is None:
+                order = list(_C.DEFAULT_DICTIONARIES_ORDER)
             cfg["DictionariesOrder"] = [i for i in order if i != did]
             _C.save(cfg)
         except Exception:

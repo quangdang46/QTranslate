@@ -32,9 +32,17 @@ DEFAULT_ROWS = [("* All Programs *", "SysListView32"),
 
 
 def _rows():
-    """The configured exception pairs (program, window class)."""
+    """The configured exception pairs (program, window class).
+
+    ``Exceptions.Disabled`` absent -> the built-in defaults are shown
+    (they are not persisted until the user edits the list). An
+    explicitly saved list -- even an empty one -- is shown as-is, so
+    deleting every row and saving does not resurrect the defaults.
+    """
     from .base import cfg_section
     ex = cfg_section("Exceptions")
+    if "Disabled" not in ex:
+        return [tuple(r) for r in DEFAULT_ROWS]
     rows = ex.get("Disabled") or []
     out = []
     for r in rows:
@@ -43,7 +51,7 @@ def _rows():
         elif isinstance(r, dict):
             out.append((str(r.get("program", "")),
                         str(r.get("window_class", ""))))
-    return out or [tuple(r) for r in DEFAULT_ROWS]
+    return out
 
 
 def _save_rows(rows):
@@ -91,13 +99,19 @@ def _select(shell, idx):
 def _add_row(shell):
     prog, ok = QInputDialog.getText(
         shell, "Add exception", "Program name:")
-    if not ok or not prog.strip():
+    if not ok:
         return
     cls, ok = QInputDialog.getText(
         shell, "Add exception", "Window class name:")
     if not ok:
         return
-    shell._ex_rows.append((prog.strip(), cls.strip() or "* All Windows *"))
+    # Empty sides are the matcher's match-anything (""), never the
+    # '* All ... *' display sentinels -- a blank program field gives a
+    # class-only row like the defaults' SysListView32 ones.
+    a, b = prog.strip(), cls.strip()
+    if not a and not b:
+        return
+    shell._ex_rows.append((a, b))
     _save_rows(shell._ex_rows)
     _fill_rows(shell)
 
@@ -109,14 +123,19 @@ def _modify_row(shell):
     prog, ok = QInputDialog.getText(
         shell, "Modify exception", "Program name:",
         text=shell._ex_rows[sel][0])
-    if not ok or not prog.strip():
+    if not ok:
         return
     cls, ok = QInputDialog.getText(
         shell, "Modify exception", "Window class name:",
         text=shell._ex_rows[sel][1])
     if not ok:
         return
-    shell._ex_rows[sel] = (prog.strip(), cls.strip())
+    # Same rule as _add_row: blank sides persist as "" (match-anything);
+    # only a fully blank row is refused, since ("", "") excludes all.
+    a, b = prog.strip(), cls.strip()
+    if not a and not b:
+        return
+    shell._ex_rows[sel] = (a, b)
     _save_rows(shell._ex_rows)
     _fill_rows(shell)
 

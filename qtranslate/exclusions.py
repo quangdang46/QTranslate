@@ -114,6 +114,12 @@ def _live_lists():
 
 def foreground_excluded(disabled: list | None = None) -> bool:
     cls, exe = _fg_class_and_exe()
+    if not cls and not exe:
+        # The frontmost app could not be determined (headless, test
+        # harness, permission gap): exclusion is a DENY-list, so an
+        # unknown foreground must fail OPEN -- otherwise every hotkey
+        # silently dies on machines where the lookup returns nothing.
+        return False
     if disabled is not None:
         return is_excluded(cls, exe, disabled)
     dis, ena, mode = _live_lists()

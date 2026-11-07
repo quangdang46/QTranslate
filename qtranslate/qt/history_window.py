@@ -178,8 +178,11 @@ class HistoryWindow(Base):
         try:
             del self.app.history[idx]
             self._fill()
-            from qtranslate.qt.app import _save_history
-            _save_history(self.app.history)
+            # history.save_history_items keeps the 4th favorite slot;
+            # app._save_history truncates entries to [:3] and would
+            # strip every star on disk.
+            from qtranslate import history as _hist
+            _hist.save_history_items(self.app.history)
         except Exception:
             pass
 
@@ -211,6 +214,19 @@ class HistoryWindow(Base):
         arithmetic (one row per ROW_PITCH inside the scrolled container),
         so the menu targets the row the user right-clicked. -1 past the
         last."""
+        ranges = getattr(self, "_row_ranges", None)
+        if ranges:
+            # ExpandHistoryItems mode: rows have per-entry heights, so
+            # the fixed-pitch arithmetic cannot locate them -- ``_fill``
+            # recorded each row's y-range instead.
+            try:
+                yi = int(y)
+            except Exception:
+                return -1
+            for y0, y1, vidx in ranges:
+                if y0 <= yi < y1:
+                    return vidx
+            return -1
         try:
             idx = (int(y) - 6) // ROW_PITCH
         except Exception:
@@ -262,10 +278,50 @@ class HistoryWindow(Base):
                 continue
             visible.append((hi, entry))
         self._visible = visible
+        try:
+            from qtranslate import config as _cfg
+            expand = _cfg.expand_history_items()
+        except Exception:
+            expand = False
         y = 6
-        for _hi, entry in visible:
+        self._row_ranges = []
+        for vidx, (_hi, entry) in enumerate(visible):
             service, src, res = entry[:3]
             fav = len(entry) > 3 and entry[3]
+            row_y0 = y
+            if expand:
+                # General.ExpandHistoryItems: the entry grows to show
+                # its FULL text, word-wrapped, instead of the 60-char
+                # single-line elision (the native file's own flag).
+                from PySide6.QtGui import QFontMetrics
+                from PySide6.QtCore import QRect
+                fm = QFontMetrics(self.font())
+                def _h(t):
+                    r = fm.boundingRect(
+                        QRect(0, 0, 420, 100000), Qt.TextWordWrap,
+                        str(t))
+                    return max(16, r.height() + 6)
+                sh, rh = _h(src), _h(res)
+                pitch = sh + rh + 14
+                rect(self._rows, 0, y - 1, 462, pitch - 2, FACE,
+                     "histrow")
+                icon(self._rows, 3, y + 1, "ui_icons",
+                     "star" if fav else "star_off")
+                s_lab = label(self._rows, 26, y + 4, "", bold=True,
+                              w=430)
+                s_lab.setText(str(src))
+                s_lab.setWordWrap(True)
+                s_lab.setFixedHeight(sh)
+                s_lab.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+                icon(self._rows, 22, y + sh + 8, "service_icons", service)
+                r_lab = label(self._rows, 46, y + sh + 12, "", w=420)
+                r_lab.setText(str(res))
+                r_lab.setWordWrap(True)
+                r_lab.setFixedHeight(rh)
+                r_lab.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+                y += pitch
+                self._row_ranges.append((row_y0, y, vidx))
+                continue
             # Native 2133: the header row is a light band (star + BOLD
             # source), the translation sits on WHITE under it, indented
             # -- not a grey band across the whole entry. The star is the
@@ -277,6 +333,7 @@ class HistoryWindow(Base):
             icon(self._rows, 22, y + 17, "service_icons", service)
             label(self._rows, 46, y + 22, str(res)[:60])
             y += ROW_PITCH
+            self._row_ranges.append((row_y0, y, vidx))
         self._rows.setFixedSize(462, max(228, y + 6))
         self._scroll = QScrollArea(self.list)
         self._scroll.setStyleSheet(
@@ -293,8 +350,8 @@ class HistoryWindow(Base):
     def _clear(self):
         self.app.history = []
         self._fill()
-        from qtranslate.qt.app import _save_history
-        _save_history(self.app.history)
+        from qtranslate import history as _hist
+        _hist.save_history_items(self.app.history)
 
     def _save_as(self):
         """Native's Save as: export the history through the port's own
@@ -352,8 +409,11 @@ class HistoryWindow(Base):
             ent[3] = not fav
             self.app.history[idx] = ent
             self._fill()
-            from qtranslate.qt.app import _save_history
-            _save_history(self.app.history)
+            # Persist through the fav-aware writer: the app's own
+            # _save_history writes list(x)[:3] and would drop the flag
+            # we just toggled.
+            from qtranslate import history as _hist
+            _hist.save_history_items(self.app.history)
         except Exception:
             pass
 

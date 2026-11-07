@@ -309,6 +309,9 @@ def default_config() -> dict:
         },
         "Update": {
             "CheckForUpdates": False,
+            # Epoch seconds of the last update check (qt-v74 auto-check
+            # throttle); 0 = never checked.
+            "LastCheckAt": 0,
         },
         "DisabledServices": [],
         "Proxy": dict(DEFAULT_PROXY),
@@ -335,6 +338,9 @@ def default_config() -> dict:
             "ShowTopPane": True,
             "ShowMiddlePane": True,
             "ShowServicesPane": True,
+            # Menu-1 toggle consumed by main_window's instant-translate
+            # debounce (.tmp observeInstantTranslation, 350 ms).
+            "InstantTranslation": False,
             "FontName": "",
             "TextSize": 9,
         },
@@ -373,6 +379,16 @@ def load(path: str | None = None) -> dict:
     """
     if path is None:
         path = DEFAULT_PATH
+        # One-time bidirectional migration with the Kotlin .tmp app's
+        # DataStore settings (qtranslate/migrate.py). Runs only for the real
+        # settings path -- explicit paths (tests, tools) never trigger it --
+        # is guarded to once per process, and swallows all errors so a
+        # migration problem can never stop the app from loading settings.
+        try:
+            from qtranslate import migrate as _migrate
+            _migrate.migrate_if_needed()
+        except Exception:
+            pass
     try:
         with open(path, encoding="utf-8-sig") as f:
             return json.load(f)
@@ -411,6 +427,52 @@ def services_order(cfg: dict | None = None) -> list:
         except OSError:
             return list(DEFAULT_SERVICES_ORDER)
     return cfg.get("ServicesOrder", list(DEFAULT_SERVICES_ORDER))
+
+
+# ------------------------------------------------------- read helpers
+# ``load`` returns the raw file: a partial/legacy Options.json lacks
+# keys added later, so consumers that need a guaranteed value should go
+# through these merged reads instead of ``cfg.get(section, {}).get(k)``.
+
+
+def general_setting(key: str, default=None):
+    """One ``General`` key, default-document merged under the file.
+
+    The ``General`` section carries the pane/tray/history flags the
+    Qt front end reads at scattered points (``ShowTopPane``,
+    ``MinimizeToTrayOnClose``, ``ClearHistoryOnExit``, ...); a file
+    written before a key existed must still see the default.
+    """
+    merged = dict(default_config().get("General", {}))
+    try:
+        merged.update((load() or {}).get("General", {}) or {})
+    except Exception:
+        pass
+    return merged.get(key, default)
+
+
+def auto_detection() -> dict:
+    """The ``AutoDetection`` section with defaults merged.
+
+    Native reads three keys here (``LanguageFirst`` +0x188,
+    ``LanguageSecond`` +0x18C, ``LanguageSpeechRecognition`` +0x190 --
+    RE_COVERAGE_CHECKLIST.md row M21). The values are indices into the
+    shared ``SupportedLanguages`` table: 57 = vi, 17 = en, and index 0
+    is the ``-1`` sentinel, NOT a language.
+    """
+    merged = dict(default_config().get("AutoDetection", {}))
+    try:
+        merged.update((load() or {}).get("AutoDetection", {}) or {})
+    except Exception:
+        pass
+    return merged
+
+
+def expand_history_items() -> bool:
+    """``General.ExpandHistoryItems`` -- the history window grows each
+    entry to show its detail rows when set (default False, the native
+    file's own value). Consumer: ``qt/history_window.py`` ``_fill``."""
+    return bool(general_setting("ExpandHistoryItems", False))
 
 
 def write_default_options_if_missing() -> None:

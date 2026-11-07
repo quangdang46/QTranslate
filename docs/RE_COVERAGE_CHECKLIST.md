@@ -754,7 +754,7 @@ is silently dropped.
 | M18 `DisabledServices` (list) | `FUN_0045869F`: array → `FUN_0045A6EE(…,0)` | VERIFIED | ported | — |
 | M19 `DisabledLanguages` (list) | `FUN_0045869F`: array → `FUN_0045A7C6` | VERIFIED | ported | — |
 | M20 `LanguagePairs` (2 items) | `FUN_0045869F`: nested array pairs → `FUN_0043389B` into `+0x28C`; each must be exactly 2 | VERIFIED | ported | `[[57,17],[17,57]]` |
-| M21 `AutoDetection` (3 keys) | `FUN_0045869F`: `LanguageFirst` +0x188, `LanguageSecond` +0x18C, `LanguageSpeechRecognition` +0x190 | VERIFIED | ported | from/to/langs |
+| M21 `AutoDetection` (3 keys) | `FUN_0045869F`: `LanguageFirst` +0x188, `LanguageSecond` +0x18C, `LanguageSpeechRecognition` +0x190 | VERIFIED | persisted-only | from/to/langs. **Consumer unrecovered (qt-q9g, 2026-11-07):** no xref to +0x188/+0x18C/+0x190 exists in the recovered decompiles (`FUN_0045fde8` detect invoker does not reference them) and `.tmp` has no `AutoDetection` equivalent at all (`Configuration.kt` carries only `preferredSourceLanguage`/`preferredTargetLanguage`). Options→Basics writes the keys; nothing reads them at runtime — inventing a bias would be guessing, so the section stays persisted-only until a consumer is evidenced. |
 | M22 Change-tracker / apply | `FUN_00434577`: filters out non-edits (disabled buttons, HotKeyControl combo boxes), enables Apply (`GetDlgItem 0x419`); on OK/Apply posts parent `0x8001`/`0x8002` and calls `FUN_004561F0` (save) | VERIFIED | ported | dirty→apply wiring |
 | M23 Binder (settings→controls) | `FUN_0040DD3B`: binds globals to dialog controls (`CheckDlgButton` 0x463/0x486-0x489, combo fill, `SetDlgItemInt` 0x478, icon buttons 0x472-0x475), subclasses RichEdits 0x444/0x443/0x442 via `FUN_004030AE` | VERIFIED | ported | — |
 

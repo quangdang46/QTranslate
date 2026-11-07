@@ -366,13 +366,23 @@ def router_order() -> list:
     from qtranslate import config as _C
     try:
         ids = _C.services_order()
+        try:
+            dis = set((_C.load() or {}).get("DisabledServices", []))
+        except Exception:
+            dis = set()
     except Exception:
         ids = list(_C.DEFAULT_SERVICES_ORDER)
+        dis = set()
     table = translators()
+    # DisabledServices is a real gate, not a display hint: a disabled
+    # provider must not serve the request NOR join the fallback chain
+    # (the Services-page audit: checkboxes wrote config nothing read).
     order = [_C.SERVICE_NAMES[i] for i in ids
-             if i in _C.SERVICE_NAMES and _C.SERVICE_NAMES[i] in table]
+             if i in _C.SERVICE_NAMES and i not in dis
+             and _C.SERVICE_NAMES[i] in table]
+    dis_names = {_C.SERVICE_NAMES[i] for i in dis if i in _C.SERVICE_NAMES}
     for name in table:
-        if name not in order:
+        if name not in order and name not in dis_names:
             order.append(name)
     # Dedupe by callable identity: keep the first key per callable (the
     # ServicesOrder winner, e.g. "microsoft"), drop later aliases ("bing").

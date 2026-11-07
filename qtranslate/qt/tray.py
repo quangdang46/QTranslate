@@ -81,6 +81,13 @@ class Tray:
             act = menu.addAction(text)
             act.triggered.connect(lambda _c=False, s=slot: s())
 
+        # A port addition (native has no update UI in the tray): the
+        # same check the Updates page's "Check now" runs, shown through
+        # the same dialog. It sits after the native entries so the
+        # captured order above is untouched.
+        act = menu.addAction("Check for updates...")
+        act.triggered.connect(lambda _c=False: self._check_for_updates())
+
         menu.addSeparator()
 
         self.act_hotkeys = menu.addAction("Enable global hotkeys")
@@ -172,6 +179,12 @@ class Tray:
             act.triggered.connect(
                 lambda _c=False, f=contrib: self._run_contribution(f))
 
+    def _check_for_updates(self):
+        """The tray's update entry: an unconditional check whose result
+        dialog is the one the Updates page and the auto-check share."""
+        from qtranslate import update_check
+        update_check.check_now(self.app)
+
     def _run_contribution(self, contrib):
         """Run an extension's contribution and show what it returned."""
         if not callable(contrib):
@@ -213,6 +226,17 @@ class Tray:
     # ---------------------------------------------------------------- state
     def show(self):
         self.icon.show()
+        # The startup auto-check hook: app.py's main() calls
+        # ``app.tray.show()`` once the tray exists, which is the one
+        # clean startup point reachable without editing app.py.
+        # ``maybe_auto_check`` is throttled (once per
+        # ``AUTO_CHECK_INTERVAL_DAYS``), gated by Update.CheckForUpdates,
+        # non-blocking, and silent unless an update is available.
+        try:
+            from qtranslate import update_check
+            update_check.maybe_auto_check(self.app)
+        except Exception:                   # noqa: BLE001 -- fail-open
+            pass
 
     def hide(self):
         self.icon.hide()

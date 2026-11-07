@@ -4,14 +4,34 @@ The geometry was measured off the native capture; see
 ``qtranslate-pyside6-spec.md`` section 5.
 
 WIRED: the checkbox writes ``Update.CheckForUpdates``; "Check now"
-runs the real update check through ``qtranslate.updater`` and reports
-in a message box.
+runs a real update check against the project's GitHub Releases feed
+(``qtranslate.update_check``, ported from the upstream Kotlin
+``Updater.kt``) on a worker thread and reports the result —
+up-to-date, a new version with its release notes, or the error — in a
+message box. The UI thread never blocks on the network.
 """
 
-from PySide6.QtWidgets import QMessageBox
+from __future__ import annotations
+
+import threading
+
+from PySide6.QtCore import QObject, Signal
+
+from qtranslate import update_check
 
 from .base import OptionsBase, cfg_section, cfg_set, check, panel, \
     button
+
+
+class _UpdateBridge(QObject):
+    """Marshals the worker thread's check result onto the UI thread.
+
+    Emitting ``result`` from the daemon thread lands in the slot as a
+    queued call because this object was created on the UI thread —
+    the same pattern ``QtApp.invoke`` uses for background work.
+    """
+
+    result = Signal(dict)
 
 
 class UpdatesPage(OptionsBase):
@@ -24,16 +44,34 @@ class UpdatesPage(OptionsBase):
               ).toggled.connect(
             lambda v: cfg_set("Update", "CheckForUpdates", bool(v)))
         panel(self, 153, 63, 481, 230)
+        if not hasattr(self, "_update_bridge"):
+            self._update_bridge = _UpdateBridge()
+            self._update_bridge.result.connect(self._show_result)
         b = button(self, 524, 300, 110, "Check now")
-        b.clicked.connect(lambda: _check_now(self))
+        self._check_btn = b
+        b.clicked.connect(lambda _checked=False: self._check_now())
 
+    def _check_now(self):
+        btn = getattr(self, "_check_btn", None)
+        if btn is not None:
+            btn.setEnabled(False)
+            btn.setText("Checking…")
+        bridge = self._update_bridge
 
-def _check_now(shell):
-    # The native update host (quest-app.appspot.com) retired in
-    # 2022 and the port has no replacement feed, so an honest
-    # "unavailable" is the truthful answer -- not a fake "latest".
-    QMessageBox.information(
-        shell, "Updates",
-        "Update checks are unavailable: the update service this "
-        "version talks to was retired. Download new versions from "
-        "the project's release page instead.")
+        def work():
+            # Never raises: check_for_update maps every failure to an
+            # "error" result the UI can show.
+            bridge.result.emit(update_check.check_for_update())
+
+        threading.Thread(target=work, daemon=True,
+                         name="qtranslate-update-check").start()
+
+    def _show_result(self, res):
+        btn = getattr(self, "_check_btn", None)
+        if btn is not None:
+            btn.setEnabled(True)
+            btn.setText("Check now")
+        # The dialog itself lives in update_check so the tray's manual
+        # check and the startup auto-check show the same thing; `self`
+        # keeps the old parenting (the Options dialog).
+        update_check.show_update_result(self, res)
