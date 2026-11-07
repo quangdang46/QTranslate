@@ -834,6 +834,17 @@ class QtApp:
     def open_dictionary(self):
         from .dictionary import DictionaryWindow
         self._dict = DictionaryWindow(self)
+        # The popup's dictionary button stashes the looked-up word in
+        # _dict_word -- consume it so the window opens with a live
+        # search instead of an empty field the user must retype.
+        word = getattr(self, "_dict_word", "") or ""
+        self._dict_word = ""
+        if word:
+            try:
+                self._dict.inp.setText(word)
+                self._dict.do_search()
+            except Exception:
+                pass
         self._dict.show()
 
     def open_history(self):
@@ -1191,6 +1202,21 @@ class QtApp:
         them; a press inside the icon is its own click and must not
         hide it first.
         """
+        # .tmp PopupDismissalPolicy: a press outside the popup closes it
+        # (the Qt eventFilter can only see clicks inside our own
+        # windows; the global mouse hook sees every press). This check
+        # must NOT sit behind the icon early-return -- a pinned popup
+        # also survives the outside press.
+        try:
+            pop = getattr(self, "_popup", None)
+            if (pop is not None and pop.isVisible()
+                    and not getattr(pop, "_pinned", False)):
+                g = pop.geometry()
+                if not (g.left() <= x <= g.right()
+                        and g.top() <= y <= g.bottom()):
+                    self._on_ui(pop.hide)
+        except Exception:
+            pass
         try:
             icon = getattr(self, "_mouse_icon", None)
             if icon is None or not icon.is_showing():
@@ -1199,18 +1225,6 @@ class QtApp:
                 return
             self._on_ui(lambda: icon.dismiss()
                         if icon.is_showing() else None)
-        except Exception:
-            pass
-        # .tmp PopupDismissalPolicy: a press outside the popup closes it
-        # (the Qt eventFilter can only see clicks inside our own
-        # windows; the global mouse hook sees every press).
-        try:
-            pop = getattr(self, "_popup", None)
-            if pop is not None and pop.isVisible():
-                g = pop.geometry()
-                if not (g.left() <= x <= g.right()
-                        and g.top() <= y <= g.bottom()):
-                    self._on_ui(pop.hide)
         except Exception:
             pass
 
@@ -1318,28 +1332,33 @@ class QtApp:
                      % (res.ok, len(res.text or ""), res.provider_used))
             except Exception:
                 pass
-            if res.ok and res.text:
+            # Terminal state always renders: a failed request shows the
+            # failure text in the popup instead of leaving the loading
+            # marker/popup stranded (.tmp publishes translationFailed
+            # and still reaches a render).
+            try:
+                self._on_ui(lambda: self.show_translation(
+                    t, res.text or "Translation failed",
+                    provider=res.provider_used))
+            except Exception:
                 try:
-                    self._on_ui(lambda: self.show_translation(t, res.text,
-                                                              provider=res.provider_used))
-                except Exception:
-                    try:
-                        self.show_translation(t, res.text,
-                                              provider=res.provider_used)
-                    except Exception:
-                        pass
-                try:
-                    pop = getattr(self, "_popup", None)
-                    _dbg("popup after show: %s visible=%s"
-                         % (pop is not None,
-                            pop.isVisible() if pop else "-"))
+                    self.show_translation(
+                        t, res.text or "Translation failed",
+                        provider=res.provider_used)
                 except Exception:
                     pass
-                if speak:
-                    try:
-                        self._speak(res.text)
-                    except Exception:
-                        pass
+            try:
+                pop = getattr(self, "_popup", None)
+                _dbg("popup after show: %s visible=%s"
+                     % (pop is not None,
+                        pop.isVisible() if pop else "-"))
+            except Exception:
+                pass
+            if res.ok and res.text and speak:
+                try:
+                    self._speak(res.text)
+                except Exception:
+                    pass
         try:
             started = self._start_translation(text, done)
             _dbg("icon-click: start=%s len=%d" % (started, len(text or "")))
@@ -1412,7 +1431,14 @@ class QtApp:
             _dbg("mouse_work: gate_ok=False")
             return ""
         from qtranslate import selection
-        return (selection.copy_selection() or "").strip()
+        text = (selection.copy_selection() or "").strip()
+        if not text:
+            try:
+                _dbg("mouse_work: capture empty reason=%s"
+                     % selection.last_reason())
+            except Exception:
+                pass
+        return text
 
     def quit(self):
         # General.ClearHistoryOnExit (Basics page) -- consumed here so
@@ -1490,21 +1516,36 @@ class QtApp:
         still in flight -- the user gets immediate feedback instead of
         a dead-feeling delay."""
         try:
-            from .popup import PopupWindow
-            pop = getattr(self, "_popup", None)
-            if pop is None:
-                pop = PopupWindow(self)
-                self._popup = pop
-            pop.set_loading(text[:300], self.popup_pair())
-            pop.place()
-            pop.show()
+            # .tmp withholds the popup entirely and shows a small
+            # pointer-following marker instead -- opening the full
+            # popup here meant sub-second translations replaced the
+            # "Translating…" state before it ever painted a frame.
+            # The in-popup spinner is gone too: the external marker is
+            # the single loading surface (operator feedback).
+            mark = getattr(self, "_loading_mark", None)
+            if mark is None:
+                from .loading_indicator import LoadingIndicator
+                # No parent: QtApp is not a QWidget, and this is a
+                # top-level window anyway. Passing `self` crashed with
+                # TypeError and the marker never appeared.
+                mark = LoadingIndicator()
+                self._loading_mark = mark
+            mark.show_at_cursor()
+            _dbg("loading marker shown (popup deferred)")
+        except Exception as exc:
             try:
-                _dbg("popup loading shown visible=%s" % pop.isVisible())
+                _dbg("popup loading err %r" % (exc,))
             except Exception:
                 pass
-            if pop._auto_focus():
-                pop.activateWindow()
-                pop.setFocus()
+
+    def _loading_hide(self):
+        """Dismiss the cursor marker; the 350 ms minimum lives inside
+        ``LoadingIndicator.hide`` so a fast result still leaves the
+        marker perceptible (.tmp's MINIMUM_VISIBLE_MS)."""
+        try:
+            mark = getattr(self, "_loading_mark", None)
+            if mark is not None:
+                mark.hide()
         except Exception:
             pass
 
@@ -1556,10 +1597,16 @@ class QtApp:
                         pop.activateWindow()
                         pop.setFocus()
                     try:
-                        _dbg("popup shown visible=%s" % pop.isVisible())
+                        _dbg("popup shown visible=%s geo=%s"
+                             % (pop.isVisible(),
+                                pop.geometry().getRect()))
                     except Exception:
                         pass
-                except Exception:
+                except Exception as exc:
+                    try:
+                        _dbg("popup show err %r" % (exc,))
+                    except Exception:
+                        pass
                     try:
                         pop.show()
                     except Exception:
@@ -1569,6 +1616,12 @@ class QtApp:
                     _dbg("show_translation err %s" % e)
                 except Exception:
                     pass
+            finally:
+                # Result (or failure text) reached a terminal state --
+                # release the cursor marker. hide() enforces .tmp's
+                # 350 ms minimum so even instant translations leave a
+                # perceptible loading beat.
+                self._loading_hide()
         except Exception:
             pass
 
@@ -1624,7 +1677,8 @@ class QtApp:
                 # its own hotkeys for exactly this reason).
                 if not text:
                     try:
-                        _dbg("hotkey_popup no text")
+                        _dbg("hotkey_popup no text reason=%s"
+                             % selection.last_reason())
                     except Exception:
                         pass
                     return
@@ -1643,9 +1697,16 @@ class QtApp:
                         _dbg("hotkey_popup translate error")
                     except Exception:
                         pass
+                    try:
+                        self._on_ui(lambda t=text:
+                                    self.show_translation(
+                                        t, "Translation failed"))
+                    except Exception:
+                        pass
                     return
                 try:
-                    out = getattr(res, 'text', '') or ''
+                    out = (getattr(res, 'text', '') or '') \
+                        or "Translation failed"
                     provider = (getattr(res, 'provider_used', '')
                                 or self.service)
                     self._on_ui(lambda t=text, o=out, p=provider:
@@ -1694,12 +1755,14 @@ class QtApp:
             pass
 
         def done(t, res):
-            if res.ok and res.text:
-                try:
-                    self._on_ui(lambda: self.show_translation(
-                        t, res.text, provider=res.provider_used))
-                except Exception:
-                    pass
+            # Always reach a terminal render so the loading marker is
+            # released and failures are visible (.tmp parity).
+            try:
+                self._on_ui(lambda: self.show_translation(
+                    t, res.text or "Translation failed",
+                    provider=res.provider_used))
+            except Exception:
+                pass
         self._start_translation(text, done)
 
     def hotkey_replace_selection(self):
@@ -1736,10 +1799,21 @@ class QtApp:
 
     def _show_replace(self, text, res):
         """Apply a finished Alt+W translation (UI thread)."""
+        # NEVER type an engine failure into the user's document: on a
+        # dead provider res.text is the "No data returned…" placeholder,
+        # and typing that over their selection is data loss, not a
+        # translation. Same rule as on_swap's EMPTY_RESULT guard.
+        if not getattr(res, "ok", False):
+            _dbg("replace: skipped -- translation failed")
+            return
+        payload = (res.text or "").strip()
+        if not payload or payload.startswith("[") \
+                or payload.startswith("No data returned"):
+            _dbg("replace: skipped -- empty/placeholder result")
+            return
         # The retype goes through sendkeys: True delivered, False when
         # there is no synthesizer (off Windows) -- never a raise.
         from qtranslate import sendkeys as _SK
-        payload = res.text or ""
         _dbg("replace: typing back len=%d" % len(payload))
         # Native retypes the translation over the selection (SendInput
         # unicode). write_text reports honestly and never raises.

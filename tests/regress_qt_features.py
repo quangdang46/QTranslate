@@ -250,8 +250,11 @@ try:
         pop = PopupWindow(app)
         windows.append(pop)
         pop.set_text("hello", "Xin chào", "English -> Vietnamese")
+        _body = (pop.lbl_text.toPlainText
+                 if hasattr(pop.lbl_text, "toPlainText")
+                 else pop.lbl_text.text)
         ck("the popup shows the translation it is given",
-           pop.lbl_text.text() == "Xin chào", pop.lbl_text.text())
+           _body() == "Xin chào", _body())
         ck("the popup shows the language pair",
            pop.lbl_pair.text() == "English -> Vietnamese", pop.lbl_pair.text())
         # The popup SIZES TO ITS TEXT (native 2162/2163): a fixed size

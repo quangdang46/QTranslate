@@ -99,10 +99,14 @@ try:
     ok = app.wait_for_translation(timeout=10.0)
     app.qapp.processEvents()
     popup = getattr(app, "_popup", None)
+    _body = (popup.lbl_text.toPlainText()
+             if popup is not None
+             and hasattr(popup.lbl_text, "toPlainText")
+             else (popup.lbl_text.text() if popup else ""))
     ck("the icon's click lands a translation in the popup",
        ok and popup is not None
-       and "GOOGLE:hello selection" in popup.lbl_text.text(),
-       popup.lbl_text.text()[:60] if popup else "no popup")
+       and "GOOGLE:hello selection" in _body,
+       _body[:60] if popup else "no popup")
 
     # .tmp SelectionBehaviorRouter (and native's TaskShowIcons /
     # TaskShowPopupWindow split, FUN_004183bd): the mode decides what

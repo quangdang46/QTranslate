@@ -128,6 +128,19 @@ def _neutralize_modifiers(pressed, sleep) -> bool:
     return True
 
 
+_LAST_REASON = ""
+
+
+def last_reason() -> str:
+    """Why the most recent ``copy_selection`` returned "" (or "ok").
+
+    Diagnostic only -- the app logs it next to the empty-capture line so
+    a missing icon/popup can be told apart: held modifiers, refused
+    send, unmoved sequence counter, or an actually-empty clipboard.
+    """
+    return _LAST_REASON
+
+
 def copy_selection(backend=None, send=None, read=None, sequence=None,
                    sleep=None, pressed=None,
                    start_ms=BACKOFF_START_MS, cap_ms=BACKOFF_CAP_MS,
@@ -151,6 +164,8 @@ def copy_selection(backend=None, send=None, read=None, sequence=None,
     """
     from qtranslate import clipboard, sendkeys
 
+    global _LAST_REASON
+    _LAST_REASON = "ok"
     read = read or clipboard.read_text
     sequence = sequence or clipboard.sequence
     sleep = sleep or _default_sleep
@@ -163,6 +178,7 @@ def copy_selection(backend=None, send=None, read=None, sequence=None,
     # Fail CLOSED on timeout: injecting anyway delivers the wrong chord
     # to the frontmost app, which is worse than not capturing.
     if not _neutralize_modifiers(pressed, sleep):
+        _LAST_REASON = "modifiers-held"
         return ""
 
     # .tmp SelectionCapture: snapshot the clipboard BEFORE the copy is
@@ -174,9 +190,12 @@ def copy_selection(backend=None, send=None, read=None, sequence=None,
     except Exception:
         snap = None
     try:
-        return _capture_after_snapshot(
+        out = _capture_after_snapshot(
             backend, send, read, sequence, sleep, before,
             start_ms, cap_ms, steps)
+        if not out and _LAST_REASON == "ok":
+            _LAST_REASON = "empty-read"
+        return out
     finally:
         if snap is not None:
             try:
@@ -187,6 +206,7 @@ def copy_selection(backend=None, send=None, read=None, sequence=None,
 
 def _capture_after_snapshot(backend, send, read, sequence, sleep,
                             before, start_ms, cap_ms, steps):
+    global _LAST_REASON
     from qtranslate import sendkeys
 
     # Platform-aware fail-closed. ``before`` is the one snapshot taken
@@ -215,6 +235,8 @@ def _capture_after_snapshot(backend, send, read, sequence, sleep,
         # only there does the bounded read fallback survive (the "copy
         # could not be attempted" semantic; no copy means the clipboard
         # cannot have changed, so no wait is needed either).
+        _LAST_REASON = ("send-refused+seq" if seq_ok
+                        else "send-refused-no-seq")
         return "" if seq_ok else read()
 
     if not seq_ok:
@@ -222,6 +244,7 @@ def _capture_after_snapshot(backend, send, read, sequence, sleep,
         # take one bounded pause and read -- the copy could not be
         # proven either way.
         sleep(0.15)
+        _LAST_REASON = "no-seq-read"
         return read()
 
     wait_ms = start_ms
@@ -232,6 +255,7 @@ def _capture_after_snapshot(backend, send, read, sequence, sleep,
         # clipboard changed -- only a REAL new number is proof the
         # copy landed.
         if now is not None and now >= 0 and now != before:
+            _LAST_REASON = "ok"
             return read()
         wait_ms = min(wait_ms * 2, cap_ms)
     # The copy was delivered but the sequence NEVER moved: the frontmost
@@ -240,4 +264,5 @@ def _capture_after_snapshot(backend, send, read, sequence, sleep,
     # clipboard" bug -- native's answer is "no selection, nothing to
     # translate". The read fallback lives only where the platform has
     # no sequence counter at all, handled above.
+    _LAST_REASON = "seq-unchanged"
     return ""

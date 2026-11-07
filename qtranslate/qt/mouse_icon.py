@@ -86,6 +86,10 @@ class MouseIcon(QWidget):
         self._timer = QTimer(self)
         self._timer.setSingleShot(True)
         self._timer.timeout.connect(self._fade_out)
+        # Generation counter: a _done() scheduled by an OLD fade-out
+        # must not hide an icon that was popped again in between
+        # (audit: stale-hide race made freshly shown icons vanish).
+        self._gen = 0
 
     # ------------------------------------------------------------- show/hide
     def pop(self, x, y, text):
@@ -96,6 +100,7 @@ class MouseIcon(QWidget):
         inside the screen under the pointer.
         """
         self._text = text or ""
+        self._gen += 1
         self.move(*self._place(x, y))
         self.show()
         # No raise_(): on macOS ordering a window front can activate the
@@ -157,7 +162,11 @@ class MouseIcon(QWidget):
         self._anim = anim
 
     def _fade_out(self):
+        gen = self._gen
+
         def _done():
+            if gen != self._gen:
+                return          # a newer pop() owns the widget now
             self.hide()
             self._text = ""
         self._fade_to(0.0)
