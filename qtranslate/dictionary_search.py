@@ -71,6 +71,14 @@ def dictionary_language(cfg: dict | None = None) -> str:
 
 def service_key(display_name: str) -> str:
     """The registry key for a dictionary service's display name."""
+    # Extension dictionaries (``api.register_dictionary``) have no
+    # display-name mapping -- their strip cell shows the key itself.
+    try:
+        from qtranslate import registry as _RG
+        if display_name in getattr(_RG, "DICT_EXT", {}):
+            return display_name
+    except Exception:
+        pass
     return SERVICE_KEYS.get(display_name, display_name.split()[0].lower()
                             if display_name else "")
 
@@ -153,15 +161,23 @@ def search(word: str, exact: bool = True, services=None, target: str = "vi",
         pass
 
     enabled_keys = _enabled_dict_keys(cfg)
+    # DICT_EXT entries have no DictionariesOrder id -- they are installed
+    # deliberately, so they stay eligible unless the enabled filter is
+    # unreadable (None), matching how id-less translate providers join
+    # the strip. An extension entry wins over a built-in of the same
+    # key, the same last-wins rule sdk.dict_lookup uses.
+    ext = getattr(_RG, "DICT_EXT", {}) or {}
     if services is None:
         names = [k for k in _RG.DICTS
                  if enabled_keys is None or k in enabled_keys]
+        names += list(ext)
     else:
         names = [service_key(n) for n in services]
-        if enabled_keys is not None:
-            names = [k for k in names if k in enabled_keys]
+    if enabled_keys is not None:
+        names = [k for k in names
+                 if k in enabled_keys or k in ext]
     for key in names:
-        fn = _RG.DICTS.get(key)
+        fn = ext.get(key) or _RG.DICTS.get(key)
         if fn is None:
             continue
         try:

@@ -51,6 +51,7 @@ from qtranslate.services import libretranslate as _libretranslate
 from qtranslate.services import reverso as _reverso
 from qtranslate.services import mozhi as _mozhi
 from qtranslate.services import ai_translate as _ai_translate
+from qtranslate.services import yandex_web as _yandex_web
 from qtranslate.session import bing_translate as _bing_tr
 
 
@@ -130,6 +131,12 @@ def _t_aitranslate(t, sl, tl):
     return _ai_translate.translate(t, sl, tl)
 
 
+def _t_yandexweb(t, sl, tl):
+    # .tmp's yandex-web-services plugin port (unofficial instaserp
+    # endpoint + Mozhi fallbacks; no key, no service id).
+    return _yandex_web.translate(t, sl, tl)
+
+
 def _t_promt(t, sl, tl):
     # Native: a failed provider request surfaces as the app-level error
     # string, not as translation text. Let exceptions propagate so
@@ -156,6 +163,7 @@ TRANSLATORS = {
     "reverso": _t_reverso,
     "mozhi": _t_mozhi,
     "ai-translate": _t_aitranslate,
+    "yandex-web": _t_yandexweb,
 }
 
 DICTS = {
@@ -425,8 +433,15 @@ def router_order() -> list:
              if i in _C.SERVICE_NAMES and i not in dis
              and _C.SERVICE_NAMES[i] in table
              and _C.SERVICE_NAMES[i] not in dis_names]
+    # A disabled provider's ALIASES must stay disabled too: "bing" is
+    # not in dis_names (it is a port alias, not a ServicesOrder id), but
+    # it shares microsoft's callable -- without this it would resurrect
+    # a service the user turned off, in the strip AND in the chain.
+    dis_callables = {id(table[n]) for n in dis_names if n in table}
     for name in table:
-        if name not in order and name not in dis_names:
+        fn = table.get(name)
+        if (name not in order and name not in dis_names
+                and id(fn) not in dis_callables):
             order.append(name)
     # Dedupe by callable identity: keep the first key per callable (the
     # ServicesOrder winner, e.g. "microsoft"), drop later aliases ("bing").

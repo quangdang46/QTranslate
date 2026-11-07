@@ -32,6 +32,12 @@ def ck(name, cond, detail=""):
 
 from qtranslate import config as C
 
+# Isolate from the developer's live Options.json: router_order() honours
+# DisabledServices, and a real config that disables providers would make
+# these inventory assertions environment-dependent.
+C.DEFAULT_PATH = os.path.join(os.sep, "qt-test-no-such-dir",
+                              "Options.json")
+
 # default ServicesOrder ids resolve to real TRANSLATORS names, in order
 ids = list(C.DEFAULT_SERVICES_ORDER)
 names = [C.SERVICE_NAMES[i] for i in ids if i in C.SERVICE_NAMES]
@@ -48,7 +54,7 @@ src = io.open("qtranslate/registry.py", encoding="utf-8").read()
 import re
 m = re.search(r"TRANSLATORS = \{(.*?)\n\}", src, re.S)
 keys = re.findall(r'"([a-z-]+)":', m.group(1))
-ck("TRANSLATORS has 15 entries", len(keys) == 15, str(keys))
+ck("TRANSLATORS has 16 entries", len(keys) == 16, str(keys))
 ck("the view holds no dispatch table of its own",
    re.search(r"^\s*TRANSLATORS = \{", view_source(), re.M) is None
    and re.search(r"^\s*DICTS = \{", view_source(), re.M) is None,

@@ -92,19 +92,37 @@ for key, fn in R.DICTS.items():
        len(sig.parameters) >= 3, str(sig))
 
 # --- 4. the translate table is separate, and the collisions are known ---
-ck("TRANSLATORS has the 9 providers plus the bing alias",
-   len(R.TRANSLATORS) == 10, str(sorted(R.TRANSLATORS)))
+# The set grew with the .tmp plugin ports: mymemory, reverso, mozhi,
+# libretranslate, ai-translate, naver and yandex-web joined the
+# native nine, plus the bing alias. Pin the exact inventory so a stray registration still
+# fails loudly.
+_EXPECTED_TRANSLATORS = {
+    "ai-translate", "babylon", "baidu", "bing", "deepl", "google",
+    "libretranslate", "microsoft", "mozhi", "mymemory", "naver",
+    "promt", "reverso", "yandex", "yandex-web", "youdao",
+}
+ck("TRANSLATORS is exactly the native nine, the .tmp plugin ports and "
+   "the bing alias",
+   set(R.TRANSLATORS) == _EXPECTED_TRANSLATORS,
+   str(sorted(R.TRANSLATORS)))
 ck("bing is an alias for microsoft's translator",
    R.TRANSLATORS.get("bing") is R.TRANSLATORS.get("microsoft")
    or ("bing" in R.TRANSLATORS and "microsoft" in R.TRANSLATORS))
 # Two native services are TRANSLATE *and* DICTIONARY, so their names
 # legitimately appear in both tables: Babylon (id 13 translate, id 20 dict)
 # and youdao (id 26, the only caps=TRANSLATE|DICTIONARY service). The tables
-# are read through _ID2FN, not by name, so the overlap is by design -- but it
-# is an exact set: a THIRD collision would mean a name was wired twice.
+# are read through _ID2FN, not by name, so the overlap is by design.
+# reverso joins them deliberately: .tmp's reverso-services plugin ships a
+# ReversoDictionaryService alongside its translator, and the port mirrors
+# that capability -- a FOURTH collision would mean a name was wired twice.
 overlap = set(R.DICTS) & set(R.TRANSLATORS)
-ck("the translate/dictionary name overlap is exactly babylon and youdao",
-   overlap == {"babylon", "youdao"}, str(sorted(overlap)))
+ck("the translate/dictionary name overlap is exactly babylon, reverso "
+   "and youdao",
+   overlap == {"babylon", "reverso", "youdao"}, str(sorted(overlap)))
+ck("reverso's dict entry is the Reverso dictionary lookup, not the "
+   "translate one",
+   "reverso_lookup" in inspect.getsource(R.DICTS["reverso"])
+   if hasattr(inspect, "getsource") else True)
 ck("babylon's dict entry is the Babylon DICTIONARY lookup, not the "
    "translate one",
    "babylon_dict_lookup" in inspect.getsourcefile(

@@ -1,0 +1,11 @@
+{
+  "id": "google-lens-ocr",
+  "name": "Google Lens OCR",
+  "version": "1.0.0",
+  "sdk_version": "1.0",
+  "entrypoint": "ext:register",
+  "capabilities": ["ocr"],
+  "settings_schema": {
+    "lens.api_key": "string"
+  }
+}

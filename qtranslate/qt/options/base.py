@@ -74,10 +74,25 @@ class OptionsBase(Base):
         self.app = app
         self._page_name = SIDEBAR[self.SEL]
         self._rows = []
+        # Draft semantics: every control writes through immediately, so
+        # Cancel has to restore the file as it was when the dialog
+        # opened -- otherwise "Cancel" would keep every edit.
+        self._cfg_snapshot = cfg_load()
+        self._cfg_committed = False
         self.setWindowTitle("Options")
         self._show_page(self._page_name, first=True)
 
     def closeEvent(self, event):
+        # The title-bar X is a Cancel too: edits are write-through, so
+        # an uncommitted close restores the open-time snapshot. OK,
+        # Apply and Cancel all set the flag before closing.
+        if not getattr(self, "_cfg_committed", False):
+            try:
+                from qtranslate import config as _C
+                _C.save(self._cfg_snapshot)
+                notify_app(getattr(self, "app", None))
+            except Exception:
+                pass
         # An armed hotkey capture must not survive the dialog: the
         # recording flag lives on this shell and would keep swallowing
         # every bound chord after the window is gone.
@@ -119,7 +134,7 @@ class OptionsBase(Base):
             if text == "OK":
                 b.clicked.connect(self._on_ok)
             elif text == "Cancel":
-                b.clicked.connect(self.close)
+                b.clicked.connect(self._on_cancel)
             elif text == "Apply":
                 b.clicked.connect(self._on_apply)
                 self._btn_apply = b
@@ -203,13 +218,50 @@ class OptionsBase(Base):
         self._paint_rows()
 
     def _on_ok(self):
+        self._cfg_committed = True
         try:
             self._on_apply()
         except Exception:
             pass
         self.close()
 
+    def _on_cancel(self):
+        """Restore the settings file to the dialog-open snapshot.
+
+        Controls write through on every change, so without this the
+        Cancel button was a plain close that kept every edit -- the
+        opposite of what the button says.
+        """
+        try:
+            from qtranslate import config as _C
+            _C.save(self._cfg_snapshot)
+        except Exception:
+            pass
+        self._cfg_committed = True
+        self._notify_app()
+        self.close()
+
+    def _notify_app(self):
+        try:
+            app = getattr(self, "app", None)
+            if app is not None and hasattr(app, "_load_session"):
+                try:
+                    app._load_session()
+                except Exception:
+                    pass
+            if app is not None and app.win is not None:
+                try:
+                    # refresh combos if they exist
+                    pass
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
     def _on_apply(self):
+        # Apply commits the file's current state: a later title-bar
+        # close keeps it rather than restoring the open-time snapshot.
+        self._cfg_committed = True
         try:
             from qtranslate import config as _C
             try:
@@ -218,19 +270,9 @@ class OptionsBase(Base):
             except Exception:
                 pass
             # Notify app to reload if possible
+            self._notify_app()
             try:
-                app = getattr(self, "app", None)
-                if app is not None and hasattr(app, "_load_session"):
-                    try:
-                        app._load_session()
-                    except Exception:
-                        pass
-                if app is not None and app.win is not None:
-                    try:
-                        # refresh combos if they exist
-                        pass
-                    except Exception:
-                        pass
+                notify_app(getattr(self, "app", None))
             except Exception:
                 pass
         except Exception:

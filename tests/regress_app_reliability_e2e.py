@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import os
 import sys
+import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
@@ -46,6 +47,13 @@ except Exception as exc:                       # noqa: BLE001
 
 from qtranslate import registry as RG                    # noqa: E402
 from qtranslate.extensions import load_user_extensions   # noqa: E402
+from qtranslate import config as _CFG                    # noqa: E402
+
+# Isolate from the developer's live Options.json: the router honours
+# DisabledServices, so a real config would make the fallback assertions
+# environment-dependent.
+_CFG.DEFAULT_PATH = os.path.join(tempfile.mkdtemp(prefix="qt-cfg-"),
+                                 "Options.json")
 
 _ORIGINAL = dict(RG.TRANSLATORS)
 _TABLES = ("TRANSLATORS", "DICT_EXT", "TTS_EXT", "OCR_EXT", "SPELL_EXT",

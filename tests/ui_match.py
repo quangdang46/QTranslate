@@ -69,41 +69,51 @@ if HAVE_NATIVE:
 else:
     check("default-text==help.txt", True, "skipped -- no native install")
 
-# 2. strip order == ServicesOrder
+# 2. strip order == ServicesOrder, then the appended extras
 cfg = C.load()
 ids = cfg.get("ServicesOrder", [])
 names = [C.SERVICE_NAMES.get(i) for i in ids]
-check("strip-order==ServicesOrder",
-      _app.ordered_services() == [n for n in names if n in R.TRANSLATORS],
-      f"{_app.ordered_services()} vs {names}")
+# The user's live DisabledServices (numeric ids OR provider names) filter
+# the native prefix; id-less providers then append after it.
+_disabled = set(cfg.get("DisabledServices", []))
+_disabled_names = {C.SERVICE_NAMES.get(d, d) for d in _disabled}
+_native = [n for i, n in zip(ids, names)
+           if i not in _disabled and n in R.TRANSLATORS
+           and n not in _disabled_names]
+_ordered = _app.ordered_services()
+check("strip-order==ServicesOrder+extras",
+      _ordered[:len(_native)] == _native
+      and all(n in R.TRANSLATORS and n not in _disabled_names
+              for n in _ordered[len(_native):]),
+      f"{_ordered} vs {_native}")
 
 # 3. the strip's short names, as the strip DRAWS them -- read off the live
 # main window's strip: the labels of the nine service cells sit at y 408.
 try:
     from qtranslate.qt.main_window import MainWindow
     _win = MainWindow(_app)
+    # The strip subdivides its width once id-less providers join, so the
+    # cells are no longer on a fixed 56px grid -- read the labels by the
+    # "service" property the strip stamps on them and order by x.
     _labels = [lbl for lbl in _win.findChildren(QtWidgets.QLabel)
-               if lbl.parent() is _win and lbl.y() == 369
-               and (lbl.x() - 30) % 56 == 0]
+               if lbl.property("service")]
     _labels.sort(key=lambda lbl: lbl.x())
+    _shown_svcs = [lbl.property("service") for lbl in _labels]
     _shown = [lbl.text() for lbl in _labels]
     # The exact rendering of the truncation (DeepL vs De...) depends on
     # the font metrics of the platform that measures it -- the offscreen
     # Qt build cannot have the real Tahoma -- so the pin is the RELATION:
     # one label per ordered service, in the strip's order, each either
-    # the full native name or native's two-letters-and-ellipsis cut.
-    from qtranslate import config as _cf
-    _rev = {v: k for k, v in _cf.SERVICE_NAMES.items()}
-    _fulls = [_cf.SERVICE_DISPLAY.get(_rev.get(n, n), n)
-              for n in _app.ordered_services()]
+    # the full display name or native's two-letters-and-ellipsis cut.
+    _fulls = [_app.service_display(n) for n in _app.ordered_services()]
     check("strip-labels",
-          len(_shown) == len(_fulls)
+          _shown_svcs == _app.ordered_services()
+          and len(_shown) == len(_fulls)
           and all(s == f or s == f[:2] + "..."
                   for s, f in zip(_shown, _fulls)),
           "%s vs %s" % (_shown, _fulls))
     check("strip-order-live",
-          [s[:2] for s in _shown]
-          == [f[:2] for f in _fulls],
+          _shown_svcs == _app.ordered_services(),
           "the drawn strip is the ordered services")
 except Exception as e:
     check("strip-labels", False, repr(e))
@@ -287,7 +297,7 @@ if HAVE_NATIVE:
           repr(_r1.note))
 else:
     check("babylon-error-path", True, "skipped -- no native install")
-check("translators-10", len(R.TRANSLATORS) == 10)
+check("translators-16", len(R.TRANSLATORS) == 16)
 
 # 12. i18n helper (lang.json Id maps; English falls back to default).
 # The old app._T resolved Menus specially (an object list keyed by menu id

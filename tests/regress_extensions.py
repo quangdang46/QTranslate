@@ -8,6 +8,7 @@ import io
 import os
 import re
 import sys
+import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -23,6 +24,13 @@ def ck(name, cond, detail=""):
 
 from qtranslate import registry as RG
 from qtranslate.extensions import ExtensionManager, OverrideConflict
+from qtranslate import config as _CFG
+
+# Isolate from the developer's live Options.json: enabled() honours
+# DisabledServices, so a real config would make the dedup assertions
+# environment-dependent.
+_CFG.DEFAULT_PATH = os.path.join(tempfile.mkdtemp(prefix="qt-cfg-"),
+                                 "Options.json")
 
 m = ExtensionManager()
 

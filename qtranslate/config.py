@@ -69,6 +69,7 @@ EXTRA_SERVICE_DISPLAY = {
     "reverso": "Reverso",
     "mozhi": "Mozhi",
     "ai-translate": "AI Translate",
+    "yandex-web": "Yandex Web (Unofficial)",
 }
 
 # Default dictionary order, measured from the native capture 2136: the
@@ -332,7 +333,10 @@ def default_config() -> dict:
         },
         "OfflineDictionaries": [],
         "Ocr": {
-            "OcrApiKey": "", "OcrLanguage": 0,
+            # Google-language INDEX, default 17 = English (the parity
+            # note in docs/review/SERVICES_PAGE_PARITY: the earlier 0
+            # pointed at the table's first entry, not English).
+            "OcrApiKey": "", "OcrLanguage": 17,
         },
         "Update": {
             "CheckForUpdates": False,

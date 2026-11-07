@@ -1,0 +1,17 @@
+{
+  "id": "csv-dictionary",
+  "name": "CSV Dictionary",
+  "version": "1.0.0",
+  "sdk_version": "1.0",
+  "entrypoint": "ext:register",
+  "capabilities": ["dictionary"],
+  "settings_schema": {
+    "file.path": "string",
+    "file.delimiter": "string",
+    "columns.term": "string",
+    "columns.definition": "string",
+    "columns.notes": "string",
+    "matching.case_sensitive": "bool",
+    "matching.label": "string"
+  }
+}

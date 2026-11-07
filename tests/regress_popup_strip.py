@@ -13,6 +13,7 @@ Offscreen; the providers are rigged, so no network.
 """
 import os
 import sys
+import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
@@ -32,6 +33,13 @@ from qtranslate import registry as RG                    # noqa: E402
 from qtranslate_style import ACCENT                      # noqa: E402
 from qtranslate.qt.app import QtApp                      # noqa: E402
 from qtranslate.qt.main_window import MainWindow         # noqa: E402
+from qtranslate import config as _CFG                    # noqa: E402
+
+# Isolate from the developer's live Options.json: the strip is built
+# from ordered_services(), which honours DisabledServices -- a real
+# config would change which buttons exist.
+_CFG.DEFAULT_PATH = os.path.join(tempfile.mkdtemp(prefix="qt-cfg-"),
+                                 "Options.json")
 
 _ORIG = dict(RG.TRANSLATORS)
 try:

@@ -184,9 +184,17 @@ class DictionaryWindow(Base):
         (the Services-page audit, H1).
         """
         from qtranslate import config
+        from qtranslate import registry as _RG
         ids = _enabled_dict_ids()
-        return [config.DICT_DISPLAY.get(i, "") for i in ids
-                if i in config.DICT_DISPLAY]
+        names = [config.DICT_DISPLAY.get(i, "") for i in ids
+                 if i in config.DICT_DISPLAY]
+        # Extension dictionaries (``api.register_dictionary``) have no
+        # numeric id, so they append after the native strip -- the same
+        # rule the translate strip uses for id-less providers. Their
+        # cell shows the registry key as the display name.
+        names += [k for k in getattr(_RG, "DICT_EXT", {})
+                  if k not in names]
+        return names
 
     def _strip_cell(self, i, name, cell_w=CELL):
         """One cell of the bottom strip: a divider, the service's own
@@ -264,8 +272,14 @@ class DictionaryWindow(Base):
         # never None -- keeps dictionary_search.search() from fanning
         # out to registry.DICTS and reviving the disabled ones.
         from qtranslate import config as _C
+        from qtranslate import registry as _RG
         enabled = [_C.DICT_DISPLAY.get(i) for i in _enabled_dict_ids(cfg)]
         enabled = [n for n in enabled if n]
+        # Extension dictionary keys double as their display names (the
+        # strip cell shows the key), so they join the eligible set here
+        # the same way _services() appends them to the strip.
+        enabled += [k for k in getattr(_RG, "DICT_EXT", {})
+                    if k not in enabled]
         sel = self.selected_service()
         services = [sel] if sel in enabled else list(enabled)
         target = getattr(self.app, "target", "en")

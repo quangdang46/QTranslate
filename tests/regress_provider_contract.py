@@ -30,7 +30,14 @@ def ck(name, cond, detail=""):
 
 
 import qtranslate.registry as RG
+from qtranslate import config as _C
 from qtranslate.providers import Provider, build_adapters
+
+# Isolate from the developer's live Options.json: router_order() honours
+# DisabledServices, so a real config would make the chain assertions
+# environment-dependent.
+_C.DEFAULT_PATH = os.path.join(os.sep, "qt-test-no-such-dir",
+                               "Options.json")
 
 table = build_adapters()
 

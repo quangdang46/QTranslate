@@ -34,6 +34,13 @@ from qtranslate import registry as RG                    # noqa: E402
 import qtranslate.qt.app as appmod                       # noqa: E402
 from qtranslate.qt.app import QtApp                      # noqa: E402
 from qtranslate.qt.main_window import MainWindow         # noqa: E402
+from qtranslate import config as _CFG                    # noqa: E402
+
+# Isolate from the developer's live Options.json: the strip and the
+# highlight follow ordered_services()/DisabledServices, so a real
+# config would change which service cells exist.
+_CFG.DEFAULT_PATH = os.path.join(tempfile.mkdtemp(prefix="qt-cfg-"),
+                                 "Options.json")
 
 _ORIG = dict(RG.TRANSLATORS)
 root = tempfile.mkdtemp(prefix="qt_nav_")

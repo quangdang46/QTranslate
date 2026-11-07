@@ -37,6 +37,13 @@ def ck(name, cond, detail=""):
 from qtranslate import engine
 from qtranslate import registry as RG
 from qtranslate.extensions import ExtensionManager, load_user_extensions
+from qtranslate import config as _CFG
+
+# Isolate from the developer's live Options.json: the fallback chain
+# honours DisabledServices, so a real config would make the dedup
+# assertions environment-dependent.
+_CFG.DEFAULT_PATH = os.path.join(tempfile.mkdtemp(prefix="qt-cfg-"),
+                                 "Options.json")
 
 _TABLE = RG.TRANSLATORS
 _ORIGINAL = dict(RG.TRANSLATORS)

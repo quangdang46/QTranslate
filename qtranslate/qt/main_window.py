@@ -554,6 +554,7 @@ class MainWindow(Base):
         icon(self, x + 3, 400, "service_icons", STRIP_ICONS.get(name, name))
         lab = label(self, x + 27, 408, self._strip_label(name, w))
         lab.setFixedWidth(w - 30)
+        lab.setProperty("service", name)
         lab.setAttribute(Qt.WA_TransparentForMouseEvents, True)
         return b
 

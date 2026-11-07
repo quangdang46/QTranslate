@@ -116,6 +116,8 @@ def build_adapters():
          _RG._mozhi, "mozhi"),
         ("ai-translate", _RG._t_aitranslate, None,
          _RG._ai_translate, "ai-translate"),
+        ("yandex-web", _RG._t_yandexweb, None,
+         _RG._yandex_web, "yandex-web"),
     ]
     table = {}
     for key, fn, det, mod, cap in specs:

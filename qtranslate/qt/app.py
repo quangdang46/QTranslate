@@ -384,8 +384,15 @@ class QtApp:
             # never shows twice. Without this the strip could never
             # select an extension provider: it stayed fallback-only.
             seen = {id(registry.TRANSLATORS[n]) for n in names}
+            # A disabled service's ALIASES must stay disabled too --
+            # "bing" shares microsoft's callable, so without this the
+            # alias would resurrect a service the user turned off.
+            disabled_callables = {
+                id(registry.TRANSLATORS[n])
+                for n in disabled_names if n in registry.TRANSLATORS}
             for n, fn in registry.TRANSLATORS.items():
-                if n in names or n in disabled_names or id(fn) in seen:
+                if (n in names or n in disabled_names
+                        or id(fn) in seen or id(fn) in disabled_callables):
                     continue
                 names.append(n)
                 seen.add(id(fn))
@@ -643,6 +650,9 @@ class QtApp:
                 if not src:
                     return
             self.source, self.target = self.target, src
+            # .tmp clears detectedSourceLanguage on swap: the detection
+            # belonged to the pre-swap direction.
+            self._detected_src = ""
             if win is not None:
                 for combo, code in ((win.cmb_src, self.source),
                                     (win.cmb_tgt, self.target)):
@@ -656,6 +666,7 @@ class QtApp:
             try:
                 win.src.setPlainText(translated)
                 win.out.clear()
+                self._refresh_detected_label()
                 self.on_go()
             except Exception:
                 pass
@@ -688,6 +699,7 @@ class QtApp:
 
     def set_source_by_name(self, name):
         self.source = self._code_of(name)
+        self._refresh_detected_label()
         try:
             self._persist_language()
         except Exception:
@@ -1560,7 +1572,51 @@ class QtApp:
             self._detected_src = res.source_language_code or ""
         except Exception:
             pass
+        self._refresh_detected_label()
         return res
+
+    def _refresh_detected_label(self):
+        """Show the detected source inside the AUTO combo.
+
+        .tmp LanguageComboBox renders ``"English (Auto-Detect)"`` -- the
+        detected language's display name followed by the auto label --
+        whenever the source slot is AUTO and a detection exists. The
+        pseudo-item is managed: exactly one at a time, removed when the
+        source slot leaves AUTO or the detection changes.
+        """
+        win = getattr(self, "win", None)
+        combo = getattr(win, "cmb_src", None) if win else None
+        if combo is None:
+            return
+        detected = getattr(self, "_detected_src", "") or ""
+        is_auto = getattr(self, "source", "") == "auto"
+        label = ("%s (Auto-Detect)" % self._display(detected)
+                 if is_auto and detected else "Auto-Detect")
+        try:
+            combo.blockSignals(True)
+            prev = getattr(self, "_detected_label", None)
+            if prev and prev != label:
+                i = combo.findText(prev)
+                if i >= 0:
+                    combo.removeItem(i)
+            if not is_auto:
+                # A concrete source shows its own name -- the refresh
+                # only manages the AUTO slot's pseudo-item.
+                self._detected_label = None
+                return
+            if label != "Auto-Detect" and combo.findText(label) < 0:
+                combo.addItem(label)
+            idx = combo.findText(label)
+            if idx >= 0:
+                combo.setCurrentIndex(idx)
+            self._detected_label = label if label != "Auto-Detect" else None
+        except Exception:
+            pass
+        finally:
+            try:
+                combo.blockSignals(False)
+            except Exception:
+                pass
 
     def _back_translation_enabled(self) -> bool:
         """General.BackTranslation (native menu 1/30): append the

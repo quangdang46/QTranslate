@@ -63,9 +63,45 @@ class OcrResultWindow(QWidget):
 
     # ------------------------------------------------------------ handlers
     def _pick_language(self):
-        """Open the Options page that owns the OCR language setting."""
+        """Choose the OCR language (``Ocr.OcrLanguage``).
+
+        The setting is a Google-language INDEX -- the same table the
+        main window's combos use -- so the menu lists every supported
+        language by display name and writes the index back. Native's
+        menu 110 opens the Options page; a direct picker is the same
+        setting with one less hop.
+        """
+        from PySide6.QtWidgets import QMenu
+        from qtranslate import config as _C
         try:
-            self.app.open_options("Advanced")
+            from qtranslate.services.google_translate import SUPPORTED_LANGS
+            table = list(SUPPORTED_LANGS)
+        except Exception:
+            table = []
+        from qtranslate.languages import display as _disp
+        try:
+            cfg = _C.load() or {}
+            cur = int((cfg.get("Ocr", {}) or {}).get("OcrLanguage", 17))
+        except Exception:
+            cur = 17
+        menu = QMenu(self)
+        for i, code in enumerate(table):
+            if not isinstance(code, str) or code in ("auto", "-1"):
+                continue
+            act = menu.addAction(_disp(code))
+            act.setCheckable(True)
+            act.setChecked(i == cur)
+            act.triggered.connect(
+                lambda _c=False, idx=i: self._set_ocr_language(idx))
+        menu.exec(self.mapToGlobal(self.rect().center()))
+
+    def _set_ocr_language(self, index):
+        try:
+            from qtranslate import config as _C
+            cfg = _C.load() or {}
+            ocr = cfg.setdefault("Ocr", {})
+            ocr["OcrLanguage"] = int(index)
+            _C.save(cfg)
         except Exception:
             pass
 

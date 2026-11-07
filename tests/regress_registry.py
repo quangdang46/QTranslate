@@ -58,8 +58,8 @@ ck("registry defines TRANSLATORS",
    re.search(r"^TRANSLATORS = \{", REG_SRC, re.M) is not None)
 ck("registry defines DICTS",
    re.search(r"^DICTS = \{", REG_SRC, re.M) is not None)
-ck("registry defines the 14 _t_* adapters",
-   len(re.findall(r"^def _t_\w+\(", REG_SRC, re.M)) == 14,
+ck("registry defines the 15 _t_* adapters",
+   len(re.findall(r"^def _t_\w+\(", REG_SRC, re.M)) == 15,
    str(len(re.findall(r"^def _t_\w+\(", REG_SRC, re.M))))
 ck("registry defines detectors()",
    "def detectors(" in REG_SRC)
@@ -125,6 +125,13 @@ ck("registry does not import app at module level",
 # tables -- which is what the aliases were checked against anyway.
 
 from qtranslate import registry as RG
+from qtranslate import config as _CFG
+
+# Isolate from the developer's live Options.json: router_order() honours
+# DisabledServices, so a real config would make the chain assertions
+# environment-dependent.
+_CFG.DEFAULT_PATH = os.path.join(os.sep, "qt-test-no-such-dir",
+                                 "Options.json")
 
 if True:
     t, d = RG.translators(), RG.dicts()
@@ -132,7 +139,7 @@ if True:
        "%d vs %d keys" % (len(t), len(RG.TRANSLATORS)))
     ck("dicts() == registry.DICTS", d == RG.DICTS,
        "%d vs %d keys" % (len(d), len(RG.DICTS)))
-    ck("15 translate entries", len(t) == 15, str(sorted(t)))
+    ck("16 translate entries", len(t) == 16, str(sorted(t)))
     # 11, not 10: youdao (id 26) is the one TRANSLATE|DICTIONARY service, and
     # an earlier version of this table omitted it -- so `_ID2FN`'s "youdao"
     # key had no entry, the lookup returned None, and the service silently
