@@ -13,6 +13,11 @@ Python/PySide6 port of QTranslate 6.10. Reference implementation (read-only):
   the real Kotlin datastore only when `DEFAULT_PATH` is the builtin path.
 - **Push to `origin main` after each completed wave** — user preference
   ("nhớ push thường xuyên"). Local commits alone are not enough.
+- **Kill the app after testing** — user preference ("thường xuyên quên
+  exit QTranslate sau khi test làm đầy memory"). Never leave `start_qt.py`
+  or stray Qt test processes running: `pkill -f start_qt.py` when done,
+  and check `ps aux | grep -E "start_qt|QApplication"` for leftovers
+  (offscreen test rigs can hang on `win.show()`).
 - `br` beads track work (`br list`, `br close <id> --reason ...`).
 
 ## Conventions
