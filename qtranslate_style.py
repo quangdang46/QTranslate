@@ -477,9 +477,9 @@ def popup_colors():
     ``Appearance.ColorBack``/``ColorText``/``ColorFrame`` are the popup's
     own colours in the settings file (0xBBGGRR ints, the same order the
     Options page's swatches write). Returns ``None`` for a slot the
-    config does not name, so the caller keeps its measured default --
-    ``qtranslate.qt.popup`` should prefer these over its constants when
-    they are set (the consumer-side wiring is pending there).
+    config does not name, so the caller keeps its measured default;
+    ``qtranslate.qt.main_window`` prefers these over the measured
+    constants when they are set.
     """
     try:
         from qtranslate import config as C
@@ -501,9 +501,7 @@ def popup_colors():
 def popup_frame_thickness():
     """``Appearance.PopupWindowFrameThickness`` (1-4 px), default 2.
 
-    Same pending-consumer story as ``popup_colors``: the setting is
-    persisted by the Options page; ``qtranslate.qt.popup`` reads it when
-    it draws the popup border.
+    ``qtranslate.qt.popup`` reads it when it draws the popup border.
     """
     try:
         from qtranslate import config as C
@@ -516,8 +514,10 @@ def popup_frame_thickness():
 
 def popup_auto_size():
     """``Appearance.PopupAutoSize`` -- whether the popup sizes to its
-    text (True) or keeps a fixed size (False). Persisted by the Options
-    page; ``qtranslate.qt.popup`` is the pending consumer."""
+    text (True) or keeps a fixed size (False). ``qtranslate.qt.popup``
+    consumes the key directly via its ``_appearance()`` config read
+    (popup.py); this accessor has no callers and stays for symmetry
+    with the other popup_* helpers."""
     try:
         from qtranslate import config as C
         return bool((C.load() or {}).get("Appearance", {})
@@ -527,9 +527,8 @@ def popup_auto_size():
 
 
 def popup_pin_when_dragging():
-    """``Appearance.PopupPinWhenDragging`` -- persisted by the Options
-    page; the popup's drag-to-pin behaviour is the pending consumer in
-    ``qtranslate.qt.popup``."""
+    """``Appearance.PopupPinWhenDragging`` -- whether a drag pins the
+    popup; ``qtranslate.qt.popup`` reads it on mouse release."""
     try:
         from qtranslate import config as C
         return bool((C.load() or {}).get("Appearance", {})
@@ -545,8 +544,8 @@ def popup_icon_mask():
     §5.4: "4 nút toggle 22×22 đang nhấn"); the stored int is a bitmask
     over the popup's toggleable header icons (book, headphone, copy,
     transliteration -- the star is not one of them). The default 30 =
-    bits 1-4 set = all four shown. ``qtranslate.qt.popup`` is the
-    pending consumer that hides the icons whose bit is clear.
+    bits 1-4 set = all four shown. ``qtranslate.qt.popup`` hides the
+    icons whose bit is clear.
     """
     try:
         from qtranslate import config as C
