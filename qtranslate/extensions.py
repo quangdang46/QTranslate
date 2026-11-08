@@ -908,23 +908,40 @@ class ExtensionManager:
         return name
 
     def register_dictionary(self, name, fn, replaces=None):
-        """A dictionary provider, into ``registry.DICT_EXT``."""
+        """A dictionary provider, into ``registry.DICT_EXT``.
+
+        ``replaces`` is accepted for signature parity with
+        ``register``/``register_theme`` but is INERT here: the dispatch
+        tables have no built-in ids to override (unlike TRANSLATORS or
+        the theme records), so there is nothing for it to name."""
         return self._register_in("DICT_EXT", name, fn)
 
     def register_tts(self, name, fn, replaces=None):
-        """A speech backend, into ``registry.TTS_EXT``."""
+        """A speech backend, into ``registry.TTS_EXT``.
+
+        ``replaces`` is inert here -- the table has no built-in ids to
+        override (see ``register_dictionary``)."""
         return self._register_in("TTS_EXT", name, fn)
 
     def register_ocr(self, name, fn, replaces=None):
-        """A text recogniser, into ``registry.OCR_EXT``."""
+        """A text recogniser, into ``registry.OCR_EXT``.
+
+        ``replaces`` is inert here -- the table has no built-in ids to
+        override (see ``register_dictionary``)."""
         return self._register_in("OCR_EXT", name, fn)
 
     def register_spell(self, name, fn, replaces=None):
-        """A spell suggester, into ``registry.SPELL_EXT``."""
+        """A spell suggester, into ``registry.SPELL_EXT``.
+
+        ``replaces`` is inert here -- the table has no built-in ids to
+        override (see ``register_dictionary``)."""
         return self._register_in("SPELL_EXT", name, fn)
 
     def register_workflow(self, name, fn, replaces=None):
-        """A post-translation step, into ``registry.WORKFLOW_EXT``."""
+        """A post-translation step, into ``registry.WORKFLOW_EXT``.
+
+        ``replaces`` is inert here -- the table has no built-in ids to
+        override (see ``register_dictionary``)."""
         return self._register_in("WORKFLOW_EXT", name, fn)
 
     def register_ui(self, kind, slot, contribution, replaces=None,
