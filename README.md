@@ -22,7 +22,7 @@ python -I qtranslate/services/google_translate.py "Hello world" vi
 python -I qtranslate/tts.py "Xin chào" vi google.mp3
 # Full native-like UI (main + popup + Options 9/9 + History + Dictionary
 # + tray + hotkeys from your real Options.json):
-python -I start_app.py
+python -I start_qt.py
 ```
 
 > **Running the test suites.** `python -I` (isolated mode) strips the current
@@ -31,10 +31,11 @@ python -I start_app.py
 >
 > Two failures are environmental, not test failures:
 >
-> - **`No module named '_tkinter'`** — the `tkinter`-importing suites
->   (`ui_match.py`, `smoke_dict.py`, and the regress suites that import
->   `qtranslate.app`) cannot run on a Python built without Tcl/Tk. On macOS
->   use a Homebrew `python@3.x`; system `python3` typically lacks it.
+> - **`No module named '_tkinter'`** — only the suites that touch
+>   `qtranslate/screens.py` (the kept tkinter reference renderer, e.g.
+>   `regress_screens.py`) need Tcl/Tk; the app itself and every other
+>   suite are Qt-only. On macOS use a Homebrew `python@3.x`; system
+>   `python3` typically lacks it.
 > - **A Windows `%APPDATA%` path** — `smoke_dict.py` looks for
 >   `~/AppData/Roaming/QTranslate/Options.json`, which only exists on Windows.
 >
@@ -55,8 +56,11 @@ reason instead of stopping the app.
 | macOS | `~/.config/QTranslate/extensions` |
 
 Copy a folder that carries a `manifest.json` into that directory and
-restart the app. `examples/extensions/` holds three complete worked
-examples, one per capability:
+restart the app. `examples/extensions/` holds worked examples: the
+three one-capability demos (`hello_provider`, `custom_theme`,
+`custom_ui`), `power_suite` (all eight capabilities with the fail-open
+patterns a real extension needs), `studio` (a multi-module extension),
+and service ports (`wiktionary`, `csv_dictionary`, `google_lens_ocr`).
 
 | Example | Capability | What it does |
 |---|---|---|
@@ -70,7 +74,7 @@ cp -r examples/extensions/hello_provider "%APPDATA%/QTranslate/extensions/"
 # macOS
 mkdir -p ~/.config/QTranslate/extensions
 cp -r examples/extensions/hello_provider ~/.config/QTranslate/extensions/
-python -I start_app.py          # restart: the provider is live
+python -I start_qt.py            # restart: the provider is live
 ```
 
 Pick `hello` in the main window's service list and translate; the result
@@ -80,10 +84,10 @@ starts normally and the built-in providers still work.
 The contract is `docs/EXTENSION_SDK.md`; the example is pinned by
 `tests/regress_example_extension.py`.
 
-## Test suites (last verified 2026-10-23 — offline only: **136 suites, 0 failed**)
+## Test suites (last verified 2026-11-09 — offline only: **198 suites, 0 failed**)
 
 > These counts are **verified offline results, not a live claim**. Live suites
-> (`live_providers`, `live_bass`) were last run 2026-10-08; see
+> (`live_providers`, `live_bass`) were last run 2026-11-09; see
 > `tests/LIVE_RESULTS.md` for per-endpoint results and `docs/TEST_STRATEGY.md`
 > for why live suites are not merge gates. (`ui_match` counts varied as the
 > suite grew: `82/82` → `79/79` → `97/97` → `40/40` → `46/46` → `71/71` →
@@ -112,18 +116,24 @@ The contract is `docs/EXTENSION_SDK.md`; the example is pinned by
 > checks exit codes and prints the failing suite's last line.
 
 ```bash
-python -I tests/ui_match.py        # 103/103 (2026-10-15, GUI session only;
-                                   #   it builds tk.Tk() — rerun before release)
-python -I tests/smoke_dict.py      # PASS exit 0 (2026-10-15, offline)
-python -I tests/regress_*.py       # 110/110 headless suites PASS (2026-10-16, offline)
+python -I tests/ui_match.py        # Qt-view checks, offscreen (GUI session only;
+                                   #   rerun before release)
+python -I tests/smoke_dict.py      # PASS exit 0 (offline)
+python -I tests/regress_*.py       # 196/196 headless suites PASS (2026-11-09, offline)
                                    #   check the EXIT CODE, not a "FAIL" grep
                                    #   (suites print FAIL n/m without a colon)
-python -I tools/coverage_tally.py --selftest   # PASS 6/6 (2026-10-15)
-python -I tools/gate_artifact_audit.py         # 147/147 (2026-10-16, offline)
-python -I tools/docs_consistency.py            # 0 findings (2026-10-16, offline)
-python -I tools/audit_ui_spec.py               # 48 checks (2026-10-16, offline)
-python -I tools/run_suites.py      # 114/114 by EXIT CODE (2026-10-16, offline, 45s)
-python -I tests/live_providers.py  # 21/21 vs real endpoints (2026-10-08, historical)
+python -I tools/coverage_tally.py --selftest   # PASS 6/6
+python -I tools/coverage_tally.py --check      # structure valid (gate BLOCKED:
+                                             #   1 unresolved UNKNOWN row, human)
+python -I tools/gate_artifact_audit.py         # 147/147 VERIFIED rows cite
+                                             #   concrete artifacts (2026-11-09)
+python -I tools/docs_consistency.py            # 0 findings (2026-11-09)
+python -I tools/audit_ui_spec.py               # 53 checks, 0 drift (2026-11-09)
+python -I tools/audit_ui_labels.py             # 5 captions vs English pack (2026-11-09)
+python -I tools/run_suites.py      # 198 suites, 0 failed by EXIT CODE
+                                   #   (2026-11-09, ~325s, 22 environmental SKIP)
+python -I tests/live_providers.py  # 30/31 vs real endpoints (2026-11-09;
+                                   #   dict.lingvo down server-side)
 ```
 
 ## Provider status
