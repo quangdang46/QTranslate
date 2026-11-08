@@ -1,126 +1,134 @@
-# HANDOFF
+# HANDOFF — QTranslate port (Python/PySide6)
 
-What the last sessions did, what the tree looks like now, and what the
-next session should pick up. Updated **2026-10-24** at the tip of
-`main` (see §0), working tree clean, pushed.
+**Goal:** Port QTranslate 6.10 (`.tmp/QTranslate`, Kotlin/Swing reference)
+functionally + behaviorally to this repo — all logic and UX, core and
+secondary features. User's standing instruction: "làm hết" — everything,
+verified against `.tmp`, no feature left un-audited.
 
-The standing rules still apply: the GitHub push token is used
-transiently in a push URL only (never in a file, never in
-`.git/config`; the helper authenticates as `qdang46`, which gets 403 on
-`quangdang46/QTranslate`, so the operator supplies a session token);
-the native's installer is never run (the installed copy at
-`C:/Program Files (x86)/QTranslate/` is read only); `docs/NATIVE_ARCH.md`
-is frozen; every Python run uses `python -I`; downloaded files are
-untrusted.
+**Status:** Parity work is essentially COMPLETE on the agent-doable
+surface. 191/191 test suites green, 0 failed. All work pushed to
+`origin main` (latest: `5c31115`).
 
-## 0. The state of the tree right now
+## Repo layout
 
-| What | Value |
-|---|---|
-| Branch / commit | `main`, tip = the HANDOFF commit itself, pushed |
-| Working tree | clean |
-| Suites | **140 suites, 0 failed, ~53s** (`python -I tools/run_suites.py`) |
-| Pixel measure | mean ink diff **0.0037** over 12 screens (re-run 24/10) |
-| Docs consistency | 0 findings, 120 files scanned |
-| Live providers | **21 checks LIVE-OK** (`tests/LIVE_RESULTS.md`); PROMT/Babylon/Baidu-translate dead, recorded |
-| Bundle | rebuilt on this tree, `SELFTEST PASS 29/29`, runs from `dist\QTranslate\` |
-| Front end | Qt only. tkinter was deleted on 2026-10-23 |
+- Port: `qtranslate/` (Python + PySide6), entry `start_qt.py`, config
+  `Options.json` under `platforms.app_data_dir()`.
+- Reference (READ-ONLY): `.tmp/QTranslate` — Kotlin/Swing upstream 6.10.
+  `.tmp` has its own `AGENTS.md` (MPL-2.0 rules; never push to its
+  main/develop).
+- Docs: `docs/RE_COVERAGE_CHECKLIST.md` (port↔.tmp mapping + divergences),
+  `docs/GAP_AUDIT_2.md`, `docs/GAP_AUDIT_3.md` (test-contract mining —
+  12 gaps all fixed or documented), `docs/PDF_LAYOUT.md` (feasibility),
+  `docs/CURRENT_STATE.md`, `docs/EXTENSION_SDK.md`.
+- Tests: `tests/regress_*.py` (~190 files). Run ALL:
+  `QT_QPA_PLATFORM=offscreen .venv/bin/python tools/run_suites.py`
+  Single: `.venv/bin/python tests/regress_x.py`.
+- Task tracking: `br list` / `br close <id> --reason "..."` (beads).
 
-**The operator CONFIRMED the GUI matches native** (2026-10-24, running
-the real bundle). Recorded in `docs/review/FEATURE_CHECKLIST_2026-10-23.md`.
+## Must-read conventions (AGENTS.md)
 
-## 1. This session (2026-10-24) -- what landed, newest last
+- Tests isolate `qtranslate.config.DEFAULT_PATH` to a temp file BEFORE
+  any config load — pages write through; `config.load()` auto-migrates
+  the real Kotlin DataStore only when `DEFAULT_PATH` is the builtin path.
+- Options pages use screenshot coords via `put()`; grown pages need
+  matching `CHROME` offsets.
+- Quick popup must stay button-less (structural test greps raw source).
+- Secrets: `qtranslate/secrets.py` (0600 JSON beside Options.json) —
+  never in Options.json.
+- Platform backends dispatch on `sys.platform`, lazy imports, honest
+  fallback when binaries missing.
+- **Push to origin main after each wave. Kill the app + stray Qt test
+  processes after testing** (user preferences, in AGENTS.md).
 
-| Commit | What |
-|---|---|
-| `362344a` | **test isolation**: three suites read the real `%APPDATA%` Options.json; the operator's live session (`From=auto, To=auto`) made the engine echo instead of calling the rigged provider. The suites pin `en → vi` now. |
-| `89e9e68` | **Bing FIXED**: bing.com moved the credentials into `params_AbusePreventionHelper = [<expiry-ts>,"<token>",<TTL>]` and the POST's `key=` is the EXPIRY, not the TTL (`statusCode:205` vs translation, both verified live). EN→VI and VI→EN translate; sweep 21/21. PROMT re-probed: scrape OK, backend "temporarily unavailable" (`dead:service-unavailable`). Babylon still dead (SSL chain). |
-| `bb86d3e` | **`examples/extensions/power_suite/`** -- a worked extension with ALL EIGHT capabilities: language-gated provider that raises on a miss (fallback answers), a deliberately broken sibling proving fail-open, workflow step, partial theme, popup-body/tray/panel slots, restart-safe state in its OWN file (D16). Pinned by `regress_extension_power_suite.py` (28) through the real loader. |
-| `775b38b` | **The user's extension switch + settings API + the Options Extensions page**: `Extensions.Disabled` in Options.json skips the folder at load (no import, no tables); `api.get_setting`/`set_setting` persist per-extension under `Extensions.Settings.<ext id>` (schema-declared keys only, fail-open reads); the Options dialog's tenth page **Extensions** lists installed folders with an on/off checkbox each, the load status, an Open-folder button and a restart hint. Pinned by `regress_extensions_options.py` (21). |
-| `a7e207a` | the operator's GUI-match confirmation recorded in the checklist. |
-| `359b834` | 15 surface captures of the running app (main/popup/dict/history/keyboard + all ten Options pages) under `docs/review/screenshots_2026-10-24/`. |
-| `4ecac33` | **popup strip selects**: clicking a provider cell highlights it (selection blue, white text) and re-translates through the chosen provider on the worker. `regress_popup_strip.py` (10). |
-| `599c32f` | **history rows no longer overlap; dictionary strip fits**: the history list is a QScrollArea at a 34px pitch (12 entries needed 360px in a 228px panel and painted over each other); the strip's cell width is computed from the service count. |
-| `f35b6da` | **history persists** to `History.json` (the port held it in memory only -- every restart emptied the window); the main strip's highlight MOVES with the clicked provider and follows the restored service at boot. `regress_history_persist.py` (9). |
-| `4cf4f71` | **history/dictionary match the native captures** 2133/2132: header band + bold source + white translation row; the strip runs the full window width with the last cell stretched, and the SELECTED cell is the light one (the port had it inverted). |
+## What's DONE (ported from .tmp)
 
-## 2. The extension platform (current shape)
+Core UX: Ctrl+Q, mouse-icon mode (mutually exclusive), Alt+W
+replace-selection, selection OFF/SHOW_ICON/TRANSLATE/TRANSLATE_AND_READ,
+DoubleCtrl detector, LOCAL hotkeys (11 QShortcuts), single-instance,
+startup (LaunchAgent on macOS), exclusions, history (persist/migrate/
+export/nav), clipboard snapshot/restore fail-closed.
 
-All eight capabilities are live and proven through the app's own call
-paths (`EXTENSION_SDK.md` §9 has the table). On top of that:
+Quick popup: language row (src/target combos + swap), retranslates,
+inline dictionary gloss, comparison strip, provider strip, pin/auto-hide/
+placement, Ctrl+C/E/S/P shortcuts, listen reads SOURCE text.
 
-- **On/off**: Options → Extensions, one checkbox per folder, persisted
-  as `Extensions.Disabled`; the loader reports
-  `user-disabled (Options → Extensions)` and never imports the folder.
-- **Settings**: `api.get_setting/set_setting`, per-extension sections,
-  `settings_schema` enforced on write.
-- **Examples**: `hello_provider`, `custom_ui`, `custom_theme` (one path
-  each) and `power_suite` (everything at once).
-- Two extensions are INSTALLED on this machine
-  (`%APPDATA%\QTranslate\extensions\`): hello_provider, power_suite.
+Main window: instant translate (350ms debounce), spell-check debounce,
+extra outputs (summary/rewrite/back-translation), translation rules,
+auto-copy (off/quick/all), close-action ASK dialog, service presets,
+pinned languages, status bar (notification chip + history), toolbar
+visibility + selector appearance settings, i18n chrome (locale packs),
+editor font split, settings search.
 
-## 3. Bugs fixed this session (summary)
+Services: google/deepl/microsoft/bing/llm-chain providers, MyMemory
+(UTF-8 segmenter port), LibreTranslate, Yandex/Reverso web paths, Google
+Dictionary, system TTS+spell on macOS (`say`/NSSpellChecker), Windows
+(SAPI/ISpellCheckerFactory), Linux (espeak/aspell), OCR chain
+(Vision→tesseract→ocr.space→Google Vision→AI), document translation
+(docx/pdf-text/txt/srt/vtt), image search, extensions runtime
+(manifest+ext.py, settings UI, lifecycle hooks, data_dir, secrets,
+tr() localization, notify, scoped http, install-folder).
 
-| Bug | Root cause |
-|---|---|
-| 3 suites failed on a tree whose previous record was green | suites read the real Options.json; the live session echoed inputs |
-| Bing dead | page moved the credentials; `key=` must be the expiry ts |
-| popup strip clicks did nothing | cells had no click handler; the active mark was a slightly darker grey |
-| history rows painted over each other | 12 entries x 30px = 360px in a 228px panel, no scroll |
-| history empty after every restart | in-memory only, never persisted |
-| main strip highlight never moved | `selected` set on button 0 at build, never updated |
-| dictionary strip's last cells cut | fixed 42px cells ran under the scrollbar; selection colour inverted vs native |
+Network: proxy (password in secrets store), retry policy (429 any-method,
+5xx idempotent-only, Retry-After delta+HTTP-date cap 600s, exponential
+jitter), host-specific timeouts, provider API keys, Google endpoint
+circuit breaker.
 
-## 4. What is NOT done -- the next session's queue
+## Remaining work — pick up here
 
-**Agent-doable, no new decisions needed:**
-- PROMT: the backend answers "temporarily unavailable" -- re-probe
-  periodically; if it comes back, the scrape is already working.
-- Rebuild the bundle after any change
-  (`python tools/build_bundle.py`, selftest 29/29) -- the operator runs
-  the bundle, not the repo.
-- More customisation APIs along the same seam (e.g. exposing the
-  hotkey table or the tray icon set to extensions) -- ask the operator
-  which he wants first.
+### Needs a human (beads qt-z33, qt-fj5 — P1)
+- `qt-z33`: verify Alt+W replace-selection on a REAL launched app
+  (needs GUI + Accessibility permission).
+- `qt-fj5`: G9 part (b) needs human reviewer; waiver needs human sign-off.
 
-**Needs the operator:**
-- Behaviour NEEDs in `docs/review/FEATURE_CHECKLIST_2026-10-23.md`:
-  Ctrl+Q / Replace Selection against real foreign apps, each Options
-  page changed + app restarted + value still in effect, TTS audible,
-  microphone, OCR live (needs an API key). The GUI itself is confirmed.
-- **G9**: review `native.png`/`port.png`/`diff.png` and write the
-  waiver token -- no agent may self-assign it (`qt-fj5`).
-- Options → Basics and the tray menu have NO native capture
-  (BLOCKERS B4) -- pixel parity there is unverifiable without them.
-- **macOS**: the adapter exists; no macOS host has run it (`qt-3ro`).
-- **PyPI**: `qtranslate-sdk` is provisional (D19) -- a human must
-  verify the name and rights before publishing.
+### Windows-specific — THIS IS WHY HANDOFF TO WINDOWS DEV
+Windows paths EXIST for most subsystems (hotkeys via `keyboard` pkg
+Win32 hook, mouse_capture win32 branches, clipboard/selection win32,
+startup HKCU Run key, `win32app.py` legacy window, Qt `mouse_icon.py`
+cross-platform). What's WRITTEN but NEVER tested on real Windows:
+- `services/system_tts.py` — SAPI `SpVoice` voice-matched speak +
+  `GetVoices` discovery via comtypes (optional dep, commented in
+  requirements.txt — may need enabling).
+- `services/system_spell.py` `_check_win` — ctypes port of
+  `ISpellCheckerFactory` COM (Win8+). Mirrors upstream JNA slot layout;
+  untested on real Windows.
+- `qt/hotkeys.py` DoubleCtrl — `keyboard.hook` observe-only feed for
+  win32 (untested; degrades silently to unbound).
+- `clipboard.py`/`selection.py`/`mouse_capture.py` win32 branches —
+  need real-device verification (OpenClipboard retries, sequence-number
+  polling, hook capture_allowed/exclusions).
+- `requirements.txt` — check `keyboard`, `comtypes`, `pywin32` entries
+  are installed on Windows (`win32app.py` needs pywin32).
+- OCR: no Windows.Media.Ocr backend → RTL `OcrLineOrder` divergence;
+  tesseract path works.
+- **Smoke-test checklist for Windows:** install deps, run
+  `start_qt.py`, verify Ctrl+Q (global hook), Alt+W replace-selection,
+  mouse-icon drag mode, DoubleCtrl, TTS "system" pref, spell check,
+  document translation, extensions, proxy+secrets store.
 
-## 5. How to run it
+### Documented divergences (decide if worth doing)
+- PDF layout-aware translation — design in `docs/PDF_LAYOUT.md`
+  (pdfplumber + pypdf redact/merge + ReportLab overlay, ~2.5–4wk MVP).
+- Layout presets, ENHANCED service selector (evaluated → redundant),
+  iconSetId, donation nudge — architectural, see checklist.
+- QuickDictionary popup vs window — evaluated, window kept (rationale
+  in checklist).
+- Extension JAR-trust/fingerprint/`validate()`/scoped-HTTP isolation/
+  SettingType richness — Python-source extension model instead.
+- Plugin validate-timeout formula, status-bar loading pipeline —
+  minor residuals in GAP_AUDIT_3.
+- macOS Vision mixed-direction OCR ordering — UNVERIFIED.
+- Hotkey recorder can't SET double-Ctrl bit15 (detector works; recorder
+  capture is a small follow-up). Recorder lacks .tmp's clickable
+  special-key chips + live modifier preview (convenience).
+- CI/release: update Download button expects asset names like
+  `QTranslate-<ver>-windows-x64.zip` — name release assets accordingly.
 
-```
-.venv/Scripts/python.exe -I start_qt.py google vi
-```
+## Workflow for next agent
 
-The venv was created with uv (the PATH Python refuses `pip install`):
-
-```
-uv venv C:/Users/ADMIN/qtranslate-re/.venv --python 3.12
-uv pip install --python C:/Users/ADMIN/qtranslate-re/.venv/Scripts/python.exe \
-    PySide6 keyboard pyperclip Pillow
-```
-
-Sweeps: `python -I tools/run_suites.py`. Pixel: `python -I
-tools/render_qt.py --compare`. Docs: `python -I tools/docs_consistency.py`.
-Live: `python -I tests/live_providers.py`. Bundle:
-`python tools/build_bundle.py` (writes the spec, builds, selftests).
-
-## 6. A note on mass suite failures
-
-A sweep once came back with 82 suites failing, every one with exit code
-`0xC0000142` (`STATUS_DLL_INIT_FAILED`). Every one of them passed on
-its own, and the next full sweep was clean. The machine was out of
-resources (12 unrelated Python processes running). Check the process
-count and re-run before believing a mass failure. Also: the running
-bundle writes the REAL Options.json -- a suite that reads it must pin
-what it needs (see commit `362344a`).
+1. `git pull`, read this file + AGENTS.md + GAP_AUDIT_3.md tail.
+2. `br list` for open beads; create beads for new work (`br create`).
+3. Work one concern at a time; regression test per fix; run focused
+   tests then full suite before pushing.
+4. Commit + push each wave; kill test processes after.
+5. On Windows: prioritize real-device smoke of the untested backends
+   above — that's the highest-value remaining work.
