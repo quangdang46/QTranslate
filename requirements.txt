@@ -22,6 +22,11 @@ pyperclip==1.11.0
 # app explains when absent):
 # comtypes
 
+# Optional (J6 FLAC encoder, qtranslate/flac_encode.py -- the speech
+# upload path is dead upstream, so this only matters if a capture
+# path is ever wired; pulls numpy transitively):
+# soundfile==0.13.1
+
 # Document translation (core/document port): PDF text extraction and
 # DOCX paragraph rewriting.
 pypdf==6.1.3

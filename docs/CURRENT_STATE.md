@@ -80,13 +80,13 @@ override_picker.py` since the tkinter front end was deleted) picks the winner �
 | `qtranslate/session.py` | 179 lines | Session/token scrape (Bing, Promt), net timeout/proxy |
 | `qtranslate/services/` | 22 modules | provider ports + `dictionary.py` + `ocr.py` + `spell.py`/`bing_spell.py`/`system_spell.py` + `commons_images.py` |
 | `qtranslate/win32app.py` | 203 lines | Native Win32 DLG129 re-creation (pywin32) |
-| `qtranslate/{theme,locale,history,layout,xdxf,tts,player,sapi,headless,exclusions}.py` | small | feature modules |
+| `qtranslate/{theme,locale,history,layout,xdxf,tts,player,sapi,headless,exclusions,flac_encode}.py` | small | feature modules |
 | `docs/NATIVE_ARCH.md` | 1649 lines | native binary RE analysis |
-| `tests/` | 201 files | 195 `regress_*.py` suites (headless unless named), plus `ui_match.py`, `smoke_dict.py`, `live_providers.py`, `live_bass.py`, `verify_win_clipboard.py`, `_view_src.py`. Sweep them with `python -I tools/run_suites.py` (exit-code judged, not grep) — see §Test suites in `README.md`. The runner reports **197 suites** (195 `regress_*` + `smoke_dict` + `ui_match`; the `live_*`/`verify_*`/`_view_src` helpers are not swept). Counts drift as in-flight work lands suites — recount with `ls tests/regress_*.py \| wc -l` |
+| `tests/` | 202 files | 196 `regress_*.py` suites (headless unless named), plus `ui_match.py`, `smoke_dict.py`, `live_providers.py`, `live_bass.py`, `verify_win_clipboard.py`, `_view_src.py`. Sweep them with `python -I tools/run_suites.py` (exit-code judged, not grep) — see §Test suites in `README.md`. The runner reports **198 suites** (196 `regress_*` + `smoke_dict` + `ui_match`; the `live_*`/`verify_*`/`_view_src` helpers are not swept). Counts drift as in-flight work lands suites — recount with `ls tests/regress_*.py \| wc -l` |
 
 **[verified]** Language: Python, Qt/PySide6 UI (tkinter deleted `6636686`), stdlib `urllib` for HTTP; optional
 deps only (`keyboard`, `pyperclip` required; `pystray`, `Pillow`, `comtypes`,
-`playwright` optional — `requirements.txt`).
+`playwright`, `soundfile` optional — `requirements.txt`).
 
 **License [verified]:** MPL-2.0 (`README.md:69`). Clean-room RE for education.
 

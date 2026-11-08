@@ -247,7 +247,7 @@ All five were resolved and folded into `PROJECT_VISION.md`:
 | 1 | Extensions folder location | **D16** — per-user app-data dir; never load from install dir. |
 | 2 | Dependency management | **D17** — app bundles the runtime; an extension vendors deps inside its own folder; no auto pip/download at startup. |
 | 3 | Override conflict rule | **D18** — user picks the winner; never auto-resolved by scan/load order or id. |
-| 4 | SDK package name | **D19** — `qtranslate-sdk` is provisional; verify PyPI name + rights before any release. |
+| 4 | SDK package name | **D19** — RESOLVED 2026-11-08: operator confirmed `qtranslate-sdk`. |
 | 5 | Workflow code vs declarative | **D20** — Python code-only in MVP; no second format. |
 
 > **Landed 2026-10-15 (Slice 9b): vendored-dep import hygiene.**
@@ -363,8 +363,9 @@ All five were resolved and folded into `PROJECT_VISION.md`:
 > the language index and `FakeAPI`. It has no dependencies and imports no
 > GUI -- an extension runs inside the host, and the host supplies the
 > engine. `tests/regress_sdk_package.py` builds the wheel and installs it
-> into a clean virtualenv. The name is still provisional (D19): publishing
-> needs a human to verify the PyPI name and its rights.
+> into a clean virtualenv. The name was confirmed by the operator
+> 2026-11-08 (D19 resolved); publishing rights are still a release-time
+> check, not a naming question.
 
 > **Register API is provisional.** `entrypoint` is `module:callable`, and the
 > callable receives a host API (`extensions.ExtensionAPI`) with

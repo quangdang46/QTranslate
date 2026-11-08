@@ -221,7 +221,7 @@ calling provider functions.
 ## Phase 6 — Extension SDK + MVP demos
 
 **Deliverables:**
-- `qtranslate-sdk` package (name provisional, D19): provider/workflow/theme/UI/
+- `qtranslate-sdk` package (name confirmed 2026-11-08, D19): provider/workflow/theme/UI/
   lifecycle/settings APIs + test harness. Provider deps vendored per extension
   (D17); workflow is Python code-only (D20).
 - Extension loading from the per-user app-data folder at startup (D7, D16).
@@ -239,7 +239,8 @@ QTranslate.
 > (17 assertions).
 >
 > **Scoped out:** extensions-dir loading at startup, vendored-dep
-> isolation, SDK packaging under the provisional `qtranslate-sdk` name,
+> isolation, SDK packaging under the `qtranslate-sdk` name (confirmed
+> by the operator 2026-11-08),
 > and the remaining demos (custom theme/UI, restart-to-apply).
 
 > **Partly landed 2026-10-15 (Slice 7):** the **loading** half of
@@ -274,7 +275,8 @@ QTranslate.
 > assertions) runs all three the way a user would.
 >
 > **What is still missing:** the SDK is not published under its own
-> package name (`qtranslate-sdk`), and the demo is not a GUI walkthrough.
+> package name (`qtranslate-sdk` -- confirmed by the operator 2026-11-08),
+> and the demo is not a GUI walkthrough.
 
 ## Phase 7 — UI redesign & fidelity pass
 
@@ -354,8 +356,8 @@ bundles the runtime and the extension vendors its own deps (D17).
 > the 35 locale packs, the themes).
 >
 > **Still open:** the **macOS** bundle (the bundle is Windows-only — the
-> decision table's reason) and the SDK's own package name (D19, still
-> provisional).
+> decision table's reason) and the SDK's own package name (D19 -- resolved 2026-11-08:
+> `qtranslate-sdk` confirmed).
 
 ## Cross-cutting
 

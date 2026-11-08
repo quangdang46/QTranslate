@@ -22,6 +22,10 @@ are byte-verified from the binary). The live round-trip is
 ``dead:native-unavailable``: it needs (a) a working embedded key and (b) a
 Win32 microphone + FLAC capture path (BASS record) which the port does not
 implement. Nothing here performs network I/O, so it cannot fake a result.
+
+The FLAC *encode* stage itself is implemented in
+``qtranslate/flac_encode.py`` (J6, libsndfile-backed): ``flac_payload``
+below is the chain link a future capture path would call before upload.
 """
 from __future__ import annotations
 
@@ -74,3 +78,17 @@ def build_urls(lang: str = DEFAULT_LANG, rate: int = DEFAULT_RATE,
         "content_type": "audio/x-flac; rate={0}".format(rate),
         "pair": pair,
     }
+
+
+def flac_payload(pcm_i16, rate: int = DEFAULT_RATE) -> tuple:
+    """J6 encode stage: int16 mono PCM -> ``(flac_bytes, content_type)``.
+
+    ``pcm_i16`` is the BASS-frame shape -- little-endian int16 samples
+    (numpy array, sequence, or raw bytes). The returned content type is
+    the same ``audio/x-flac; rate=<rate>`` header the up-URL upload
+    carries. Raises ``flac_encode.FlacUnavailableError`` when
+    soundfile/numpy are absent -- the caller reports honestly.
+    """
+    from qtranslate import flac_encode
+    return (flac_encode.encode(pcm_i16, rate, channels=1),
+            flac_encode.content_type(rate))

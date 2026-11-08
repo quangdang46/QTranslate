@@ -19,7 +19,7 @@ untrusted.
 |---|---|
 | Branch / commit | `main`, tip = the HANDOFF commit itself, pushed |
 | Working tree | clean |
-| Suites | **197 suites, 0 failed, ~185s on Windows** (`QT_QPA_PLATFORM=offscreen .venv/Scripts/python.exe tools/run_suites.py`) |
+| Suites | **198 suites, 0 failed, ~185s on Windows** (`QT_QPA_PLATFORM=offscreen .venv/Scripts/python.exe tools/run_suites.py`) |
 | Pixel measure | mean ink diff **0.0037** over 12 screens (re-run 24/10; macOS re-measure not done) |
 | Docs consistency | 0 findings |
 | Live providers | **31/31 LIVE-OK** (`tests/LIVE_RESULTS.md`, Windows run; sweep extended from 21 to 31 checks — every keyless provider surface now covered: mymemory/mozhi/yandex_web/commons_images + spell backends + reverso.lookup idx-pair + reverso.svc.translate + google_dict; reverso_lookup's index-leg fallback bug fixed); PROMT/Babylon/Baidu-translate dead, recorded |
@@ -133,6 +133,17 @@ pushed. Headline items (details in `docs/GAP_AUDIT_2.md`,
   per the recovered format strings. Demo key is also rate-limited
   (429); real OCR wants `Advanced.OcrApiKey`. New no-double-CRLF
   check in `regress_ocr_multipart.py`.
+- **J6 FLAC encoder landed** (`qtranslate/flac_encode.py`): int16 PCM
+  -> `fLaC` stream via soundfile's bundled libsndfile, one-shot +
+  block-wise `FlacEncoder`; `speech_input.flac_payload` is the chain
+  link. soundfile is an OPTIONAL dep (commented in requirements.txt)
+  -- absent it raises `FlacUnavailableError`. Upload half stays
+  dead:native-unavailable upstream. `tests/regress_flac_encode.py`
+  (13 assertions, bit-exact round-trip).
+- **Operator decisions landed**: `qtranslate-sdk` name confirmed
+  (D19 resolved -- EXTENSION_SDK/IMPLEMENTATION_PLAN updated); J6
+  FLAC implemented per operator call; extension-API additions left
+  unanswered (no new exposure added).
 
 ## 1. Windows session (2026-10-24) -- what landed, newest last
 
@@ -272,8 +283,8 @@ paths (`EXTENSION_SDK.md` §9 has the table). On top of that:
 - **macOS real-device pass**: DoubleCtrl CGEventTap flagsChanged feed
   (needs Accessibility grant), Vision mixed-direction OCR ordering
   (UNVERIFIED).
-- **PyPI**: `qtranslate-sdk` is provisional (D19) -- a human must
-  verify the name and rights before publishing.
+- **PyPI**: `qtranslate-sdk` CONFIRMED by the operator 2026-11-08
+  (D19 resolved); publishing rights are still a release-time check.
 - **Release assets**: name them `QTranslate-<ver>-<platform>.<ext>`
   (e.g. `-windows-x64.zip`, `-macos-arm64.dmg`) or the update dialog's
   Download button falls back to the release page.
