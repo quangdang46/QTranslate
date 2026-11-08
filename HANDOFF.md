@@ -22,7 +22,7 @@ transiently instead:
 
 | What | Value |
 |---|---|
-| Branch / commit | `main`, tip `f62d617`, pushed |
+| Branch / commit | `main`, tip `f808082`, pushed |
 | Working tree | clean (except known `.beads` vacuum artifacts) |
 | Suites | **198 suites, 0 failed, ~325s on Windows** (`QT_QPA_PLATFORM=offscreen .venv/Scripts/python.exe tools/run_suites.py`) -- re-run 2026-11-09 after a full-tree audit; one stale expectation fixed in `27484ee` (`regress_ui_parity_fixes` expected history-menu ids 10/20/30/50/40, native menu 3 in `lang.json` actually carries 10/15/20/30/40 -- the code was right, the test was wrong). 22 suites still SKIP honestly here for the same environmental reasons as before |
 | Pixel measure | mean ink diff **0.0037** over 12 screens (re-run 24/10; macOS re-measure not done) |
