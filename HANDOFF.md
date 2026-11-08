@@ -12,7 +12,11 @@ the native's installer is never run (the installed copy at
 `C:/Program Files (x86)/QTranslate/` is read only -- currently absent
 on this machine; only `%APPDATA%\QTranslate` user config remains); `docs/NATIVE_ARCH.md`
 is frozen; every Python run uses `python -I`; downloaded files are
-untrusted.
+untrusted. Push auth: if Git Credential Manager has no cached
+credential the push hangs on a GUI prompt -- use the `gh` CLI token
+transiently instead:
+`git push "https://x-access-token:$(gh auth token)@github.com/quangdang46/QTranslate.git" main`
+(verified 2026-11-09; never write the token to a file or config).
 
 ## 0. The state of the tree right now
 
