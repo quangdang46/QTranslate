@@ -78,6 +78,15 @@ def main():
           lambda: sp.google_suggest("wrold", "en"))
     check("spell.yandex_spell",
           lambda: sp.yandex_spell("wrold", "en"))
+    # The registered "reverso" TRANSLATE provider (services/reverso.py,
+    # distinct from dictionary.reverso_translate above) and the
+    # extension-port Google dictionary card.
+    from qtranslate.services import reverso as rv
+    check("reverso.svc.translate EN->FR",
+          lambda: rv.translate("Hello world", "en", "fr"))
+    from qtranslate.services import google_dict as gd
+    check("google_dict.lookup",
+          lambda: gd.lookup("hello", "en"))
 
     for name, status, detail in results:
         print(f"{status:8} {name:28} {detail}")

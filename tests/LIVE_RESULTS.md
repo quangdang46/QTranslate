@@ -1,18 +1,23 @@
-# Live verification results (2026-11-08, sweep extended to 29 checks)
+# Live verification results (2026-11-08, sweep extended to 31 checks)
 
 `.venv/Scripts/python.exe tests/live_providers.py` re-run repeatedly
-the same day. Extensions added the registered providers the original
-sweep never covered -- `mymemory.translate`, `mozhi.translate`,
-`yandex_web.translate` (the extension-plugin ports),
-`commons_images.search` (keyless Wikimedia Commons), the keyless spell
-backends (`google_spell.check`, `spell.google_suggest`,
-`spell.yandex_spell`), and `reverso.lookup` with an INDEX language
-pair after fixing its API-fallback legs (`_api_leg`: int legs resolve
-through REVERSO_LANGS, code strings pass through so "vi" still maps
-to "vie"): **29/29 LIVE-OK**. An earlier same-day run showed
-`dict.lingvo` time out twice -- transient provider slowness, LIVE-OK
-on every re-run. PROMT re-probed separately through
-`session()`+`translate()`: HTTP 200 + schema, provider's own
+the same day. Extensions added every remaining keyless provider
+surface: `mymemory.translate`, `mozhi.translate`, `yandex_web.translate`
+(extension-plugin ports), `commons_images.search` (Wikimedia Commons),
+the spell backends (`google_spell.check`, `spell.google_suggest`,
+`spell.yandex_spell`), `reverso.lookup` with an INDEX pair (after
+fixing its API-fallback legs -- `_api_leg` resolves int legs through
+REVERSO_LANGS, code strings pass through so "vi" still maps to
+"vie"), the registered `reverso` TRANSLATE provider
+(`services/reverso.py` -- distinct from the dictionary lookup), and
+`google_dict.lookup` (the extension-port dictionary card):
+**31/31 LIVE-OK**. An earlier same-day run showed `dict.lingvo` time
+out twice -- transient provider slowness, LIVE-OK on every re-run.
+`services/microsoft.py`'s raw `_service_request` still answers
+`statusCode:400` without pre-seeded `Options.Bing*` credentials -- it
+is the faithful dormant Service.js port; the live `bing`/`microsoft`
+service routes through `session.bing_translate` (in the sweep).
+PROMT re-probed separately: HTTP 200 + schema, provider's own
 "temporarily unavailable" -- unchanged.
 
 # Live verification results (2026-11-08, sweep re-run)
