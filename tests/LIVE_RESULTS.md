@@ -194,6 +194,7 @@ verified non-empty. Total live-verified endpoints: 12.)
 | Youdao | `fanyi.youdao.com/translate_o` | needs live page `salt`/cookie refresh |
 | Microsoft | `bing.com/ttranslatev3` | needs session `IG`/`token`/`key`/cookie scraped from page |
 | Promt | `/api/getTranslation` | needs `XSRF-TOKEN`/cookie from page |
+| Babylon | `translation.babylon-software.com` translate | HTTP 404 — endpoint retired (re-probed 2026-11-08; the dictionary leg fails earlier at TLS handshake) |
 
 These providers' *request-building and response-parsing logic* is still a
 faithful port of the original `Service.js` — what's missing is the ephemeral
