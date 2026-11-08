@@ -39,8 +39,17 @@ ck("slice", SS._utf16_slice("x\U0001F600yz", 3, 5) == "yz")
 print("== availability ==")
 import sys as _s
 ck("available is bool", isinstance(SS.available(), bool))
-if _s.platform != "darwin":
-    ck("non-darwin check -> None",
+if _s.platform == "darwin":
+    pass  # live NSSpellChecker block below
+elif _s.platform in ("win32", "linux"):
+    # Real backends exist here (ISpellCheckerFactory / aspell): the
+    # result is a dict when the OS backend+language pack is present,
+    # None when it honestly is not -- both are correct.
+    r = SS.check("teh quik", "en")
+    ck("%s check -> dict-or-None" % _s.platform,
+       r is None or isinstance(r, dict), repr(r)[:80])
+else:
+    ck("unsupported-platform check -> None",
        SS.check("teh quik", "en") is None)
 
 print("== tesseract backend ==")
