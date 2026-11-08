@@ -94,6 +94,31 @@ if QApplication is not None:
         ck("the keyboard window keeps the native's client size",
            (kb.width(), kb.height()) == kb.SIZE,
            "%s vs %s" % ((kb.width(), kb.height()), kb.SIZE))
+
+        # _key_pressed must TAP keys (send = press+release), never
+        # hold them: keyboard.press() leaves the key down forever and
+        # every virtual-keyboard tap auto-repeats (found 2026-11-08).
+        import qtranslate.qt.keyboard as _QK
+        class _FakeKB:
+            def __init__(self):
+                self.sent, self.pressed = [], []
+            def send(self, k): self.sent.append(k)
+            def press(self, k): self.pressed.append(k)
+            def write(self, t): pass
+        _fk = _FakeKB()
+        _real_km = _QK.keyboard_module
+        _QK.keyboard_module = lambda: _fk
+        try:
+            kb._key_pressed("a", 0)
+            ck("letter key uses send (tap), not press (hold)",
+               _fk.sent == ["a"] and _fk.pressed == [],
+               repr((_fk.sent, _fk.pressed)))
+            _fk.sent.clear()
+            kb._key_pressed("BkSp", 0)
+            ck("special key uses send too",
+               _fk.sent and not _fk.pressed, repr((_fk.sent, _fk.pressed)))
+        finally:
+            _QK.keyboard_module = _real_km
         kb.close()
         kb.deleteLater()
         app.qapp.processEvents()

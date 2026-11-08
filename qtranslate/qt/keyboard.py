@@ -318,7 +318,10 @@ class KeyboardWindow(Base):
         keyboard = keyboard_module()
         if keyboard is not None:
             try:
-                keyboard.press(name if name else text)
+                # press() holds the key down forever (no release) --
+                # every virtual-keyboard tap would auto-repeat. send()
+                # is press+release, the correct single tap.
+                keyboard.send(name if name else text)
                 return
             except Exception:
                 pass
