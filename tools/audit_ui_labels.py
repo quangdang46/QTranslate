@@ -1,39 +1,46 @@
-"""Audit the port's UI labels against the locale pack native ships.
+"""Audit the port's UI captions against the locale pack native ships.
 
-The port resolves every Options-dialog caption through ``_Cw(window_id,
-control_id, default)``. The third argument is the ENGLISH text shown when
-no pack is loaded -- and the pack IS shipped, at
-``Locales/English/lang.json`` in the installed copy, with the exact
-captions native draws.
+Qt-era rewrite (2026-11-09): the tkinter ``_Cw``/``_T``/``_W`` helpers are
+gone; the Qt view resolves captions through ``qtranslate.locale``:
 
-Two things can therefore rot, and this tool catches both:
+  * ``ui_caption(dialog_id, default)``      -- window/dialog titles
+  * ``ui_page_caption(page_name)``          -- Options sidebar rows
+    (the page name IS the fallback; nothing to drift)
+  * ``ui_control_caption(dialog_id, cid, default)`` -- dialog controls
+  * ``menu_labels(pack, menu_id)``          -- context menus / tray
+    (pack-driven, no literal defaults)
 
-  1. a default that does not match the shipped English pack (the port
-     shows a paraphrase where native shows its own string);
-  2. a call with no default at all (the label is empty in English).
+This tool AST-scans ``qtranslate/qt/**/*.py`` for the two call shapes
+that carry an English ``default`` and checks each default against the
+shipped English pack (``Locales/English/lang.json`` in the installed
+copy -- the same file native draws from). Two things can rot:
 
-It also checks ``_T`` (the Strings/Menus sections) and ``_W`` (dialog
-titles) the same way.
-
-The comparison is AST-based, so a call split across lines is still read.
+  1. a default that does not match the pack (the port shows a
+     paraphrase where native shows its own string);
+  2. a call with no default (an empty label when no pack loads).
 
 Exit codes: 0 = every call matches the pack; 1 = at least one drift;
-2 = the pack is not installed (nothing to compare against).
+2 = the pack or the target tree is not present (nothing to compare).
 """
 from __future__ import annotations
 
 import ast
+import glob
 import os
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-INSTALLED = os.environ.get(
-    "QTRANSLATE_DIR", r"C:\Program Files (x86)\QTranslate")
-EN_PACK = os.path.join(INSTALLED, "Locales", "English", "lang.json")
+# The pack the app itself resolves: bundled assets first (the 35 recovered
+# lang.json files are committed), the installed copy as fallback -- the
+# same order locale.LOCALES_DIR uses, so the audit compares against
+# exactly what the running app would draw.
+from qtranslate import locale as _L  # noqa: E402
+EN_PACK = os.path.join(_L.LOCALES_DIR, "English", "lang.json")
 
-TARGETS = ("qtranslate/windows.py", "qtranslate/app.py")
+TARGETS = sorted(glob.glob(os.path.join(ROOT, "qtranslate", "qt", "**",
+                                        "*.py"), recursive=True))
 
 
 def _pack():
@@ -41,125 +48,97 @@ def _pack():
     return L.load_pack("English")
 
 
-def _index(pack):
-    """{dialog_id: {control_id: caption}} and the Strings/Menus tables."""
+def _windows(pack):
+    """{dialog_id: {"caption": str|None, "controls": {cid: text}}}"""
     wins = {}
     for w in pack.get("Windows", ()):
-        if isinstance(w, dict):
-            ctl = {}
-            for c in (w.get("Controls") or ()):
-                if isinstance(c, (list, tuple)) and len(c) >= 2:
-                    ctl[c[0]] = c[1]
-            wins[w.get("Id")] = ctl
-    strings = {}
-    for s in pack.get("Strings", ()):
-        if isinstance(s, (list, tuple)) and len(s) >= 2:
-            strings[s[0]] = s[1]
-    menus = {}
-    for m in pack.get("Menus", ()):
-        if isinstance(m, dict):
-            items = {}
-            for it in (m.get("Items") or ()):
-                if isinstance(it, (list, tuple)) and len(it) >= 2:
-                    items[it[0]] = it[1]
-            menus[m.get("Id")] = items
-    return wins, strings, menus
+        if not isinstance(w, dict):
+            continue
+        ctl = {}
+        for c in (w.get("Controls") or ()):
+            if isinstance(c, (list, tuple)) and len(c) >= 2:
+                ctl[c[0]] = c[1]
+        wins[w.get("Id")] = {"caption": w.get("Caption"), "controls": ctl}
+    return wins
 
 
 def _lit(node):
-    """The literal value of an AST node, or None if it is not a literal."""
     try:
         return ast.literal_eval(node)
     except (ValueError, SyntaxError, TypeError):
         return None
 
 
+def _rel(path):
+    return os.path.relpath(path, ROOT).replace("\\", "/")
+
+
 def main():
+    if not TARGETS:
+        print("no qtranslate/qt sources found -- nothing to scan")
+        return 2
     if not os.path.exists(EN_PACK):
         print("no English pack at %s -- nothing to compare against"
               % EN_PACK)
         return 2
-    pack = _pack()
-    wins, strings, menus = _index(pack)
+    wins = _windows(_pack())
 
     drifts = []
     checked = 0
-    for rel in TARGETS:
-        path = os.path.join(ROOT, rel)
+    for path in TARGETS:
+        rel = _rel(path)
         tree = ast.parse(open(path, encoding="utf-8").read())
         for node in ast.walk(tree):
             if not isinstance(node, ast.Call):
                 continue
             f = node.func
-            if not isinstance(f, ast.Name) or f.id not in ("_Cw", "_T", "_W"):
+            if not isinstance(f, ast.Name):
                 continue
             args = node.args
-            if f.id == "_Cw":
+            if f.id == "ui_caption":
+                # ui_caption(dialog_id, default)
                 if len(args) < 2:
                     continue
-                wid, cid = _lit(args[0]), _lit(args[1])
+                wid, dflt = _lit(args[0]), _lit(args[1])
+                if wid is None:
+                    continue
+                nat = wins.get(wid, {}).get("caption")
+                if not nat or isinstance(nat, list):
+                    continue
+                checked += 1
+                if dflt is None:
+                    drifts.append("%s:%d ui_caption(%s) has NO default; "
+                                  "the English UI shows an empty title "
+                                  "(native: %r)"
+                                  % (rel, node.lineno, wid, nat))
+                elif dflt != nat:
+                    drifts.append("%s:%d ui_caption(%s) port=%r native=%r"
+                                  % (rel, node.lineno, wid, dflt, nat))
+            elif f.id == "ui_control_caption":
+                # ui_control_caption(dialog_id, control_id, default)
+                if len(args) < 3:
+                    continue
+                wid, cid, dflt = (_lit(args[0]), _lit(args[1]),
+                                  _lit(args[2]))
                 if wid is None or cid is None:
                     continue
-                dflt = _lit(args[2]) if len(args) > 2 else None
-                nat = wins.get(wid, {}).get(cid)
+                nat = wins.get(wid, {}).get("controls", {}).get(cid)
                 if nat is None or isinstance(nat, list):
                     continue
                 checked += 1
                 if dflt is None:
-                    drifts.append("%s:%d _Cw(%s,%s) has NO default; the "
-                                  "English UI shows an empty label (native: "
-                                  "%r)" % (rel, node.lineno, wid, cid, nat))
+                    drifts.append("%s:%d ui_control_caption(%s,%s) has NO "
+                                  "default (native: %r)"
+                                  % (rel, node.lineno, wid, cid, nat))
                 elif dflt != nat:
-                    drifts.append("%s:%d _Cw(%s,%s) port=%r native=%r"
-                                  % (rel, node.lineno, wid, cid, dflt, nat))
-            elif f.id == "_T":
-                if len(args) < 2:
-                    continue
-                sect, sid = _lit(args[0]), _lit(args[1])
-                if sect is None or sid is None:
-                    continue
-                dflt = _lit(args[2]) if len(args) > 2 else None
-                menu = _lit(args[3]) if len(args) > 3 else None
-                if sect == "Strings":
-                    nat = strings.get(sid)
-                elif sect == "Menus":
-                    nat = menus.get(menu, {}).get(sid) if menu is not None \
-                        else None
-                else:
-                    nat = None
-                if nat is None:
-                    continue
-                checked += 1
-                if dflt is None:
-                    drifts.append("%s:%d _T(%r,%s) has NO default (native: %r)"
-                                  % (rel, node.lineno, sect, sid, nat))
-                elif dflt != nat:
-                    drifts.append("%s:%d _T(%r,%s) port=%r native=%r"
-                                  % (rel, node.lineno, sect, sid, dflt, nat))
-            else:  # _W
-                if len(args) < 1:
-                    continue
-                wid = _lit(args[0])
-                if wid is None:
-                    continue
-                dflt = _lit(args[1]) if len(args) > 1 else None
-                nat = None
-                for w in pack.get("Windows", ()):
-                    if isinstance(w, dict) and w.get("Id") == wid:
-                        nat = w.get("Caption")
-                if not nat:
-                    continue
-                checked += 1
-                if dflt is None:
-                    drifts.append("%s:%d _W(%s) has NO default (native: %r)"
-                                  % (rel, node.lineno, wid, nat))
-                elif dflt != nat:
-                    drifts.append("%s:%d _W(%s) port=%r native=%r"
-                                  % (rel, node.lineno, wid, dflt, nat))
+                    drifts.append("%s:%d ui_control_caption(%s,%s) "
+                                  "port=%r native=%r"
+                                  % (rel, node.lineno, wid, cid,
+                                     dflt, nat))
 
     if drifts:
-        print("UI-LABEL AUDIT: %d DRIFT(S) of %d checked" % (len(drifts),
-                                                             checked))
+        print("UI-LABEL AUDIT: %d DRIFT(S) of %d checked"
+              % (len(drifts), checked))
         for d in drifts:
             print("  -", d)
         return 1
