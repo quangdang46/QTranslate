@@ -1,7 +1,7 @@
 # HANDOFF
 
 What the last sessions did, what the tree looks like now, and what the
-next session should pick up. Updated **2026-11-08** at the tip of
+next session should pick up. Updated **2026-11-09** at the tip of
 `main` (see §0), working tree clean, pushed.
 
 The standing rules still apply: the GitHub push token is used
@@ -18,12 +18,12 @@ untrusted.
 
 | What | Value |
 |---|---|
-| Branch / commit | `main`, tip = the HANDOFF commit itself, pushed |
-| Working tree | clean |
-| Suites | **198 suites, 0 failed, ~270s on Windows** (`QT_QPA_PLATFORM=offscreen .venv/Scripts/python.exe tools/run_suites.py`) -- 22 of them SKIP honestly here: 15 need the uncommitted recovered artifacts under `docs/review/artifacts/` (nsis_payload_unpacked.bin, QTranslate.6.10.0.exe), 3 need the installed native app at `C:\Program Files (x86)\QTranslate\` which is ABSENT on this machine (only `%APPDATA%\QTranslate` user config remains), 1 partial (`regress_ui_slots` English-pack cross-check). Verified by re-running every suite and reading skip reasons -- all environmental, none code |
+| Branch / commit | `main`, tip `27484ee`, pushed |
+| Working tree | clean (except known `.beads` vacuum artifacts) |
+| Suites | **198 suites, 0 failed, ~325s on Windows** (`QT_QPA_PLATFORM=offscreen .venv/Scripts/python.exe tools/run_suites.py`) -- re-run 2026-11-09 after a full-tree audit; one stale expectation fixed in `27484ee` (`regress_ui_parity_fixes` expected history-menu ids 10/20/30/50/40, native menu 3 in `lang.json` actually carries 10/15/20/30/40 -- the code was right, the test was wrong). 22 suites still SKIP honestly here for the same environmental reasons as before |
 | Pixel measure | mean ink diff **0.0037** over 12 screens (re-run 24/10; macOS re-measure not done) |
 | Docs consistency | 0 findings |
-| Live providers | **31/31 LIVE-OK** (`tests/LIVE_RESULTS.md`, Windows run; sweep extended from 21 to 31 checks — every keyless provider surface now covered: mymemory/mozhi/yandex_web/commons_images + spell backends + reverso.lookup idx-pair + reverso.svc.translate + google_dict; reverso_lookup's index-leg fallback bug fixed); PROMT/Babylon/Baidu-translate dead, recorded |
+| Live providers | **30/31 LIVE-OK** re-run 2026-11-09 (`tests/live_providers.py`): `dict.lingvo` timed out repeatedly and curl to `lingvolive.com` reset after ~31s — the host is unstable/down server-side right now, request shape unchanged and previously LIVE-OK. All other 30 checks pass incl. mymemory/mozhi/yandex_web/commons_images, spell backends, reverso.lookup idx-pair, google_dict; PROMT still returns its own "temporarily unavailable" (session scrape healthy, re-probed 2026-11-09), Babylon/Baidu-translate dead, recorded |
 | Bundle | rebuilt on Windows after every wave; latest `SELFTEST PASS 29/29`, `_missing_deps`/`_frozen_gap` clean, `pdfium.dll` in `_internal`; `dist\QTranslate\` current with `main` |
 | Front end | Qt only. tkinter was deleted on 2026-10-23 |
 | Platform focus | This machine is **Windows** (was macOS on 2026-11-08 morning) — `macos_*` backends live-tested earlier; Windows backends now suite-verified, still need real-device audio/hook checks (see §4) |
