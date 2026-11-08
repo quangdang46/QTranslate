@@ -8,6 +8,9 @@ helpers subtract it, so you can copy numbers straight from the screenshots/spec.
 Run  `python qtranslate_ui.py out_dir`  to render every window offscreen to PNG (client area only).
 """
 import os, sys
+# `python -I` strips the script's own directory from sys.path; the style
+# module and the package both live at the repo root, so put it back.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from PySide6.QtCore import Qt, QRect
 from PySide6.QtGui import QColor, QPainter, QPen
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFrame, QLabel, QLineEdit,
