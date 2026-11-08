@@ -10,6 +10,8 @@ on `.get` (same for the youdao/naver indexing lambdas). Provider-side
 rate limit, not a code regression. **Recovered later the same day** --
 `google_spell.check` and `google_dict.lookup` both verified live again
 (spell returns real corrections, dict returns the entry card).
+A further re-run after the audit waves also came back **31/31
+LIVE-OK** -- the Google throttle stayed recovered.
 
 `.venv/Scripts/python.exe tests/live_providers.py` re-run repeatedly
 the same day. Extensions added every remaining keyless provider

@@ -144,6 +144,19 @@ pushed. Headline items (details in `docs/GAP_AUDIT_2.md`,
   (D19 resolved -- EXTENSION_SDK/IMPLEMENTATION_PLAN updated); J6
   FLAC implemented per operator call; extension-API additions left
   unanswered (no new exposure added).
+- **Audit waves after that** (all pushed, `6c8c899`..`176fcdd`):
+  caller-provided openers now reach `common.http_open` in youdao
+  (translate/dictionary/translate_web) and yandex Disk public-link
+  resolution (`6c8c899`); dead-store cleanup -- baidu's unused
+  sl_idx/tl_idx (`4d502fa`), last six F841s (`eb21799`); extension
+  `replaces` documented as inert on the five dispatch tables
+  (`9916a94`). **Two real UI bugs found by ruff bugbear**:
+  the tray Extensions on/off switch persisted the build-time state
+  so it could never toggle (`d9846af`), and the OCR-language +
+  extra-options pickers allowed multiple checks -- now exclusive
+  QActionGroups, menu builders split for testability (`176fcdd`).
+  Static analysis is now clean: F821/F841/E711/E712 = 0, B/RUF
+  findings all classified benign. Full sweep re-verified **198/0**.
 
 ## 1. Windows session (2026-10-24) -- what landed, newest last
 
