@@ -151,12 +151,17 @@ def _load_history():
 def _save_history(items):
     try:
         import json
-        with open(_history_path(), "w", encoding="utf-8") as fh:
+        path = _history_path()
+        # Write-then-rename like config.save/history.save_history_items:
+        # a crash mid-write must not leave a truncated History.json.
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
             # [:4] keeps the history window's favourite flag -- [:3]
             # stripped every star on the next translation (history
             # audit). Legacy 3-slot entries still round-trip.
             json.dump([list(x)[:4] for x in list(items)[-HISTORY_LIMIT:]],
                       fh, ensure_ascii=False)
+        os.replace(tmp, path)
     except Exception:                       # noqa: BLE001 -- read-only disk
         pass
 

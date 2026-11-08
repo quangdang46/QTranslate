@@ -126,8 +126,10 @@ def install_crash_hook() -> None:
             entries.append({"type": 2,
                             "path": "".join(
                                 _tb.format_exception(typ, val, tb))[-2000:]})
-            with open(path, "w", encoding="utf-8") as fh:
+            tmp = path + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as fh:
                 fh.write(_j.dumps(entries, ensure_ascii=False))
+            os.replace(tmp, path)
         except Exception:
             pass
         sys.__excepthook__(typ, val, tb)

@@ -190,7 +190,6 @@ def save_placement(key: str, widget) -> None:
     """Persist a window's geometry into General.<key> blob."""
     try:
         from qtranslate import config as _C
-        import json as _j
         g = widget.geometry()  # WxH+X+Y
         import re as _re
         m = _re.match(r"(\d+)x(\d+)\+(-?\d+)\+(-?\d+)", g)
@@ -200,7 +199,8 @@ def save_placement(key: str, widget) -> None:
         full = _C.load()
         full.setdefault("General", {})[key] = encode_placement(x, y, w,
                                                                h)
-        with open(_C.DEFAULT_PATH, "w", encoding="utf-8") as f:
-            _j.dump(full, f, ensure_ascii=False, indent=1)
+        # config.save, not a raw dump: write-then-rename keeps a crash
+        # mid-write from leaving a truncated Options.json behind.
+        _C.save(full)
     except Exception:
         pass

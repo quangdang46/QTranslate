@@ -276,12 +276,12 @@ class KeyboardWindow(Base):
         """Persist the keyboard's language, the tkinter view's half."""
         try:
             from qtranslate import config as _C
-            import json as _j
             full = _C.load()
             idx = names.index(name) if name in names else 17
             full.setdefault("General", {})["LanguageKeyboard"] = idx
-            with open(_C.DEFAULT_PATH, "w", encoding="utf-8") as f:
-                _j.dump(full, f, ensure_ascii=False, indent=1)
+            # config.save: atomic write-then-rename, same as every
+            # other Options.json writer.
+            _C.save(full)
         except Exception:
             pass
 

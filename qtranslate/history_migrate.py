@@ -270,8 +270,10 @@ def _save_history_entries(path, entries):
         if directory:
             _os.makedirs(directory, exist_ok=True)
         kept = [list(x)[:4] for x in list(entries or [])]
-        with open(path, "w", encoding="utf-8") as fh:
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
             _json.dump(kept, fh, ensure_ascii=False)
+        _os.replace(tmp, path)
         return True
     except Exception:                       # noqa: BLE001 -- read-only disk
         return False

@@ -64,8 +64,12 @@ def save_history_items(items, limit=HISTORY_LIMIT):
         if directory:
             _os.makedirs(directory, exist_ok=True)
         kept = [list(x)[:4] for x in list(items or [])[-limit:]]
-        with open(path, "w", encoding="utf-8") as fh:
+        # Write-then-rename like config.save: a crash mid-write must not
+        # leave a truncated History.json behind.
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
             _json.dump(kept, fh, ensure_ascii=False)
+        _os.replace(tmp, path)
         return True
     except Exception:                       # noqa: BLE001 -- read-only disk
         return False
