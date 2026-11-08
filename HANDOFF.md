@@ -9,7 +9,8 @@ transiently in a push URL only (never in a file, never in
 `.git/config`; the helper authenticates as `qdang46`, which gets 403 on
 `quangdang46/QTranslate`, so the operator supplies a session token);
 the native's installer is never run (the installed copy at
-`C:/Program Files (x86)/QTranslate/` is read only); `docs/NATIVE_ARCH.md`
+`C:/Program Files (x86)/QTranslate/` is read only -- currently absent
+on this machine; only `%APPDATA%\QTranslate` user config remains); `docs/NATIVE_ARCH.md`
 is frozen; every Python run uses `python -I`; downloaded files are
 untrusted.
 
@@ -19,7 +20,7 @@ untrusted.
 |---|---|
 | Branch / commit | `main`, tip = the HANDOFF commit itself, pushed |
 | Working tree | clean |
-| Suites | **198 suites, 0 failed, ~185s on Windows** (`QT_QPA_PLATFORM=offscreen .venv/Scripts/python.exe tools/run_suites.py`) |
+| Suites | **198 suites, 0 failed, ~270s on Windows** (`QT_QPA_PLATFORM=offscreen .venv/Scripts/python.exe tools/run_suites.py`) -- 22 of them SKIP honestly here: 15 need the uncommitted recovered artifacts under `docs/review/artifacts/` (nsis_payload_unpacked.bin, QTranslate.6.10.0.exe), 3 need the installed native app at `C:\Program Files (x86)\QTranslate\` which is ABSENT on this machine (only `%APPDATA%\QTranslate` user config remains), 1 partial (`regress_ui_slots` English-pack cross-check). Verified by re-running every suite and reading skip reasons -- all environmental, none code |
 | Pixel measure | mean ink diff **0.0037** over 12 screens (re-run 24/10; macOS re-measure not done) |
 | Docs consistency | 0 findings |
 | Live providers | **31/31 LIVE-OK** (`tests/LIVE_RESULTS.md`, Windows run; sweep extended from 21 to 31 checks — every keyless provider surface now covered: mymemory/mozhi/yandex_web/commons_images + spell backends + reverso.lookup idx-pair + reverso.svc.translate + google_dict; reverso_lookup's index-leg fallback bug fixed); PROMT/Babylon/Baidu-translate dead, recorded |
