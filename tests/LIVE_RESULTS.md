@@ -7,7 +7,9 @@ sweep's own google calls exhausted the per-IP quota. Both degrade
 honestly (`check` -> `None`, `lookup` -> `""`); the spell lambda was
 also hardened so a throttled `None` reports EMPTY instead of crashing
 on `.get` (same for the youdao/naver indexing lambdas). Provider-side
-rate limit, not a code regression.
+rate limit, not a code regression. **Recovered later the same day** --
+`google_spell.check` and `google_dict.lookup` both verified live again
+(spell returns real corrections, dict returns the entry card).
 
 `.venv/Scripts/python.exe tests/live_providers.py` re-run repeatedly
 the same day. Extensions added every remaining keyless provider

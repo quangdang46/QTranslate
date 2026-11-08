@@ -178,8 +178,10 @@ paths (`EXTENSION_SDK.md` §9 has the table). On top of that:
 
 **Agent-doable, no new decisions needed:**
 - PROMT: request shape fixed 2026-11-08 (was HTTP 400, now HTTP 200 +
-  schema); backend still "temporarily unavailable" -- re-probe
-  periodically; if it comes back, the scrape+hash are already working.
+  schema); backend still "temporarily unavailable" -- re-probed again
+  later same day (session -> pageLoad -> translate en->ru still
+  returns the provider's own unavailable string); if it comes back,
+  the scrape+hash are already working.
 - Rebuild the bundle after any change
   (`python tools/build_bundle.py`, selftest 29/29) -- the operator runs
   the bundle, not the repo. NOTE: bundle was built on Windows; rebuild
