@@ -21,7 +21,11 @@ and the source `/Rotate` is stamped onto the output page so it
 displays identically to the input. Same-baseline char gaps wider than
 a word space split merged lines (`_lines_of`), and `_column_bands`
 partitions lines on low-coverage vertical gutters so two-column pages
-translate per column instead of interleaving. Arbitrary angles still
+translate per column instead of interleaving. Pages with a CropBox
+different from the MediaBox are handled in crop-relative coordinates
+(`_crop_frame`): pdfium renders only the crop region while pdfplumber
+reports mediabox-frame boxes, so every line is shifted and ink outside
+the crop is dropped. Arbitrary angles still
 refuse before any translation call; a glyph no installed face covers
 still drops the line rather than corrupting output. Pinned by
 `tests/regress_pdf_layout.py`.

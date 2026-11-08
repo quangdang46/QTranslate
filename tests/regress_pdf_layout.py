@@ -241,6 +241,53 @@ def main():
            "rotated" in str(e).lower() or "support" in str(e).lower(),
            str(e))
 
+    print("== crop box ==")
+    # pdfium renders only the CropBox; pdfplumber reports mediabox-frame
+    # coords -- the port must shift into crop-relative space or every
+    # overlay lands offset and the raster stretches
+    from pypdf.generic import RectangleObject
+    cbsrc = os.path.join(tmp, "crop.pdf")
+    _make_pdf(cbsrc, [[
+        ("Cropbox test text here.", 72, 720, 12, "Helvetica"),
+        ("Second cropped line.", 72, 700, 12, "Helvetica"),
+    ]])
+    rr = PR(cbsrc)
+    ww = PW()
+    pg = rr.pages[0]
+    pg.cropbox = RectangleObject([50, 50, 562, 742])
+    ww.add_page(pg)
+    crop = os.path.join(tmp, "crop_in.pdf")
+    with open(crop, "wb") as f:
+        ww.write(f)
+    cblocks, csizes, _ = PL.extract_blocks(crop)
+    ck("crop size is cropbox", csizes == [(512.0, 692.0)], str(csizes))
+    ck("crop coords shifted", cblocks[0] and any(
+        abs(b.x0 - 22) < 2 and abs(b.top - 12.5) < 3
+        for b in cblocks[0]),
+       str([(round(b.x0, 1), round(b.top, 1)) for b in cblocks[0]]))
+    out_crop = os.path.join(tmp, "crop_out.pdf")
+    D.translate_document(crop, out_crop, "en", "vi", tr,
+                         pdf_mode="layout_aware")
+    cp = PdfReader(out_crop).pages[0]
+    ck("crop output page box", abs(float(cp.mediabox.width) - 512) < 1
+       and abs(float(cp.mediabox.height) - 692) < 1, str(cp.mediabox))
+    ck("crop translated selectable",
+       "VI:" in (cp.extract_text() or ""))
+    # rotated + cropped: /Rotate survives and the box stays crop-sized
+    rr = PR(cbsrc)
+    ww = PW()
+    pg = rr.pages[0]
+    pg.cropbox = RectangleObject([50, 50, 562, 742])
+    pg.rotate(90)
+    ww.add_page(pg)
+    cropr = os.path.join(tmp, "crop_rot.pdf")
+    with open(cropr, "wb") as f:
+        ww.write(f)
+    crblocks, crsizes, _ = PL.extract_blocks(cropr)
+    ck("rot crop size", crsizes == [(512.0, 692.0)], str(crsizes))
+    ck("rot crop text", crblocks[0] and any(
+        "Cropbox test text" in b.text for b in crblocks[0]))
+
     print("== honest errors ==")
     # empty pdf -> no selectable text
     from pypdf import PdfWriter

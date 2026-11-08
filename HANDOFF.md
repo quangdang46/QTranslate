@@ -174,8 +174,10 @@ paths (`EXTENSION_SDK.md` §9 has the table). On top of that:
   lines + raster, `/Rotate` carried to output; arbitrary angles still
   refuse), same-baseline char-gap line splitting + low-coverage
   vertical-gutter column bands (two-column pages group per column),
-  and a latent bug fix: reportlab's default A4 page size was never
-  overridden, so output pages were A4 regardless of source.
+  CropBox-aware coordinates (`_crop_frame` -- pdfium renders only the
+  crop region, pdfplumber reports mediabox frames), and a latent bug
+  fix: reportlab's default A4 page size was never overridden, so
+  output pages were A4 regardless of source.
 
 **Needs the operator / real device:**
 - Behaviour NEEDs in `docs/review/FEATURE_CHECKLIST_2026-10-23.md`:

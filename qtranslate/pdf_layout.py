@@ -438,12 +438,46 @@ def _merge_rot_lines(segments):
     return out
 
 
+def _crop_frame(page, rot, w_vis, h_vis):
+    """-> (left, top, width, height): the visible CropBox expressed in
+    the page's NATURAL frame with a top-origin y, in points.
+
+    pdfplumber reports page boxes and line boxes in the VISUAL frame
+    (rotation applied, bottom-origin y for the boxes) while pdfium
+    renders only the crop box, so without this shift every overlay
+    lands offset (and the raster is stretched) on cropped pages. The
+    crop rect is first flipped to visual top-origin, then run through
+    the same quarter-turn un-rotation as the lines.
+    """
+    w_nat = h_vis if rot in (90, 270) else w_vis
+    h_nat = w_vis if rot in (90, 270) else h_vis
+    try:
+        cb = getattr(page, "cropbox", None)
+        if cb is None:
+            return 0.0, 0.0, w_nat, h_nat
+        x0, y0, x1, y1 = (float(v) for v in cb)
+        cw, ch = x1 - x0, y1 - y0
+        if cw <= 0 or ch <= 0:
+            return 0.0, 0.0, w_nat, h_nat
+        # visual bottom-origin -> visual top-origin
+        vtop, vbot = h_vis - y1, h_vis - y0
+        if rot in (90, 180, 270):
+            nx0, ntop, nx1, nbot = _unrot_bbox(
+                x0, vtop, x1, vbot, w_vis, h_vis, rot)
+        else:
+            nx0, ntop, nx1, nbot = x0, vtop, x1, vbot
+        return nx0, ntop, nx1 - nx0, nbot - ntop
+    except Exception:
+        return 0.0, 0.0, w_nat, h_nat
+
+
 def extract_blocks(path):
     """-> (blocks, page_sizes, rotations). One list per page, plus each
-    page's NATURAL-frame (width, height) in points and its /Rotate
-    value. For quarter-turn pages the blocks are un-rotated into the
-    natural frame; ``_render_pages`` un-rotates the raster to match and
-    the writer carries /Rotate onto the output page."""
+    page's NATURAL-frame CropBox (width, height) in points and its
+    /Rotate value. For quarter-turn pages the blocks are un-rotated
+    into the natural frame and shifted into crop-relative coordinates;
+    ``_render_pages`` un-rotates the raster to match and the writer
+    carries /Rotate onto the output page."""
     import pdfplumber
     blocks = []
     sizes = []
@@ -457,10 +491,8 @@ def extract_blocks(path):
             except Exception:
                 rot = 0
             rotations.append(rot)
-            if rot in (90, 270):
-                sizes.append((h, w))
-            else:
-                sizes.append((w, h))
+            ox, oy, cw, ch = _crop_frame(page, rot, w, h)
+            sizes.append((cw, ch))
             lines = []
             try:
                 raws = page.extract_text_lines() or []
@@ -474,9 +506,21 @@ def extract_blocks(path):
                         lines.extend(_lines_of(raw))
             except Exception:
                 lines = []
+            # mediabox -> crop-relative natural frame; ink outside the
+            # crop box is invisible in the raster anyway
+            kept = []
+            for ln in lines:
+                ln.x0 -= ox
+                ln.x1 -= ox
+                ln.top -= oy
+                ln.bottom -= oy
+                if ln.x1 > 0 and ln.x0 < cw and ln.bottom > 0 \
+                        and ln.top < ch:
+                    kept.append(ln)
+            lines = kept
             lines.sort(key=lambda l: (l.top, l.x0))
             page_blocks = []
-            for band in _column_bands(lines, sizes[-1][0]):
+            for band in _column_bands(lines, cw):
                 page_blocks.extend(_group_blocks(band))
             for b in page_blocks:
                 b.page = pno
