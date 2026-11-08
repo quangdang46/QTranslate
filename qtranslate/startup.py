@@ -42,6 +42,26 @@ def startup_entry(winreg_mod=None, executable=None):
     return False, (lambda on: None)
 
 
+def _windows_command(executable):
+    """The command line the Run value holds.
+
+    Mirrors ``_darwin_command``: the frozen bundle registers itself,
+    but a source checkout must launch ``start_qt.py`` under the
+    interpreter — a bare ``sys.executable`` would start a Python REPL
+    at login instead of the app. Paths are quoted: ``sys.executable``
+    routinely lives under ``C:\\Program Files``.
+    """
+    exe = executable or sys.executable
+    if getattr(sys, "frozen", False) or os.path.basename(exe).lower() \
+            in ("qtranslate", "qtranslate.exe"):
+        return '"%s"' % exe
+    start = os.path.join(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))), "start_qt.py")
+    if os.path.exists(start):
+        return '"%s" -I "%s"' % (sys.executable, start)
+    return '"%s"' % exe
+
+
 def _windows_entry(_wr, executable):
 
     def _read():
@@ -66,7 +86,7 @@ def _windows_entry(_wr, executable):
                                0, _wr.KEY_SET_VALUE)
             if on:
                 _wr.SetValueEx(_rk2, VALUE_NAME, 0, _wr.REG_SZ,
-                               executable or sys.executable)
+                               _windows_command(executable))
             else:
                 try:
                     _wr.DeleteValue(_rk2, VALUE_NAME)

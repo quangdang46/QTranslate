@@ -67,7 +67,7 @@ present, setter = A.startup_entry(winreg_mod=fr,
 ck("absent entry reports False", present is False)
 setter(True)
 ck("set(True) writes the executable path",
-   fr.values.get("QTranslate") == "C:\\app\\qtranslate.exe",
+   fr.values.get("QTranslate") == '"C:\\app\\qtranslate.exe"',
    str(fr.values))
 
 # --- present entry, then toggle off ------------------------------------
@@ -102,6 +102,18 @@ w3(False)
 ck("every opened registry key is closed",
    fr3.opens > 0 and fr3.opens == fr3.closes,
    "opens=%d closes=%d" % (fr3.opens, fr3.closes))
+
+# --- the command line is a runnable command, not a bare exe ------------
+# A source checkout must register `python -I start_qt.py`, not bare
+# sys.executable (which would open a REPL at login); the bundle exe is
+# quoted so `C:\Program Files` paths survive. Mirrors _darwin_command.
+cmd = A._windows_command(None)
+ck("source checkout registers interpreter + start_qt.py",
+   'start_qt.py' in cmd and ' -I ' in cmd, cmd)
+ck("command is quoted", cmd.startswith('"') and cmd.count('"') >= 2, cmd)
+frozen_cmd = A._windows_command("D:\\Apps\\QTranslate.exe")
+ck("bundle exe registers itself, quoted",
+   frozen_cmd == '"D:\\Apps\\QTranslate.exe"', frozen_cmd)
 
 if fails:
     print("FAIL %d" % len(fails))
