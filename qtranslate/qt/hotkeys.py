@@ -43,12 +43,22 @@ from qtranslate.platforms import keyboard_module as _keyboard
 
 
 def _log(msg):
-    """Temporary diagnostic: append to ~/.qtranslate_hotkeys.log."""
+    """Temporary diagnostic: append to ~/.qtranslate_hotkeys.log.
+
+    Same 1 MB rotation the app log uses -- the file lives in the user's
+    home directory, so an unbounded append would grow forever across
+    installs.
+    """
     try:
         import os
         import time
         path = os.path.join(os.path.expanduser("~"),
                             ".qtranslate_hotkeys.log")
+        try:
+            if os.path.getsize(path) > 1_000_000:
+                os.replace(path, path + ".1")
+        except OSError:
+            pass
         with open(path, "a", encoding="utf-8") as f:
             f.write("%s %s\n" % (time.strftime("%Y-%m-%d %H:%M:%S"), msg))
     except Exception:
