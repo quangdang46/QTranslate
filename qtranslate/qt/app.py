@@ -71,8 +71,14 @@ class _UiInvoker(QObject):
     def _run(self, fn):
         try:
             fn()
-        except Exception:
-            pass
+        except Exception as exc:            # noqa: BLE001
+            # A swallowed exception here is a hotkey/handler that looks
+            # dead with nothing in any log -- record it like every
+            # other UI failure instead of passing silently.
+            try:
+                _dbg("ui invoke failed: %r" % (exc,))
+            except Exception:
+                pass
 
 
 # The history's own file (native keeps a session's history across
