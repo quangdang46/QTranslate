@@ -30,6 +30,15 @@ def _default_find():
     try:
         from ctypes import windll as _wd
         hwnd = _wd.user32.FindWindowW(WINDOW_CLASS, None)
+        if hwnd:
+            return int(hwnd)
+        # The Qt port's window is a QWidget: its Win32 class is Qt's
+        # own ("Qt6QWindowIcon" etc.), never WINDOW_CLASS, so the
+        # native lookup alone can NEVER find it -- single-instance
+        # silently allowed every second copy (found live 2026-11-08).
+        # The caption is "QTranslate" in every shipped locale pack,
+        # so the title is the honest fallback handle.
+        hwnd = _wd.user32.FindWindowW(None, "QTranslate")
         return int(hwnd or 0)
     except Exception:
         return 0
@@ -38,8 +47,17 @@ def _default_find():
 def _default_activate(hwnd):
     try:
         from ctypes import windll as _wd
-        return bool(_wd.user32.PostMessageW(hwnd, WM_COMMAND,
-                                           ACTIVATE_COMMAND, 0))
+        u = _wd.user32
+        # Native posts WM_COMMAND 0x8009 and its own wndproc activates
+        # itself. Qt's wndproc ignores the command, so restore +
+        # foreground the HWND directly (best effort -- SetForeground-
+        # Window can lose the foreground lock cross-process, but the
+        # window still comes back).
+        u.ShowWindow(hwnd, 9)          # SW_RESTORE
+        u.SetForegroundWindow(hwnd)
+        u.BringWindowToTop(hwnd)
+        return bool(u.PostMessageW(hwnd, WM_COMMAND,
+                                   ACTIVATE_COMMAND, 0))
     except Exception:
         return False
 

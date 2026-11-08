@@ -239,8 +239,15 @@ paths (`EXTENSION_SDK.md` §9 has the table). On top of that:
   combos fire on injected chords (needs real scan codes --
   keybd_event with sc=0 produces unmatchable events). SAPI
   `speak()` executed clean on both paths (system_tts comtypes +
-  sapi.py) -- operator can confirm audibility. Still human-bound:
-  real-hardware hotkey delivery to foreign apps (Alt+W, Ctrl+Q).
+  sapi.py) -- operator can confirm audibility. Single-instance guard
+  FIXED (`_default_find`/`_default_activate`): the Qt window's Win32
+  class is Qt's own, never `QTranslate_ApplicationWindow`, so
+  `FindWindowW` could never find it and every second launch started
+  a full copy; now falls back to the stable "QTranslate" caption and
+  activates via ShowWindow/SetForegroundWindow (Qt ignores the
+  native WM_COMMAND 0x8009). Verified live against a real titled
+  window. Still human-bound: real-hardware hotkey delivery to
+  foreign apps (Alt+W, Ctrl+Q).
 - **macOS real-device pass**: DoubleCtrl CGEventTap flagsChanged feed
   (needs Accessibility grant), Vision mixed-direction OCR ordering
   (UNVERIFIED).
