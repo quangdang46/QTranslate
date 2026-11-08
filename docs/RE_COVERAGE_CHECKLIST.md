@@ -991,11 +991,15 @@ deliberate divergence.
   `qtranslate/pdf_layout.py` (pdfplumber positioned extraction →
   paragraph-block grouping → per-block translate → pypdfium2 216 DPI
   raster background + reportlab vector-text overlay, upstream's
-  raster+vector shape). Rotated pages and missing optional deps fail
-  honestly. Pinned by `tests/regress_pdf_layout.py`; design note in
-  `docs/PDF_LAYOUT.md`.
-- Windows/Linux OCR/spell/TTS backends: port targets macOS first;
-  `.tmp`'s Windows.Media.Ocr/hunspell/SAPI ports are future work.
+  raster+vector shape). Quarter-turn `/Rotate` pages (90/180/270),
+  multi-column layouts, CropBox offsets and CJK fonts are handled;
+  arbitrary angles, intrinsically sideways runs (left raster-only)
+  and missing optional deps fail honestly. Pinned by
+  `tests/regress_pdf_layout.py`; design note in `docs/PDF_LAYOUT.md`.
+- Windows/Linux OCR/spell/TTS backends: Windows SAPI TTS +
+  ISpellCheckerFactory spell and Linux espeak/aspell are WRITTEN
+  (suite-verified, awaiting real-device passes); `.tmp`'s
+  Windows.Media.Ocr port remains future work.
   Corollary (GAP_AUDIT_3 row 10): upstream's `OcrLineOrder` visual→
   logical reorder exists ONLY for `Windows.Media.Ocr`, which reports
   words in visual order; the port has no such backend, so there is no
