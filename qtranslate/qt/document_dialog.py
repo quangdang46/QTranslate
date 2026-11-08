@@ -171,8 +171,9 @@ class DocumentTranslationDialog(QDialog):
         if not path:
             return
         try:
-            import subprocess
-            subprocess.Popen(["open", path])
+            from PySide6.QtCore import QUrl
+            from PySide6.QtGui import QDesktopServices
+            QDesktopServices.openUrl(QUrl.fromLocalFile(path))
         except Exception:
             pass
 
