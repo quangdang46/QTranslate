@@ -111,9 +111,12 @@ ck("the menu has the five native entries",
         "Listen to text")),
    str([op for op in ("Open", "Copy translation", "Copy text", "Delete",
                       "Listen to text") if op not in HIST_SRC]))
+# Native menu 3 (the history item menu) ids, read out of
+# assets/locales/English/lang.json: 10 Open, 15 Copy text,
+# 20 Copy translation, 30 Delete, 40 Listen.
 ck("...with native's own lang.json ids",
    all(str(mid) in HIST_SRC or ('%d' % mid) in HIST_SRC
-       for mid in (10, 20, 30, 50, 40)))
+       for mid in (10, 15, 20, 30, 40)))
 ck("the menu is bound to the entry rows",
    "customContextMenuRequested" in HIST_SRC
    and "CustomContextMenu" in HIST_SRC)
