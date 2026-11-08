@@ -48,6 +48,11 @@ ck("it has a no-dependency fallback (PowerShell encoded command)",
    "EncodedCommand" in _src, "the fallback was removed")
 ck("its fallback has a timeout", "timeout=" in _src,
    "a hung voice would hang the caller")
+ck("its fallback decodes stdin as UTF-8",
+   "InputEncoding=[Text.Encoding]::UTF8" in _src,
+   "without it [Console]::In reads the OEM codepage and non-ASCII "
+   "text reaches Speak() mojibake'd (verified live: 'Xin chào thế "
+   "giới 你好' round-tripped only with the setter)")
 
 # speak() must never raise into the caller: a machine with no voices is a
 # normal state, and the app has to keep running.

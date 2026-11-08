@@ -19,6 +19,11 @@ def speak(text: str, rate: int = 0) -> None:
         ps = (
             "$v=New-Object -ComObject SAPI.SpVoice;"
             f"$v.Rate={int(rate)};"
+            # stdin arrives as UTF-8 bytes, but [Console]::In decodes
+            # per InputEncoding -- the OEM codepage on a bare
+            # powershell.exe -- so non-ASCII text (Vietnamese, CJK)
+            # would reach Speak() mojibake'd without this.
+            "[Console]::InputEncoding=[Text.Encoding]::UTF8;"
             "[void]$v.Speak([Console]::In.ReadToEnd())"
         )
         enc = base64.b64encode(ps.encode("utf-16-le")).decode()
