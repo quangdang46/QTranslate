@@ -235,8 +235,11 @@ paths (`EXTENSION_SDK.md` §9 has the table). On top of that:
   the feed thread so the gesture never bound on Windows; end-to-end
   verified with injected Ctrl taps -> detector fires once. Mouse
   hook install + MSAA `cursor_text` + clipboard snapshot/restore
-  also verified live on Windows. Still human-bound: audible
-  `speak()` and foreign-app hotkey delivery.
+  also verified live on Windows, and `keyboard.add_hotkey` global
+  combos fire on injected chords (needs real scan codes --
+  keybd_event with sc=0 produces unmatchable events). Still
+  human-bound: audible `speak()` and real-hardware hotkey delivery
+  to foreign apps.
 - **macOS real-device pass**: DoubleCtrl CGEventTap flagsChanged feed
   (needs Accessibility grant), Vision mixed-direction OCR ordering
   (UNVERIFIED).
