@@ -41,7 +41,8 @@ DOC = "docs/RE_COVERAGE_CHECKLIST.md"
 RE_STATES = ("VERIFIED", "INFERRED", "UNKNOWN", "UNRECOVERABLE")
 GATE_OK_RE = ("VERIFIED", "UNRECOVERABLE")
 WAIVABLE_RE = ("INFERRED", "UNKNOWN")
-PORT_BASE = ("not-started", "analysed", "ported", "behaviour-verified")
+PORT_BASE = ("not-started", "analysed", "persisted-only", "ported",
+             "behaviour-verified")
 DEAD_SLUGS = {"host-retired", "needs-session-token", "bot-walled",
               "native-unavailable"}
 

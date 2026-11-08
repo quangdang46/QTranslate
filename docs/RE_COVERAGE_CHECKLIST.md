@@ -22,7 +22,11 @@ Two **independent** axes (`PROJECT_VISION.md` §7a). Each row has exactly one
 **Port / product state** — state of the **Python** side (and whether the feature
 can actually run):
 
-`not-started` · `analysed` · `ported` · `behaviour-verified` · `dead:<reason>`
+`not-started` · `analysed` · `persisted-only` · `ported` · `behaviour-verified` · `dead:<reason>`
+
+`persisted-only` — the port writes/persists the setting but no runtime
+consumer is evidenced (added 2026-11-09 for M21; distinct from `ported`,
+which implies the behavior runs).
 
 `dead:` reason slugs (fixed vocabulary — same slugs must appear in
 `COMPATIBILITY_MATRIX.md`):
@@ -98,10 +102,11 @@ grouped where only data values differ (themes, locales). This closes the P2
 
 | RE state (native) | Count | | Port state (Python) | Count |
 |---|---|---|---|---|
-| VERIFIED | 151 | | not-started | 3 |
+| VERIFIED | 151 | | not-started | 2 |
 | INFERRED |  | | analysed | 1 |
-| UNKNOWN | 1 | | ported | 125 |
-| UNRECOVERABLE |  | | behaviour-verified | 14 |
+| UNKNOWN | 1 | | persisted-only | 1 |
+| UNRECOVERABLE |  | | ported | 125 |
+|  |  | | behaviour-verified | 14 |
 |  |  | | dead:* | 9 |
 
 | Group | Items |
