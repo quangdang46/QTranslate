@@ -172,8 +172,10 @@ paths (`EXTENSION_SDK.md` §9 has the table). On top of that:
   (`_font_for_text` + `_CJK_CANDIDATES` glyph-coverage swap) and
   quarter-turn page support (visual->natural frame un-rotation of
   lines + raster, `/Rotate` carried to output; arbitrary angles still
-  refuse). Also fixed a latent bug: reportlab's default A4 page size
-  was never overridden, so output pages were A4 regardless of source.
+  refuse), same-baseline char-gap line splitting + low-coverage
+  vertical-gutter column bands (two-column pages group per column),
+  and a latent bug fix: reportlab's default A4 page size was never
+  overridden, so output pages were A4 regardless of source.
 
 **Needs the operator / real device:**
 - Behaviour NEEDs in `docs/review/FEATURE_CHECKLIST_2026-10-23.md`:

@@ -93,33 +93,103 @@ def _color_of(chars):
     return (0, 0, 0)
 
 
-def _line_of(raw) -> PdfLine | None:
-    """One extract_text_lines entry -> PdfLine, or None when it carries
-    no horizontal ink (whitespace-only / fully vertical)."""
-    chars = [c for c in (raw.get("chars") or [])
-             if c.get("upright", True) and c.get("text", "").strip()]
+def _upright_chars(raw):
+    return [c for c in (raw.get("chars") or [])
+            if c.get("upright", True) and c.get("text", "").strip()]
+
+
+def _line_bbox(chars, raw):
+    x0 = min(float(c.get("x0", 0)) for c in chars)
+    x1 = max(float(c.get("x1", 0)) for c in chars)
+    top = min(float(c.get("top", 0)) for c in chars)
+    bottom = max(float(c.get("bottom", 0)) for c in chars)
+    return x0, top, x1, bottom
+
+
+def _text_span(text, start, count):
+    """The substring of ``text`` covering non-space chars
+    [start, start+count). pdfplumber inserts spaces between chars, so
+    char-index k maps to the k-th non-space char of ``text``."""
+    out = []
+    seen = 0
+    started = False
+    for ch in text:
+        if ch.isspace():
+            if started:
+                out.append(ch)
+            continue
+        if seen >= start + count:
+            break
+        if seen < start:
+            seen += 1
+            continue
+        started = True
+        seen += 1
+        out.append(ch)
+    return "".join(out).strip()
+
+
+def _lines_of(raw) -> list:
+    """One extract_text_lines entry -> PdfLine(s).
+
+    pdfplumber merges same-baseline text across arbitrarily wide x
+    gaps, so a two-column row arrives as ONE line. Split at char gaps
+    wider than a word space (> max(2.2*size, 22pt)) into separate
+    lines; the column-band pass then sees the gutter.
+    """
+    chars = _upright_chars(raw)
     if not chars:
-        return None
-    # raw["text"] keeps the real word spacing; joining chars would
-    # glue words together.
+        return []
     text = (raw.get("text") or "").strip()
     if not text.strip():
-        return None
+        return []
     sizes = sorted(float(c.get("size") or 0) for c in chars
                    if c.get("size"))
     size = sizes[len(sizes) // 2] if sizes else 0.0
     if size <= 0:
         size = float(raw.get("bottom", 0)) - float(raw.get("top", 0))
     names = " ".join(str(c.get("fontname") or "") for c in chars)
-    return PdfLine(
-        text=text,
-        x0=float(raw.get("x0", 0)), top=float(raw.get("top", 0)),
-        x1=float(raw.get("x1", 0)), bottom=float(raw.get("bottom", 0)),
-        size=size,
-        bold=bool(_BOLD_RE.search(names)),
-        italic=bool(_ITALIC_RE.search(names)),
-        mono=bool(_MONO_RE.search(names)),
-        color=_color_of(chars))
+    bold = bool(_BOLD_RE.search(names))
+    italic = bool(_ITALIC_RE.search(names))
+    mono = bool(_MONO_RE.search(names))
+    color = _color_of(chars)
+
+    # Only split when the text's non-space chars map 1:1 onto chars;
+    # anything else (ligature expansion etc.) keeps the whole line.
+    nonspace = sum(1 for ch in text if not ch.isspace())
+    if nonspace != len(chars) or len(chars) < 2:
+        x0, top, x1, bottom = _line_bbox(chars, raw)
+        return [PdfLine(text=text, x0=x0, top=top, x1=x1, bottom=bottom,
+                        size=size, bold=bold, italic=italic, mono=mono,
+                        color=color)]
+    thr = max(2.2 * size, 22.0)
+    cuts = [0]
+    prev = chars[0]
+    for i, c in enumerate(chars[1:], 1):
+        try:
+            gap = float(c.get("x0", 0)) - float(prev.get("x1", 0))
+        except Exception:
+            gap = 0.0
+        if gap > thr:
+            cuts.append(i)
+        prev = c
+    cuts.append(len(chars))
+    if len(cuts) == 2:
+        x0, top, x1, bottom = _line_bbox(chars, raw)
+        return [PdfLine(text=text, x0=x0, top=top, x1=x1, bottom=bottom,
+                        size=size, bold=bold, italic=italic, mono=mono,
+                        color=color)]
+    out = []
+    for a, b in zip(cuts, cuts[1:]):
+        seg = chars[a:b]
+        seg_text = _text_span(text, a, b - a)
+        if not seg_text:
+            continue
+        x0, top, x1, bottom = _line_bbox(seg, raw)
+        out.append(PdfLine(text=seg_text, x0=x0, top=top, x1=x1,
+                           bottom=bottom, size=size, bold=bold,
+                           italic=italic, mono=mono, color=color))
+    return out
 
 
 def _group_blocks(lines):
@@ -167,6 +237,52 @@ def _group_blocks(lines):
     if cur is not None:
         blocks.append(cur)
     return blocks
+
+
+def _column_bands(lines, page_w):
+    """Split a page's lines into column bands on wide vertical gutters.
+
+    ``_group_blocks`` merges by vertical proximity, so without this a
+    two-column page interleaves left/right lines into one block and the
+    translation unit becomes gibberish. A gutter is an x-range covered
+    by at most ``len(lines)//8`` lines -- real column gutters are only
+    crossed by rare full-width lines (headings), while ragged-right
+    single-column tails are covered by many lines and never qualify.
+    Returns a list of line-lists; the common case is ``[lines]``.
+    """
+    if len(lines) < 6 or page_w <= 0:
+        return [lines]
+    xs = sorted({l.x0 for l in lines} | {l.x1 for l in lines})
+    min_gutter = max(20.0, 0.04 * page_w)
+    thr = max(2, len(lines) // 8)
+    lows = []
+    for j in range(len(xs) - 1):
+        a, b = xs[j], xs[j + 1]
+        if b - a <= 0:
+            continue
+        mid = (a + b) / 2.0
+        cover = sum(1 for l in lines if l.x0 <= mid < l.x1)
+        if cover <= thr:
+            lows.append((a, b))
+    gutters = []
+    for a, b in lows:
+        if gutters and a <= gutters[-1][1] + 1e-6:
+            gutters[-1] = (gutters[-1][0], b)
+        else:
+            gutters.append((a, b))
+    gutters = [g for g in gutters if g[1] - g[0] >= min_gutter]
+    if not gutters:
+        return [lines]
+    bounds = [(a + b) / 2.0 for a, b in gutters]
+    bands = [[] for _ in range(len(bounds) + 1)]
+    for ln in lines:
+        cx = (ln.x0 + ln.x1) / 2.0
+        i = 0
+        while i < len(bounds) and cx > bounds[i]:
+            i += 1
+        bands[i].append(ln)
+    bands = [b for b in bands if len(b) >= 3]
+    return bands if len(bands) >= 2 else [lines]
 
 
 # -- rotated pages ---------------------------------------------------------
@@ -344,13 +460,13 @@ def extract_blocks(path):
                     lines = _merge_rot_lines(segs)
                 else:
                     for raw in raws:
-                        ln = _line_of(raw)
-                        if ln is not None:
-                            lines.append(ln)
+                        lines.extend(_lines_of(raw))
             except Exception:
                 lines = []
             lines.sort(key=lambda l: (l.top, l.x0))
-            page_blocks = _group_blocks(lines)
+            page_blocks = []
+            for band in _column_bands(lines, sizes[-1][0]):
+                page_blocks.extend(_group_blocks(band))
             for b in page_blocks:
                 b.page = pno
             blocks.append(page_blocks)

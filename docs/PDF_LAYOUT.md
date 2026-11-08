@@ -18,10 +18,12 @@ the page's natural frame (`_unrot_bbox`/`_segments_unrotated`, with
 per-segment order correction and word-column re-joining in
 `_merge_rot_lines`), the pdfium raster is PIL-rotated the same way,
 and the source `/Rotate` is stamped onto the output page so it
-displays identically to the input. Arbitrary angles still refuse
-before any translation call; a glyph no installed face covers still
-drops the line rather than corrupting output; multi-column
-mis-grouping is accepted upstream-parity weakness. Pinned by
+displays identically to the input. Same-baseline char gaps wider than
+a word space split merged lines (`_lines_of`), and `_column_bands`
+partitions lines on low-coverage vertical gutters so two-column pages
+translate per column instead of interleaving. Arbitrary angles still
+refuse before any translation call; a glyph no installed face covers
+still drops the line rather than corrupting output. Pinned by
 `tests/regress_pdf_layout.py`.
 
 `qtranslate/document.py` implements `pdf_mode="text_only"`

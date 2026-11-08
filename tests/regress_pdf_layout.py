@@ -139,6 +139,31 @@ def main():
         print("  .. no CJK-capable face on this system; "
               "end-to-end leg skipped")
 
+    print("== multi-column grouping ==")
+    colsrc = os.path.join(tmp, "cols.pdf")
+    cl = [("Full Width Heading Across Both Columns", 60, 752, 14,
+           "Helvetica-Bold")]
+    for i in range(4):
+        y = 720 - i * 14
+        cl.append(("Left column line number %d with several words." % i,
+                   60, y, 11, "Helvetica"))
+        cl.append(("Right column line number %d with several words." % i,
+                   340, y, 11, "Helvetica"))
+    _make_pdf(colsrc, [cl])
+    cblocks, _, _ = PL.extract_blocks(colsrc)
+    texts = [b.text for b in cblocks[0]]
+    ck("columns not interleaved", any(
+        "Left column line number 0" in t and "Right column" not in t
+        for t in texts), str(texts))
+    ck("right column own block", any(
+        t.startswith("Right column line number 0") for t in texts),
+       str(texts))
+    ck("heading own block", any(
+        t == "Full Width Heading Across Both Columns" for t in texts))
+    ck("column lines merged", any(
+        "line number 3" in t and "line number 0" in t
+        for t in texts), str(texts))
+
     print("== rotated pages ==")
     # quarter-turn pages are un-rotated into the natural frame, the
     # raster is un-rotated to match, and /Rotate rides onto the output
