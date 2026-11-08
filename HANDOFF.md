@@ -280,6 +280,11 @@ paths (`EXTENSION_SDK.md` §9 has the table). On top of that:
   that bypassed config.save entirely (`dd4725c`); diagnostic logs
   rotate at 1MB (`2288b9c`/`11e9f12`); winreg handles closed
   (`efb393a`); swallowed UI-invoke exceptions now logged (`ed04f8e`).
+  Lint audits: `uv run --with pyflakes python -m pyflakes qtranslate/`
+  and `uv run --with ruff ruff check . --select F821` -- the F821
+  (undefined-name) class caught two real Options-page NameErrors
+  (`2df787c`); unused-import noise is expected from lazy platform
+  imports.
 - **macOS real-device pass**: DoubleCtrl CGEventTap flagsChanged feed
   (needs Accessibility grant), Vision mixed-direction OCR ordering
   (UNVERIFIED).
