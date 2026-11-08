@@ -139,21 +139,44 @@ if QApplication is not None:
         # _key_pressed must TAP keys (send = press+release), never
         # hold them: keyboard.press() leaves the key down forever and
         # every virtual-keyboard tap auto-repeats (found 2026-11-08).
-        # The call routes through the sendkeys wrapper.
-        import qtranslate.sendkeys as _SK
-        _sent = []
-        _real_send = _SK.send
-        _SK.send = lambda combo, backend=None: _sent.append(combo) or True
-        try:
-            kb._key_pressed("a", 0)
-            ck("letter key uses sendkeys.send (tap), not press (hold)",
-               _sent == ["a"], repr(_sent))
-            _sent.clear()
-            kb._key_pressed("BkSp", 0)
-            ck("special key uses sendkeys.send too",
-               len(_sent) == 1, repr(_sent))
-        finally:
-            _SK.send = _real_send
+        # Non-darwin routes through the sendkeys wrapper; macOS has no
+        # `keyboard` package (its import aborts the process) and uses
+        # the CoreGraphics path instead -- assert whichever the
+        # platform actually takes.
+        import sys as _sys
+        if _sys.platform == "darwin":
+            import qtranslate.macos_input as _MI
+            _typed, _sentk = [], []
+            _rt, _rs = _MI.type_text, _MI.send
+            _MI.type_text = lambda t: _typed.append(t)
+            _MI.send = lambda c: _sentk.append(c) or True
+            try:
+                kb._key_pressed("a", 0)
+                ck("letter key uses macos_input.type_text on darwin",
+                   _typed == ["a"], repr(_typed))
+                _typed.clear()
+                # ("BkSp", 411) is the real SPECIAL entry; x=0 matches
+                # nothing and _key_pressed correctly sends nothing.
+                kb._key_pressed("BkSp", 411)
+                ck("special key uses macos_input.send on darwin",
+                   _sentk == ["delete"], repr(_sentk))
+            finally:
+                _MI.type_text, _MI.send = _rt, _rs
+        else:
+            import qtranslate.sendkeys as _SK
+            _sent = []
+            _real_send = _SK.send
+            _SK.send = lambda combo, backend=None: _sent.append(combo) or True
+            try:
+                kb._key_pressed("a", 0)
+                ck("letter key uses sendkeys.send (tap), not press (hold)",
+                   _sent == ["a"], repr(_sent))
+                _sent.clear()
+                kb._key_pressed("BkSp", 0)
+                ck("special key uses sendkeys.send too",
+                   len(_sent) == 1, repr(_sent))
+            finally:
+                _SK.send = _real_send
         kb.close()
         kb.deleteLater()
         app.qapp.processEvents()

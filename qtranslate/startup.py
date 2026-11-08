@@ -52,7 +52,11 @@ def _windows_command(executable):
     routinely lives under ``C:\\Program Files``.
     """
     exe = executable or sys.executable
-    if getattr(sys, "frozen", False) or os.path.basename(exe).lower() \
+    # basename() on POSIX does not split on "\\", so a Windows-style
+    # path passed on a non-Windows host (tests do exactly that) would
+    # never match the bundle-exe names -- normalise separators first.
+    if getattr(sys, "frozen", False) or os.path.basename(
+            exe.replace("\\", "/")).lower() \
             in ("qtranslate", "qtranslate.exe"):
         return '"%s"' % exe
     start = os.path.join(os.path.dirname(os.path.dirname(
@@ -124,7 +128,8 @@ def _darwin_plist_path() -> str:
 def _darwin_command(executable):
     """The argv launchd runs: the bundle binary, or repo + interpreter."""
     exe = executable or sys.executable
-    if getattr(sys, "frozen", False) or os.path.basename(exe).lower() \
+    if getattr(sys, "frozen", False) or os.path.basename(
+            exe.replace("\\", "/")).lower() \
             in ("qtranslate", "qtranslate.exe"):
         return [exe]
     # A source checkout: run start_qt.py with this interpreter.
