@@ -83,6 +83,16 @@ pushed. Headline items (details in `docs/GAP_AUDIT_2.md`,
 - **Push**: `gh auth token` works (account quangdang46, repo scope);
   GCM `git push` hangs waiting on a credential dialog -- use
   `git push "https://x-access-token:$(gh auth token)@github.com/quangdang46/QTranslate.git" main`.
+- **PDF layout-aware translation LANDED** (`34585f7`): the largest
+  remaining feature, MVP per `docs/PDF_LAYOUT.md` strategy A --
+  `qtranslate/pdf_layout.py` (pdfplumber blocks → per-block translate →
+  pypdfium2 216 DPI raster bg + reportlab vector overlay). New deps in
+  requirements.txt (pdfplumber, pypdfium2, reportlab). Rotated pages +
+  missing deps fail honestly. `tests/regress_pdf_layout.py` (20+).
+  Document dialog's Layout-aware combo enabled.
+- **Bundle rebuilt** on Windows after all of the above:
+  `SELFTEST PASS 29/29`, `dist\QTranslate\` current.
+- **192 suites / 0 failed** on Windows (~172s).
 
 ## 1. Windows session (2026-10-24) -- what landed, newest last
 
@@ -142,9 +152,8 @@ paths (`EXTENSION_SDK.md` §9 has the table). On top of that:
 - Hotkey recorder cannot SET the double-Ctrl bit15 (detector works;
   recorder capture is a small follow-up). Recorder also lacks .tmp's
   clickable special-key chips + live modifier preview.
-- PDF layout-aware translation -- design done in
-  `docs/PDF_LAYOUT.md` (pdfplumber + pypdf redact/merge + ReportLab,
-  ~2.5-4wk MVP). Largest remaining feature.
+- ~~PDF layout-aware translation~~ -- DONE 2026-11-08 (MVP, strategy A;
+  rotated pages/CJK-font-fallback polish remain as follow-ups).
 
 **Needs the operator / real device:**
 - Behaviour NEEDs in `docs/review/FEATURE_CHECKLIST_2026-10-23.md`:

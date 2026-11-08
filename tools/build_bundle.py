@@ -427,6 +427,14 @@ def _pyinstaller_argv():
         # whose VALUE was " keyboard==0.13.5" and the build stopped with
         # "unexpected argument '--with keyboard' found".
         deps += ["--with", "keyboard==0.13.5"]
+    # Document translation deps (requirements.txt): qtranslate/document.py
+    # lazy-imports pypdf/python-docx, qtranslate/pdf_layout.py lazy-imports
+    # pdfplumber/pypdfium2/reportlab/PIL. The isolated tool env does
+    # not see the repo venv, so without these the frozen app loses document
+    # translation entirely (the warn file lists them as "missing module").
+    deps += ["--with", "pypdf==6.1.3", "--with", "python-docx==1.2.0",
+             "--with", "pdfplumber==0.11.10", "--with", "pypdfium2==5.15.1",
+             "--with", "reportlab==5.1.0", "--with", "Pillow==13.0.0"]
     if sys.platform == "darwin":
         # The CGEventTap global-hotkey backend (macos_tap.py) bridges
         # CoreGraphics/CoreFoundation through PyObjC; without these the
@@ -471,7 +479,44 @@ def build() -> int:
         print("Add them to the spec's hiddenimports, or fix the import that "
               "hides them from Analysis.")
         return 1
+    dep_gap = _missing_deps(os.path.join(HERE, "build", "pyinstaller"))
+    if dep_gap:
+        print("MISSING THIRD-PARTY DEPS (imported by the app, absent from "
+              "the bundle):")
+        for m in dep_gap:
+            print("  - %s" % m)
+        print("Add them to the `--with` list in _pyinstaller_argv() so the "
+              "isolated tool env carries them.")
+        return 1
     return verify(os.path.join(HERE, "dist", EXE_NAME))
+
+
+# Third-party modules the app imports lazily. `_frozen_gap` only sees
+# qtranslate modules; these are the deps a frozen build silently loses
+# when the isolated `uv tool run` env does not carry them (pypdf and
+# python-docx were missing from a shipped bundle for exactly this reason).
+REQUIRED_DEPS = (
+    "pypdf", "docx", "pdfplumber", "pypdfium2", "reportlab",
+    "pdfminer", "PIL", "keyboard", "pyperclip",
+)
+
+
+def _missing_deps(workpath: str):
+    """Required third-party TOP-LEVEL modules PyInstaller reported missing.
+
+    Only no-dot names count: a dotted miss like ``reportlab.lib.pyHnj`` is
+    an optional accelerator/submodule inside an installed package, not a
+    lost dependency. Every dep the app needs is imported top-level by a
+    guard (``import pdfplumber``, ``from pypdf import ...``), so a truly
+    absent package always shows up as its bare name here.
+    """
+    warn = os.path.join(workpath, "qtranslate", "warn-qtranslate.txt")
+    if not os.path.exists(warn):
+        return []
+    text = open(warn, encoding="utf-8", errors="replace").read()
+    missing = set(re.findall(r"missing module named '?([A-Za-z0-9_.]+)'?",
+                             text))
+    return sorted(m for m in missing if m in REQUIRED_DEPS)
 
 
 def _frozen_gap(workpath: str):

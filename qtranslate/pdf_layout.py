@@ -382,10 +382,11 @@ def _translate_pdf_layout(path, out, translator, sl, tl,
         import pdfplumber  # noqa: F401
         import pypdfium2  # noqa: F401
         import reportlab  # noqa: F401
+        from PIL import Image  # noqa: F401  (pypdfium2 .to_pil())
     except ImportError as e:
         raise LayoutAwareUnavailable(
             "Layout-aware PDF translation needs pdfplumber, "
-            "pypdfium2 and reportlab (%s)." % e)
+            "pypdfium2, reportlab and Pillow (%s)." % e)
 
     blocks_per_page, sizes, rotations = extract_blocks(path)
     if any(r not in (0, 180) for r in rotations):
