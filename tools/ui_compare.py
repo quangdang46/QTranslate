@@ -6,8 +6,10 @@ Two kinds of comparison live here:
     against the native capture. The reference renders the CLIENT area, so
     the native capture is cropped with the same ORIGIN offset the
     reference declares.
-  * ``--port`` compares the Tkinter port's own window against the same
-    native capture, using the same client-area convention.
+  * ``--port`` compares an old port capture (``docs/review/ui_parity``,
+    written by the retired tkinter front end) against the same native
+    capture -- kept for historical diffs only; new renders come from
+    ``tools/render_qt.py`` (``--qt`` compares the reference renderer).
 
 Both write a diff image next to the report so the divergence can be
 looked at, not just counted.
