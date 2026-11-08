@@ -7,9 +7,14 @@ wired to `pdf_mode="layout_aware"` in `document.py`. Deps added to
 + vector text — upstream's exact shape). Block grouping ports the
 upstream heuristics (baseline gap, font-size/face delta, indentation,
 bullets); fitting wraps + shrinks to the 0.68× floor and picks
-contrasting ink on the sampled local background. Honest limits:
-rotated pages refuse before any translation call, unencodable glyphs
-in std-14 fallback fonts drop the line (TTF preferred), multi-column
+contrasting ink on the sampled local background. Fonts prefer system
+TTFs; when the translated text carries glyphs the document font cannot
+encode (CJK etc.), `_font_for_text` swaps to the first covering face
+from `_CJK_CANDIDATES` (simsun/msgothic/malgun, macOS PingFang/
+Hiragino/Arial Unicode, Noto CJK/wqy/Droid on Linux), with a per-line
+draw-time retry as backstop. Honest limits: rotated pages refuse
+before any translation call; a glyph no installed face covers still
+drops the line rather than corrupting output; multi-column
 mis-grouping is accepted upstream-parity weakness. Pinned by
 `tests/regress_pdf_layout.py`.
 

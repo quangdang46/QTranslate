@@ -166,8 +166,10 @@ paths (`EXTENSION_SDK.md` §9 has the table). On top of that:
   save bare 0x8000 via a per-capture DoubleCtrlDetector. Chips +
   live modifier preview also landed (armed-state chip strip replaces
   the hint line; modifier toggles compose chords by mouse).
-- ~~PDF layout-aware translation~~ -- DONE 2026-11-08 (MVP, strategy A;
-  rotated pages/CJK-font-fallback polish remain as follow-ups).
+- ~~PDF layout-aware translation~~ -- DONE 2026-11-08 (MVP, strategy A).
+  Follow-up polish also landed same day: CJK font fallback
+  (`_font_for_text` + `_CJK_CANDIDATES` glyph-coverage swap; rotated
+  pages still refuse honestly).
 
 **Needs the operator / real device:**
 - Behaviour NEEDs in `docs/review/FEATURE_CHECKLIST_2026-10-23.md`:

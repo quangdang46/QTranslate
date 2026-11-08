@@ -117,6 +117,28 @@ def main():
     ck("all pages rendered", len(PdfReader(out2).pages) == 3)
     ck("blank page skipped", not any("Page two" in t for t in seen))
 
+    print("== CJK font fallback ==")
+    cjk_probe = "你好世界"
+    cjk_font = PL._cjk_font_for(cjk_probe)
+    base_font = PL._font("regular")
+    ck("document font cannot encode CJK",
+       not PL._covers(base_font, cjk_probe) or cjk_font is None)
+    if cjk_font:
+        ck("cjk face covers the probe", PL._covers(cjk_font, cjk_probe))
+        picked = PL._font_for_text("regular", False, False, cjk_probe)
+        ck("font_for_text swaps to the cjk face",
+           picked == cjk_font, "%s vs %s" % (picked, cjk_font))
+        out_c = os.path.join(tmp, "cjk_out.pdf")
+        D.translate_document(src, out_c, "en", "vi",
+                             lambda t, s, l: "你好世界",
+                             pdf_mode="layout_aware")
+        txt_c = PdfReader(out_c).pages[0].extract_text() or ""
+        ck("cjk translation stays selectable",
+           "你好" in txt_c, txt_c[:120])
+    else:
+        print("  .. no CJK-capable face on this system; "
+              "end-to-end leg skipped")
+
     print("== honest errors ==")
     # rotated page: rotate the fixture's first page via pypdf
     from pypdf import PdfReader as PR, PdfWriter as PW

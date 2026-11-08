@@ -231,6 +231,36 @@ _fonts = {}
 _STD14 = {"regular": "Helvetica", "bold": "Helvetica-Bold",
           "italic": "Helvetica-Oblique", "mono": "Courier"}
 
+# CJK-capable faces tried, in order, when the block's own font cannot
+# encode the translated text (``_covers``). TTC files need a
+# subfontIndex -- 0 is the default face for every candidate here.
+_CJK_CANDIDATES = [
+    (r"C:\Windows\Fonts\simsun.ttc", 0),
+    (r"C:\Windows\Fonts\msgothic.ttc", 0),
+    (r"C:\Windows\Fonts\malgun.ttf", 0),
+    ("/System/Library/Fonts/Supplemental/Arial Unicode.ttf", 0),
+    ("/System/Library/Fonts/PingFang.ttc", 0),
+    ("/System/Library/Fonts/Hiragino Sans GB.ttc", 0),
+    ("/System/Library/Fonts/AppleSDGothicNeo.ttc", 0),
+    ("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", 0),
+    ("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc", 0),
+    ("/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf", 0),
+]
+_cjk_names = {}      # (path, subfontIndex) -> registered name or None
+
+
+def _register_ttf(path, subfont_index, tag):
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    name = "QTLayout_%s_%s" % (
+        tag, abs(hash(os.path.abspath(path) + "|%d" % subfont_index)))
+    if name not in pdfmetrics.getRegisteredFontNames():
+        pdfmetrics.registerFont(
+            TTFont(name, path, subfontIndex=subfont_index))
+        pdfmetrics.registerFontFamily(
+            name, normal=name, bold=name, italic=name, boldItalic=name)
+    return name
+
 
 def _font(kind="regular", bold=False, italic=False):
     """A reportlab font name for canvas.setFont.
@@ -248,25 +278,77 @@ def _font(kind="regular", bold=False, italic=False):
                  if os.path.isfile(p)), None)
     if path:
         try:
-            from reportlab.pdfbase import pdfmetrics
-            from reportlab.pdfbase.ttfonts import TTFont
-            name = "QTLayout_%s" % abs(hash(os.path.abspath(path)))
-            if name not in pdfmetrics.getRegisteredFontNames():
-                pdfmetrics.registerFont(TTFont(name, path))
-                pdfmetrics.registerFontFamily(
-                    name, normal=name, bold=name, italic=name,
-                    boldItalic=name)
-            _fonts[family] = name
-            return name
+            _fonts[family] = _register_ttf(path, 0, family)
+            return _fonts[family]
         except Exception:
             pass
     _fonts[family] = _STD14[family]
     return _fonts[family]
 
 
+def _covers(font, text):
+    """True when ``font`` can encode every non-space char of ``text``.
+
+    TTF faces expose ``charToGlyph``; a missing entry means the glyph
+    does not exist (the draw would drop the line). Standard-14 fonts
+    have no such table -- return True and let drawString's own
+    try/except be the judge, exactly like before.
+    """
+    try:
+        from reportlab.pdfbase import pdfmetrics
+        face = pdfmetrics.getFont(font).face
+        cg = getattr(face, "charToGlyph", None)
+        if cg is None:
+            return True
+        return all(cg.get(ord(c)) for c in text if not c.isspace())
+    except Exception:
+        return True
+
+
+def _cjk_font_for(text):
+    """First registered CJK face covering ``text``'s codepoints, or None."""
+    need = {ord(c) for c in text if not c.isspace()}
+    if not need:
+        return None
+    from reportlab.pdfbase import pdfmetrics
+    for path, idx in _CJK_CANDIDATES:
+        if not os.path.isfile(path):
+            continue
+        key = (path, idx)
+        if key not in _cjk_names:
+            try:
+                _cjk_names[key] = _register_ttf(path, idx, "cjk")
+            except Exception:
+                _cjk_names[key] = None
+        name = _cjk_names[key]
+        if not name:
+            continue
+        face = pdfmetrics.getFont(name).face
+        cg = getattr(face, "charToGlyph", None)
+        if cg is not None and all(cg.get(c) for c in need):
+            return name
+    return None
+
+
+def _font_for_text(kind, bold, italic, text):
+    """The block's font, swapped for a CJK face when the translation
+    carries glyphs the document font cannot encode (otherwise the
+    overlay would silently drop those lines)."""
+    font = _font(kind, bold, italic)
+    if _covers(font, text):
+        return font
+    return _cjk_font_for(text) or font
+
+
 def _string_width(text, font, size):
     from reportlab.pdfbase.pdfmetrics import stringWidth
-    return stringWidth(text, font, size)
+    try:
+        return stringWidth(text, font, size)
+    except Exception:
+        # A font that cannot encode the text at all (std-14 + CJK)
+        # would crash the fitter; treat the run as wide glyphs so the
+        # block still wraps and the draw path's own fallback decides.
+        return len(text) * size
 
 
 # -- fitting ----------------------------------------------------------------
@@ -288,8 +370,9 @@ def fit_block(text, block, max_width, max_height):
         return None
     size = float(block.size) or 10.0
     floor = max(size * _FLOOR, 4.0)
-    font = _font("mono" if getattr(block, "mono", False) else "regular",
-                 bold=block.bold, italic=block.italic)
+    font = _font_for_text("mono" if getattr(block, "mono", False)
+                          else "regular",
+                          bold=block.bold, italic=block.italic, text=text)
     while size >= floor:
         lines, ok = _wrap(words, font, size, max_width)
         if lines and len(lines) * size * _LEADING <= max_height + 0.5:
@@ -447,8 +530,9 @@ def _translate_pdf_layout(path, out, translator, sl, tl,
             if not fit:
                 continue
             size, lines = fit
-            font = _font("mono" if b.mono else "regular",
-                         bold=b.bold, italic=b.italic)
+            font = _font_for_text("mono" if b.mono else "regular",
+                                  bold=b.bold, italic=b.italic,
+                                  text=b.translated)
             c.setFillColorRGB(*ink)
             leading = size * _LEADING
             # first baseline: block top + ascent (~0.8 em)
@@ -458,9 +542,18 @@ def _translate_pdf_layout(path, out, translator, sl, tl,
                     c.setFont(font, size)
                     c.drawString(b.x0, y, ln)
                 except Exception:
-                    # unencodable glyphs in a std-14 font: cover stays,
-                    # the line is dropped rather than corrupting output
-                    pass
+                    # unencodable glyphs: one more chance with a CJK
+                    # face before the line is dropped rather than
+                    # corrupting the output
+                    alt = _cjk_font_for(ln)
+                    if alt and alt != font:
+                        try:
+                            c.setFont(alt, size)
+                            c.drawString(b.x0, y, ln)
+                            y -= leading
+                            continue
+                        except Exception:
+                            pass
                 y -= leading
         c.showPage()
     c.save()
