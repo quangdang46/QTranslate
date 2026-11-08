@@ -81,8 +81,10 @@ pushed. Headline items (details in `docs/GAP_AUDIT_2.md`,
 - **venv recreated** at `.venv` (uv, py3.12): `uv pip install -r
   requirements.txt PySide6 Pillow pystray comtypes`.
 - **Push**: `gh auth token` works (account quangdang46, repo scope);
-  GCM `git push` hangs waiting on a credential dialog -- use
-  `git push "https://x-access-token:$(gh auth token)@github.com/quangdang46/QTranslate.git" main`.
+  GCM `git push` hangs waiting on a credential dialog -- confirmed
+  again 2026-11-08 (stale `git-credential-manager.exe` zombies had to
+  be taskkilled). Cleanest workaround, no token in URL/args:
+  `git -c credential.helper= -c credential.helper="!gh auth git-credential" push origin main`.
 - **PDF layout-aware translation LANDED** (`34585f7`): the largest
   remaining feature, MVP per `docs/PDF_LAYOUT.md` strategy A --
   `qtranslate/pdf_layout.py` (pdfplumber blocks → per-block translate →
