@@ -1059,8 +1059,6 @@ class MainWindow(Base):
             act = QAction(lab.get(item_id, default), self)
             act.triggered.connect(lambda _c=False, f=fn: f())
             m.addAction(act)
-        # Native's startup-action group (85..88) is a four-way choice,
-        # not a toggle; it stays unimplemented rather than faked.
         # Item 130 "Help" is live: .tmp OptionsPopupMenu.helpSubmenu --
         # How to use / Contact us / Check for updates / auto-check.
         help_menu = m.addMenu(lab.get(130, "Help"))
