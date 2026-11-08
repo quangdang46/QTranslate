@@ -22,7 +22,7 @@ transiently instead:
 
 | What | Value |
 |---|---|
-| Branch / commit | `main`, tip `f808082`, pushed |
+| Branch / commit | `main`, tip `53e24aa`, pushed |
 | Working tree | clean (except known `.beads` vacuum artifacts) |
 | Suites | **198 suites, 0 failed, ~325s on Windows** (`QT_QPA_PLATFORM=offscreen .venv/Scripts/python.exe tools/run_suites.py`) -- re-run 2026-11-09 after a full-tree audit; one stale expectation fixed in `27484ee` (`regress_ui_parity_fixes` expected history-menu ids 10/20/30/50/40, native menu 3 in `lang.json` actually carries 10/15/20/30/40 -- the code was right, the test was wrong). 22 suites still SKIP honestly here for the same environmental reasons as before |
 | Pixel measure | mean ink diff **0.0037** over 12 screens (re-run 24/10; macOS re-measure not done) |
@@ -31,7 +31,9 @@ transiently instead:
 | Bundle | rebuilt on Windows after every wave; latest `SELFTEST PASS 29/29`, `_missing_deps`/`_frozen_gap` clean, `pdfium.dll` in `_internal`; `dist\QTranslate\` current with `main` |
 | Front end | Qt only. tkinter was deleted on 2026-10-23 |
 | Platform focus | This machine is **Windows** (was macOS on 2026-11-08 morning) — `macos_*` backends live-tested earlier; Windows backends now suite-verified, still need real-device audio/hook checks (see §4) |
-| Win clipboard | `tests/verify_win_clipboard.py` **PASS 17/17 on real Windows** — multi-format snapshot/restore byte-exact (CF_UNICODETEXT + CF_TEXT + custom format, empty-token round-trip, double-restore). Hardened `_win_restore` with `_win_open_empty` (reopen+retry) after finding Windows answers `OpenClipboard` success then fails `EmptyClipboard` with ERROR_CLIPBOARD_NOT_OPEN in rapid succession; test also settles same-process writes (~200 ms deferred visibility) |
+| Win clipboard | `tests/verify_win_clipboard.py` **PASS 17/17 on real Windows** — multi-format snapshot/restore byte-exact (CF_UNICODETEXT + CF_TEXT + custom format, empty-token round-trip, double-restore); full public API also probed live (`sequence()` counter bumps, `write_text`/`read_text` round-trip, snapshot/restore of the real clipboard). Hardened `_win_restore` with `_win_open_empty` (reopen+retry) after finding Windows answers `OpenClipboard` success then fails `EmptyClipboard` with ERROR_CLIPBOARD_NOT_OPEN in rapid succession; test also settles same-process writes (~200 ms deferred visibility) |
+| Secrets store | `qtranslate/secrets.py` exercised live on Windows: set/get/delete round-trip, `icacls` confirms the owner-only ACL is really applied (`inheritance:r` + grant current user only), `TypeError`/`ValueError` contracts enforced; `migrate_options` moves plaintext `Proxy.Password` to `secrets.json` under upstream's `network.proxy.password` key, idempotent, empty-password edge drops the key |
+| Translate threading | `tools/measure_translate.py` re-run 2026-11-09: UI thread held **1ms** during a simulated 400ms provider call — the off-UI-thread fix still holds end-to-end |
 
 **The operator CONFIRMED the GUI matches native** (2026-10-24, running
 the real bundle, Windows). Recorded in `docs/review/FEATURE_CHECKLIST_2026-10-23.md`.
@@ -163,6 +165,44 @@ pushed. Headline items (details in `docs/GAP_AUDIT_2.md`,
   QActionGroups, menu builders split for testability (`176fcdd`).
   Static analysis is now clean: F821/F841/E711/E712 = 0, B/RUF
   findings all classified benign. Full sweep re-verified **198/0**.
+
+## 0.8. Audit + Windows-live-verification session (2026-11-09) -- what landed
+
+- **Full-tree audit completed**: every shipped module in `qtranslate/`
+  (root, `qt/`, `qt/options/`, `services/`), both SDK surfaces
+  (`qtranslate/sdk.py` + published `sdksrc/qtranslate_sdk`), all 8
+  `examples/extensions/`, the reference renderer `qtranslate_ui.py`,
+  every gate/measurement tool in `tools/`, and root docs. ~20 real
+  fixes landed across the arc (see git log 2026-11-08/09).
+- **G9 harness fix** (`cb95ba0`): `cmd_capture` now records
+  `capture_method: "printwindow"` + measured `focus` — PrintWindow
+  captures can finally be distinguished from desktop-crop sides.
+  Selftest 24/24; the human-review bead `qt-fj5` is unblocked tooling-wise.
+- **`persisted-only` port state** (`91b61e6`): M21's consumer was found
+  unrecovered; checklist legend + `coverage_tally.PORT_BASE` learned the
+  state. `coverage_tally --check` structure valid again (gate still
+  honestly BLOCKED on the 1 UNKNOWN G9 row).
+- **`audit_ui_labels.py` ported to Qt** (`4bea251`): was dead after the
+  tkinter deletion (scanned removed files); now AST-scans
+  `ui_caption`/`ui_control_caption` in `qtranslate/qt/**` against the
+  committed English pack — 5/5 captions match, runs on any host.
+- **README refreshed** (`d3d2914`): `start_app.py`→`start_qt.py`, all 8
+  examples listed, verification block updated to 198/0 + current gates.
+- **Windows clipboard hardened + verified live** (`f808082`):
+  `verify_win_clipboard.py` PASS 17/17 on real Windows (first full run)
+  exposed two OS quirks — `OpenClipboard` success + `EmptyClipboard`
+  ERROR_CLIPBOARD_NOT_OPEN in rapid succession (fixed via
+  `_win_open_empty` reopen+retry in `_win_restore`) and ~200 ms
+  same-process deferred write visibility (test settles via `wait_for`).
+  Full public API also probed live.
+- **Secrets store verified live**: icacls owner-only ACL confirmed
+  applied on Windows; `migrate_options` plaintext→secrets move
+  verified end-to-end.
+- **`measure_translate.py` re-run**: UI thread 1ms vs 400ms provider —
+  off-UI-thread fix still holds.
+- **Live providers 28/31** (`tests/LIVE_RESULTS.md`): `dict.lingvo`
+  server-side outage persists; `reverso.translate` flapping
+  403/echo-degraded — both provider-side, request shapes unchanged.
 
 ## 1. Windows session (2026-10-24) -- what landed, newest last
 
