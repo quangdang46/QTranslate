@@ -795,7 +795,10 @@ def _capture_windows(title: str, hwnd: int | None):
             peak = b_
     if peak == 0:
         return None, "capture is all-black (PrintWindow unsupported for this window)"
-    return (w, h, bytes(rgb)), None
+    # Whether the window was the foreground window at capture time: Windows
+    # dims an inactive title bar, so focus is part of the capture protocol.
+    focus = "active" if user32.GetForegroundWindow() == hwnd else "inactive"
+    return (w, h, bytes(rgb), focus), None
 
 
 def cmd_capture(args) -> int:
@@ -814,7 +817,7 @@ def cmd_capture(args) -> int:
     if args.capture_kind == "acceptance" and not args.source:
         print("BLOCKED: --capture-kind acceptance requires --source (provenance)")
         return 2
-    w, h, rgb = result
+    w, h, rgb, focus = result
     _save(out_p, w, h, rgb)
     source = args.source or "live capture via g9_screenshot_diff capture (mechanics)"
     meta = {
@@ -831,6 +834,12 @@ def cmd_capture(args) -> int:
         # otherwise shows the DLG129 template size, so the value is
         # operator-declared and validated against the two known origins.
         "size_origin": args.size_origin,
+        # This path always renders via PrintWindow, and the foreground state
+        # was measured at capture time -- declare both so a comparison
+        # against a desktop-crop or differently-focused side BLOCKs instead
+        # of silently measuring the capture method.
+        "capture_method": "printwindow",
+        "focus": focus,
         # content hash of the PNG actually written — verifiable provenance
         "sha256": _sha256_file(out_p),
     }
