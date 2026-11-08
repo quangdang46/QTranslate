@@ -135,6 +135,28 @@ ck("entries carry geometry anchors",
    all(isinstance(h.get("x"), int) and isinstance(h.get("y"), int)
        for h in idx))
 
+# 11. _paint_rows keys on the stored page name, not the caption text:
+#     with a non-English UI pack the sidebar captions are localized and
+#     q.text() never equals the English _page_name -- the highlight
+#     must still land on the current page's row.
+def _sel_rows():
+    return [r for r in d._rows
+            if "background:transparent" not in (r.styleSheet() or "")]
+
+sel = _sel_rows()
+ck("exactly one sidebar row highlighted", len(sel) == 1,
+   "%d" % len(sel))
+if sel:
+    row = sel[0]
+    row.setText("zz-localized-caption")
+    d._paint_rows()
+    sel = _sel_rows()
+    ck("highlight survives a localized caption",
+       len(sel) == 1 and sel[0] is row, "%d" % len(sel))
+    ck("row carries its page name",
+       row.property("qt_page") == d._page_name,
+       repr(row.property("qt_page")))
+
 try:
     os.remove(_tmp)
 except OSError:

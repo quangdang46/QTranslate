@@ -184,6 +184,9 @@ class OptionsBase(Base):
             # No left padding: the text has to start one pixel inside the
             # row, the way native's does (MEASURED off the capture).
             put(self, q, rx, self._rows_y + 13 * i, rw, 13)
+            # The caption may be localized; keep the English page name
+            # for selection/highlight comparisons (_paint_rows).
+            q.setProperty("qt_page", name)
             q.mousePressEvent = (lambda _e, n=name: self._goto(n))
             self._rows.append(q)
         ry, x0, x1 = ch["rule"]
@@ -222,7 +225,10 @@ class OptionsBase(Base):
     def _paint_rows(self):
         """Repaint the sidebar highlight for the current page."""
         for q in self._rows:
-            sel = q.text() == self._page_name
+            # Compare the stored page name, not the (possibly localized)
+            # caption text -- under a non-English UI pack q.text() never
+            # equals the English _page_name and no row would highlight.
+            sel = q.property("qt_page") == self._page_name
             q.setStyleSheet("QLabel{background:%s;color:%s;}"
                             % (ACCENT if sel else "transparent",
                                "#ffffff" if sel else TEXT))
