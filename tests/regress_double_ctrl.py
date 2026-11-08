@@ -388,6 +388,61 @@ tap._key_observer = None
 tap._notify_observer(_FakeQuartz.kCGEventFlagsChanged, 0x3B, MT.FLAG_CONTROL)
 ck("no observer is a no-op", edges == [("other", True)], repr(edges))
 
+# --- _start_keyboard_feed: the keyboard.hook contract ------------------
+# keyboard.hook(cb) is NOT a context manager -- it registers the
+# callback (auto-starting the listener) and returns a remove function.
+# The feed used `with hook(cb)`, which raised TypeError, killed the
+# thread before ready.set() and left the gesture unbound on Windows
+# (found live 2026-11-08). This fake mirrors the real API exactly.
+class _FakeKeyboard:
+    def __init__(self):
+        self.hooked = []
+        self.removed = []
+
+    def hook(self, cb):
+        self.hooked.append(cb)
+
+        def _remove():
+            self.removed.append(cb)
+        return _remove
+
+
+class _FakeEvent:
+    def __init__(self, name, event_type):
+        self.name = name
+        self.event_type = event_type
+
+
+fk = _FakeKeyboard()
+feed_seen = []
+feed_ok = HK._start_keyboard_feed(
+    fk, lambda kind, down: feed_seen.append((kind, down)))
+ck("keyboard feed installs", feed_ok is True)
+ck("hook() called once with a callback", len(fk.hooked) == 1)
+if fk.hooked:
+    ev = fk.hooked[0]
+    ev(_FakeEvent("left ctrl", "down"))
+    ev(_FakeEvent("left ctrl", "up"))
+    ev(_FakeEvent("q", "down"))
+ck("feed translates hook events",
+   feed_seen == [("ctrl", True), ("ctrl", False), ("other", True)],
+   repr(feed_seen))
+HK._stop_double_ctrl()
+# The worker thread removes the handler asynchronously after stop.set().
+import time as _time
+_deadline = _time.time() + 2.0
+while not fk.removed and _time.time() < _deadline:
+    _time.sleep(0.02)
+ck("stop removes the hook handler",
+   fk.removed == fk.hooked and len(fk.removed) == 1)
+
+# A keyboard module without hook() -> honest False, no thread.
+class _NoHookKeyboard:
+    pass
+
+ck("no hook() -> feed unbound",
+   HK._start_keyboard_feed(_NoHookKeyboard(), lambda *a: None) is False)
+
 if FAIL:
     print("\nregress_double_ctrl: %d FAILURES" % len(FAIL))
     for f in FAIL:

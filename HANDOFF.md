@@ -229,9 +229,14 @@ paths (`EXTENSION_SDK.md` §9 has the table). On top of that:
   `check()` swallowed it to None). SAPI voice discovery + locale
   mapping verified -- fixed SAPI `Language` attr being a HEX LCID
   string and `LocaleNameFromLCID` missing on some kernels
-  (`LCIDToLocaleName` fallback added). Still human-bound: audible
-  `speak()`, DoubleCtrl `keyboard.hook` feed, clipboard/mouse_capture
-  win32 branches.
+  (`LCIDToLocaleName` fallback added). DoubleCtrl `keyboard.hook`
+  feed VERIFIED live too -- fixed a real bug: `keyboard.hook()` is
+  not a context manager (returns a remove fn), the `with` form killed
+  the feed thread so the gesture never bound on Windows; end-to-end
+  verified with injected Ctrl taps -> detector fires once. Mouse
+  hook install + MSAA `cursor_text` + clipboard snapshot/restore
+  also verified live on Windows. Still human-bound: audible
+  `speak()` and foreign-app hotkey delivery.
 - **macOS real-device pass**: DoubleCtrl CGEventTap flagsChanged feed
   (needs Accessibility grant), Vision mixed-direction OCR ordering
   (UNVERIFIED).

@@ -233,15 +233,27 @@ def _start_keyboard_feed(keyboard, on_key) -> bool:
             pass
 
     def _run():
+        remove = None
         try:
-            with hook(_cb):
-                live[0] = True
-                ready.set()
-                stop.wait()
+            # keyboard.hook() is NOT a context manager: it registers
+            # the callback (auto-starting the listener) and returns a
+            # remove function. `with hook(cb)` raised TypeError, the
+            # thread died before ready.set() and the feed reported
+            # unbound -- the Double Ctrl gesture never worked on
+            # Windows (found live 2026-11-08).
+            remove = hook(_cb)
+            live[0] = True
+            ready.set()
+            stop.wait()
         except Exception:
             pass
         finally:
             live[0] = False
+            if remove is not None:
+                try:
+                    remove()
+                except Exception:
+                    pass
             ready.set()
 
     thread = threading.Thread(target=_run,
