@@ -302,6 +302,16 @@ try:
         icon_btns[0].click()          # restore the default mask
         app.qapp.processEvents()
 
+    # Basics "Interface language" combo must list the shipped packs;
+    # regression: _locale_names derived <root>/assets/locales -- missing
+    # the qtranslate package component -- and silently offered only
+    # "English", leaving the other 34 packs unreachable from the UI.
+    from qtranslate.qt.options import basics as _basics_mod
+    _loc = _basics_mod._locale_names()
+    ck("the locale combo lists the shipped packs",
+       len(_loc) > 10 and "English" in _loc and "Vietnamese" in _loc,
+       "%d packs" % len(_loc))
+
     # --- 5. the other windows -------------------------------------------
     try:
         app.open_history()

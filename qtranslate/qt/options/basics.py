@@ -16,12 +16,18 @@ from .base import (OptionsBase, cfg_load, cfg_section, cfg_set, check,
 
 
 def _locale_names():
-    """The locale packs the app ships (assets/locales/<name>)."""
+    """The locale packs the app ships (qtranslate/assets/locales/<name>).
+
+    Resolved through ``locale.LOCALES_DIR`` -- the same bundled-first /
+    install-fallback path every other locale consumer uses. Deriving it
+    from this file's location needs the ``qtranslate`` package
+    component; dropping it listed ``<root>/assets/locales``, which does
+    not exist, so the combo silently offered only "English".
+    """
     import os
-    here = os.path.dirname(os.path.dirname(os.path.dirname(
-        os.path.dirname(os.path.abspath(__file__)))))
-    d = os.path.join(here, "assets", "locales")
     try:
+        from qtranslate import locale as _L
+        d = _L.LOCALES_DIR
         return sorted(n for n in os.listdir(d)
                       if os.path.isdir(os.path.join(d, n)))
     except Exception:
