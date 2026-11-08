@@ -82,7 +82,7 @@ override_picker.py` since the tkinter front end was deleted) picks the winner �
 | `qtranslate/win32app.py` | 203 lines | Native Win32 DLG129 re-creation (pywin32) |
 | `qtranslate/{theme,locale,history,layout,xdxf,tts,player,sapi,headless,exclusions}.py` | small | feature modules |
 | `docs/NATIVE_ARCH.md` | 1649 lines | native binary RE analysis |
-| `tests/` | 194 files | 188 `regress_*.py` suites (headless unless named), plus `ui_match.py`, `smoke_dict.py`, `live_providers.py`, `live_bass.py`, `verify_win_clipboard.py`, `_view_src.py`. Sweep them with `python -I tools/run_suites.py` (exit-code judged, not grep) — see §Test suites in `README.md`. The runner reports **190 suites** (188 `regress_*` + `smoke_dict` + `ui_match`; the `live_*`/`verify_*`/`_view_src` helpers are not swept). Counts drift as in-flight work lands suites — recount with `ls tests/regress_*.py \| wc -l` |
+| `tests/` | 199 files | 193 `regress_*.py` suites (headless unless named), plus `ui_match.py`, `smoke_dict.py`, `live_providers.py`, `live_bass.py`, `verify_win_clipboard.py`, `_view_src.py`. Sweep them with `python -I tools/run_suites.py` (exit-code judged, not grep) — see §Test suites in `README.md`. The runner reports **195 suites** (193 `regress_*` + `smoke_dict` + `ui_match`; the `live_*`/`verify_*`/`_view_src` helpers are not swept). Counts drift as in-flight work lands suites — recount with `ls tests/regress_*.py \| wc -l` |
 
 **[verified]** Language: Python, Qt/PySide6 UI (tkinter deleted `6636686`), stdlib `urllib` for HTTP; optional
 deps only (`keyboard`, `pyperclip` required; `pystray`, `Pillow`, `comtypes`,
