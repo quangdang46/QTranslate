@@ -105,6 +105,25 @@ ck("_set_ocr_language writes Ocr.OcrLanguage",
    (_CFG.load().get("Ocr", {}) or {}).get("OcrLanguage") == 3,
    repr(_CFG.load().get("Ocr")))
 
+# --- context_menus.build enabled-callback contract ----------------------
+from qtranslate.qt.context_menus import build as _build_menu     # noqa: E402
+
+
+def _noop():
+    pass
+
+
+_gated = _build_menu(w, app, "ocr", 10, [
+    (1, "One", _noop),
+    (2, "Two", None),
+    (3, "Three", _noop),
+], enabled=lambda item_id, fn: item_id != 3)
+_gacts = _gated.actions()
+ck("enabled callback gates items; None fn stays disabled",
+   [a.isEnabled() for a in _gacts] == [True, False, False]
+   and len(_gacts) == 3,
+   repr([(a.text(), a.isEnabled()) for a in _gacts]))
+
 w.close()
 
 if fail:

@@ -56,9 +56,8 @@ def build(parent, app, slot: str, menu_id: int, items, enabled=None):
     enabled = enabled or (lambda item_id, fn: fn is not None)
     for item_id, default, fn in items:
         act = QAction(_label(menu_id, item_id, default), parent)
-        if fn is None:
-            act.setEnabled(False)
-        else:
+        act.setEnabled(enabled(item_id, fn) and fn is not None)
+        if act.isEnabled():
             act.triggered.connect(lambda _c=False, f=fn: f())
         m.addAction(act)
     append_extensions(m, parent, app, slot)
