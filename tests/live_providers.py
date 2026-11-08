@@ -65,6 +65,17 @@ def main():
     from qtranslate.services import commons_images as ci
     check("commons_images.search",
           lambda: ci.search_images("cat", limit=3) and "thumb-results")
+    # Spell backends (keyless): google spell-check, google suggest,
+    # yandex speller.
+    from qtranslate.services import google_spell as gs
+    check("google_spell.check",
+          lambda: gs.check("This sentense has wurds", "en")
+          .get("corrections"))
+    from qtranslate.services import spell as sp
+    check("spell.google_suggest",
+          lambda: sp.google_suggest("wrold", "en"))
+    check("spell.yandex_spell",
+          lambda: sp.yandex_spell("wrold", "en"))
 
     for name, status, detail in results:
         print(f"{status:8} {name:28} {detail}")

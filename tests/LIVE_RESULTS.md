@@ -1,17 +1,17 @@
-# Live verification results (2026-11-08, sweep extended to 25 checks)
+# Live verification results (2026-11-08, sweep extended to 28 checks)
 
-`.venv/Scripts/python.exe tests/live_providers.py` re-run after adding
-the four registered providers the original sweep never covered --
-`mymemory.translate`, `mozhi.translate`, `yandex_web.translate` (the
-extension-plugin ports) and `commons_images.search` (keyless Wikimedia
-Commons): **24/25 LIVE-OK**, all four new checks green. The one miss
-is `dict.lingvo` -- `TimeoutError` on two consecutive runs; the
-endpoint itself still answers (curl: HTTP 302 in ~5 s to the
-/en-ru/hello page) so this is provider-side slowness against the
-shared `Internet.Timeout` budget, not a port regression (it was
-LIVE-OK earlier the same day). PROMT re-probed separately through
-`session()`+`translate()`: HTTP 200 + schema, provider's own
-"temporarily unavailable" -- unchanged.
+`.venv/Scripts/python.exe tests/live_providers.py` re-run twice the
+same day. First extension added the four registered providers the
+original sweep never covered -- `mymemory.translate`, `mozhi.translate`,
+`yandex_web.translate` (the extension-plugin ports) and
+`commons_images.search` (keyless Wikimedia Commons): 24/25, the one
+miss `dict.lingvo` a provider-side `TimeoutError` (endpoint still
+answered; shared `Internet.Timeout` budget). Second extension added
+the keyless spell backends -- `google_spell.check`,
+`spell.google_suggest`, `spell.yandex_spell`: **28/28 LIVE-OK**,
+`dict.lingvo` recovered on the re-run (transient, not a regression).
+PROMT re-probed separately through `session()`+`translate()`: HTTP
+200 + schema, provider's own "temporarily unavailable" -- unchanged.
 
 # Live verification results (2026-11-08, sweep re-run)
 
