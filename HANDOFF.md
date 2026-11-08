@@ -259,7 +259,12 @@ paths (`EXTENSION_SDK.md` §9 has the table). On top of that:
   (`HotKeyPopupWindow=ctrl+q`, `HotKeyReplaceSelection=ctrl+shift+t`,
   `HotKeyMainWindow=double-ctrl`, etc.) -- registration path
   verified end-to-end with real settings. SAPI PowerShell fallback
-  stdin-encoding bug fixed (`573cc5b`).
+  stdin-encoding bug fixed (`573cc5b`). Hardening waves after that:
+  every persisted state file now writes atomically (tmp+os.replace) --
+  History.json writers, exceptions.json, and two Options.json writers
+  that bypassed config.save entirely (`dd4725c`); diagnostic logs
+  rotate at 1MB (`2288b9c`/`11e9f12`); winreg handles closed
+  (`efb393a`); swallowed UI-invoke exceptions now logged (`ed04f8e`).
 - **macOS real-device pass**: DoubleCtrl CGEventTap flagsChanged feed
   (needs Accessibility grant), Vision mixed-direction OCR ordering
   (UNVERIFIED).
