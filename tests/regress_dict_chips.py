@@ -59,7 +59,7 @@ ck("numbers are not chip words",
 
 # --- 2. the window ----------------------------------------------------------
 try:
-    from PySide6.QtWidgets import QApplication, QPushButton
+    from PySide6.QtWidgets import QApplication, QPushButton, QWidget
 except Exception as exc:                       # noqa: BLE001
     print("SKIP regress_dict_chips: PySide6 is not importable (%s)" % exc)
     raise SystemExit(0)
@@ -162,6 +162,30 @@ try:
     ck("input with no valid words makes no chips",
        not win.chip_strip.isVisible()
        and not any(b.text() for b in chips()))
+
+    # --- Remove dictionary rebuilds every strip widget -------------------
+    # A cell is four window children (frame + divider + icon + label);
+    # the old _remove_dictionary deleted only the frames, orphaning the
+    # rest on screen, and rebuilt at the fixed CELL width instead of the
+    # computed even width _build uses.
+    n_cells = len(win.strip)
+    ck("the strip tracks all of its widgets",
+       len(win._strip_parts) == 4 * n_cells,
+       "%d parts for %d cells" % (len(win._strip_parts), n_cells))
+    kids_before = len(win.findChildren(QWidget))
+    win._remove_dictionary()
+    app.qapp.processEvents()
+    ck("remove drops one cell", len(win.strip) == n_cells - 1,
+       "%d -> %d" % (n_cells, len(win.strip)))
+    ck("the rebuild accounts for every new widget",
+       len(win._strip_parts) == 4 * len(win.strip),
+       "%d parts" % len(win._strip_parts))
+    ck("no orphan widgets survive the rebuild",
+       len(win.findChildren(QWidget)) <= kids_before,
+       "%d -> %d children" % (kids_before,
+                              len(win.findChildren(QWidget))))
+    ck("a fresh selection exists after the rebuild",
+       win.selected_service() != "")
 finally:
     try:
         if win is not None:

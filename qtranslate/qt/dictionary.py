@@ -181,20 +181,9 @@ class DictionaryWindow(Base):
         self.chip_strip.hide()
 
         # ---- the service strip (capture y 307..328) ---------------------
-        services = self._services()
-        # Native 2132: the strip runs the FULL window width -- the last
-        # cell stretches to the right edge, it does not stop before the
-        # result pane's scrollbar (which sits above the strip, not
-        # beside it). Even width from the count, the last one takes the
-        # remainder.
-        n = max(1, len(services))
-        cell_w = (474 - 1 - STRIP_X) // n
         self.strip = []
-        for i, name in enumerate(services):
-            w = cell_w + (474 - 1 - STRIP_X - cell_w * n if i == n - 1
-                          else 0)
-            self.strip.append(self._strip_cell(i, name, w))
-        self.select(self.strip[0] if self.strip else None)
+        self._strip_parts = []
+        self._build_strip()
 
     # ------------------------------------------------------------- helpers
     def _services(self):
@@ -220,6 +209,39 @@ class DictionaryWindow(Base):
                   if k not in names]
         return names
 
+    def _build_strip(self):
+        """(Re)build the service strip cells at the current count.
+
+        Native 2132: the strip runs the FULL window width -- the last
+        cell stretches to the right edge, it does not stop before the
+        result pane's scrollbar (which sits above the strip, not
+        beside it). Even width from the count, the last one takes the
+        remainder. Shared by ``_build`` and ``_remove_dictionary`` so a
+        removal lays the strip out exactly like a fresh open.
+        """
+        services = self._services()
+        n = max(1, len(services))
+        cell_w = (self.SIZE[0] - 1 - STRIP_X) // n
+        for i, name in enumerate(services):
+            w = cell_w + (self.SIZE[0] - 1 - STRIP_X - cell_w * n
+                          if i == n - 1 else 0)
+            self.strip.append(self._strip_cell(i, name, w))
+        self.select(self.strip[0] if self.strip else None)
+
+    def _clear_strip(self):
+        """Delete every widget a strip cell owns.
+
+        A cell is not one widget: ``_strip_cell`` also puts a divider
+        ``vline``, the service ``icon`` and the name ``lab`` directly on
+        the window, so clearing ``self.strip`` alone would orphan them
+        on screen (found by the remove-dictionary path).
+        """
+        for w in self._strip_parts:
+            w.setParent(None)
+            w.deleteLater()
+        self._strip_parts = []
+        self.strip = []
+
     def _strip_cell(self, i, name, cell_w=CELL):
         """One cell of the bottom strip: a divider, the service's own
         icon, and its name cut to the first letter and an ellipsis."""
@@ -230,14 +252,18 @@ class DictionaryWindow(Base):
         cell.setProperty("display", name)
         cell.setStyleSheet("QFrame#cell{background:#dadada;border:none;}")
         put(self, cell, x + 1, STRIP_Y + 1, cell_w - 1, STRIP_H - 2)
-        vline(self, x, STRIP_Y, STRIP_Y + STRIP_H)
-        icon(self, x + 4, STRIP_Y + 3, "dict_icons", DICT_ICONS.get(name, ""))
+        self._strip_parts += [cell, vline(self, x, STRIP_Y,
+                                          STRIP_Y + STRIP_H)]
+        self._strip_parts.append(
+            icon(self, x + 4, STRIP_Y + 3, "dict_icons",
+                 DICT_ICONS.get(name, "")))
         lab = QLabel(name[:1] + "...")
         lab.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         lab.setStyleSheet("QLabel{background:transparent;color:#000000;}")
         lab.setFixedSize(14, 16)
         lab.setAttribute(Qt.WA_TransparentForMouseEvents, True)
         put(self, lab, x + 28, STRIP_Y + 3, 14, 16)
+        self._strip_parts.append(lab)
         return cell
 
     # ------------------------------------------------------------ behaviour
@@ -514,15 +540,11 @@ class DictionaryWindow(Base):
         except Exception:
             return
         # Rebuild the strip so the removed cell disappears now, not at
-        # the next start.
-        for cell in self.strip:
-            cell.setParent(None)
-            cell.deleteLater()
-        self.strip = []
-        for i, name in enumerate(self._services()):
-            self.strip.append(self._strip_cell(i, name))
-        if self.strip:
-            self.select(self.strip[0])
+        # the next start -- through the same layout _build uses, and
+        # clearing every widget a cell owns (dividers/icons/labels are
+        # window children, not cell children).
+        self._clear_strip()
+        self._build_strip()
 
     # -------------------------------------------------- right-click the strip
     def contextMenuEvent(self, event):          # noqa: N802 (Qt name)
