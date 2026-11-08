@@ -1,7 +1,7 @@
 # HANDOFF
 
 What the last sessions did, what the tree looks like now, and what the
-next session should pick up. Updated **2026-10-24** at the tip of
+next session should pick up. Updated **2026-11-08** at the tip of
 `main` (see §0), working tree clean, pushed.
 
 The standing rules still apply: the GitHub push token is used
@@ -19,13 +19,13 @@ untrusted.
 |---|---|
 | Branch / commit | `main`, tip = the HANDOFF commit itself, pushed |
 | Working tree | clean |
-| Suites | **191 suites, 0 failed, ~123s** (`QT_QPA_PLATFORM=offscreen .venv/bin/python tools/run_suites.py`) |
+| Suites | **191 suites, 0 failed, ~170s on Windows** (`QT_QPA_PLATFORM=offscreen .venv/Scripts/python.exe tools/run_suites.py`) — first clean Windows sweep; 8 platform-portability failures fixed in `f26fdc7` |
 | Pixel measure | mean ink diff **0.0037** over 12 screens (re-run 24/10; macOS re-measure not done) |
 | Docs consistency | 0 findings |
 | Live providers | **21 checks LIVE-OK** (`tests/LIVE_RESULTS.md`, Windows run); PROMT/Babylon/Baidu-translate dead, recorded |
 | Bundle | rebuilt on the Windows tree, `SELFTEST PASS 29/29`, runs from `dist\QTranslate\`; NOT rebuilt since the macOS parity waves |
 | Front end | Qt only. tkinter was deleted on 2026-10-23 |
-| Platform focus | This machine is **macOS** — all `macos_*` backends live-tested; Windows backends written but untested here (see §4) |
+| Platform focus | This machine is **Windows** (was macOS on 2026-11-08 morning) — `macos_*` backends live-tested earlier; Windows backends now suite-verified, still need real-device audio/hook checks (see §4) |
 
 **The operator CONFIRMED the GUI matches native** (2026-10-24, running
 the real bundle, Windows). Recorded in `docs/review/FEATURE_CHECKLIST_2026-10-23.md`.
@@ -60,6 +60,29 @@ pushed. Headline items (details in `docs/GAP_AUDIT_2.md`,
   `docs/GAP_AUDIT_2/3.md`.
 - **191 suites / 0 failed.** `AGENTS.md` records workflow prefs:
   push after each wave, kill app+stray Qt processes after testing.
+
+## 0.7. Windows session (2026-11-08, this machine) -- what landed
+
+- **PROMT request shape FIXED** (`f26fdc7`): the site's page bundle
+  changed the `h=` hash -- UTF-16 code units, forward+backward
+  accumulation (h1+h2), and `#Gener\u0430l#` with a CYRILLIC a. The old
+  native-Service.js hash got HTTP 400. `ghcs`/`ghcd` now mirror the
+  live client, `translate()` sends the session opener (cookies it used
+  to drop) and trims/strips U+0301 like the web client. Backend still
+  answers "service temporarily unavailable" -- request accepted again
+  (HTTP 200 + schema). Details in `tests/LIVE_RESULTS.md` top entry.
+- **`secrets.py` Windows ACLs**: `os.chmod(0600)` is a no-op on nt;
+  `_chmod_private` now strips inheritance + grants only the current
+  user via `icacls` (proxy password file).
+- **8 suite portability fixes** so the sweep is green on Windows:
+  platform pinned in system_tts/speech_macos/system_backends_win/
+  role_prefs/player tests, utf-8 explicit in contents_persist,
+  ImageSearch added to options_roundtrip whitelist.
+- **venv recreated** at `.venv` (uv, py3.12): `uv pip install -r
+  requirements.txt PySide6 Pillow pystray comtypes`.
+- **Push**: `gh auth token` works (account quangdang46, repo scope);
+  GCM `git push` hangs waiting on a credential dialog -- use
+  `git push "https://x-access-token:$(gh auth token)@github.com/quangdang46/QTranslate.git" main`.
 
 ## 1. Windows session (2026-10-24) -- what landed, newest last
 
@@ -106,8 +129,9 @@ paths (`EXTENSION_SDK.md` §9 has the table). On top of that:
 ## 4. What is NOT done -- the next session's queue
 
 **Agent-doable, no new decisions needed:**
-- PROMT: the backend answers "temporarily unavailable" -- re-probe
-  periodically; if it comes back, the scrape is already working.
+- PROMT: request shape fixed 2026-11-08 (was HTTP 400, now HTTP 200 +
+  schema); backend still "temporarily unavailable" -- re-probe
+  periodically; if it comes back, the scrape+hash are already working.
 - Rebuild the bundle after any change
   (`python tools/build_bundle.py`, selftest 29/29) -- the operator runs
   the bundle, not the repo. NOTE: bundle was built on Windows; rebuild
@@ -149,25 +173,19 @@ paths (`EXTENSION_SDK.md` §9 has the table). On top of that:
 
 ## 5. How to run it
 
-Windows (from the 2026-10-24 session):
+Windows (this machine, 2026-11-08 — venv recreated at `.venv`):
 
 ```
 .venv/Scripts/python.exe -I start_qt.py google vi
-```
-
-macOS (this machine, 2026-11-08):
-
-```
-.venv/bin/python start_qt.py            # tray app; tests need no -I flag
-QT_QPA_PLATFORM=offscreen .venv/bin/python tools/run_suites.py
+QT_QPA_PLATFORM=offscreen .venv/Scripts/python.exe tools/run_suites.py
 ```
 
 The venv was created with uv (the PATH Python refuses `pip install`):
 
 ```
-uv venv C:/Users/ADMIN/qtranslate-re/.venv --python 3.12
-uv pip install --python C:/Users/ADMIN/qtranslate-re/.venv/Scripts/python.exe \
-    PySide6 keyboard pyperclip Pillow
+uv venv .venv --python 3.12
+uv pip install --python .venv/Scripts/python.exe -r requirements.txt \
+    PySide6 Pillow pystray comtypes
 ```
 
 Sweeps: `python -I tools/run_suites.py`. Pixel: `python -I
