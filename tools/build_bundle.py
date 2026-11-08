@@ -541,6 +541,10 @@ def _frozen_gap(workpath: str):
         "qtranslate.speech_input":
             "native-unavailable: the live speech path is retired and the "
             "capture path is unimplemented; RE-completeness only",
+        "qtranslate.flac_encode":
+            "reachable only via speech_input.flac_payload (itself "
+            "unfrozen) and needs the optional soundfile dep the bundle "
+            "does not ship; RE-completeness substrate for J6",
     }
     toc_dir = os.path.join(workpath, "qtranslate")
     frozen = set()
