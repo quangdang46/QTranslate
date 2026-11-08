@@ -203,6 +203,24 @@ def main():
            str(rp.mediabox))
         ck("rot%d translated selectable" % deg,
            "VI:" in (rp.extract_text() or ""))
+    # rotated + multi-column: the word-column merge must not glue the
+    # two columns into one natural line
+    rr = PR(colsrc)
+    ww = PW()
+    pg = rr.pages[0]
+    pg.rotate(90)
+    ww.add_page(pg)
+    colrot = os.path.join(tmp, "cols_rot.pdf")
+    with open(colrot, "wb") as f:
+        ww.write(f)
+    rcol_blocks, _, _ = PL.extract_blocks(colrot)
+    rtexts = [b.text for b in rcol_blocks[0]]
+    ck("rotated columns not interleaved", any(
+        "Left column line number 0" in t and "Right column" not in t
+        for t in rtexts), str(rtexts))
+    ck("rotated right column own block", any(
+        t.startswith("Right column line number 0") for t in rtexts),
+       str(rtexts))
     # an arbitrary angle still refuses honestly before spending calls
     # (pypdf's rotate() only takes multiples of 90 -- set /Rotate raw)
     from pypdf.generic import NameObject, NumberObject

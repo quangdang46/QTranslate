@@ -412,17 +412,28 @@ def _merge_rot_lines(segments):
     out = []
     for group in lines:
         group.sort(key=lambda l: l.x0)
-        first = group[0]
-        merged = PdfLine(
-            text=" ".join(g.text for g in group),
-            x0=min(g.x0 for g in group), top=min(g.top for g in group),
-            x1=max(g.x1 for g in group), bottom=max(g.bottom for g in group),
-            size=max(g.size for g in group),
-            bold=any(g.bold for g in group),
-            italic=any(g.italic for g in group),
-            mono=all(g.mono for g in group),
-            color=first.color)
-        out.append(merged)
+        # One band can hold several natural lines side by side (a
+        # rotated two-column row): split at x-gaps wider than a word
+        # space, the same threshold _lines_of uses.
+        thr = max(22.0, 2.2 * max(g.size for g in group))
+        subs = [[group[0]]]
+        for s in group[1:]:
+            if s.x0 - subs[-1][-1].x1 > thr:
+                subs.append([s])
+            else:
+                subs[-1].append(s)
+        for sub in subs:
+            first = sub[0]
+            merged = PdfLine(
+                text=" ".join(g.text for g in sub),
+                x0=min(g.x0 for g in sub), top=min(g.top for g in sub),
+                x1=max(g.x1 for g in sub), bottom=max(g.bottom for g in sub),
+                size=max(g.size for g in sub),
+                bold=any(g.bold for g in sub),
+                italic=any(g.italic for g in sub),
+                mono=all(g.mono for g in sub),
+                color=first.color)
+            out.append(merged)
     out.sort(key=lambda l: (l.top, l.x0))
     return out
 
