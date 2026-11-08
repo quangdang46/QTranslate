@@ -98,7 +98,7 @@ def _upright_chars(raw):
             if c.get("upright", True) and c.get("text", "").strip()]
 
 
-def _line_bbox(chars, raw):
+def _line_bbox(chars):
     x0 = min(float(c.get("x0", 0)) for c in chars)
     x1 = max(float(c.get("x1", 0)) for c in chars)
     top = min(float(c.get("top", 0)) for c in chars)
@@ -158,7 +158,7 @@ def _lines_of(raw) -> list:
     # anything else (ligature expansion etc.) keeps the whole line.
     nonspace = sum(1 for ch in text if not ch.isspace())
     if nonspace != len(chars) or len(chars) < 2:
-        x0, top, x1, bottom = _line_bbox(chars, raw)
+        x0, top, x1, bottom = _line_bbox(chars)
         return [PdfLine(text=text, x0=x0, top=top, x1=x1, bottom=bottom,
                         size=size, bold=bold, italic=italic, mono=mono,
                         color=color)]
@@ -175,7 +175,7 @@ def _lines_of(raw) -> list:
         prev = c
     cuts.append(len(chars))
     if len(cuts) == 2:
-        x0, top, x1, bottom = _line_bbox(chars, raw)
+        x0, top, x1, bottom = _line_bbox(chars)
         return [PdfLine(text=text, x0=x0, top=top, x1=x1, bottom=bottom,
                         size=size, bold=bold, italic=italic, mono=mono,
                         color=color)]
@@ -185,7 +185,7 @@ def _lines_of(raw) -> list:
         seg_text = _text_span(text, a, b - a)
         if not seg_text:
             continue
-        x0, top, x1, bottom = _line_bbox(seg, raw)
+        x0, top, x1, bottom = _line_bbox(seg)
         out.append(PdfLine(text=seg_text, x0=x0, top=top, x1=x1,
                            bottom=bottom, size=size, bold=bold,
                            italic=italic, mono=mono, color=color))

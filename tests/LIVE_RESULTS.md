@@ -1,3 +1,13 @@
+# Live verification results (2026-11-08, sweep re-run)
+
+`.venv/Scripts/python.exe -I tests/live_providers.py` re-run after the
+PDF waves: **21/21 LIVE-OK** again (google translate+tts, deepl
+detect+translate, baidu detect+suggest, yandex, bing, youdao
+translate_web+dictionary, naver detect+translate+dict+tts, oxford,
+lingvo, urban, wikipedia, multitran, reverso, wordreference). PROMT
+re-probed the same day through `session()`+`translate()`: HTTP 200 +
+schema, provider's own "temporarily unavailable" -- unchanged.
+
 # Live verification results (2026-11-08, PROMT re-probe)
 
 PROMT re-probed by hand (`qtranslate/services/promt.py` session +
