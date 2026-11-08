@@ -105,6 +105,14 @@ a = Analysis(
         'qtranslate.override_ui',
         'qtranslate.screens',
         'qtranslate.updater',
+        # The macOS input/hotkey backends, reached only through lazy
+        # imports inside `qtranslate/qt/hotkeys.py`, `sendkeys.py` and
+        # `selection.py` -- Analysis never follows them, and a frozen app
+        # without them has no Ctrl+Q on macOS.
+        'qtranslate.macos_input',
+        'qtranslate.macos_hotkeys',
+        'qtranslate.macos_tap',
+        'qtranslate.macos_mouse',
         # The optional runtime deps (requirements.txt). PyInstaller's
         # Analysis follows the real import, but an optional-but-expected
         # dep that raises on the *user's* machine is a support ticket:
@@ -153,8 +161,8 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    version='/Users/tranquangdang21/Projects/QTranslate/build/assets/version_info.txt',
-    icon=['/Users/tranquangdang21/Projects/QTranslate/build/assets/QTranslate.ico'],
+    version='E:\\QTranslate\\build\\assets\\version_info.txt',
+    icon=['E:\\QTranslate\\build\\assets\\QTranslate.ico'],
 )
 
 coll = COLLECT(
