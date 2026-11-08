@@ -13,6 +13,18 @@ rate limit, not a code regression. **Recovered later the same day** --
 A further re-run after the audit waves also came back **31/31
 LIVE-OK** -- the Google throttle stayed recovered.
 
+**Re-run note (2026-11-08, post-audit):** sweep came back **28/31
+LIVE-OK** -- two provider-side degradations, both verified honest:
+`dict.lingvo` read-timeout again (lingvolive.com connection reset on
+curl too -- the server-side outage first seen this session persists);
+`reverso.translate` flapped between HTTP 403 (WAF/rate-limit during
+the sweep) and the deliberate echo guard on a direct re-probe (the
+free endpoint once again returns `translation == source`, so the port
+raises rather than show the user's own text). `reverso.svc.translate`
+and `reverso.lookup`-adjacent paths unaffected; `reverso.lookup` itself
+reported EMPTY (free endpoint returned no entry for the probed pair).
+No code regression -- request shapes unchanged since the 31/31 run.
+
 `.venv/Scripts/python.exe tests/live_providers.py` re-run repeatedly
 the same day. Extensions added every remaining keyless provider
 surface: `mymemory.translate`, `mozhi.translate`, `yandex_web.translate`

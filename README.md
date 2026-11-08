@@ -132,8 +132,10 @@ python -I tools/audit_ui_spec.py               # 53 checks, 0 drift (2026-11-09)
 python -I tools/audit_ui_labels.py             # 5 captions vs English pack (2026-11-09)
 python -I tools/run_suites.py      # 198 suites, 0 failed by EXIT CODE
                                    #   (2026-11-09, ~325s, 22 environmental SKIP)
-python -I tests/live_providers.py  # 30/31 vs real endpoints (2026-11-09;
-                                   #   dict.lingvo down server-side)
+python -I tests/live_providers.py  # 28/31 vs real endpoints (latest sweep;
+                                   #   dict.lingvo timeout + reverso.translate
+                                   #   degraded/echo -- both provider-side,
+                                   #   see tests/LIVE_RESULTS.md)
 ```
 
 ## Provider status
@@ -149,14 +151,14 @@ python -I tests/live_providers.py  # 30/31 vs real endpoints (2026-11-09;
 | Naver (Papago) | ✅ | ✅ | ✅ | ✅ | **live OK** (new `/api/text/*`, `/api/tts/*`, `/api/dictionary/*` — no auth, 2026-10-07) |
 | Promt | ✅ | — | — | — | signing verified; API 400 (needs JS `paft`) |
 | Youdao | ✅ | — | — | ✅ | **live OK** (`jsonapi_s` translate + `/w/` dictionary, no sign needed, 2026-10-07) |
-| Reverso | ✅ | — | — | ✅ | **live OK** (context JSON API, no auth; dict falls back to API when legacy HTML 403s) |
+| Reverso | ✅ | — | — | ✅ | dict path live OK; free translate endpoint flapping (403/echo, 2026-11-08 — port raises honestly) |
 | ImTranslator | ✅ | — | — | — | ported; ASMX retired (was Google/MS wrapper — no live API left) |
 | WordReference | — | — | — | ✅ | **live OK** (headless Chromium via `headless.py`, 2026-10-07) |
 | Oxford Learner | — | — | — | ✅ | **live OK** |
 | Multitran | — | — | — | ✅ | **live OK** (anchor-table slice fix, 2026-10-07) |
 | Babylon translate | ✅ | — | — | — | ported 1:1 (ID 13, JSONP); endpoint SSL dead (server retired) |
 | Babylon Dictionary | — | — | — | ✅ | ported (ID 20); dict TLS-handshake-fail (server retired) |
-| ABBYY Lingvo Live | — | — | — | ✅ | **live OK** |
+| ABBYY Lingvo Live | — | — | — | ✅ | ported; server unstable/down 2026-11-08 (timeouts + conn resets) |
 | Urban Dictionary | — | — | — | ✅ | **live OK** |
 | Wikipedia | — | — | — | ✅ | **live OK** (Vector-skin fallback slice) |
 | Google Search | — | — | — | ✅ | ported; JS-render + consent wall (urllib + headless both blocked) |
