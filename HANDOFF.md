@@ -247,7 +247,12 @@ paths (`EXTENSION_SDK.md` §9 has the table). On top of that:
   activates via ShowWindow/SetForegroundWindow (Qt ignores the
   native WM_COMMAND 0x8009). Verified live against a real titled
   window. Still human-bound: real-hardware hotkey delivery to
-  foreign apps (Alt+W, Ctrl+Q).
+  foreign apps (Alt+W, Ctrl+Q). Clipboard sequence counter verified
+  live (increments on writes); the Alt+W capture chain's every
+  Windows link is now exercised -- only foreign-app delivery
+  itself remains human-bound. Virtual-keyboard bug fixed
+  (`be14ae4`/`b5498d6`): `_key_pressed` used `keyboard.press()`
+  which holds keys forever -- now taps via the `sendkeys` wrapper.
 - **macOS real-device pass**: DoubleCtrl CGEventTap flagsChanged feed
   (needs Accessibility grant), Vision mixed-direction OCR ordering
   (UNVERIFIED).
