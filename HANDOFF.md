@@ -97,7 +97,7 @@ pushed. Headline items (details in `docs/GAP_AUDIT_2.md`,
   Final: `SELFTEST PASS 29/29`, pdfium.dll + pdfminer + reportlab in
   `_internal`, `dist\QTranslate\` current.
 - **192 suites / 0 failed** on Windows (~172s).
-- **Hotkey recorder capture landed** (uncommitted at note time):
+- **Hotkey recorder capture landed** (`0edb8c7`):
   bit15 double-press (500 ms same-chord), Double-Ctrl tap -> 0x8000
   on HotKeyMainWindow via per-capture DoubleCtrlDetector, armed-state
   chip strip (mod toggles + special keys + Cancel) and live modifier

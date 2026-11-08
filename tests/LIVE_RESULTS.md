@@ -11,6 +11,8 @@ U+0301 stripped like the web client. Result: **HTTP 200 + correct
 schema** again, backend still answering "service temporarily
 unavailable" — request shape fixed, provider state unchanged
 (`dead:service-unavailable`). Pinned by `regress_promt_hash.py` (28).
+Re-probed again later the same day: identical outcome (HTTP 200 +
+the provider's own unavailable message) — still provider-side.
 
 # Live verification results (2026-10-24, commit 5191dd5 + bing fix)
 
