@@ -222,10 +222,16 @@ paths (`EXTENSION_SDK.md` §9 has the table). On top of that:
   waiver token -- no agent may self-assign it (`qt-fj5`).
 - Options → Basics and the tray menu have NO native capture
   (BLOCKERS B4) -- pixel parity there is unverifiable without them.
-- **Windows real-device pass** (this machine can't do it): SAPI TTS,
-  ISpellCheckerFactory spell, DoubleCtrl `keyboard.hook` feed,
-  clipboard/mouse_capture win32 branches, `requirements.txt` deps
-  (`keyboard`, `comtypes`, `pywin32`). Code written, untested on Win.
+- **Windows real-device pass** (partially DONE 2026-11-08 on this
+  machine): ISpellCheckerFactory spell VERIFIED live -- fixed a
+  fatal vtable bug (`IEnumSpellingError::Next` takes ONE out param,
+  not the standard 3-arg enumerator; wrong signature AV'd and
+  `check()` swallowed it to None). SAPI voice discovery + locale
+  mapping verified -- fixed SAPI `Language` attr being a HEX LCID
+  string and `LocaleNameFromLCID` missing on some kernels
+  (`LCIDToLocaleName` fallback added). Still human-bound: audible
+  `speak()`, DoubleCtrl `keyboard.hook` feed, clipboard/mouse_capture
+  win32 branches.
 - **macOS real-device pass**: DoubleCtrl CGEventTap flagsChanged feed
   (needs Accessibility grant), Vision mixed-direction OCR ordering
   (UNVERIFIED).

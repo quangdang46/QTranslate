@@ -170,10 +170,12 @@ def main():
                SS.check("teh", "en") is sentinel)
         finally:
             SS._check_win = real_win
-        # Real _check_win on macOS: ctypes.windll is absent -> the
-        # exception path returns None (caller falls back), no crash.
-        ck("check None without COM",
-           SS.check("teh", "en") is None)
+        # Real _check_win: off-Windows ctypes.windll is absent ->
+        # None; on a real Windows host with COM + a language pack it
+        # legitimately returns a result dict -- both are honest.
+        r = SS.check("teh", "en")
+        ck("check honest off/without COM",
+           r is None or isinstance(r, dict), repr(r)[:80])
     finally:
         sys.platform = REAL_PLATFORM
     sys.platform = "darwin"
@@ -267,6 +269,33 @@ def main():
             os.unlink(tmp)
         except OSError:
             pass
+
+    # Live COM smoke -- only on a real Windows host. The stubbed
+    # sections above can never exercise the vtable signatures; the
+    # IEnumSpellingError::Next bug (3-arg standard-enumerator call on
+    # a 1-arg method -> AV writing 0x1) shipped precisely because no
+    # test touched real COM. Accepts None when the box has no spell
+    # language pack; otherwise pins the bing_spell result shape.
+    print("== live Windows spell check (real device only) ==")
+    if REAL_PLATFORM == "win32":
+        try:
+            # _check_win directly: check() swallows exceptions into
+            # None, which would hide a vtable crash like the AV.
+            r = SS._check_win("This sentense is rong.", "en")
+        except Exception as e:
+            r = None
+            ck("live win spell no crash", False, repr(e))
+        if r is not None:
+            ck("live win spell corrections",
+               isinstance(r.get("corrections"), list)
+               and isinstance(r.get("correctedText"), str)
+               and all(c.get("original") and "suggestions" in c
+                       for c in r["corrections"]),
+               repr(r)[:120])
+        else:
+            ck("live win spell honest None (no lang pack?)", True)
+    else:
+        ck("live win spell skipped off-win32", True)
 
     print()
     if FAIL:

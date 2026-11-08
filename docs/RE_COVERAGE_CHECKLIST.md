@@ -997,9 +997,17 @@ deliberate divergence.
   and missing optional deps fail honestly. Pinned by
   `tests/regress_pdf_layout.py`; design note in `docs/PDF_LAYOUT.md`.
 - Windows/Linux OCR/spell/TTS backends: Windows SAPI TTS +
-  ISpellCheckerFactory spell and Linux espeak/aspell are WRITTEN
-  (suite-verified, awaiting real-device passes); `.tmp`'s
-  Windows.Media.Ocr port remains future work.
+  ISpellCheckerFactory spell and Linux espeak/aspell are WRITTEN.
+  **Windows spell VERIFIED live 2026-11-08**: `system_spell.check`
+  returns real corrections via ISpellCheckerFactory (fixed a fatal
+  vtable bug -- `IEnumSpellingError::Next` is a 1-out-param method,
+  not the standard 3-arg enumerator; the wrong signature AV'd and
+  `check()` swallowed it into None). Windows SAPI voice discovery +
+  locale mapping also verified live (fixed: SAPI `Language` attr is
+  a HEX LCID string, and `LocaleNameFromLCID` is absent on some
+  kernels -> `LCIDToLocaleName` fallback). Audible `speak()` and the
+  remaining Linux/macOS real-device passes are still pending.
+  `.tmp`'s Windows.Media.Ocr port remains future work.
   Corollary (GAP_AUDIT_3 row 10): upstream's `OcrLineOrder` visual→
   logical reorder exists ONLY for `Windows.Media.Ocr`, which reports
   words in visual order; the port has no such backend, so there is no

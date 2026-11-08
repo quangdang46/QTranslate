@@ -331,17 +331,23 @@ def _win_error(checker, err, text, total16, ole):
 
 
 def _win_collect(checker, errors, text, ole):
-    """Drain IEnumSpellingError::Next (slot 3) into corrections."""
+    """Drain IEnumSpellingError::Next (slot 3) into corrections.
+
+    Unlike IEnumString, IEnumSpellingError::Next takes ONE out param
+    (``Next([out] ISpellingError **value)`` -- spellcheck.idl) and
+    returns S_OK/S_FALSE per item, not the (celt, items, fetched)
+    triple. Passing the standard-enumerator signature writes the
+    error pointer through the first arg -- which callers supply as a
+    small integer count -- and crashes (verified live: AV writing
+    0x1)."""
     corrections = []
     total16 = _utf16_len(text)
     while True:
         err = ctypes.c_void_p()
-        fetched = ctypes.c_ulong(0)
         hr = _vtbl(errors, 3, ctypes.c_long,
-                   [ctypes.c_ulong, ctypes.POINTER(ctypes.c_void_p),
-                    ctypes.POINTER(ctypes.c_ulong)])(
-            errors, 1, ctypes.byref(err), ctypes.byref(fetched))
-        if hr == 1 or not fetched.value or not err.value:
+                   [ctypes.POINTER(ctypes.c_void_p)])(
+            errors, ctypes.byref(err))
+        if hr != 0 or not err.value:
             break
         try:
             finding = _win_error(checker, err.value, text, total16, ole)

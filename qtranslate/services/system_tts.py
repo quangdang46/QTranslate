@@ -106,15 +106,40 @@ def _discover_voices_linux(timeout=10.0):
 # the caller can use qtranslate.sapi's PowerShell fallback.
 
 def _lcid_locale(lcid):
-    """LCID -> locale tag via kernel32.LocaleNameFromLCID ("" off-Windows)."""
+    """LCID -> locale tag ("" off-Windows).
+
+    ``LocaleNameFromLCID`` is absent on some Windows builds (it was
+    never exported by kernel32 here), so ``LCIDToLocaleName``
+    (Win10+) is tried first and the older API is the fallback."""
     if not lcid:
         return ""
     try:
         import ctypes
+        k = ctypes.windll.kernel32
         buf = ctypes.create_unicode_buffer(85)
-        n = ctypes.windll.kernel32.LocaleNameFromLCID(
-            int(lcid), 0, buf, len(buf))
-        return buf.value if 0 < n <= len(buf) else ""
+        # (name, argtypes, call) -- LCIDToLocaleName(lcid, buf, size,
+        # flags); LocaleNameFromLCID(lcid, flags, buf, size).
+        attempts = (
+            ("LCIDToLocaleName",
+             [ctypes.c_uint, ctypes.c_wchar_p, ctypes.c_int,
+              ctypes.c_uint],
+             lambda f: f(int(lcid), buf, len(buf), 0)),
+            ("LocaleNameFromLCID",
+             [ctypes.c_uint, ctypes.c_uint, ctypes.c_wchar_p,
+              ctypes.c_int],
+             lambda f: f(int(lcid), 0, buf, len(buf))),
+        )
+        for fn_name, argtypes, call in attempts:
+            try:
+                fn = getattr(k, fn_name)
+            except AttributeError:
+                continue
+            fn.restype = ctypes.c_int
+            fn.argtypes = argtypes
+            n = call(fn)
+            if 0 < n <= len(buf) and buf.value:
+                return buf.value
+        return ""
     except Exception:
         return ""
 
@@ -138,7 +163,21 @@ def _sapi_voices(sp=None):
             except Exception:
                 name = ""
             try:
-                lcid = int(tok.GetAttribute("Language") or 0)
+                # SAPI's Language attribute is the LCID as a HEX
+                # string ("409" = 0x409 = en-US). int("409") reads it
+                # as decimal 409 -> LocaleNameFromLCID fails -> every
+                # voice got locale "" and preferred_voice always
+                # returned None. Try hex first, decimal as fallback.
+                raw = str(tok.GetAttribute("Language") or "").strip()
+                lcid = 0
+                for base in (16, 10):
+                    try:
+                        cand = int(raw, base)
+                    except ValueError:
+                        continue
+                    if _lcid_locale(cand):
+                        lcid = cand
+                        break
             except Exception:
                 lcid = 0
             out.append((tok, name, _lcid_locale(lcid)))
