@@ -19,11 +19,11 @@ untrusted.
 |---|---|
 | Branch / commit | `main`, tip = the HANDOFF commit itself, pushed |
 | Working tree | clean |
-| Suites | **191 suites, 0 failed, ~170s on Windows** (`QT_QPA_PLATFORM=offscreen .venv/Scripts/python.exe tools/run_suites.py`) — first clean Windows sweep; 8 platform-portability failures fixed in `f26fdc7` |
+| Suites | **193 suites, 0 failed, ~172-220s on Windows** (`QT_QPA_PLATFORM=offscreen .venv/Scripts/python.exe tools/run_suites.py`) |
 | Pixel measure | mean ink diff **0.0037** over 12 screens (re-run 24/10; macOS re-measure not done) |
 | Docs consistency | 0 findings |
 | Live providers | **21 checks LIVE-OK** (`tests/LIVE_RESULTS.md`, Windows run); PROMT/Babylon/Baidu-translate dead, recorded |
-| Bundle | rebuilt on the Windows tree, `SELFTEST PASS 29/29`, runs from `dist\QTranslate\`; NOT rebuilt since the macOS parity waves |
+| Bundle | rebuilt on Windows after every wave; latest `SELFTEST PASS 29/29`, `_missing_deps`/`_frozen_gap` clean, `pdfium.dll` in `_internal`; `dist\QTranslate\` current with `main` |
 | Front end | Qt only. tkinter was deleted on 2026-10-23 |
 | Platform focus | This machine is **Windows** (was macOS on 2026-11-08 morning) — `macos_*` backends live-tested earlier; Windows backends now suite-verified, still need real-device audio/hook checks (see §4) |
 
@@ -175,9 +175,14 @@ paths (`EXTENSION_SDK.md` §9 has the table). On top of that:
   refuse), same-baseline char-gap line splitting + low-coverage
   vertical-gutter column bands (two-column pages group per column),
   CropBox-aware coordinates (`_crop_frame` -- pdfium renders only the
-  crop region, pdfplumber reports mediabox frames), and a latent bug
-  fix: reportlab's default A4 page size was never overridden, so
-  output pages were A4 regardless of source.
+  crop region, pdfplumber reports mediabox frames), intrinsically
+  sideways text runs on rotated pages skipped via `_raw_orientation_ok`
+  (matrix angle vs expected `(-rot)%360`; they stay raster-only), and a
+  latent bug fix: reportlab's default A4 page size was never overridden,
+  so output pages were A4 regardless of source.
+- **Document dialog Open button fixed** (`16d42cc`): `_open_output`
+  shelled out to macOS `open` and silently did nothing on Windows; now
+  `QDesktopServices.openUrl` like the rest of the app.
 
 **Needs the operator / real device:**
 - Behaviour NEEDs in `docs/review/FEATURE_CHECKLIST_2026-10-23.md`:
