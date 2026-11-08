@@ -2,10 +2,11 @@
 
 Formats (DocumentFormat): docx, pdf, txt, srt, vtt. PDF has two modes
 upstream: TEXT_ONLY (per-page text -> .txt) and LAYOUT_AWARE (rendered
-page images + overlaid vector text -> .pdf). This port implements
-TEXT_ONLY only; LAYOUT_AWARE needs a PDF renderer/font pipeline that
-does not exist here, so it raises honestly instead of producing a
-wrong file.
+page images + overlaid vector text -> .pdf). LAYOUT_AWARE lives in
+``qtranslate/pdf_layout.py`` (pdfplumber extraction + pypdfium2
+raster + reportlab overlay, docs/PDF_LAYOUT.md strategy A); missing
+optional deps or rotated pages raise ``LayoutAwareUnavailable`` which
+surfaces as an honest DocumentTranslationError.
 
 translateIndexed equivalent: segments translate sequentially through
 the caller's translator callable (our registry has no batch
@@ -334,16 +335,14 @@ def translate_document(input_path, output_path, sl, tl,
             "Unsupported file type: .%s"
             % os.path.splitext(str(input_path))[1].lstrip("."))
     if fmt == "pdf":
-        if pdf_mode == "layout_aware":
-            raise DocumentTranslationError(
-                "Layout-aware PDF translation is not available in "
-                "this port; choose Text-only.")
-        expected = "txt"
+        expected = "txt" if pdf_mode == "text_only" else "pdf"
         actual = os.path.splitext(str(output_path))[1].lstrip(
             ".").lower()
         if actual != expected:
             raise DocumentTranslationError(
-                "Text-only PDF translations must be saved as TXT.")
+                "%s PDF translations must be saved as %s."
+                % ("Text-only" if pdf_mode == "text_only"
+                   else "Layout-aware", expected.upper()))
 
     out_dir = os.path.dirname(os.path.abspath(output_path))
     os.makedirs(out_dir, exist_ok=True)
@@ -355,8 +354,16 @@ def translate_document(input_path, output_path, sl, tl,
         if fmt == "docx":
             _translate_docx(input_path, tmp, translator, sl, tl, **kw)
         elif fmt == "pdf":
-            _translate_pdf_text_only(input_path, tmp, translator, sl,
-                                     tl, **kw)
+            if pdf_mode == "layout_aware":
+                from qtranslate import pdf_layout as _PL
+                try:
+                    _PL._translate_pdf_layout(
+                        input_path, tmp, translator, sl, tl, **kw)
+                except _PL.LayoutAwareUnavailable as e:
+                    raise DocumentTranslationError(str(e))
+            else:
+                _translate_pdf_text_only(input_path, tmp, translator,
+                                         sl, tl, **kw)
         elif fmt == "text":
             _translate_text(input_path, tmp, translator, sl, tl, **kw)
         elif fmt == "srt":

@@ -987,8 +987,13 @@ deliberate divergence.
   `SettingType` richness (schema kinds remain bool/number/string), and
   `@reference`/`[meta]` TOML handling. Pinned by
   `tests/regress_ext_api.py` and `tests/regress_ext_secrets_i18n.py`.
-- PDF layout-aware translation: needs a renderer/font pipeline
-  (PDFBox equivalent); text-only mode reports an honest error.
+- PDF layout-aware translation: **ported 2026-11-08** —
+  `qtranslate/pdf_layout.py` (pdfplumber positioned extraction →
+  paragraph-block grouping → per-block translate → pypdfium2 216 DPI
+  raster background + reportlab vector-text overlay, upstream's
+  raster+vector shape). Rotated pages and missing optional deps fail
+  honestly. Pinned by `tests/regress_pdf_layout.py`; design note in
+  `docs/PDF_LAYOUT.md`.
 - Windows/Linux OCR/spell/TTS backends: port targets macOS first;
   `.tmp`'s Windows.Media.Ocr/hunspell/SAPI ports are future work.
   Corollary (GAP_AUDIT_3 row 10): upstream's `OcrLineOrder` visual→

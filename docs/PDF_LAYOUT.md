@@ -1,9 +1,21 @@
 # PDF layout-aware translation — feasibility & design note
 
-Status: design only. `qtranslate/document.py` implements `pdf_mode="text_only"`
-(pypdf per-page `extract_text()`, pages joined with `\n\f\n`, saved as `.txt`).
-`pdf_mode="layout_aware"` currently raises `DocumentTranslationError`
-(document.py ~L337). This note evaluates closing that gap.
+Status: **implemented (MVP, 2026-11-08)** in `qtranslate/pdf_layout.py`,
+wired to `pdf_mode="layout_aware"` in `document.py`. Deps added to
+`requirements.txt`: `pdfplumber` (positioned extraction),
+`pypdfium2` (216 DPI page raster), `reportlab` (output PDF: page image
++ vector text — upstream's exact shape). Block grouping ports the
+upstream heuristics (baseline gap, font-size/face delta, indentation,
+bullets); fitting wraps + shrinks to the 0.68× floor and picks
+contrasting ink on the sampled local background. Honest limits:
+rotated pages refuse before any translation call, unencodable glyphs
+in std-14 fallback fonts drop the line (TTF preferred), multi-column
+mis-grouping is accepted upstream-parity weakness. Pinned by
+`tests/regress_pdf_layout.py`.
+
+`qtranslate/document.py` implements `pdf_mode="text_only"`
+(pypdf per-page `extract_text()`, pages joined with `\n\f\n`, saved as
+`.txt`). This note evaluates closing that gap.
 
 ## What upstream does (reference: `.tmp/QTranslate`)
 

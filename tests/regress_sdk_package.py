@@ -146,6 +146,7 @@ ck("an incomplete manifest is a defined error", _bad)
 why = None
 try:
     import build  # noqa: F401
+    import build.__main__  # noqa: F401
 except Exception:
     why = "the `build` frontend is not installed"
 if why:

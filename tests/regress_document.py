@@ -166,13 +166,23 @@ def main():
     except D.DocumentTranslationError as e:
         ck("pdf wrong output ext raises",
            "TXT" in str(e), str(e))
+    # layout-aware on the blank fixture: honest "no text" error through
+    # the new pdf_layout path (a .pdf output is required for the mode)
+    out2 = os.path.join(tmp, "out2.pdf")
+    try:
+        D.translate_document(pdf_in, out2, "en", "vi", tr,
+                             pdf_mode="layout_aware")
+        ck("layout-aware blank pdf raises", False)
+    except D.DocumentTranslationError as e:
+        ck("layout-aware blank pdf raises",
+           "No selectable text" in str(e), str(e))
     try:
         D.translate_document(pdf_in, out, "en", "vi", tr,
                              pdf_mode="layout_aware")
-        ck("layout-aware honest error", False)
+        ck("layout-aware wrong ext raises", False)
     except D.DocumentTranslationError as e:
-        ck("layout-aware honest error",
-           "not available" in str(e).lower(), str(e))
+        ck("layout-aware wrong ext raises",
+           "PDF" in str(e), str(e))
     ck("unsupported ext",
        D.format_of(os.path.join(tmp, "x.exe")) is None)
 

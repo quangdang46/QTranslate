@@ -38,7 +38,7 @@ field group, menu surface and ui-swing window/dialog was compared. Verdicts:
 - `LocalizationManager` TOML packs → native `lang.json` packs (`locale.py`).
 - `layoutPresetId`/`toolbarVisibility`/`serviceSelector*` → no layout engine; pane toggles via `Show*Pane`/`Show*Bar` keys (`basics.py:230-250`).
 - `quickDictionary*` popup fields + `showDictionaryPanel` dock → persistent `DictionaryWindow`.
-- PDF layout-aware translation → text-only mode (`document.py:337`).
+- PDF layout-aware translation → **closed 2026-11-08** (`qtranslate/pdf_layout.py`, strategy A of `docs/PDF_LAYOUT.md`).
 - Windows/Linux OCR/spell/TTS backends → macOS-first (`ocr.py`, `system_*.py`).
 - `connectTimeout`/`socketTimeout` split, connection-pool caps → single urllib timeout (`RE_COVERAGE_CHECKLIST.md:1152-1153`).
 - Donation nudge → promotional, skipped.
