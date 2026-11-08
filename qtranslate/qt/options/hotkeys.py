@@ -17,10 +17,29 @@ Escape (the row shows a hint), the second Esc saves the Escape
 binding, and any other key cancels the pending Escape and is then
 recorded normally.
 
+The capture itself ports the recorder conveniences .tmp's modal
+``HotkeyRecorderDialog`` had (RE_COVERAGE_CHECKLIST.md "Remaining .tmp
+surfaces audit"):
+
+* pressing the SAME chord twice inside the double-click window sets
+  bit15 -- native's ``FUN_0040AA88`` ``SetTimer(GetDoubleClickTime())``
+  path, so every row can carry the "Double" prefix ``format_hotkey``
+  displays;
+* on the "Show main window" row, tapping Ctrl twice inside the
+  ``DoubleCtrlDetector`` threshold saves the bare ``0x8000`` gesture
+  (the detector itself stays paused while recording, exactly like the
+  live feed's ``_options_recording`` check);
+* a chip strip replaces the hint line while a binding is armed:
+  Ctrl/Alt/Shift/Win toggle as pending modifiers, the special keys
+  complete the chord by mouse, and Cancel backs out -- the live
+  modifier preview shows held + pending modifiers on the row.
+
 NB: ``build`` runs on the SHELL instance (a BasicsPage), so all page
 behaviour lives in module functions and a small event filter -- never
 ``self._methods`` (see options/extensions.py for the same rule).
 """
+
+import time
 
 from PySide6.QtCore import QObject, QEvent, Qt
 from PySide6.QtWidgets import QMessageBox
@@ -28,7 +47,7 @@ from PySide6.QtWidgets import QMessageBox
 from qtranslate import config as _C
 
 from .base import OptionsBase, cfg_section, cfg_set, check, combo, label
-from ..widgets import panel, rect
+from ..widgets import panel, rect, button
 
 from qtranslate_style import FACE, THUMB
 
@@ -157,6 +176,142 @@ def encode_event(event) -> int:
     return (mods << 8) | vk
 
 
+# ------------------------------------------------------------- capture
+#
+# Shell state while a binding is armed (all on the Options shell):
+#   _hk_recording      the HotKeys row key being captured (None = idle)
+#   _hk_esc_armed      first Esc press seen; second one binds Escape
+#   _hk_labels         row key -> its hotkey cell QLabel
+#   _hk_hint           the "Click a hotkey..." line under the list
+#   _hk_chips          chip name -> widget (hidden unless recording)
+#   _hk_chip_mods      pending modifier bits from clicked mod chips
+#   _hk_held_mods      modifier bits from physically held keys
+#   _hk_pending_double (row key, code, deadline_ms) of the chord just
+#                      saved -- an identical press inside the window
+#                      upgrades it with bit15 (native's double-press)
+#   _hk_dc             a DoubleCtrlDetector while HotKeyMainWindow records
+
+# GetDoubleClickTime()'s stock value; native arms a SetTimer with it in
+# the HotKeyCtrl window proc and the second identical chord inside the
+# window sets bit15.
+_DOUBLE_MS = 500.0
+
+# Modifier bit -> display name, in format_hotkey's order (Ctrl, Shift,
+# Alt, Win).
+_MOD_NAMES = ((2, "Ctrl"), (4, "Shift"), (1, "Alt"), (8, "Win"))
+_QT_MOD_BIT = {Qt.Key_Control: 2, Qt.Key_Shift: 4,
+               Qt.Key_Alt: 1, Qt.Key_Meta: 8}
+
+# The chip strip's special keys: (label, Win32 VK). Letters/digits stay
+# physical-keyboard-only -- there are too many to chip and none are
+# awkward to press.
+_KEY_CHIPS = (("Esc", 0x1B), ("Tab", 0x09), ("Ent", 0x0D),
+              ("Spc", 0x20), ("Bksp", 0x08),
+              ("Left", 0x25), ("Up", 0x26), ("Right", 0x27),
+              ("Down", 0x28))
+
+
+def _now_ms():
+    return time.monotonic() * 1000.0
+
+
+def _eff_mods(shell) -> int:
+    return (int(getattr(shell, "_hk_chip_mods", 0) or 0)
+            | int(getattr(shell, "_hk_held_mods", 0) or 0))
+
+
+def _mod_names(mods: int):
+    return [name for bit, name in _MOD_NAMES if mods & bit]
+
+
+def _preview_text(shell) -> str:
+    """The live modifier preview shown on the recording row."""
+    names = _mod_names(_eff_mods(shell))
+    if names:
+        return " + ".join(names) + " +"
+    return "press keys... (same chord twice = Double)"
+
+
+def _set_preview(shell, key):
+    """Repaint the armed row: pending-Esc hint wins over the preview."""
+    if getattr(shell, "_hk_esc_armed", False):
+        return
+    lab = (getattr(shell, "_hk_labels", {}) or {}).get(key)
+    if lab is not None:
+        try:
+            lab.setText(_preview_text(shell))
+        except Exception:
+            pass
+
+
+def _held_add(shell, bit):
+    shell._hk_held_mods = int(getattr(shell, "_hk_held_mods", 0) or 0) | bit
+
+
+def _held_remove(shell, bit):
+    shell._hk_held_mods = (int(getattr(shell, "_hk_held_mods", 0) or 0)
+                           & ~bit)
+
+
+def _chip_toggle(shell, name):
+    bit = dict((n, b) for b, n in _MOD_NAMES)[name]
+    mods = int(getattr(shell, "_hk_chip_mods", 0) or 0)
+    shell._hk_chip_mods = mods ^ bit
+    key = getattr(shell, "_hk_recording", None)
+    if key:
+        _set_preview(shell, key)
+
+
+def _chip_key(shell, vk):
+    """A special-key chip completes the chord with pending modifiers."""
+    key = getattr(shell, "_hk_recording", None)
+    if not key:
+        return
+    if vk == 0x1B:
+        # Esc keeps its arm-then-bind semantics through the chip too.
+        if getattr(shell, "_hk_esc_armed", False):
+            shell._hk_esc_armed = False
+            _save_binding(shell, key, (_eff_mods(shell) << 8) | vk)
+        else:
+            shell._hk_esc_armed = True
+            _set_preview(shell, key)
+            lab = (getattr(shell, "_hk_labels", {}) or {}).get(key)
+            if lab is not None:
+                try:
+                    lab.setText("press Esc again to bind, "
+                                "any other key cancels")
+                except Exception:
+                    pass
+        return
+    _save_binding(shell, key, (_eff_mods(shell) << 8) | vk)
+
+
+def _chip_cancel(shell):
+    key = getattr(shell, "_hk_recording", None)
+    if key:
+        _cancel_recording(shell, key)
+
+
+def _chip_w(text: str) -> int:
+    """Chip width: ~7px per glyph at the page's 11px font, padded."""
+    return max(22, len(text) * 7 + 12)
+
+
+def _show_chips(shell, on):
+    chips = getattr(shell, "_hk_chips", None) or {}
+    for w in chips.values():
+        try:
+            w.setVisible(bool(on))
+        except Exception:
+            pass
+    hint = getattr(shell, "_hk_hint", None)
+    if hint is not None:
+        try:
+            hint.setVisible(not on)
+        except Exception:
+            pass
+
+
 class _Recorder(QObject):
     """Captures the next key press while a binding is being recorded.
 
@@ -166,14 +321,57 @@ class _Recorder(QObject):
     """
 
     def eventFilter(self, obj, event):
-        if event.type() != QEvent.Type.KeyPress:
-            return False
+        et = event.type()
+        # The double-press window outlives the recording itself: the
+        # chord just saved stays armed for _DOUBLE_MS so an identical
+        # repeat upgrades it with bit15 (native's SetTimer path). Any
+        # other key -- or the deadline passing -- closes the window.
+        pend = getattr(obj, "_hk_pending_double", None)
+        if (pend is not None and et == QEvent.Type.KeyPress
+                and not event.isAutoRepeat()):
+            pkey, pcode, deadline = pend
+            code = encode_event(event)
+            if code == pcode and _now_ms() < deadline:
+                obj._hk_pending_double = None
+                _save_binding(obj, pkey, pcode | 0x8000)
+                return True
+            obj._hk_pending_double = None
         key = getattr(obj, "_hk_recording", None)
         if not key:
             return False
+        if et == QEvent.Type.KeyRelease:
+            bit = _QT_MOD_BIT.get(event.key())
+            if bit:
+                _held_remove(obj, bit)
+                _set_preview(obj, key)
+                dc = getattr(obj, "_hk_dc", None)
+                if dc is not None and event.key() == Qt.Key_Control:
+                    # A completed second Ctrl tap inside the detector
+                    # threshold saves the bare Double-Ctrl gesture.
+                    if dc.on_control_released(_now_ms(), True):
+                        _save_binding(obj, key, 0x8000)
+            return True
+        if et != QEvent.Type.KeyPress:
+            return False
         if event.isAutoRepeat():
             return True
-        if event.key() == Qt.Key_Escape:
+        k = event.key()
+        dc = getattr(obj, "_hk_dc", None)
+        if k in _QT_MOD_BIT:
+            # A bare modifier press is previewed, never saved; on the
+            # main-window row a Ctrl edge also feeds the double-Ctrl
+            # detector exactly like the live key feed does.
+            _held_add(obj, _QT_MOD_BIT[k])
+            _set_preview(obj, key)
+            if dc is not None:
+                if k == Qt.Key_Control:
+                    dc.on_control_pressed()
+                else:
+                    dc.on_other_key_pressed()
+            return True
+        if dc is not None:
+            dc.on_other_key_pressed()
+        if k == Qt.Key_Escape:
             # Esc is bindable, so it cannot be the plain cancel key.
             # The first press only arms a pending Escape (the row shows
             # a hint); the second press records it like any other key.
@@ -193,7 +391,7 @@ class _Recorder(QObject):
                                     "any other key cancels")
                     except Exception:
                         pass
-        elif event.key() == Qt.Key_Delete:
+        elif k == Qt.Key_Delete:
             # Delete is the explicit unbind (the row's "(none)").
             obj._hk_esc_armed = False
             _save_binding(obj, key, 0)
@@ -210,12 +408,35 @@ class _Recorder(QObject):
 def _start_record(shell, key):
     shell._hk_recording = key
     shell._hk_esc_armed = False
+    shell._hk_chip_mods = 0
+    shell._hk_held_mods = 0
+    shell._hk_pending_double = None
+    # The bare Double-Ctrl gesture is only meaningful on the
+    # show-main-window row (upstream's isDoubleCtrlEnabled lives on
+    # SHOW_MAIN_WINDOW alone); other rows get no detector.
+    shell._hk_dc = None
+    if key == "HotKeyMainWindow":
+        try:
+            from ..hotkeys import DoubleCtrlDetector
+            shell._hk_dc = DoubleCtrlDetector()
+        except Exception:
+            shell._hk_dc = None
+    # Modifier chips are checkable; a previous capture may have left
+    # some toggled on while the bitmask was reset.
+    for name in ("Ctrl", "Alt", "Shift", "Win"):
+        w = (getattr(shell, "_hk_chips", {}) or {}).get("mod:" + name)
+        if w is not None:
+            try:
+                w.setChecked(False)
+            except Exception:
+                pass
     lab = (getattr(shell, "_hk_labels", {}) or {}).get(key)
     if lab is not None:
         try:
-            lab.setText("press keys...")
+            lab.setText(_preview_text(shell))
         except Exception:
             pass
+    _show_chips(shell, True)
     shell.setFocus(Qt.FocusReason.OtherFocusReason)
 
 
@@ -252,6 +473,10 @@ def _cancel_recording(shell, key):
     """End the capture, keep the old binding."""
     shell._hk_recording = None
     shell._hk_esc_armed = False
+    shell._hk_chip_mods = 0
+    shell._hk_held_mods = 0
+    shell._hk_dc = None
+    _show_chips(shell, False)
     _refresh_label(shell, key)
 
 
@@ -334,18 +559,30 @@ def _save_binding(shell, key, code):
             if ans != QMessageBox.Yes:
                 shell._hk_recording = None
                 shell._hk_esc_armed = False
+                shell._hk_chip_mods = 0
+                shell._hk_held_mods = 0
+                shell._hk_dc = None
+                _show_chips(shell, False)
                 _refresh_label(shell, key)
                 return
     cfg_set("HotKeys", key, int(code))
     _reregister(shell)
     shell._hk_recording = None
     shell._hk_esc_armed = False
+    shell._hk_chip_mods = 0
+    shell._hk_held_mods = 0
+    shell._hk_dc = None
+    _show_chips(shell, False)
     lab = (getattr(shell, "_hk_labels", {}) or {}).get(key)
     if lab is not None:
         try:
             lab.setText(_binding_label(code))
         except Exception:
             pass
+    # Native's double-press: the same chord again inside the
+    # double-click window re-saves it with bit15 set.
+    shell._hk_pending_double = (
+        (key, int(code), _now_ms() + _DOUBLE_MS) if code else None)
 
 
 def _set_rows_enabled(shell, on):
@@ -436,7 +673,33 @@ class HotkeysPage(OptionsBase):
                                    _start_record(self, k))
         # EnableHotKeys=off: the cells show greyed and refuse to arm.
         _set_rows_enabled(self, bool(hk.get("EnableHotKeys", True)))
-        # The hint under the list: click a hotkey to change it.
-        label(self, 166, 334,
-              "Click a hotkey, then press the new keys "
-              "(Esc twice binds, Del unbinds).", color="#555555")
+        # The hint under the list: click a hotkey to change it. While a
+        # binding is armed the hint hides and the recorder chip strip
+        # takes its row (modifier toggles + special keys + Cancel).
+        self._hk_hint = label(
+            self, 166, 334,
+            "Click a hotkey, then press the new keys "
+            "(Esc twice binds, Del unbinds).", color="#555555")
+        self._hk_chips = {}
+        cx = 164
+        for name, _bit in (("Ctrl", 2), ("Alt", 1), ("Shift", 4),
+                           ("Win", 8)):
+            w = button(self, cx, 326, _chip_w(name), name, h=16)
+            w.setCheckable(True)
+            w.setStyleSheet(
+                "QPushButton:checked{background:#c8c4bc;"
+                "border:1px solid #7a766c;}")
+            w.clicked.connect(
+                lambda _c=False, n=name: _chip_toggle(self, n))
+            self._hk_chips["mod:" + name] = w
+            cx += w.width() + 3
+        for text, vk in _KEY_CHIPS:
+            w = button(self, cx, 326, _chip_w(text), text, h=16)
+            w.clicked.connect(
+                lambda _c=False, v=vk: _chip_key(self, v))
+            self._hk_chips["key:" + text] = w
+            cx += w.width() + 3
+        w = button(self, cx, 326, _chip_w("Cancel"), "Cancel", h=16)
+        w.clicked.connect(lambda _c=False: _chip_cancel(self))
+        self._hk_chips["cancel"] = w
+        _show_chips(self, False)

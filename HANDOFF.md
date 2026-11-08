@@ -97,6 +97,13 @@ pushed. Headline items (details in `docs/GAP_AUDIT_2.md`,
   Final: `SELFTEST PASS 29/29`, pdfium.dll + pdfminer + reportlab in
   `_internal`, `dist\QTranslate\` current.
 - **192 suites / 0 failed** on Windows (~172s).
+- **Hotkey recorder capture landed** (uncommitted at note time):
+  bit15 double-press (500 ms same-chord), Double-Ctrl tap -> 0x8000
+  on HotKeyMainWindow via per-capture DoubleCtrlDetector, armed-state
+  chip strip (mod toggles + special keys + Cancel) and live modifier
+  preview. `tests/regress_hotkey_recorder.py` (38 checks).
+  `options/base.py` `_clear`/`closeEvent` now reset the new capture
+  state so nothing leaks across page swaps.
 
 ## 1. Windows session (2026-10-24) -- what landed, newest last
 
@@ -153,9 +160,12 @@ paths (`EXTENSION_SDK.md` §9 has the table). On top of that:
 - More customisation APIs along the same seam (e.g. exposing the
   hotkey table or the tray icon set to extensions) -- ask the operator
   which he wants first.
-- Hotkey recorder cannot SET the double-Ctrl bit15 (detector works;
-  recorder capture is a small follow-up). Recorder also lacks .tmp's
-  clickable special-key chips + live modifier preview.
+- ~~Hotkey recorder cannot SET the double-Ctrl bit15~~ -- DONE
+  2026-11-08: same-chord double-press inside 500 ms re-saves with
+  bit15 on every row, and two Ctrl taps on the Show-main-window row
+  save bare 0x8000 via a per-capture DoubleCtrlDetector. Chips +
+  live modifier preview also landed (armed-state chip strip replaces
+  the hint line; modifier toggles compose chords by mouse).
 - ~~PDF layout-aware translation~~ -- DONE 2026-11-08 (MVP, strategy A;
   rotated pages/CJK-font-fallback polish remain as follow-ups).
 

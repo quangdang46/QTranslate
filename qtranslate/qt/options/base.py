@@ -111,6 +111,10 @@ class OptionsBase(Base):
         try:
             self._hk_recording = None
             self._hk_esc_armed = False
+            self._hk_pending_double = None
+            self._hk_chip_mods = 0
+            self._hk_held_mods = 0
+            self._hk_dc = None
         except Exception:
             pass
         super().closeEvent(event)
@@ -239,6 +243,10 @@ class OptionsBase(Base):
         try:
             self._hk_recording = None
             self._hk_esc_armed = False
+            self._hk_pending_double = None
+            self._hk_chip_mods = 0
+            self._hk_held_mods = 0
+            self._hk_dc = None
         except Exception:
             pass
         for w in list(self.findChildren(object)):
