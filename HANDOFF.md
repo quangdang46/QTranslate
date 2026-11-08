@@ -90,8 +90,9 @@ pushed. Headline items (details in `docs/GAP_AUDIT_2.md`,
   requirements.txt (pdfplumber, pypdfium2, reportlab). Rotated pages +
   missing deps fail honestly. `tests/regress_pdf_layout.py` (20+).
   Document dialog's Layout-aware combo enabled.
-- **Bundle rebuilt twice** on Windows: first pass exposed that the
-  isolated `uv tool run` builder env dropped ALL document deps
+- **Bundle rebuilt** on Windows after all of the above (again after
+  the recorder + CJK waves): first pass exposed that the isolated
+  `uv tool run` builder env dropped ALL document deps
   (pypdf/docx/pdfplumber/pypdfium2/reportlab/PIL) -- fixed in `627688d`
   by injecting pinned `--with` deps + a `_missing_deps` warn-file gate.
   Final: `SELFTEST PASS 29/29`, pdfium.dll + pdfminer + reportlab in
