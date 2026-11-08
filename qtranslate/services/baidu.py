@@ -229,15 +229,10 @@ def _translate_response(obj: dict) -> str:
     if not obj:
         return b
     trans = (obj.get("trans_result") or {}).get("data", [])
-    sl_idx = tl_idx = UNKNOWN_LANGUAGE
     if trans:
         for item in trans:
             b += NL * item.get("prefixWrap", 0)
             b += (item.get("dst") or "") + NL
-        sl_idx = language_from_code(
-            (obj.get("trans_result") or {}).get("from", ""), SUPPORTED_LANGS)
-        tl_idx = language_from_code(
-            (obj.get("trans_result") or {}).get("to", ""), SUPPORTED_LANGS)
     simple = ((obj.get("dict_result") or {}).get("simple_means") or {})
     symbols = simple.get("symbols") if isinstance(simple, dict) else None
     if symbols:
