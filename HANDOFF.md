@@ -253,6 +253,13 @@ paths (`EXTENSION_SDK.md` §9 has the table). On top of that:
   itself remains human-bound. Virtual-keyboard bug fixed
   (`be14ae4`/`b5498d6`): `_key_pressed` used `keyboard.press()`
   which holds keys forever -- now taps via the `sendkeys` wrapper.
+  Offscreen startup smoke (2026-11-08): `start_qt.py` ran 15s clean
+  under `QT_QPA_PLATFORM=offscreen`; the hotkeys diagnostic log
+  shows `install()` bound the operator's real config live
+  (`HotKeyPopupWindow=ctrl+q`, `HotKeyReplaceSelection=ctrl+shift+t`,
+  `HotKeyMainWindow=double-ctrl`, etc.) -- registration path
+  verified end-to-end with real settings. SAPI PowerShell fallback
+  stdin-encoding bug fixed (`573cc5b`).
 - **macOS real-device pass**: DoubleCtrl CGEventTap flagsChanged feed
   (needs Accessibility grant), Vision mixed-direction OCR ordering
   (UNVERIFIED).
