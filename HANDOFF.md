@@ -87,8 +87,8 @@ pushed. Headline items (details in `docs/GAP_AUDIT_2.md`,
   remaining feature, MVP per `docs/PDF_LAYOUT.md` strategy A --
   `qtranslate/pdf_layout.py` (pdfplumber blocks → per-block translate →
   pypdfium2 216 DPI raster bg + reportlab vector overlay). New deps in
-  requirements.txt (pdfplumber, pypdfium2, reportlab). Rotated pages +
-  missing deps fail honestly. `tests/regress_pdf_layout.py` (20+).
+  requirements.txt (pdfplumber, pypdfium2, reportlab). Missing deps +
+  odd-angle pages fail honestly. `tests/regress_pdf_layout.py` (20+).
   Document dialog's Layout-aware combo enabled.
 - **Bundle rebuilt** on Windows after all of the above (again after
   the recorder + CJK waves): first pass exposed that the isolated
@@ -169,8 +169,11 @@ paths (`EXTENSION_SDK.md` §9 has the table). On top of that:
   the hint line; modifier toggles compose chords by mouse).
 - ~~PDF layout-aware translation~~ -- DONE 2026-11-08 (MVP, strategy A).
   Follow-up polish also landed same day: CJK font fallback
-  (`_font_for_text` + `_CJK_CANDIDATES` glyph-coverage swap; rotated
-  pages still refuse honestly).
+  (`_font_for_text` + `_CJK_CANDIDATES` glyph-coverage swap) and
+  quarter-turn page support (visual->natural frame un-rotation of
+  lines + raster, `/Rotate` carried to output; arbitrary angles still
+  refuse). Also fixed a latent bug: reportlab's default A4 page size
+  was never overridden, so output pages were A4 regardless of source.
 
 **Needs the operator / real device:**
 - Behaviour NEEDs in `docs/review/FEATURE_CHECKLIST_2026-10-23.md`:

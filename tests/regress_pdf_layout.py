@@ -139,23 +139,66 @@ def main():
         print("  .. no CJK-capable face on this system; "
               "end-to-end leg skipped")
 
-    print("== honest errors ==")
-    # rotated page: rotate the fixture's first page via pypdf
+    print("== rotated pages ==")
+    # quarter-turn pages are un-rotated into the natural frame, the
+    # raster is un-rotated to match, and /Rotate rides onto the output
     from pypdf import PdfReader as PR, PdfWriter as PW
-    rot = os.path.join(tmp, "rot.pdf")
+    for deg in (90, 180, 270):
+        rot = os.path.join(tmp, "rot%d.pdf" % deg)
+        rr = PR(src)
+        ww = PW()
+        pg = rr.pages[0]
+        pg.rotate(deg)
+        ww.add_page(pg)
+        with open(rot, "wb") as f:
+            ww.write(f)
+        rblocks, rsizes, rrots = PL.extract_blocks(rot)
+        ck("rot%d natural size" % deg, rsizes == [(612.0, 792.0)],
+           str(rsizes))
+        ck("rot%d rotation kept" % deg, rrots == [deg], str(rrots))
+        ck("rot%d text recovered" % deg, any(
+            "Hello world this is a test paragraph" in b.text
+            for b in rblocks[0]),
+           str([b.text for b in rblocks[0]]))
+        ck("rot%d bbox natural" % deg, any(
+            abs(b.x0 - 72) < 2 and abs(b.top - 62.5) < 3
+            for b in rblocks[0]),
+           str([(round(b.x0, 1), round(b.top, 1))
+                for b in rblocks[0]]))
+        out_rot = os.path.join(tmp, "rot%d_out.pdf" % deg)
+        D.translate_document(rot, out_rot, "en", "vi", tr,
+                             pdf_mode="layout_aware")
+        rp = PdfReader(out_rot).pages[0]
+        ck("rot%d /Rotate stamped" % deg,
+           int(rp.get("/Rotate") or 0) == deg,
+           str(rp.get("/Rotate")))
+        ck("rot%d page box natural" % deg,
+           abs(float(rp.mediabox.width) - 612) < 1
+           and abs(float(rp.mediabox.height) - 792) < 1,
+           str(rp.mediabox))
+        ck("rot%d translated selectable" % deg,
+           "VI:" in (rp.extract_text() or ""))
+    # an arbitrary angle still refuses honestly before spending calls
+    # (pypdf's rotate() only takes multiples of 90 -- set /Rotate raw)
+    from pypdf.generic import NameObject, NumberObject
+    rot45 = os.path.join(tmp, "rot45.pdf")
     rr = PR(src)
     ww = PW()
     pg = rr.pages[0]
-    pg.rotate(90)
+    pg[NameObject("/Rotate")] = NumberObject(45)
     ww.add_page(pg)
-    with open(rot, "wb") as f:
+    with open(rot45, "wb") as f:
         ww.write(f)
     try:
-        D.translate_document(rot, os.path.join(tmp, "rot_out.pdf"),
+        D.translate_document(rot45, os.path.join(tmp, "rot45_out.pdf"),
                              "en", "vi", tr, pdf_mode="layout_aware")
-        ck("rotated page refused", False)
+        ck("odd-angle page refused", False)
     except D.DocumentTranslationError as e:
-        ck("rotated page refused", "rotated" in str(e).lower(), str(e))
+        ck("odd-angle page refused",
+           "rotated" in str(e).lower() or "support" in str(e).lower(),
+           str(e))
+
+    print("== honest errors ==")
     # empty pdf -> no selectable text
     from pypdf import PdfWriter
     blank = os.path.join(tmp, "blank.pdf")

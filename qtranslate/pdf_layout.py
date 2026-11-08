@@ -17,11 +17,15 @@ This port keeps the same contract with permissive-licence parts only:
   exactly upstream's "raster background, selectable text" shape.
 
 Honest limits (same class as upstream's own): horizontal LTR text
-only -- a page with non-zero rotation raises ``LayoutAwareUnavailable``
-before any translation call is spent. Blocks whose translation comes
-back empty keep the original text visible (the background still shows
-it); blocks that cannot be fitted are covered with the sampled
-background colour so no stale glyphs show through.
+only. Pages rotated by a multiple of 90 degrees are supported by
+un-rotating every extracted line into the page's natural frame
+(``_segments_unrotated``), un-rotating the raster the same way, and
+carrying the page's ``/Rotate`` onto the output; arbitrary angles
+still raise ``LayoutAwareUnavailable`` before any translation call is
+spent. Blocks whose translation comes back empty keep the original
+text visible (the background still shows it); blocks that cannot be
+fitted are covered with the sampled background colour so no stale
+glyphs show through.
 """
 import os
 import re
@@ -165,9 +169,154 @@ def _group_blocks(lines):
     return blocks
 
 
+# -- rotated pages ---------------------------------------------------------
+#
+# pdfplumber reports char/line boxes in the page's VISUAL frame (the
+# orientation /Rotate displays), with the text direction baked into
+# the char order -- which runs backwards on 180/270 pages and splits
+# each visual line into a word-column on 90/270. The port instead works
+# in the page's NATURAL frame (rotation 0): every segment is mapped
+# back with the matching quarter-turn, segments of one natural line
+# are clustered by their unrotated band and re-joined left-to-right,
+# and a segment whose char order runs against +x is reversed (180/270
+# pages store the glyphs right-to-left). The raster is un-rotated the
+# same way and the output page keeps the source /Rotate, so the
+# finished PDF displays exactly like the input.
+
+_ROT_SUPPORTED = (0, 90, 180, 270)
+
+
+def _unrot_bbox(x0, top, x1, bottom, w, h, rot):
+    """A visual-frame box -> the page's natural (rotation-0) frame.
+
+    ``w``/``h`` are the VISUAL page dims in points; the natural frame
+    swaps them for quarter turns. All four cases are pure axis swaps,
+    so transforming the two diagonal corners is exact.
+    """
+    if rot == 90:
+        return top, w - x1, bottom, w - x0
+    if rot == 180:
+        return w - x1, h - bottom, w - x0, h - top
+    if rot == 270:
+        return h - bottom, x0, h - top, x1
+    return x0, top, x1, bottom
+
+
+def _unrot_point(x, y, w, h, rot):
+    x0, top, x1, bottom = _unrot_bbox(x, y, x, y, w, h, rot)
+    return (x0 + x1) / 2.0, (top + bottom) / 2.0
+
+
+def _segments_unrotated(raw, w, h, rot):
+    """One extract_text_lines entry -> natural-frame line segments.
+
+    On 90/270 pages a visual 'line' is one word-column of the natural
+    line, so each visual line becomes ONE segment; on 0/180 it is
+    already a whole natural line. Text order is corrected per segment
+    by comparing the unrotated x of its first and last char.
+    """
+    chars = [c for c in (raw.get("chars") or [])
+             if c.get("upright", True) or rot != 0]
+    chars = [c for c in chars if c.get("text", "").strip()]
+    if not chars:
+        return []
+    text = (raw.get("text") or "").strip()
+    if not text:
+        return []
+    sizes = sorted(float(c.get("size") or 0) for c in chars
+                   if c.get("size"))
+    size = sizes[len(sizes) // 2] if sizes else 0.0
+    if size <= 0:
+        size = (float(raw.get("bottom", 0)) - float(raw.get("top", 0)))
+    names = " ".join(str(c.get("fontname") or "") for c in chars)
+    x0, top, x1, bottom = _unrot_bbox(
+        float(raw.get("x0", 0)), float(raw.get("top", 0)),
+        float(raw.get("x1", 0)), float(raw.get("bottom", 0)), w, h, rot)
+    if rot in (90, 270):
+        # On quarter turns the visual 'size' is the glyph's rotated
+        # height (its advance), not the font size; the natural-frame
+        # font size is the visual char WIDTH instead.
+        widths = sorted(float(c.get("x1", 0)) - float(c.get("x0", 0))
+                        for c in chars
+                        if c.get("x1") is not None and c.get("x0") is not None)
+        if widths:
+            size = widths[len(widths) // 2]
+    seg_text = text
+    if rot:
+        # Char order follows the visual text direction; when that runs
+        # against +x in the natural frame the stored string is the
+        # mirror image (180/270 pages).
+        try:
+            c0, c1 = chars[0], chars[-1]
+            cx0 = (float(c0.get("x0", 0)) + float(c0.get("x1", 0))) / 2
+            cy0 = (float(c0.get("top", 0)) + float(c0.get("bottom", 0))) / 2
+            cx1 = (float(c1.get("x0", 0)) + float(c1.get("x1", 0))) / 2
+            cy1 = (float(c1.get("top", 0)) + float(c1.get("bottom", 0))) / 2
+            _, ya = _unrot_point(cx0, cy0, w, h, rot)
+            _, yb = _unrot_point(cx1, cy1, w, h, rot)
+            xa, _ = _unrot_point(cx0, cy0, w, h, rot)
+            xb, _ = _unrot_point(cx1, cy1, w, h, rot)
+            if xb < xa:
+                seg_text = text[::-1]
+        except Exception:
+            pass
+    return [PdfLine(
+        text=seg_text, x0=x0, top=top, x1=x1, bottom=bottom, size=size,
+        bold=bool(_BOLD_RE.search(names)),
+        italic=bool(_ITALIC_RE.search(names)),
+        mono=bool(_MONO_RE.search(names)),
+        color=_color_of(chars))]
+
+
+def _merge_rot_lines(segments):
+    """Cluster natural-frame segments into lines and order them.
+
+    Segments whose unrotated bands overlap vertically belong to the
+    same natural line (the word-columns of a 90/270 page); they are
+    joined left-to-right. Everything is then sorted top->bottom,
+    left->right like pdfplumber's own line order.
+    """
+    segments = sorted(segments, key=lambda l: (l.top, l.x0))
+    lines = []
+    cur = []
+    for s in segments:
+        if cur:
+            top = min(g.top for g in cur)
+            bottom = max(g.bottom for g in cur)
+            # Same natural line: the word-columns share (nearly) the
+            # same unrotated band, so their overlap is most of a line
+            # height; distinct lines leave a real gap.
+            overlap = min(s.bottom, bottom) - max(s.top, top)
+            if overlap <= 0.4 * max(s.size, 1.0):
+                lines.append(cur)
+                cur = []
+        cur.append(s)
+    if cur:
+        lines.append(cur)
+    out = []
+    for group in lines:
+        group.sort(key=lambda l: l.x0)
+        first = group[0]
+        merged = PdfLine(
+            text=" ".join(g.text for g in group),
+            x0=min(g.x0 for g in group), top=min(g.top for g in group),
+            x1=max(g.x1 for g in group), bottom=max(g.bottom for g in group),
+            size=max(g.size for g in group),
+            bold=any(g.bold for g in group),
+            italic=any(g.italic for g in group),
+            mono=all(g.mono for g in group),
+            color=first.color)
+        out.append(merged)
+    out.sort(key=lambda l: (l.top, l.x0))
+    return out
+
+
 def extract_blocks(path):
     """-> (blocks, page_sizes, rotations). One list per page, plus each
-    page's (width, height) in points and its /Rotate value."""
+    page's NATURAL-frame (width, height) in points and its /Rotate
+    value. For quarter-turn pages the blocks are un-rotated into the
+    natural frame; ``_render_pages`` un-rotates the raster to match and
+    the writer carries /Rotate onto the output page."""
     import pdfplumber
     blocks = []
     sizes = []
@@ -176,17 +325,28 @@ def extract_blocks(path):
         for pno, page in enumerate(pdf.pages):
             w = float(page.width)
             h = float(page.height)
-            sizes.append((w, h))
             try:
-                rotations.append(int(page.rotation or 0) % 360)
+                rot = int(page.rotation or 0) % 360
             except Exception:
-                rotations.append(0)
+                rot = 0
+            rotations.append(rot)
+            if rot in (90, 270):
+                sizes.append((h, w))
+            else:
+                sizes.append((w, h))
             lines = []
             try:
-                for raw in page.extract_text_lines() or []:
-                    ln = _line_of(raw)
-                    if ln is not None:
-                        lines.append(ln)
+                raws = page.extract_text_lines() or []
+                if rot in (90, 180, 270):
+                    segs = []
+                    for raw in raws:
+                        segs.extend(_segments_unrotated(raw, w, h, rot))
+                    lines = _merge_rot_lines(segs)
+                else:
+                    for raw in raws:
+                        ln = _line_of(raw)
+                        if ln is not None:
+                            lines.append(ln)
             except Exception:
                 lines = []
             lines.sort(key=lambda l: (l.top, l.x0))
@@ -437,17 +597,28 @@ def _ink_for(bg):
 _RENDER_SCALE = 216.0 / 72.0     # upstream renders at 216 DPI
 
 
-def _render_pages(path, count):
-    """pypdfium2 -> one PIL image per page at _RENDER_SCALE."""
+def _render_pages(path, count, rotations=None):
+    """pypdfium2 -> one PIL image per page at _RENDER_SCALE.
+
+    pdfium renders the VISUAL orientation; for quarter-turn pages the
+    image is rotated back into the natural frame so it lines up with
+    the un-rotated block coordinates. ``img.rotate(+r)`` undoes the
+    clockwise ``/Rotate r`` pdfium applied (PIL angles are CCW).
+    """
     import pypdfium2 as pdfium
+    rotations = rotations or [0] * count
     doc = pdfium.PdfDocument(path)
     try:
         out = []
         for i in range(min(count, len(doc))):
             page = doc[i]
             try:
-                out.append(page.render(scale=_RENDER_SCALE).to_pil()
-                           .convert("RGB"))
+                img = page.render(scale=_RENDER_SCALE).to_pil() \
+                    .convert("RGB")
+                rot = int(rotations[i]) if i < len(rotations) else 0
+                if rot:
+                    img = img.rotate(rot, expand=True)
+                out.append(img)
             finally:
                 page.close()
         return out
@@ -472,13 +643,14 @@ def _translate_pdf_layout(path, out, translator, sl, tl,
             "pypdfium2, reportlab and Pillow (%s)." % e)
 
     blocks_per_page, sizes, rotations = extract_blocks(path)
-    if any(r not in (0, 180) for r in rotations):
-        # 90/270-degree pages put pdfplumber's top-origin coords and the
-        # raster in different orientations; refuse honestly rather than
-        # draw text sideways.
+    bad = [r for r in rotations if r not in _ROT_SUPPORTED]
+    if bad:
+        # Arbitrary angles put pdfplumber's coords and the raster in
+        # frames the quarter-turn un-rotation cannot reconcile; refuse
+        # honestly rather than draw text sideways.
         raise LayoutAwareUnavailable(
-            "Layout-aware translation does not support rotated pages "
-            "yet; use Text-only mode.")
+            "Layout-aware translation does not support pages rotated "
+            "by %s degrees; use Text-only mode." % bad[0])
     flat = [b for page in blocks_per_page for b in page
             if b.text.strip()]
     if not flat:
@@ -500,7 +672,7 @@ def _translate_pdf_layout(path, out, translator, sl, tl,
             b.translated = ""
         _progress(on_progress, n + 1, total, b.text[:80])
 
-    images = _render_pages(path, len(sizes))
+    images = _render_pages(path, len(sizes), rotations)
     if len(images) != len(sizes):
         raise LayoutAwareUnavailable(
             "Could not render every page for layout-aware output.")
@@ -510,8 +682,11 @@ def _translate_pdf_layout(path, out, translator, sl, tl,
 
     c = rl_canvas.Canvas(out)
     for pno, ((w_pt, h_pt), img) in enumerate(zip(sizes, images)):
-        # 180-degree pages render upside down through pdfium too, so the
-        # raster already matches what the user sees; draw it full-page.
+        # reportlab's default page is A4; every page must be sized to
+        # the source or the raster is stretched/clipped.
+        c.setPageSize((w_pt, h_pt))
+        # Blocks, raster and page box all live in the natural frame;
+        # the source /Rotate rides onto the output below.
         c.drawImage(ImageReader(img), 0, 0, width=w_pt, height=h_pt,
                     preserveAspectRatio=False, mask="auto")
         s = _RENDER_SCALE
@@ -557,3 +732,29 @@ def _translate_pdf_layout(path, out, translator, sl, tl,
                 y -= leading
         c.showPage()
     c.save()
+
+    if any(rotations):
+        # Everything above was drawn in the natural frame; stamp the
+        # source /Rotate onto each output page so viewers display it
+        # exactly like the input. pypdf's PageObject.rotate() adds to
+        # any existing /Rotate (reportlab writes none).
+        try:
+            from pypdf import PdfReader, PdfWriter
+            reader = PdfReader(out)
+            writer = PdfWriter()
+            for pno, page in enumerate(reader.pages):
+                rot = int(rotations[pno]) if pno < len(rotations) else 0
+                if rot:
+                    page.rotate(rot)
+                writer.add_page(page)
+            tmp_out = out + ".rot"
+            with open(tmp_out, "wb") as f:
+                writer.write(f)
+            os.replace(tmp_out, out)
+        except Exception:
+            # A failed rotation stamp degrades to an unrotated page --
+            # ugly but readable; never lose the translated output.
+            try:
+                os.unlink(out + ".rot")
+            except Exception:
+                pass

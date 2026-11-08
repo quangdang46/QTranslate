@@ -12,7 +12,13 @@ TTFs; when the translated text carries glyphs the document font cannot
 encode (CJK etc.), `_font_for_text` swaps to the first covering face
 from `_CJK_CANDIDATES` (simsun/msgothic/malgun, macOS PingFang/
 Hiragino/Arial Unicode, Noto CJK/wqy/Droid on Linux), with a per-line
-draw-time retry as backstop. Honest limits: rotated pages refuse
+draw-time retry as backstop. Pages rotated by 90/180/270 degrees are
+supported: pdfplumber's visual-frame line boxes are mapped back into
+the page's natural frame (`_unrot_bbox`/`_segments_unrotated`, with
+per-segment order correction and word-column re-joining in
+`_merge_rot_lines`), the pdfium raster is PIL-rotated the same way,
+and the source `/Rotate` is stamped onto the output page so it
+displays identically to the input. Arbitrary angles still refuse
 before any translation call; a glyph no installed face covers still
 drops the line rather than corrupting output; multi-column
 mis-grouping is accepted upstream-parity weakness. Pinned by
