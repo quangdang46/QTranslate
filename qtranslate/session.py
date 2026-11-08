@@ -207,7 +207,7 @@ def _net_open(req, opener=None, data=None, timeout=None):
                         + random.uniform(0, opts["retry_delay"] * 0.25))
             time.sleep(min(wait, _MAX_RETRY_AFTER_SECONDS))
         except (urllib.error.URLError, TimeoutError, ConnectionError,
-                socket.timeout, OSError) as e:
+                socket.timeout, OSError):
             # Network-level failures (DNS, refused, reset, read timeout)
             # are safe to retry for every method -- nothing reached the
             # server to duplicate. HTTPError is a URLError subclass and

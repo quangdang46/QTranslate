@@ -54,8 +54,8 @@ class ComparisonPage(OptionsBase):
         except Exception:
             svcs = []
         if not svcs:
-            q = label(lst, 167, 60, "No translation services enabled.",
-                      color=DIM)
+            label(lst, 167, 60, "No translation services enabled.",
+                  color=DIM)
             return
         y = 58
         for svc in svcs:

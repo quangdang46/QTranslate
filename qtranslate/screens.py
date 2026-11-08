@@ -510,7 +510,7 @@ def _page_services(win):
                  anchor="w").place(x=X + 38, y=210 + i * 18)
     tk.Frame(win, bg=THUMB, bd=0, highlightthickness=0).place(
         x=471, y=17, width=2, height=157)
-    fld = _bordered(win, 155, 31, 481, 272)
+    _bordered(win, 155, 31, 481, 272)
     for x, w, t in ((157, 24, "▲"), (187, 24, "▼"),
                     (219, 117, "Add dictionary…"),
                     (342, 118, "Remove dictionary")):
@@ -532,7 +532,7 @@ def _page_languages(win):
     # The returned inner frame is the pane's white interior; children are
     # placed on `win` (absolute), so the frame only supplies the bg/border.
     _bordered(win, X + 3, 31, 481, 272)
-    col_w, per_col = 126.5, 18
+    col_w = 126.5
     for ci, col in enumerate(LANGUAGE_COLUMNS):
         for i, name in enumerate(col.split(" ")):
             x = 3 + ci * col_w

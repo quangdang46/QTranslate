@@ -170,8 +170,8 @@ class MainWindow:
                             win32con.BS_ICON if hicon else 0)
             if hicon:
                 win32gui.SendMessage(b, 0x00F7, 1, hicon)  # BM_SETIMAGE
-            lab = self._child("Static", short, x + 22, 302, 30, 18,
-                              2100 + _i)
+            self._child("Static", short, x + 22, 302, 30, 18,
+                        2100 + _i)
             x += 54
         # error line in result pane (native shows timeout text)
         win32gui.SetWindowText(

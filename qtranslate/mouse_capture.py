@@ -470,7 +470,6 @@ def cursor_text(x: int, y: int) -> str:
         return ""
     oleacc = ctypes.windll.oleacc
     oleaut = ctypes.windll.oleaut32
-    user32 = ctypes.windll.user32
 
     pt = wt.POINT(x, y)
     pacc = ctypes.c_void_p()
