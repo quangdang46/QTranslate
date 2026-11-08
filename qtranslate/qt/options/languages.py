@@ -19,8 +19,8 @@ off the shell (``_lang_disabled`` / ``_lang_labels``).
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QCheckBox, QWidget
 
-from .base import OptionsBase, cfg_load, button, combo, icon, label, \
-    panel, put, rect
+from .base import OptionsBase, cfg_load, cfg_set, button, combo, icon, \
+    label, panel, put, rect
 from qtranslate_style import DIM, TEXT, THUMB
 
 # The native's list, in the native's columns. "Swahili" is between

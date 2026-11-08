@@ -170,6 +170,37 @@ try:
         .get("Extensions", {}).get("Settings", {})
         .get("ext.examples.studio", {})))
 
+    # a BOOL schema key renders a QCheckBox and round-trips -- the
+    # studio schema has none, which is how a missing QCheckBox import
+    # shipped (NameError on open). The manager is a recorder: the real
+    # set_setting would refuse undeclared keys, and the schema gate
+    # itself is already pinned above.
+    class _Rec:
+        def __init__(self):
+            self.vals = {}
+
+        def get_setting(self, eid, key, default=None):
+            return self.vals.get(key, default)
+
+        def set_setting(self, eid, key, value):
+            self.vals[key] = value
+
+    rec = _Rec()
+    dlg_b, editors_b, _mgr_b = _build_settings_dialog(
+        page, "ext.examples.studio",
+        {"Studio.Flag": "bool", "Studio.Note": "string"})
+    from PySide6.QtWidgets import QCheckBox as _QCB
+    ck("a bool schema key renders a QCheckBox (no NameError)",
+       isinstance(editors_b["Studio.Flag"][1], _QCB),
+       type(editors_b["Studio.Flag"][1]).__name__)
+    editors_b["Studio.Flag"][1].setChecked(True)
+    editors_b["Studio.Note"][1].setText("bool round-trip")
+    _save_settings(dlg_b, editors_b, rec, "ext.examples.studio")
+    ck("the bool value collected as True",
+       rec.vals.get("Studio.Flag") is True
+       and rec.vals.get("Studio.Note") == "bool round-trip",
+       repr(rec.vals))
+
     # the change flows through the provider module (cross-module, again)
     res = engine.translate("studio.glossary", "thank you", "vi", src="en")
     ck("the edited greeting reaches the provider",

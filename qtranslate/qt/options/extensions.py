@@ -105,9 +105,9 @@ def _build_settings_dialog(page, ext_id, schema):
     number→spin, else→line edit). Returns (dialog, editors, manager);
     split from ``_open_settings`` so a test can drive the fields
     without exec()ing a modal."""
-    from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QGridLayout,
-                                   QLabel, QLineEdit, QSpinBox,
-                                   QVBoxLayout)
+    from PySide6.QtWidgets import (QCheckBox, QDialog, QDialogButtonBox,
+                                   QGridLayout, QLabel, QLineEdit,
+                                   QSpinBox, QVBoxLayout)
     mgr = page.app.ext_manager
     dlg = QDialog(page)
     dlg.setWindowTitle("%s settings" % ext_id.rsplit(".", 1)[-1])

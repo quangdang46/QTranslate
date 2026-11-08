@@ -242,6 +242,22 @@ try:
        any("Vietnamese" in c.text()
            for c in basics.findChildren(QCheckBox))
        or bool(basics.findChildren(QLabel)))
+    # Languages page extra-output combos write through on activation
+    # (General.SummaryLength / General.RewriteStyle). `activated` only
+    # fires on user picks, so emit it the way a click would.
+    from PySide6.QtWidgets import QComboBox
+    _sl = [c for c in basics.findChildren(QComboBox)
+           if [c.itemText(i) for i in range(c.count())]
+           == ["Short", "Medium", "Long"]]
+    ck("the Languages page shows the Summary length combo", len(_sl) == 1,
+       str(len(_sl)))
+    if _sl:
+        _sl[0].activated.emit(2)          # "Long"
+        app.qapp.processEvents()
+        ck("Summary length writes General.SummaryLength=LONG",
+           (_C.load() or {}).get("General", {}).get("SummaryLength")
+           == "LONG",
+           repr((_C.load() or {}).get("General", {})))
     basics._goto("Basics")
     app.qapp.processEvents()
     ck("the page can be swapped back", basics._page_name == "Basics",
