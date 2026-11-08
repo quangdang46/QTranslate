@@ -21,10 +21,17 @@ class _FakeReg:
 
     def __init__(self, values=None):
         self.values = dict(values or {})
+        self.opens = 0
+        self.closes = 0
 
-    # The port only calls OpenKey/QueryValueEx/SetValueEx/DeleteValue.
+    # The port only calls OpenKey/QueryValueEx/SetValueEx/DeleteValue/
+    # CloseKey.
     def OpenKey(self, _root, _path, _reserved=0, _access=0):
+        self.opens += 1
         return ("key", _path)
+
+    def CloseKey(self, _key):
+        self.closes += 1
 
     def QueryValueEx(self, _key, name):
         if name not in self.values:
@@ -84,6 +91,17 @@ _, w = A.startup_entry(winreg_mod=fr2, executable="x")
 w(True)
 w(False)
 ck("toggle on then off returns to absent", "QTranslate" not in fr2.values)
+
+# --- every opened key handle is closed ---------------------------------
+# winreg handles are finite OS resources; the port must CloseKey each
+# OpenKey result (read probe + each write), not leak one per toggle.
+fr3 = _FakeReg()
+_, w3 = A.startup_entry(winreg_mod=fr3, executable="x")
+w3(True)
+w3(False)
+ck("every opened registry key is closed",
+   fr3.opens > 0 and fr3.opens == fr3.closes,
+   "opens=%d closes=%d" % (fr3.opens, fr3.closes))
 
 if fails:
     print("FAIL %d" % len(fails))

@@ -45,14 +45,22 @@ def startup_entry(winreg_mod=None, executable=None):
 def _windows_entry(_wr, executable):
 
     def _read():
+        _rk = None
         try:
             _rk = _wr.OpenKey(_wr.HKEY_CURRENT_USER, RUN_KEY)
             _wr.QueryValueEx(_rk, VALUE_NAME)
             return True
         except Exception:
             return False
+        finally:
+            if _rk is not None:
+                try:
+                    _wr.CloseKey(_rk)
+                except Exception:
+                    pass
 
     def _write(on):
+        _rk2 = None
         try:
             _rk2 = _wr.OpenKey(_wr.HKEY_CURRENT_USER, RUN_KEY,
                                0, _wr.KEY_SET_VALUE)
@@ -66,6 +74,12 @@ def _windows_entry(_wr, executable):
                     pass
         except Exception:
             pass
+        finally:
+            if _rk2 is not None:
+                try:
+                    _wr.CloseKey(_rk2)
+                except Exception:
+                    pass
 
     return _read(), _write
 
