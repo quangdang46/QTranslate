@@ -100,6 +100,42 @@ if QApplication is not None:
            (kb.width(), kb.height()) == kb.SIZE,
            "%s vs %s" % ((kb.width(), kb.height()), kb.SIZE))
 
+        # _relabel is bidirectional and skips the arrow stand-ins:
+        # EN->RU maps letters through EN2RU, RU->EN restores the
+        # original labels (the old early-return left Cyrillic stuck),
+        # and len-1 SPECIAL keys ("v" is the down-arrow here, not the
+        # letter) are never relabelled.
+        from qtranslate.layout import EN2RU
+        q_key = kb.keys.get(("q", 56))
+        v_arrow = kb.keys.get(("v", 366))
+        ck("letter and arrow keys both exist for the relabel check",
+           q_key is not None and v_arrow is not None)
+        kb._ru = True
+        kb._relabel()
+        ck("ru layout maps letter keys through EN2RU",
+           q_key.text() == EN2RU["q"], q_key.text())
+        ck("arrow stand-in keeps its label in ru layout",
+           v_arrow.text() == "v", v_arrow.text())
+        kb._ru = False
+        kb._relabel()
+        ck("en layout restores the original letter label",
+           q_key.text() == "q", q_key.text())
+
+        # A persisted non-English pick applies at build time, not only
+        # on the next combo change.
+        import qtranslate.config as _Cfg
+        _real_load = _Cfg.load
+        _Cfg.load = lambda *a, **k: {"General": {"LanguageKeyboard": 0}}
+        try:
+            kb2 = KeyboardWindow(app)
+        finally:
+            _Cfg.load = _real_load
+        q2 = kb2.keys.get(("q", 56))
+        ck("saved non-en layout relabels at build",
+           q2 is not None and q2.text() == EN2RU["q"],
+           q2.text() if q2 is not None else "missing")
+        kb2.deleteLater()
+
         # _key_pressed must TAP keys (send = press+release), never
         # hold them: keyboard.press() leaves the key down forever and
         # every virtual-keyboard tap auto-repeats (found 2026-11-08).

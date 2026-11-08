@@ -249,6 +249,10 @@ class KeyboardWindow(Base):
             pass
         self.cmb_lang.blockSignals(False)
         self._ru = (self._kb_index != 17)
+        # A persisted non-English pick must show its layout at open --
+        # _relabel only ran on combo changes before, so a saved Russian
+        # keyboard opened with English labels until re-selected.
+        self._relabel()
         self.cmb_lang.currentTextChanged.connect(self._on_language)
 
     def paintEvent(self, e):
@@ -265,12 +269,21 @@ class KeyboardWindow(Base):
 
     def _relabel(self):
         """Re-label the letter keys for the selected language (the
-        JCUKEN map), what the tkinter view's `_relabel` did."""
-        if not EN2RU or not self._ru:
+        JCUKEN map), what the tkinter view's `_relabel` did.
+
+        Both directions: EN->RU on a non-English pick, and the restore
+        to the original labels on the way back -- the old early-return
+        on ``not self._ru`` left Cyrillic labels stuck on the keys
+        forever once a Russian layout had been applied. Keys in
+        ``SPECIAL`` (the "v"/"<"/">"/"^" arrow stand-ins are len-1
+        labels too) are never relabelled: they are not letters.
+        """
+        if not EN2RU:
             return
-        for (text, _x), b in self.keys.items():
-            if text and len(text) == 1:
-                b.setText(EN2RU.get(text, text))
+        for (text, x), b in self.keys.items():
+            if not text or len(text) != 1 or (text, x) in SPECIAL:
+                continue
+            b.setText(EN2RU.get(text, text) if self._ru else text)
 
     def _keyboard_language(self, name, names):
         """Persist the keyboard's language, the tkinter view's half."""
