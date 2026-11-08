@@ -441,7 +441,17 @@ def reverso_lookup(word, sl, tl):
         # Legacy HTML walled (403) — fall back to the live context API
         # translation + context examples as the dictionary fragment.
         try:
-            tr = reverso_translate(word, sl, tl)
+            # reverso_translate speaks API codes, not the indices
+            # _codes accepts -- resolve ONLY int legs through the
+            # service table; code strings pass through so languages
+            # the dictionary table lacks (e.g. "vi" -> "vie") still
+            # reach the API map.
+            def _api_leg(lang):
+                if isinstance(lang, int):
+                    v = _resolve(REVERSO_LANGS, lang)
+                    return v if v != -1 else lang
+                return lang
+            tr = reverso_translate(word, _api_leg(sl), _api_leg(tl))
             if tr:
                 frag = f"<div><b>{word}</b> — {tr}</div>"
         except Exception:

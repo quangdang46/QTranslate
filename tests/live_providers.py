@@ -48,6 +48,8 @@ def main():
     check("dict.multitran", lambda: dd.multitran_lookup("hello", 1, 2))
     check("reverso.translate EN->FR",
           lambda: dd.reverso_translate("Hello world", "en", "fr"))
+    check("reverso.lookup idx-pair",
+          lambda: dd.reverso_lookup("hello", 17, 21))
     check("dict.wordreference",
           lambda: dd.wordreference_lookup("hello", "en", "ru"))
     # Registered providers the original sweep did not cover: the
