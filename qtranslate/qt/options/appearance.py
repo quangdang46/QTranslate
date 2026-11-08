@@ -145,6 +145,12 @@ class AppearancePage(OptionsBase):
             mask = 30
         for i in range(4):
             x = 398 + 24 * i
+            # The recovered cell artwork goes down FIRST: the module
+            # docstring's "a transparent button sits over each one" is
+            # the z-order. Creating the icon after the button painted
+            # the artwork over it, hiding the state frame entirely.
+            from ..widgets import icon
+            icon(self, x, 274, "ui_icons", "ap_icon%d" % (i + 1))
             b = button(self, x, 274, 21, "", h=21)
             b.setObjectName("flat")
             b.setCheckable(True)
@@ -152,16 +158,16 @@ class AppearancePage(OptionsBase):
             b.setChecked(bool(mask & bit))
             # The buttons are transparent overlays on the recovered
             # artwork; the accent frame is the on-state, since the
-            # artwork PNG itself has no pressed look of its own.
+            # artwork PNG itself has no pressed look of its own. The
+            # :checked selector -- not a build-time branch -- keeps the
+            # frame in step with every later toggle.
             b.setStyleSheet(
-                "QPushButton{border:none;background:transparent;padding:0;}"
-                if not (mask & bit) else
-                "QPushButton{border:1px solid #0078d7;background:transparent;"
-                "padding:0;}")
+                "QPushButton{border:1px solid transparent;"
+                "background:transparent;padding:0;}"
+                "QPushButton:checked{border:1px solid #0078d7;"
+                "background:transparent;padding:0;}")
             b.toggled.connect(
                 lambda on, k=i: _icon_toggled(self, k, on))
-            from ..widgets import icon
-            icon(self, x, 274, "ui_icons", "ap_icon%d" % (i + 1))
         # The three colour swatches: click opens the colour dialog and
         # stores the int the popup reads (ColorBack/ColorText/ColorFrame).
         label(self, 159, 312, "Background color:")

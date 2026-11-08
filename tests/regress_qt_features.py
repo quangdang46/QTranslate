@@ -266,6 +266,42 @@ try:
        (basics.width(), basics.height()) == opt.BasicsPage.SIZE,
        "%dx%d" % (basics.width(), basics.height()))
 
+    # Appearance "Icons:" toggles: four checkable buttons over the
+    # recovered cell artwork; the accent frame is the :checked state
+    # and each click flips one PopupIcons bit. Regression: the icon
+    # label used to be created AFTER the button, painting the artwork
+    # over it, and the stylesheet was a build-time snapshot -- clicks
+    # wrote config but the row showed no state at all.
+    from PySide6.QtWidgets import QPushButton
+    basics._goto("Appearance")
+    app.qapp.processEvents()
+    icon_btns = [w for w in basics.findChildren(QPushButton)
+                 if w.isCheckable() and not w.text().strip()]
+    ck("the Appearance page has four icon toggles",
+       len(icon_btns) == 4, str(len(icon_btns)))
+    if len(icon_btns) == 4:
+        mask0 = int((_C.load() or {}).get("Appearance", {})
+                   .get("PopupIcons", 30))
+        icon_btns[0].click()
+        app.qapp.processEvents()
+        mask1 = int((_C.load() or {}).get("Appearance", {})
+                   .get("PopupIcons", 30))
+        ck("an icon toggle flips its PopupIcons bit",
+           mask1 == (mask0 & ~2), "%s -> %s" % (mask0, mask1))
+        ck("the on-state is a :checked style, not a build snapshot",
+           ":checked" in (icon_btns[0].styleSheet() or ""),
+           (icon_btns[0].styleSheet() or "")[:80])
+        kids = basics.children()
+        bi = kids.index(icon_btns[0])
+        under = [w for w in kids[:bi]
+                 if isinstance(w, QLabel) and not w.pixmap().isNull()
+                 and abs(w.x() - icon_btns[0].x()) < 2
+                 and abs(w.y() - icon_btns[0].y()) < 2]
+        ck("the cell artwork paints under its toggle button",
+           len(under) == 1, str(len(under)))
+        icon_btns[0].click()          # restore the default mask
+        app.qapp.processEvents()
+
     # --- 5. the other windows -------------------------------------------
     try:
         app.open_history()
