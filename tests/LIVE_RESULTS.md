@@ -20,6 +20,17 @@ service routes through `session.bing_translate` (in the sweep).
 PROMT re-probed separately: HTTP 200 + schema, provider's own
 "temporarily unavailable" -- unchanged.
 
+**OCR multipart fix (same day):** live-probing `ocr_space` exposed a
+real body bug -- every field part was emitted with a leading `\r\n`,
+producing `\r\n\r\n------Boundary` blank lines, so each part's VALUE
+carried a trailing CRLF (`apikey` parsed as `"helloworld\r\n"`) and
+ocr.space intermittently answered `E555: API key not valid` / 403.
+`_native_multipart` now joins parts exactly per the recovered format
+strings (each template begins at the dashes, ends with `\r\n`). The
+demo key is also heavily rate-limited (429 after ~8 probe calls), so
+cloud OCR effectively wants a user key (`Advanced.OcrApiKey`) --
+unchanged upstream behaviour.
+
 # Live verification results (2026-11-08, sweep re-run)
 
 `.venv/Scripts/python.exe -I tests/live_providers.py` re-run after the

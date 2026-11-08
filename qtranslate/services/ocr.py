@@ -50,7 +50,12 @@ def _native_multipart(image_bytes: bytes, api_key: str, lang: str,
     for name, value in (("apikey", api_key), ("language", lang),
                         ("isOverlayRequired",
                          "true" if overlay else "false")):
-        body += ("\r\n" + delim + '\r\nContent-Disposition: form-data; '
+        # Each part template already begins at the dashes and ends with
+        # \r\n -- the previous part's trailing \r\n IS the separator.
+        # A leading \r\n here produced "\r\n\r\n------Boundary" blank
+        # lines between parts; ocr.space's parser intermittently
+        # rejected the body (E555/403, verified live 2026-11-08).
+        body += (delim + '\r\nContent-Disposition: form-data; '
                  'name="' + name + '"\r\n\r\n' + value + "\r\n").encode()
     body += (delim + "--\r\n").encode()
     return body, marker

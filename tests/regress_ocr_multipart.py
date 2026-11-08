@@ -109,6 +109,13 @@ ck("body STARTS with the file part (no leading field)",
    body.startswith(part_delim + b'\r\nContent-Disposition: form-data; '
                                 b'name="file"'),
    repr(body[:60]))
+# The part templates end with \r\n and the next begins at the dashes --
+# a "\r\n\r\n" before a delimiter means the previous part's VALUE
+# carries a trailing CRLF (apikey="helloworld\r\n" -> E555, verified
+# live 2026-11-08). The port emitted exactly that for a while.
+ck("no blank line precedes a boundary (values stay CRLF-clean)",
+   (b"\r\n\r\n" + part_delim) not in body,
+   "double CRLF before a boundary")
 
 # --- the format strings themselves, read from the image ---------------
 EXE = os.path.join(os.path.dirname(os.path.dirname(
