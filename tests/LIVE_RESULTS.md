@@ -1,5 +1,14 @@
 # Live verification results (2026-11-08, sweep extended to 31 checks)
 
+**Re-run note (later same day):** one sweep came back 29/31 --
+`google_spell.check` and `google_dict.lookup` both hit
+`translate.googleapis.com`, which answered **HTTP 429** after the
+sweep's own google calls exhausted the per-IP quota. Both degrade
+honestly (`check` -> `None`, `lookup` -> `""`); the spell lambda was
+also hardened so a throttled `None` reports EMPTY instead of crashing
+on `.get` (same for the youdao/naver indexing lambdas). Provider-side
+rate limit, not a code regression.
+
 `.venv/Scripts/python.exe tests/live_providers.py` re-run repeatedly
 the same day. Extensions added every remaining keyless provider
 surface: `mymemory.translate`, `mozhi.translate`, `yandex_web.translate`

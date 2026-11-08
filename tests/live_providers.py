@@ -34,11 +34,17 @@ def main():
     check("bing.translate EN->VI", lambda: bing_translate("Good morning", "en", "vi"))
     from qtranslate.services import youdao as yd
     check("youdao.translate_web EN->ZH", lambda: yd.translate_web("Good morning", "en", "zh-CHS"))
-    check("youdao.dictionary", lambda: len(yd.dictionary("hello")[0]) > 1000 and "dict-html")
+    check("youdao.dictionary",
+          lambda: (lambda r: r and r[0] and len(r[0]) > 1000
+                   and "dict-html")(yd.dictionary("hello")))
     from qtranslate.services import naver as n
     check("naver.detect", lambda: n.detect_code("Hello world"))
-    check("naver.translate EN->VI", lambda: n.translate("Hello world", "en", "vi")[0])
-    check("naver.dict", lambda: len(n.dictionary_search("hello", "en", "ko").get("items", [])) > 0 and "dict-items")
+    check("naver.translate EN->VI",
+          lambda: (n.translate("Hello world", "en", "vi") or [""])[0])
+    check("naver.dict",
+          lambda: len(((n.dictionary_search("hello", "en", "ko")
+                        or {}).get("items")) or []) > 0
+          and "dict-items")
     check("naver.tts", lambda: len(n.tts("Hello", "en")) > 1000 and "mp3-bytes")
     from qtranslate.services import dictionary as dd
     check("dict.oxford", lambda: dd.oxford_lookup("hello"))
@@ -71,8 +77,8 @@ def main():
     # yandex speller.
     from qtranslate.services import google_spell as gs
     check("google_spell.check",
-          lambda: gs.check("This sentense has wurds", "en")
-          .get("corrections"))
+          lambda: (gs.check("This sentense has wurds", "en")
+                   or {}).get("corrections"))
     from qtranslate.services import spell as sp
     check("spell.google_suggest",
           lambda: sp.google_suggest("wrold", "en"))
