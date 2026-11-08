@@ -25,7 +25,10 @@ translate per column instead of interleaving. Pages with a CropBox
 different from the MediaBox are handled in crop-relative coordinates
 (`_crop_frame`): pdfium renders only the crop region while pdfplumber
 reports mediabox-frame boxes, so every line is shifted and ink outside
-the crop is dropped. Arbitrary angles still
+the crop is dropped. Text runs whose own text matrix points a
+different way than the page rotation (vertical labels, turned
+watermarks) are skipped on rotated pages and stay in the raster
+untranslated. Arbitrary angles still
 refuse before any translation call; a glyph no installed face covers
 still drops the line rather than corrupting output. Pinned by
 `tests/regress_pdf_layout.py`.

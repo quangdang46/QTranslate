@@ -302,6 +302,37 @@ def _column_bands(lines, page_w):
 _ROT_SUPPORTED = (0, 90, 180, 270)
 
 
+def _raw_orientation_ok(raw, rot):
+    """Does this extract_text_lines entry run the way the page
+    rotation expects?
+
+    On a rotated page pdfplumber reports EVERY text run with
+    ``upright=False`` -- normal body text rotated by ``/Rotate`` AND
+    genuinely sideways runs (vertical labels, watermarks turned by
+    their own text matrix). The char ``matrix``'s angle tells them
+    apart: body text sits at ``(-rot) % 360`` while a sideways run is
+    ~90 degrees off. Skipping the mismatched runs leaves them in the
+    raster untranslated instead of emitting garbage segments.
+    """
+    if rot == 0:
+        return True
+    import math
+    expected = (-rot) % 360
+    for c in (raw.get("chars") or []):
+        m = c.get("matrix")
+        if not m or len(m) < 4:
+            continue
+        try:
+            ang = math.degrees(math.atan2(float(m[1]),
+                                          float(m[0]))) % 360
+        except Exception:
+            return True
+        d = abs(ang - expected)
+        d = min(d, 360.0 - d)
+        return d <= 25.0
+    return True
+
+
 def _unrot_bbox(x0, top, x1, bottom, w, h, rot):
     """A visual-frame box -> the page's natural (rotation-0) frame.
 
@@ -499,6 +530,8 @@ def extract_blocks(path):
                 if rot in (90, 180, 270):
                     segs = []
                     for raw in raws:
+                        if not _raw_orientation_ok(raw, rot):
+                            continue
                         segs.extend(_segments_unrotated(raw, w, h, rot))
                     lines = _merge_rot_lines(segs)
                 else:

@@ -221,6 +221,33 @@ def main():
     ck("rotated right column own block", any(
         t.startswith("Right column line number 0") for t in rtexts),
        str(rtexts))
+    # intrinsically rotated text (own text matrix, not /Rotate) on a
+    # rotated page must not become a garbage segment -- it stays in
+    # the raster untranslated
+    from reportlab.pdfgen import canvas as rl_canvas
+    vsrc = os.path.join(tmp, "vert.pdf")
+    vc = rl_canvas.Canvas(vsrc, pagesize=(612, 792))
+    vc.setFont("Helvetica", 12)
+    vc.drawString(72, 720, "Normal horizontal text.")
+    vc.saveState()
+    vc.translate(500, 400)
+    vc.rotate(90)
+    vc.drawString(0, 0, "Vertical label")
+    vc.restoreState()
+    vc.showPage()
+    vc.save()
+    rr = PR(vsrc)
+    ww = PW()
+    pg = rr.pages[0]
+    pg.rotate(90)
+    ww.add_page(pg)
+    vrot = os.path.join(tmp, "vert_rot.pdf")
+    with open(vrot, "wb") as f:
+        ww.write(f)
+    vblocks, _, _ = PL.extract_blocks(vrot)
+    vtexts = [b.text for b in vblocks[0]]
+    ck("sideways run skipped on rotated page",
+       vtexts == ["Normal horizontal text."], str(vtexts))
     # an arbitrary angle still refuses honestly before spending calls
     # (pypdf's rotate() only takes multiples of 90 -- set /Rotate raw)
     from pypdf.generic import NameObject, NumberObject
