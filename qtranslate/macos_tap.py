@@ -66,6 +66,11 @@ def _log(msg):
         import time
         path = os.path.join(os.path.expanduser("~"),
                             ".qtranslate_hotkeys.log")
+        try:
+            if os.path.getsize(path) > 1_000_000:
+                os.replace(path, path + ".1")
+        except OSError:
+            pass
         with open(path, "a", encoding="utf-8") as f:
             f.write("%s  [tap] %s\n"
                     % (time.strftime("%H:%M:%S"), msg))
