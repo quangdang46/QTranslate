@@ -71,6 +71,15 @@ class OcrResultWindow(QWidget):
         menu 110 opens the Options page; a direct picker is the same
         setting with one less hop.
         """
+        menu = self._language_menu()
+        menu.exec(self.mapToGlobal(self.rect().center()))
+
+    def _language_menu(self):
+        """The built OCR-language picker (exclusive radio group).
+
+        Split from ``_pick_language`` so tests can inspect the menu
+        without entering its modal ``exec``.
+        """
         from PySide6.QtWidgets import QMenu
         from qtranslate import config as _C
         try:
@@ -84,7 +93,10 @@ class OcrResultWindow(QWidget):
             cur = int((cfg.get("Ocr", {}) or {}).get("OcrLanguage", 17))
         except Exception:
             cur = 17
+        from PySide6.QtGui import QActionGroup
         menu = QMenu(self)
+        grp = QActionGroup(menu)
+        grp.setExclusive(True)
         for i, code in enumerate(table):
             if not isinstance(code, str) or code in ("auto", "-1"):
                 continue
@@ -93,7 +105,8 @@ class OcrResultWindow(QWidget):
             act.setChecked(i == cur)
             act.triggered.connect(
                 lambda _c=False, idx=i: self._set_ocr_language(idx))
-        menu.exec(self.mapToGlobal(self.rect().center()))
+            grp.addAction(act)
+        return menu
 
     def _set_ocr_language(self, index):
         try:

@@ -124,6 +124,22 @@ ck("enabled callback gates items; None fn stays disabled",
    and len(_gacts) == 3,
    repr([(a.text(), a.isEnabled()) for a in _gacts]))
 
+# --- language picker is an exclusive radio group ------------------------
+_lmenu = w._language_menu()
+_lacts = [a for a in (_lmenu.actions() if _lmenu is not None else [])
+          if a.isCheckable()]
+ck("language picker offers checkable choices", len(_lacts) > 1,
+   str(len(_lacts)))
+if len(_lacts) > 1:
+    _b = [a.isChecked() for a in _lacts]
+    ck("exactly one language is checked initially", sum(_b) == 1,
+       str(_b))
+    _t = _lacts[0] if not _lacts[0].isChecked() else _lacts[1]
+    _t.trigger()          # flips checked + emits, like a real click
+    _now = [a.isChecked() for a in _lacts]
+    ck("picking a language keeps exactly one check",
+       sum(_now) == 1 and _now[_lacts.index(_t)], str(_now))
+
 w.close()
 
 if fail:

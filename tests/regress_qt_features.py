@@ -657,6 +657,27 @@ try:
     except Exception as exc:                   # noqa: BLE001
         ck("the assets load", False, "%s: %s" % (type(exc).__name__, exc))
 
+    # --- 9b. the extra-options popup is an exclusive radio group --------
+    try:
+        win.set_extra_mode("summary")
+        _em = win._extra_options_menu_widget()
+        _acts = [a for a in (_em.actions() if _em is not None else [])
+                 if a.isCheckable()]
+        ck("extra-options popup offers checkable choices",
+           len(_acts) > 1, str(len(_acts)))
+        if len(_acts) > 1:
+            _b = [a.isChecked() for a in _acts]
+            ck("exactly one option is checked initially", sum(_b) == 1,
+               str(_b))
+            _t = _acts[0] if not _acts[0].isChecked() else _acts[1]
+            _t.trigger()
+            _now = [a.isChecked() for a in _acts]
+            ck("picking an option keeps exactly one check",
+               sum(_now) == 1 and _now[_acts.index(_t)], str(_now))
+    except Exception as exc:                   # noqa: BLE001
+        ck("extra-options popup exclusivity", False,
+           "%s: %s" % (type(exc).__name__, exc))
+
     # --- 10. the style ----------------------------------------------------
     ck("the app font is Tahoma at 11px",
        app.qapp.font().family() == "Tahoma" and app.qapp.font().pixelSize() == 11,

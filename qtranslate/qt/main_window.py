@@ -1608,13 +1608,27 @@ class MainWindow(Base):
     def _extra_options_menu(self):
         """The gear popup: the active mode's option list, checkable,
         persisted to General.SummaryLength / General.RewriteStyle."""
+        menu = self._extra_options_menu_widget()
+        if menu is None:
+            return
+        menu.exec(self.extra_gear.mapToGlobal(
+            self.extra_gear.rect().bottomLeft()))
+
+    def _extra_options_menu_widget(self):
+        """The built extra-options popup (exclusive radio group).
+
+        Split from ``_extra_options_menu`` so tests can inspect the
+        menu without entering its modal ``exec``.
+        """
         from PySide6.QtWidgets import QMenu
         mode = self.extra_mode()
         spec = self._EXTRA_OPTIONS.get(mode)
         if spec is None:
-            return
+            return None
         key, choices, default = spec
         menu = QMenu(self)
+        grp = QActionGroup(menu)
+        grp.setExclusive(True)
         current = self._extra_cfg().get(key) or default
         for value, label in choices:
             act = menu.addAction(label)
@@ -1622,8 +1636,8 @@ class MainWindow(Base):
             act.setChecked(value == current)
             act.triggered.connect(
                 lambda _c=False, k=key, v=value: self._set_extra_option(k, v))
-        menu.exec(self.extra_gear.mapToGlobal(
-            self.extra_gear.rect().bottomLeft()))
+            grp.addAction(act)
+        return menu
 
     def _set_extra_option(self, key, value):
         try:
