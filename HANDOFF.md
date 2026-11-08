@@ -19,7 +19,7 @@ untrusted.
 |---|---|
 | Branch / commit | `main`, tip = the HANDOFF commit itself, pushed |
 | Working tree | clean |
-| Suites | **196 suites, 0 failed, ~185s on Windows** (`QT_QPA_PLATFORM=offscreen .venv/Scripts/python.exe tools/run_suites.py`) |
+| Suites | **197 suites, 0 failed, ~185s on Windows** (`QT_QPA_PLATFORM=offscreen .venv/Scripts/python.exe tools/run_suites.py`) |
 | Pixel measure | mean ink diff **0.0037** over 12 screens (re-run 24/10; macOS re-measure not done) |
 | Docs consistency | 0 findings |
 | Live providers | **31/31 LIVE-OK** (`tests/LIVE_RESULTS.md`, Windows run; sweep extended from 21 to 31 checks — every keyless provider surface now covered: mymemory/mozhi/yandex_web/commons_images + spell backends + reverso.lookup idx-pair + reverso.svc.translate + google_dict; reverso_lookup's index-leg fallback bug fixed); PROMT/Babylon/Baidu-translate dead, recorded |
