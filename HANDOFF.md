@@ -105,6 +105,32 @@ pushed. Headline items (details in `docs/GAP_AUDIT_2.md`,
   preview. `tests/regress_hotkey_recorder.py` (38 checks).
   `options/base.py` `_clear`/`closeEvent` now reset the new capture
   state so nothing leaks across page swaps.
+- **PDF geometry hardening** (`34585f7`..`3438d39`): layout-aware PDF
+  now handles 90/180/270 `/Rotate` pages, multi-column layouts
+  (char-gap line splitting + low-coverage gutter column bands),
+  CropBox-relative coordinates (pdfium renders the crop, pdfplumber
+  reports mediabox), CJK font fallback via glyph coverage, and
+  intrinsically-sideways text runs left raster-only. Odd angles
+  refuse honestly. Latent A4-page-size bug fixed. 22+ rotated checks
+  + column/cropbox checks in `tests/regress_pdf_layout.py`.
+- **Windows portability + dialog coverage** (`16d42cc`..`65ab4a2`):
+  document dialog's Open button used macOS `open` (silent no-op on
+  Windows) -> `QDesktopServices.openUrl`; `_finished(None)` crash
+  fixed; new suites `regress_document_dialog.py` (25) and
+  `regress_loading_indicator.py` (15); audit docs de-staled.
+- **Live provider sweep 21 -> 31 checks** (`f45a36f`..`034e07d`):
+  every keyless provider surface now probed (mymemory/mozhi/
+  yandex_web translates, commons_images, spell backends,
+  reverso.lookup + reverso.svc.translate, google_dict). Fixed
+  `reverso_lookup` index-leg bug (`_api_leg` resolves int language
+  ids via REVERSO_LANGS). `tests/regress_reverso_fallback.py` (6).
+- **OCR multipart body fixed** (`abc6e22`): field parts carried a
+  leading `\r\n` on top of the previous part's trailing CRLF, so
+  values reached ocr.space with a trailing CRLF (`apikey` parsed as
+  `"helloworld\r\n"`) -> intermittent E555/403. Parts now join exactly
+  per the recovered format strings. Demo key is also rate-limited
+  (429); real OCR wants `Advanced.OcrApiKey`. New no-double-CRLF
+  check in `regress_ocr_multipart.py`.
 
 ## 1. Windows session (2026-10-24) -- what landed, newest last
 
