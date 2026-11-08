@@ -721,7 +721,7 @@ with `list → FUN_00427DA2 (JS "historyItem" ×7 args) → export .csv/.html/.j
 
 | Item | Native evidence (artifact) | RE state | Port state | Note |
 |------|----------------------------|----------|------------|------|
-| L1 Tray add | `FUN_00405C42`: fills `NOTIFYICONDATAW` (cbSize +0x3bc, hWnd +4, hIcon +0x14, uFlags +0xC=7, uCallbackMessage +0x10=0x80AA, szTip +0x18) → `Shell_NotifyIconW(0=NIM_ADD)` | VERIFIED | ported | pystray |
+| L1 Tray add | `FUN_00405C42`: fills `NOTIFYICONDATAW` (cbSize +0x3bc, hWnd +4, hIcon +0x14, uFlags +0xC=7, uCallbackMessage +0x10=0x80AA, szTip +0x18) → `Shell_NotifyIconW(0=NIM_ADD)` | VERIFIED | ported | QSystemTrayIcon (`qt/tray.py`) |
 | L2 State sync | `FUN_00418B69`: builds `"%s %s"` tip, picks icon by state (0→199, 2→0x8A, else 0x84) via `FUN_00454396`; calls add (`FUN_00405C42`) or modify (`FUN_00405CB2`) | VERIFIED | ported | — |
 | L3 Tray click | `FUN_00417F5B`: dispatch on msg — `0x201`(LButtonDown)/`0x203`(DblClk)→`FUN_00418E85` gated by `DAT_005494E8` (SwitchMouseModeOnTrayClick), `0x204`(RButtonUp)→`windows::TrayMenu` popup at cursor, `0x405`→post `0x8137` | VERIFIED | ported | — |
 | L4 Tray icon states | `FUN_00418B69`: ids **199 / 0x84 / 0x8A** (icon resources) | VERIFIED | ported | matches `PIPELINE.md` + `qtranslate/tray_state.py` (`select_state`), which the app reads |

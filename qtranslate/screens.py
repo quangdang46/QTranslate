@@ -806,7 +806,7 @@ def tray_menu(root):
 
     The real app never draws this: the tray menu is the OS's own, shown on
     right-clicking the taskbar icon (spec §5 hard rule 5), which is what
-    ``app._make_tray``'s pystray icon does. This function exists so the
+    ``qt/tray.py``'s QSystemTrayIcon does. This function exists so the
     item order can be eyeballed against the screenshot without a live
     taskbar icon, and is deliberately NOT self-styled beyond the colours
     the OS uses (no rounding, no shadow).
@@ -841,22 +841,6 @@ def tray_menu(root):
 def launch(screen="main"):
     root = tk.Tk()
     root.withdraw()
-    if screen == "tray":
-        # the real thing: a taskbar icon whose right-click menu is the
-        # OS's own (app._make_tray). Only if pystray + PIL are present.
-        try:
-            from qtranslate import app as _A
-            _stub = _A.App.__new__(_A.App)
-            _tray = _A._make_tray(root, _stub)
-            if _tray is not None:
-                import threading
-                threading.Thread(target=_tray.run, daemon=True).start()
-                print("tray icon running -- right-click it for the menu")
-                root.mainloop()
-                return
-        except Exception as e:
-            print("native tray unavailable (%r); falling back to the "
-                  "reference sheet" % (e,))
     SCREENS[screen](root)
     root.mainloop()
 

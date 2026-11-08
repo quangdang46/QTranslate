@@ -84,9 +84,12 @@ override_picker.py` since the tkinter front end was deleted) picks the winner �
 | `docs/NATIVE_ARCH.md` | 1649 lines | native binary RE analysis |
 | `tests/` | 202 files | 196 `regress_*.py` suites (headless unless named), plus `ui_match.py`, `smoke_dict.py`, `live_providers.py`, `live_bass.py`, `verify_win_clipboard.py`, `_view_src.py`. Sweep them with `python -I tools/run_suites.py` (exit-code judged, not grep) — see §Test suites in `README.md`. The runner reports **198 suites** (196 `regress_*` + `smoke_dict` + `ui_match`; the `live_*`/`verify_*`/`_view_src` helpers are not swept). Counts drift as in-flight work lands suites — recount with `ls tests/regress_*.py \| wc -l` |
 
-**[verified]** Language: Python, Qt/PySide6 UI (tkinter deleted `6636686`), stdlib `urllib` for HTTP; optional
-deps only (`keyboard`, `pyperclip` required; `pystray`, `Pillow`, `comtypes`,
-`playwright`, `soundfile` optional — `requirements.txt`).
+**[verified]** Language: Python, Qt/PySide6 UI (tkinter deleted `6636686`), stdlib `urllib` for HTTP; hard deps in
+`requirements.txt` (`keyboard`, `pyperclip`, `pypdf`, `python-docx`,
+`pdfplumber`, `pypdfium2`, `reportlab`, `Pillow`); optional commented
+there: `comtypes`, `soundfile`, `playwright`, macOS pyobjc frameworks.
+PySide6 is required to run the Qt UI but is not pinned in
+requirements.txt (the bundle pulls it via the spec).
 
 **License [verified]:** MPL-2.0 (`README.md:69`). Clean-room RE for education.
 

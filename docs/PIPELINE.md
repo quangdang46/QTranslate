@@ -71,5 +71,5 @@ Aux: Tray (00405C42), Options saver (004561F0), crash-once reporter (00462C03),
 | lang.json 36 strings + 14 windows | `locale.py` + `_T/_W/_Cw` | ✅ vi verified |
 | RT_HTML-192 dict template | `dict_template.html` | ✅ byte-identical |
 | RichEdit links (FUN_004266C6) | `tag_links` (result + dict) | ✅ |
-| Tray states 199/0x84/0x8A | `_make_tray` + `_sync_icon` | ✅ (pystray optional) |
+| Tray states 199/0x84/0x8A | `qt/tray.py` + `tray_state.select_state` | ✅ (QSystemTrayIcon) |
 | Crash once-reporter (00462C03) | hook + consume | ✅ |

@@ -126,7 +126,7 @@ Extracted from the concrete Windows couplings found in the audit:
 | `Hotkey` | `keyboard.add_hotkey` `app.py:3668` | macOS needs Accessibility permission; decide at adapter |
 | `Capture` | `PIL.ImageGrab` `app.py:3277` (OCR region) | `screencapture`/Quartz |
 | `Audio` | BASS via `player.py`; SAPI via `sapi.py` | CoreAudio/AVFoundation; same interface |
-| `Window` | `pystray` + minimize-to-tray `app.py:3842` | `pystray` + menu-bar equivalent |
+| `Window` | `qt/tray.py` QSystemTrayIcon + minimize-to-tray (was `pystray` in the deleted tkinter `app.py`) | menu-bar equivalent |
 | `Paths` | hardcoded `C:/Program Files (x86)/QTranslate` `app.py:1806`, `theme.py:11`, `locale.py:11` | per-user app-data dir (D16); extensions dir lives here |
 | `SpeechInput` | `comtypes` SAPI recognizer `app.py:1251` | Apple Speech |
 

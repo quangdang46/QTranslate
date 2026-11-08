@@ -9,7 +9,7 @@ tray icon reflects whether mouse capture is available/armed, not
 whether hotkeys are bound.
 
 This module is the pure selection (`0/1/2 → "off"/"on"/"partial"`),
-testable without pystray or Tk. The `param_1 == 0` branch (NIM_ADD vs
+testable without Qt or Tk. The `param_1 == 0` branch (NIM_ADD vs
 NIM_MODIFY, `FUN_00405C42` vs `FUN_00405CB2`) is a caller concern, not
 state selection.
 """

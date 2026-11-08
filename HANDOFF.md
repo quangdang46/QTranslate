@@ -322,7 +322,7 @@ The venv was created with uv (the PATH Python refuses `pip install`):
 ```
 uv venv .venv --python 3.12
 uv pip install --python .venv/Scripts/python.exe -r requirements.txt \
-    PySide6 Pillow pystray comtypes
+    PySide6
 ```
 
 Sweeps: `python -I tools/run_suites.py`. Pixel: `python -I
