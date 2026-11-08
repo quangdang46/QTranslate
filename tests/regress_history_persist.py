@@ -84,6 +84,21 @@ try:
     hw._clear()
     ck("a clear persists an empty list",
        json.load(io.open(CFG, encoding="utf-8")) == [])
+
+    # --- _listen routes through app._speak with the entry's src lang --
+    # The old private _speak spawned its own thread and spoke the
+    # SOURCE text with the TARGET voice; the fix hands (text, src_lang)
+    # to app._speak, which owns detect->target fallback and threading.
+    heard = []
+    app2._speak = lambda text, lang="": heard.append((text, lang))
+    hw._listen(0, ("google", "bonjour", "GOOGLE:bonjour",
+                   False, "fr", "en"))
+    ck("listen speaks the source text in the recorded source language",
+       heard == [("bonjour", "fr")], repr(heard))
+    heard.clear()
+    hw._listen(0, ("google", "hi", "GOOGLE:hi"))   # old 3-slot entry
+    ck("a short entry passes no language (app._speak detects)",
+       heard == [("hi", "")], repr(heard))
     hw.close()
 
     # --- 3. the main strip's highlight moves with the service ----------

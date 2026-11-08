@@ -206,24 +206,23 @@ class HistoryWindow(Base):
             pass
 
     def _listen(self, idx, ent):
-        try:
-            _svc, src, _res = ent[:3]
-            import threading as _th
-            _th.Thread(target=self._speak, args=(src,), daemon=True).start()
-        except Exception:
-            pass
+        """Listen to text" speaks the entry's SOURCE text.
 
-    def _speak(self, text):
+        The language is the one the entry recorded for the source
+        (slot 4 of the 6-slot entry; older short entries pass "" and
+        ``app._speak`` detects). Routing through ``app._speak`` also
+        gets its detect->target fallback, the EnableSlowerListening
+        read inside ``player.play_text`` and the single playback
+        thread -- the old private ``_speak`` spawned a second thread
+        and spoke source text with the TARGET voice (the same bug
+        class the TTS audit fixed in ``app._speak``).
+        """
         try:
-            from qtranslate import config as _C
-            slow = bool(_C.load().get("Advanced", {})
-                        .get("EnableSlowerListening", False))
-        except Exception:
-            slow = False
-        try:
-            from qtranslate.player import play_text
-            play_text(text[:500], getattr(self.app, "target", "vi") or "vi",
-                      slow=slow)
+            src_text = ent[1] if len(ent) > 1 else ""
+            src_lang = ent[4] if len(ent) > 4 else ""
+            speak = getattr(self.app, "_speak", None)
+            if speak is not None:
+                speak(src_text, src_lang)
         except Exception:
             pass
     # ------------------------------------------------------------ the rest
