@@ -10,6 +10,15 @@ all pairs — backend-side, not a port bug. Session bootstrap (EXTENSION,
 fills the Options.Promt* slots the native engine sets from the page):
 scrape id="_paft"/id="_xsrf" from static HTML, send xsrf as XSRF-TOKEN
 header. Note: native sends v=1; the current web client needs v=2.
+
+Live status 2026-11-08: the site's JS changed the request hash. The
+page bundle now builds `h` over UTF-16 code units with a forward pass
+followed by a backward pass (h1+h2 in trru.bundle.js), and the
+literal is "#Gener\u0430l#" with a CYRILLIC a — the old forward-only
+codepoint hash now gets HTTP 400. ghcs/ghcd below mirror the CURRENT
+site JS, not the native Service.js (same documented-deviation seam as
+the v=2/headers notes). Backend still answers "service temporarily
+unavailable"; the request shape is accepted again (HTTP 200).
 """
 import json
 import re
@@ -72,31 +81,76 @@ def is_null_or_empty(text) -> bool:
     return not text or len(text) == 0
 
 
-def _i32(n: int) -> int:
+def _i32(n) -> int:
     n &= 0xFFFFFFFF
     return n - 0x100000000 if n & 0x80000000 else n
 
 
-def ghcs(text: str, b: int = None, d: int = None, c: int = 0) -> int:
-    """Port of ghcs(a,b,d,c) — Java-style string hash."""
+def _u16(s: str):
+    """UTF-16 code units, like JS string indexing/charCodeAt."""
+    import array
+    return array.array("H", s.encode("utf-16-le", "surrogatepass"))
+
+
+def _gh_step(r: int, cu: int) -> int:
+    """One JS `r=(r<<5)-r+charCodeAt(i)` step.
+
+    `r<<5` is a signed-int32 op on the OLD r, while `-r` subtracts the
+    untruncated double; all values stay exact integers in Python.
+    """
+    return _i32(r * 32) - r + cu
+
+
+def _gh_h1(u, t: int, i: int, r) -> int:
+    """Port of h1(n,t,i,r): forward charCodeAt pass."""
+    for k in range(t, i):
+        r = _gh_step(r, u[k])
+    return r
+
+
+def _gh_h2(u, t: int, i: int, r) -> int:
+    """Port of h2(n,t,i,r): h1 then a backward pass over the same span."""
+    r = _gh_h1(u, t, i, r)
+    while i > t:
+        i -= 1
+        r = _gh_step(r, u[i])
+    return r
+
+
+def _ghcs_u(u, b: int = None, d: int = None, c=0) -> int:
     if b is None:
-        e = 0 if is_null_or_empty(text) else len(text)
+        e = len(u)
         if e > 100:
-            return ghcs(text, e - 50, e, ghcs(text, 0, 50, e))
-        return ghcs(text, 0, e, e)
-    for e in range(b, d):
-        c = _i32((c << 5) - c + ord(text[e]))
-    return c
+            return _gh_h2(u, e - 50, e, _gh_h2(u, 0, 50, e))
+        return _gh_h2(u, 0, e, e)
+    return _gh_h2(u, b, d, c)
+
+
+def ghcs(text: str, b: int = None, d: int = None, c=0) -> int:
+    """Port of the CURRENT site's ghcs (was: native Service.js hash).
+
+    UTF-16 code units, forward+backward accumulation, >100-char
+    recursive split — verified live 2026-11-08 (HTTP 200; the old
+    codepoint/forward-only variant is rejected with HTTP 400).
+    """
+    if b is None and d is None:
+        return _ghcs_u(_u16(text))
+    # explicit-range form: callers pass indices on the original text,
+    # so slice first, then hash the slice's units (forward+backward)
+    u = _u16(text[b:d])
+    return _gh_h2(u, 0, len(u), c)
 
 
 def ghcd(text: str, sl, tl) -> int:
-    """Port of ghcd(a,b,d). sl/tl accept indices or codes."""
+    """Port of ghcd(a,b,d) against the current site literal."""
     from qtranslate.common import format_q
     sl_code = code_from_language(sl, SUPPORTED_LANGS) \
         if isinstance(sl, int) else sl
     tl_code = code_from_language(tl, SUPPORTED_LANGS) \
         if isinstance(tl, int) else tl
-    inner = format_q("TranslateButton#{0}-{1}#General#{2}", sl_code,
+    # "Generаl" carries a Cyrillic а (U+0430) in the live bundle —
+    # copying it verbatim is load-bearing.
+    inner = format_q("TranslateButton#{0}-{1}#Generаl#{2}", sl_code,
                      tl_code, str(ghcs(text)))
     return ghcs(inner)
 
@@ -159,7 +213,8 @@ def translate(text: str, sl, tl, paft: str = "",
     current web client (native sends v=1).
     """
     from qtranslate.common import format_q
-    text = limit_source(text, 1000)
+    # current client: sText().trim().replace(/\u0301/g,"") before send+hash
+    text = limit_source(text.strip().replace("\u0301", ""), 1000)
     sl_code = code_from_language(sl, SUPPORTED_LANGS) \
         if isinstance(sl, int) else sl
     tl_code = code_from_language(tl, SUPPORTED_LANGS) \
@@ -185,8 +240,9 @@ def translate(text: str, sl, tl, paft: str = "",
         headers["Cookie"] = cookie
     req = urllib.request.Request(HOST + "/api/getTranslation",
                                  data=body.encode("utf-8"), headers=headers)
-    open_ = opener.open if opener is not None else urllib.request.urlopen
-    with common.http_open(req) as r:
+    # the opener carries the session cookies; dropping it here gets
+    # HTTP 400 from the current server (verified live 2026-11-08)
+    with common.http_open(req, opener) as r:
         resp = parse_json_lenient(read_response_text(r))
     return _translate_response(resp)
 

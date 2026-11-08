@@ -112,6 +112,8 @@ if _DARWIN:
 else:
     import qtranslate.sapi as SAPI
     _orig_sapi = SAPI.speak
+    from qtranslate.services import system_tts as _ST
+    _orig_st_speak = _ST.speak
 
     def _fake_speak(text, rate=0):
         _seen["text"] = text
@@ -120,6 +122,10 @@ else:
     TTS.google_tts = _boom
     TTS.bing_tts = _boom
     SAPI.speak = _fake_speak
+    # Windows tries system_tts.speak (SAPI SpVoice) before sapi.speak;
+    # force the honest-fallback path so the fake sees the call
+    # (and no real voice fires on a Windows host).
+    _ST.speak = lambda *a, **k: False
     try:
         used = P.play_text("xin chào", "vi", slow=False)
         ck("online failure falls back to sapi", used == "sapi", used)
@@ -135,6 +141,7 @@ else:
         TTS.google_tts = _orig_tts
         TTS.bing_tts = _orig_bing_tts
         SAPI.speak = _orig_sapi
+        _ST.speak = _orig_st_speak
 
 if fails:
     print("FAIL %d" % len(fails))

@@ -64,6 +64,11 @@ class FakeRecognizer:
 
 
 # -- text path ------------------------------------------------------------
+# recognize() guards on sys.platform before touching injected fakes, so
+# pin darwin for the orchestration checks (the real non-darwin degrade
+# is exercised below with the true platform).
+_real_platform = sys.platform
+sys.platform = "darwin"
 
 sess = FakeSession(text="xin chào thế giới")
 text = S.recognize(timeout_s=7, auth=3, session=sess)
@@ -99,11 +104,14 @@ finally:
 
 # -- unsupported / unavailable ---------------------------------------------
 
+# the real-platform degrade check needs the true sys.platform
+sys.platform = _real_platform
 if sys.platform != "darwin":
     text = S.recognize(timeout_s=1)
     check("non-darwin returns empty", text == "", repr(text))
     check("non-darwin reason", S.last_reason() == "unsupported-platform",
           S.last_reason())
+sys.platform = "darwin"
 
 # recognizer unavailable: only meaningful where the frameworks import.
 if S._speech_frameworks() is not None:
@@ -130,6 +138,8 @@ check("session .error reason prefix",
 text = S.recognize(timeout_s=1, auth=3, session=FakeSession(text=""))
 check("silence returns empty", text == "", repr(text))
 check("silence reason", S.last_reason() == "no-speech", S.last_reason())
+
+sys.platform = _real_platform
 
 # -- surface sanity ----------------------------------------------------------
 

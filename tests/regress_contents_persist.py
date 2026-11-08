@@ -43,7 +43,7 @@ try:
     win.src.setPlainText("hello world")
     win.set_result("xin chào\n\n--- back-translation ---\nhello world")
     app._persist_contents()
-    cfg = json.load(open(_tmp))
+    cfg = json.load(open(_tmp, encoding="utf-8"))
     cont = cfg.get("Contents", {})
     ck("EditSource persisted", cont.get("EditSource") == "hello world",
        repr(cont.get("EditSource")))
@@ -71,7 +71,7 @@ try:
     win.out.setPlainText("t" * 6000)
     win.back.setPlainText("b" * 6000)
     app._persist_contents()
-    cfg = json.load(open(_tmp))
+    cfg = json.load(open(_tmp, encoding="utf-8"))
     cont = cfg.get("Contents", {})
     ck("EditSource clipped", len(cont.get("EditSource", "")) == 5000)
     ck("EditTranslation clipped", len(cont.get("EditTranslation", "")) == 5000)
@@ -83,7 +83,7 @@ try:
     win.out.setPlainText("")
     win.back.setPlainText("")
     app._persist_contents()
-    cfg = json.load(open(_tmp))
+    cfg = json.load(open(_tmp, encoding="utf-8"))
     cont = cfg.get("Contents", {})
     ck("empty contents persist", cont.get("EditSource") == ""
        and cont.get("EditTranslation") == ""

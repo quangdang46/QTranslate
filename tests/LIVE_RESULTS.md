@@ -1,3 +1,17 @@
+# Live verification results (2026-11-08, PROMT re-probe)
+
+PROMT re-probed by hand (`qtranslate/services/promt.py` session +
+translate, en->ru): the site's page bundle had changed the request
+hash — UTF-16 code units with a forward+backward accumulation (h1+h2)
+and a `#Gener\u0430l#` literal carrying a CYRILLIC a — and the old
+native-Service.js hash was rejected with **HTTP 400**. `ghcs`/`ghcd`
+now mirror the current client, `translate()` also sends the session
+opener (cookies) it previously dropped, and the text is trimmed with
+U+0301 stripped like the web client. Result: **HTTP 200 + correct
+schema** again, backend still answering "service temporarily
+unavailable" — request shape fixed, provider state unchanged
+(`dead:service-unavailable`). Pinned by `regress_promt_hash.py` (28).
+
 # Live verification results (2026-10-24, commit 5191dd5 + bing fix)
 
 Run: `.venv/Scripts/python.exe -I tests/live_providers.py` -- **21/21

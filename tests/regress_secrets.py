@@ -37,8 +37,22 @@ sp = os.path.join(d, "secrets.json")
 SEC.set("k", "v", path=sp)
 ck("set/get round-trip", SEC.get("k", path=sp) == "v")
 ck("missing key -> default", SEC.get("nope", "d", path=sp) == "d")
-ck("file is owner-only", (os.stat(sp).st_mode & 0o777) == 0o600,
-   oct(os.stat(sp).st_mode & 0o777))
+if os.name == "nt":
+    # Windows has no st_mode owner bits; verify the ACL icacls wrote:
+    # current user present, no broad principals.
+    import getpass
+    import subprocess
+    out = subprocess.run(["icacls", sp], capture_output=True, text=True,
+                         timeout=15).stdout
+    user = getpass.getuser()
+    ck("file ACL grants only the current user",
+       user.lower() in out.lower()
+       and not any(p in out for p in
+                   ("Everyone", "Authenticated Users",
+                    "BUILTIN\\Users")), out)
+else:
+    ck("file is owner-only", (os.stat(sp).st_mode & 0o777) == 0o600,
+       oct(os.stat(sp).st_mode & 0o777))
 SEC.delete("k", path=sp)
 ck("delete removes", SEC.get("k", path=sp) is None)
 try:

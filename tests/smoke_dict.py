@@ -95,7 +95,7 @@ from qtranslate.services.youdao import make_sign as _ys
 from qtranslate.services.promt import ghcs as _gh
 assert _bs("hello", "123.456") == "561628.561575"
 assert _ys("hello", "12345") == "bfb0a174c7922ca03cff241587151159"
-assert _gh("Hello world") == 586917305  # node 1-arg call agrees
+assert _gh("Hello world") == -294078901  # current-site h1+h2 hash
 import qtranslate.services.promt  # syntax regression guard
 print("OK: signing known-answer vectors")
 

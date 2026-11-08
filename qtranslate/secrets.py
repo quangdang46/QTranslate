@@ -42,10 +42,26 @@ PROXY_PASSWORD_KEY = "network.proxy.password"
 
 
 def _chmod_private(path):
-    """Best-effort owner-only permissions (0600)."""
+    """Best-effort owner-only permissions.
+
+    POSIX: chmod 0600. Windows: os.chmod cannot express per-user ACLs,
+    so strip inheritance and grant only the current user via icacls
+    (the secrets file holds the proxy password -- it must not be
+    readable by other accounts on a shared machine).
+    """
     try:
+        if os.name == "nt":
+            import getpass
+            import subprocess
+            user = getpass.getuser()
+            subprocess.run(
+                ["icacls", path, "/inheritance:r", "/grant:r",
+                 "%s:F" % user],
+                capture_output=True, timeout=15,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            return
         os.chmod(path, 0o600)
-    except (OSError, AttributeError):
+    except Exception:
         pass
 
 

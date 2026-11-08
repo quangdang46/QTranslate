@@ -41,13 +41,14 @@ except (FileNotFoundError, OSError):
 if d:
     # The 20 NATIVE sections must all survive; the port may ADD its own
     # (ExtensionOverrides for D18 winners, Extensions for the on/off
-    # switches and per-extension settings) but nothing else.
+    # switches and per-extension settings, ImageSearch for the lens
+    # prefs) but nothing else.
     ck("live Options.json keeps all 20 native sections",
        set(KNOWN_SECTIONS) <= set(d),
        "missing: %s" % sorted(set(KNOWN_SECTIONS) - set(d)))
     ck("the port's own sections are known additions",
        set(d) - set(KNOWN_SECTIONS)
-       <= {"Extensions", "ExtensionOverrides"},
+       <= {"Extensions", "ExtensionOverrides", "ImageSearch"},
        "unexpected: %s" % sorted(set(d) - set(KNOWN_SECTIONS)))
     ck("Ocr section survives (the 124th key)",
        "Ocr" in d and "OcrLanguage" in d["Ocr"], str(d.get("Ocr")))

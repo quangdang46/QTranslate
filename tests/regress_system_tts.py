@@ -42,34 +42,41 @@ def main():
         stdout = SAY_OUT
 
     subprocess.run = lambda *a, **k: R()
+    # discover_voices dispatches on sys.platform; these vectors are the
+    # macOS `say -v ?` path, so pin the platform for the whole block
+    _real_platform = sys.platform
+    sys.platform = "darwin"
     try:
         voices = ST.discover_voices()
+
+        print("== voice line parsing ==")
+        ck("voices parsed", len(voices) == 8, str(voices))
+        ck("bad line skipped",
+           all("without hash" not in v[0] for v in voices))
+        ck("locale captured", ("Linh", "vi_VN") in voices, str(voices))
+
+        print("== preferred_voice ==")
+        ck("exact tag wins",
+           ST.preferred_voice("vi_VN", voices) == "Linh")
+        ck("language fallback",
+           ST.preferred_voice("vi", voices) == "Linh")
+        ck("zh-CN -> Simplified voice",
+           ST.preferred_voice("zh-CN", voices) == "Tingting")
+        ck("zh-TW -> Traditional voice",
+           ST.preferred_voice("zh-TW", voices) == "Meijia")
+        ck("case-insensitive",
+           ST.preferred_voice("JA", voices) == "Kyoko")
+        ck("underscore normalized",
+           ST.preferred_voice("de-DE", voices) == "Eddy (German (Germany))")
+        ck("auto -> None", ST.preferred_voice("auto", voices) is None)
+        ck("empty -> None", ST.preferred_voice("", voices) is None)
+        ck("unsupported -> None",
+           ST.preferred_voice("xx", voices) is None)
+        ck("empty voice list -> None",
+           ST.preferred_voice("en", []) is None)
     finally:
         subprocess.run = real_run
-    ck("voices parsed", len(voices) == 8, str(voices))
-    ck("bad line skipped",
-       all("without hash" not in v[0] for v in voices))
-    ck("locale captured", ("Linh", "vi_VN") in voices, str(voices))
-
-    print("== preferred_voice ==")
-    ck("exact tag wins",
-       ST.preferred_voice("vi_VN", voices) == "Linh")
-    ck("language fallback",
-       ST.preferred_voice("vi", voices) == "Linh")
-    ck("zh-CN -> Simplified voice",
-       ST.preferred_voice("zh-CN", voices) == "Tingting")
-    ck("zh-TW -> Traditional voice",
-       ST.preferred_voice("zh-TW", voices) == "Meijia")
-    ck("case-insensitive",
-       ST.preferred_voice("JA", voices) == "Kyoko")
-    ck("underscore normalized",
-       ST.preferred_voice("de-DE", voices) == "Eddy (German (Germany))")
-    ck("auto -> None", ST.preferred_voice("auto", voices) is None)
-    ck("empty -> None", ST.preferred_voice("", voices) is None)
-    ck("unsupported -> None",
-       ST.preferred_voice("xx", voices) is None)
-    ck("empty voice list -> None",
-       ST.preferred_voice("en", []) is None)
+        sys.platform = _real_platform
 
     print("== _speak_darwin wiring ==")
     from qtranslate import player

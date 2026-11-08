@@ -136,11 +136,25 @@ def main():
         _drop_comtypes()
 
     print("== system_tts.speak honest fallback ==")
-    ck("speak False off-Windows", ST.speak("hi", "en") is False)
+    # pin a non-Windows platform -- on a real Windows host the true
+    # platform IS win32 and speak() would fire SAPI for real
+    sys.platform = "linux"
+    try:
+        ck("speak False off-Windows", ST.speak("hi", "en") is False)
+    finally:
+        sys.platform = REAL_PLATFORM
     sys.platform = "win32"
     try:
-        ck("speak False without comtypes",
-           ST.speak("hi", "en") is False)
+        # a real comtypes install must not be allowed to speak here:
+        # sys.modules[name]=None makes `import comtypes.client` raise
+        sys.modules["comtypes"] = None
+        sys.modules["comtypes.client"] = None
+        try:
+            ck("speak False without comtypes",
+               ST.speak("hi", "en") is False)
+        finally:
+            sys.modules.pop("comtypes", None)
+            sys.modules.pop("comtypes.client", None)
     finally:
         sys.platform = REAL_PLATFORM
 

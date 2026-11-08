@@ -92,6 +92,8 @@ order = []
 orig_google, orig_bing = TTS.google_tts, TTS.bing_tts
 orig_ext_be = PL._extension_backend
 orig_play = getattr(PL, "_play_mp3_bytes_darwin", None)
+orig_play_linux = getattr(PL, "_play_mp3_bytes_linux", None)
+orig_play_win = getattr(PL, "play_mp3_bytes", None)
 orig_stop = PL.stop
 
 
@@ -109,6 +111,12 @@ PL._extension_backend = lambda *a, **k: None
 PL.stop = lambda: None
 if orig_play is not None:
     PL._play_mp3_bytes_darwin = lambda data, block=True: None
+if orig_play_win is not None:
+    # Windows/Linux playback shells out to bass.dll etc.; stub it so a
+    # missing native lib cannot fall through to the next TTS backend
+    PL.play_mp3_bytes = lambda data, block=True: None
+if orig_play_linux is not None:
+    PL._play_mp3_bytes_linux = lambda data, block=True: "mpv"
 TTS.google_tts = g
 TTS.bing_tts = b
 try:
@@ -134,6 +142,12 @@ try:
     if orig_speak is not None:
         PL._speak_darwin = lambda text, lang="", slow=False: \
             spoke.append(text)
+    # Windows "system" goes through system_tts.speak (SAPI SpVoice) --
+    # stub it so the test never fires a real voice
+    from qtranslate.services import system_tts as _ST
+    orig_st = _ST.speak
+    _ST.speak = lambda text, lang="", slow=False: \
+        spoke.append(text) or True
     order.clear()
     try:
         PL.play_text("hi", "en")
@@ -142,6 +156,7 @@ try:
     ck("tts system skips online", order == [], repr(order))
     if orig_speak is not None:
         PL._speak_darwin = orig_speak
+    _ST.speak = orig_st
 finally:
     TTS.google_tts = orig_google
     TTS.bing_tts = orig_bing
@@ -149,6 +164,10 @@ finally:
     PL.stop = orig_stop
     if orig_play is not None:
         PL._play_mp3_bytes_darwin = orig_play
+    if orig_play_win is not None:
+        PL.play_mp3_bytes = orig_play_win
+    if orig_play_linux is not None:
+        PL._play_mp3_bytes_linux = orig_play_linux
 
 # ---- Services page writer: display index -> backend key ----------
 from PySide6.QtWidgets import QApplication  # noqa: E402
