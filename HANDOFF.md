@@ -22,7 +22,7 @@ untrusted.
 | Suites | **195 suites, 0 failed, ~185s on Windows** (`QT_QPA_PLATFORM=offscreen .venv/Scripts/python.exe tools/run_suites.py`) |
 | Pixel measure | mean ink diff **0.0037** over 12 screens (re-run 24/10; macOS re-measure not done) |
 | Docs consistency | 0 findings |
-| Live providers | **21 checks LIVE-OK** (`tests/LIVE_RESULTS.md`, Windows run); PROMT/Babylon/Baidu-translate dead, recorded |
+| Live providers | **24/25 LIVE-OK** (`tests/LIVE_RESULTS.md`, Windows run; sweep extended to 25 checks — mymemory/mozhi/yandex_web/commons_images added; `dict.lingvo` timed out provider-side); PROMT/Babylon/Baidu-translate dead, recorded |
 | Bundle | rebuilt on Windows after every wave; latest `SELFTEST PASS 29/29`, `_missing_deps`/`_frozen_gap` clean, `pdfium.dll` in `_internal`; `dist\QTranslate\` current with `main` |
 | Front end | Qt only. tkinter was deleted on 2026-10-23 |
 | Platform focus | This machine is **Windows** (was macOS on 2026-11-08 morning) — `macos_*` backends live-tested earlier; Windows backends now suite-verified, still need real-device audio/hook checks (see §4) |

@@ -50,6 +50,21 @@ def main():
           lambda: dd.reverso_translate("Hello world", "en", "fr"))
     check("dict.wordreference",
           lambda: dd.wordreference_lookup("hello", "en", "ru"))
+    # Registered providers the original sweep did not cover: the
+    # extension-plugin ports (mymemory/mozhi/yandex_web) and the
+    # keyless Wikimedia Commons image backend.
+    from qtranslate.services import mymemory as mm
+    check("mymemory.translate EN->VI",
+          lambda: mm.translate("Hello world", "en", "vi"))
+    from qtranslate.services import mozhi as mz
+    check("mozhi.translate EN->VI",
+          lambda: mz.translate("Hello world", "en", "vi"))
+    from qtranslate.services import yandex_web as yw
+    check("yandex_web.translate EN->VI",
+          lambda: yw.translate("Hello world", "en", "vi"))
+    from qtranslate.services import commons_images as ci
+    check("commons_images.search",
+          lambda: ci.search_images("cat", limit=3) and "thumb-results")
 
     for name, status, detail in results:
         print(f"{status:8} {name:28} {detail}")
