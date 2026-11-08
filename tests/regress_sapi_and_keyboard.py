@@ -98,27 +98,21 @@ if QApplication is not None:
         # _key_pressed must TAP keys (send = press+release), never
         # hold them: keyboard.press() leaves the key down forever and
         # every virtual-keyboard tap auto-repeats (found 2026-11-08).
-        import qtranslate.qt.keyboard as _QK
-        class _FakeKB:
-            def __init__(self):
-                self.sent, self.pressed = [], []
-            def send(self, k): self.sent.append(k)
-            def press(self, k): self.pressed.append(k)
-            def write(self, t): pass
-        _fk = _FakeKB()
-        _real_km = _QK.keyboard_module
-        _QK.keyboard_module = lambda: _fk
+        # The call routes through the sendkeys wrapper.
+        import qtranslate.sendkeys as _SK
+        _sent = []
+        _real_send = _SK.send
+        _SK.send = lambda combo, backend=None: _sent.append(combo) or True
         try:
             kb._key_pressed("a", 0)
-            ck("letter key uses send (tap), not press (hold)",
-               _fk.sent == ["a"] and _fk.pressed == [],
-               repr((_fk.sent, _fk.pressed)))
-            _fk.sent.clear()
+            ck("letter key uses sendkeys.send (tap), not press (hold)",
+               _sent == ["a"], repr(_sent))
+            _sent.clear()
             kb._key_pressed("BkSp", 0)
-            ck("special key uses send too",
-               _fk.sent and not _fk.pressed, repr((_fk.sent, _fk.pressed)))
+            ck("special key uses sendkeys.send too",
+               len(_sent) == 1, repr(_sent))
         finally:
-            _QK.keyboard_module = _real_km
+            _SK.send = _real_send
         kb.close()
         kb.deleteLater()
         app.qapp.processEvents()

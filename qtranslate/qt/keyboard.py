@@ -27,7 +27,6 @@ from PySide6.QtWidgets import QComboBox
 
 from qtranslate import languages as L
 from qtranslate.layout import EN2RU
-from qtranslate.platforms import keyboard_module
 from qtranslate_style import BTN_HL, BTN_SHADE, BTN_TOP
 
 from .widgets import Base, button, put
@@ -315,16 +314,20 @@ class KeyboardWindow(Base):
         # the arrows move the caret, BkSp deletes, and so on. The names
         # are the ones the `keyboard` package uses.
         name = SPECIAL.get((text, x))
-        keyboard = keyboard_module()
-        if keyboard is not None:
-            try:
-                # press() holds the key down forever (no release) --
-                # every virtual-keyboard tap would auto-repeat. send()
-                # is press+release, the correct single tap.
-                keyboard.send(name if name else text)
-                return
-            except Exception:
-                pass
+        # Tap, never hold: sendkeys.send -> keyboard.send is
+        # press+release; keyboard.press() alone would leave the key
+        # down forever and every virtual-keyboard tap would
+        # auto-repeat (found 2026-11-08). Routed through the sendkeys
+        # wrapper like every other synthesis call site. macOS keeps
+        # its own path below (unicode typing + CGEvent named keys).
+        try:
+            import sys as _sys
+            if _sys.platform != "darwin":
+                from qtranslate import sendkeys as _SK
+                if _SK.send(name if name else text):
+                    return
+        except Exception:
+            pass
         # macOS: no `keyboard` package (its import aborts the process) —
         # the CoreGraphics path sends the same keystrokes. Letters type
         # as unicode; named keys go through the combo sender.
