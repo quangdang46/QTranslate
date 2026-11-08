@@ -31,6 +31,7 @@ transiently instead:
 | Bundle | rebuilt on Windows after every wave; latest `SELFTEST PASS 29/29`, `_missing_deps`/`_frozen_gap` clean, `pdfium.dll` in `_internal`; `dist\QTranslate\` current with `main` |
 | Front end | Qt only. tkinter was deleted on 2026-10-23 |
 | Platform focus | This machine is **Windows** (was macOS on 2026-11-08 morning) — `macos_*` backends live-tested earlier; Windows backends now suite-verified, still need real-device audio/hook checks (see §4) |
+| Win clipboard | `tests/verify_win_clipboard.py` **PASS 17/17 on real Windows** — multi-format snapshot/restore byte-exact (CF_UNICODETEXT + CF_TEXT + custom format, empty-token round-trip, double-restore). Hardened `_win_restore` with `_win_open_empty` (reopen+retry) after finding Windows answers `OpenClipboard` success then fails `EmptyClipboard` with ERROR_CLIPBOARD_NOT_OPEN in rapid succession; test also settles same-process writes (~200 ms deferred visibility) |
 
 **The operator CONFIRMED the GUI matches native** (2026-10-24, running
 the real bundle, Windows). Recorded in `docs/review/FEATURE_CHECKLIST_2026-10-23.md`.

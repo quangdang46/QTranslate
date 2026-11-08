@@ -50,6 +50,7 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -82,9 +83,12 @@ def main() -> int:
 
     def set_formats(entries):
         """Replace the clipboard contents with ``[(fmt, bytes), ...]``."""
-        assert CB._win_open(user32), "OpenClipboard failed"
+        # _win_open_empty (not bare OpenClipboard+EmptyClipboard): rapid
+        # back-to-back clipboard ops trip Windows'
+        # ERROR_CLIPBOARD_NOT_OPEN-on-successful-open quirk.
+        assert CB._win_open_empty(user32), \
+            "OpenClipboard/EmptyClipboard failed"
         try:
-            assert user32.EmptyClipboard(), "EmptyClipboard failed"
             for fmt, data in entries:
                 handle = kernel32.GlobalAlloc(CB._GMEM_MOVEABLE,
                                               max(1, len(data)))
@@ -118,6 +122,24 @@ def main() -> int:
         finally:
             user32.CloseClipboard()
 
+    def wait_for(pred, timeout=1.5):
+        """Poll until the OS commits a same-process clipboard write.
+
+        Windows defers visibility of ``SetClipboardData`` to the
+        setting process's OWN next ``OpenClipboard`` by a few ms (the
+        data is there for other processes immediately; verified live:
+        an immediate re-open enumerates zero formats, ~200 ms later the
+        formats are all present). Every assertion below that reads the
+        clipboard after a write must settle first or it races the
+        commit.
+        """
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            if pred():
+                return True
+            time.sleep(0.02)
+        return False
+
     # --- 1. multi-format snapshot -------------------------------------
     custom_fmt = int(user32.RegisterClipboardFormatW(
         "QTranslateVerifyClipboardFormat"))
@@ -125,11 +147,16 @@ def main() -> int:
        repr(custom_fmt))
 
     uni = "héllo wörld — verify ✓".encode("utf-16-le") + b"\x00\x00"
-    ansi = b"plain ANSI payload \x01\x02"
+    # CF_TEXT is NUL-terminated text: Windows normalizes the tail byte
+    # of a non-terminated payload (verified live -- a trailing \x02
+    # came back \x00), so the fixture uses the canonical form real
+    # clipboards carry.
+    ansi = b"plain ANSI payload\x00"
     custom = bytes(range(256)) * 2  # 512 bytes, all byte values
     planted = [(CF_UNICODETEXT, uni), (CF_TEXT, ansi),
                (custom_fmt, custom)]
     set_formats(planted)
+    wait_for(lambda: all(f in read_formats() for f, _ in planted))
 
     snap = CB.snapshot()
     ck("snapshot returns a list", isinstance(snap, list), repr(snap))
@@ -144,9 +171,12 @@ def main() -> int:
     ck("write_text clobbers the clipboard",
        CB.write_text("unrelated clobber text") is True)
     ck("clipboard content changed after clobber",
-       read_formats().get(CF_UNICODETEXT) != uni)
+       wait_for(lambda: read_formats().get(CF_UNICODETEXT) != uni))
 
     ck("restore returns True", CB.restore(snap) is True)
+    ck("restore committed to the clipboard",
+       wait_for(lambda: all(read_formats().get(f) == d
+                            for f, d in planted)))
     restored = read_formats()
     for fmt, data in planted:
         ck("restore put fmt %d back byte-for-byte" % fmt,
@@ -157,9 +187,12 @@ def main() -> int:
     ck("restore(None) returns False", CB.restore(None) is False)
     # a token is plain data -- restoring it twice must still succeed
     ck("second restore of same token works", CB.restore(snap) is True)
+    wait_for(lambda: all(read_formats().get(f) == d
+                         for f, d in planted))
 
     # --- 3. empty snapshot restores emptiness -------------------------
     set_formats([])
+    wait_for(lambda: read_formats() == {})
     empty_snap = CB.snapshot()
     ck("snapshot of empty clipboard is an empty list",
        empty_snap == [], repr(empty_snap))
@@ -167,7 +200,7 @@ def main() -> int:
     ck("restore of empty token returns True",
        CB.restore(empty_snap) is True)
     ck("clipboard is empty after restoring empty snapshot",
-       read_formats() == {}, repr(read_formats()))
+       wait_for(lambda: read_formats() == {}))
 
     # leave the user's clipboard with something harmless
     CB.write_text("")

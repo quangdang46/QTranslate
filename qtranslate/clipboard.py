@@ -253,6 +253,29 @@ def _win_open(user32, retries=_WIN_OPEN_RETRIES):
     return False
 
 
+def _win_open_empty(user32, retries=_WIN_OPEN_RETRIES):
+    """``OpenClipboard`` + ``EmptyClipboard`` with reopen-on-failure.
+
+    Windows occasionally answers ``OpenClipboard`` with success but then
+    fails ``EmptyClipboard`` with ERROR_CLIPBOARD_NOT_OPEN when calls
+    land in quick succession (the open did not take). Retrying
+    ``EmptyClipboard`` inside the same open cannot help, so the whole
+    open+empty pair is retried -- verified live: a tight
+    open/empty/close loop fails every second call until the pair is
+    retried, and 8/8 succeed with this shape.
+    """
+    import time
+    for _ in range(max(1, retries)):
+        if not user32.OpenClipboard(None):
+            time.sleep(_WIN_OPEN_RETRY_S)
+            continue
+        if user32.EmptyClipboard():
+            return True
+        user32.CloseClipboard()
+        time.sleep(_WIN_OPEN_RETRY_S)
+    return False
+
+
 def _win_format_bytes(kernel32, user32, fmt):
     """The bytes behind one clipboard format's HGLOBAL, or None when the
     format cannot be read right now (e.g. a delayed-render owner that
@@ -301,20 +324,19 @@ def _win_restore(token) -> bool:
     the current contents -- that IS the faithful restore. Returns False
     when the clipboard could not be opened or a format could not be
     set; a partial restore is reported honestly rather than retried
-    blindly (Kotlin retries on busy; the open retry above covers the
-    common busy case).
+    blindly (Kotlin retries on busy; the open+empty retry above covers
+    the common busy case and the rapid-succession
+    ERROR_CLIPBOARD_NOT_OPEN quirk).
     """
     import ctypes
     user32, kernel32 = _win32_apis()
-    if not _win_open(user32):
-        # OpenClipboard already retried its bounded busy window; still
+    if not _win_open_empty(user32):
+        # Open+empty already retried its bounded busy window; still
         # locked means another process holds the clipboard -- the one
         # restore failure worth retrying (.tmp IllegalStateException).
         raise ClipboardBusyError("clipboard still busy after open retries")
     ok = True
     try:
-        if not user32.EmptyClipboard():
-            return False
         for fmt, data in token or []:
             # GlobalAlloc(0) is invalid; a zero-length payload still
             # needs a real (1-byte) movable block to hand over.
