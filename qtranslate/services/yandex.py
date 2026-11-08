@@ -318,8 +318,9 @@ def resolve_public_href(public_key: str, opener=None) -> str:
     try:
         req = urllib.request.Request(url, headers={
             "User-Agent": "Mozilla/5.0"})
-        open_ = opener.open if opener is not None else urllib.request.urlopen
-        with open_(req) as r:
+        # Route through the shared net layer: bounded timeout, proxy and
+        # session policy -- a bare urlopen can block forever.
+        with common.http_open(req, opener) as r:
             obj = parse_json_lenient(read_response_text(r))
     except Exception:
         return ""

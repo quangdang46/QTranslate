@@ -115,8 +115,7 @@ def translate(text: str, sl="AUTO", tl: str = "en",
     req = urllib.request.Request(
         HOST + "/translate_o?smartresult=dict&smartresult=rule",
         data=body.encode("utf-8"), headers=headers)
-    open_ = opener.open if opener else urllib.request.urlopen
-    with common.http_open(req) as resp:
+    with common.http_open(req, opener) as resp:
         obj = parse_json_lenient(read_response_text(resp))
     return _translate_response(obj)
 
@@ -186,8 +185,7 @@ def dictionary(text: str, sl="AUTO", tl: str = "en",
     """
     path = build_uri(text)
     req = urllib.request.Request(DICT_HOST + path, headers=_UA_DICT)
-    open_ = opener.open if opener else urllib.request.urlopen
-    with common.http_open(req) as r:
+    with common.http_open(req, opener) as r:
         page = read_response_text(r)
     frag = string_find_sub(
         page, '<div id="results-contents" class="results-content">', False,
@@ -222,8 +220,7 @@ def translate_web(text: str, sl: str = "en", tl: str = "zh-CHS",
         headers={**_UA_DICT,
                  "Content-Type": "application/x-www-form-urlencoded",
                  "Referer": "https://fanyi.youdao.com/"})
-    open_ = opener.open if opener else urllib.request.urlopen
-    with common.http_open(req) as r:
+    with common.http_open(req, opener) as r:
         obj = json.loads(read_response_text(r))
     out = []
     for block in (obj.get("web_trans") or {}).get("web-translation", []) or []:
