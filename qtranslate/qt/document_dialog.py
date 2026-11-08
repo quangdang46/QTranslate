@@ -245,6 +245,8 @@ class DocumentTranslationDialog(QDialog):
             self.primary.setText("Translate")
             self.status.setText("Cancelled.")
             return
+        if err is None and not out:
+            err = "translation produced no output file"
         if err is not None:
             self.primary.setText("Translate")
             self.status.setText("Failed: %s" % err)
