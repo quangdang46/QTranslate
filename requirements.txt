@@ -12,12 +12,6 @@ pyperclip==1.11.0
 # uv run --with playwright python -I -m playwright install chromium --only-shell
 # playwright
 
-# Optional (system-tray icon mirroring the native tray states;
-# skipped silently when absent):
-# pystray
-# Pillow (Service.ico strip + tray icon + OCR region capture)
-# Pillow
-
 # Optional (offline speech-input via Windows SAPI shared recognizer;
 # app explains when absent):
 # comtypes
