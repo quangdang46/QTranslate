@@ -69,8 +69,8 @@ class DocumentTranslationDialog(QDialog):
         ph.setContentsMargins(0, 0, 0, 0)
         ph.addWidget(QLabel("PDF mode:"))
         self.pdf_mode = QComboBox()
-        # Layout-aware is live (qtranslate/pdf_layout.py); rotated pages
-        # or missing optional deps still fail honestly at translate time.
+        # Layout-aware is live (qtranslate/pdf_layout.py); odd-angle
+        # pages or missing optional deps still fail honestly.
         self.pdf_mode.addItem("Layout-aware")
         self.pdf_mode.addItem("Text-only")
         self.pdf_mode.setCurrentIndex(1)

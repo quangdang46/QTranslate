@@ -5,8 +5,9 @@ upstream: TEXT_ONLY (per-page text -> .txt) and LAYOUT_AWARE (rendered
 page images + overlaid vector text -> .pdf). LAYOUT_AWARE lives in
 ``qtranslate/pdf_layout.py`` (pdfplumber extraction + pypdfium2
 raster + reportlab overlay, docs/PDF_LAYOUT.md strategy A); missing
-optional deps or rotated pages raise ``LayoutAwareUnavailable`` which
-surfaces as an honest DocumentTranslationError.
+optional deps or non-right-angle page rotation raise
+``LayoutAwareUnavailable`` which surfaces as an honest
+DocumentTranslationError.
 
 translateIndexed equivalent: segments translate sequentially through
 the caller's translator callable (our registry has no batch
