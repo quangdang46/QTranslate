@@ -112,6 +112,42 @@ src = inspect.getsource(Tray._set_mouse_mode)
 ck("Mouse mode handler writes the mode",
    "set_mouse_mode" in src, src[:120])
 
+# The Extensions submenu's per-extension on/off switch must persist the
+# state the user just CLICKED, not the state captured when the menu was
+# built. Qt emits triggered(checked) with the post-toggle value; a
+# lambda defaulting `on=act.isChecked()` froze the build-time state and
+# every click wrote the pre-click value back -- the switch could never
+# change. Pin the round-trip on the live menu.
+from PySide6.QtWidgets import QMenu  # noqa: E402
+from qtranslate.extensions import (read_disabled_extensions,  # noqa: E402
+                                   write_disabled_extensions)
+
+
+class _ExtStub:
+    _manifests = {"ext.demo": {}}
+
+
+write_disabled_extensions(set())          # known baseline: all enabled
+_app.ext_manager = _ExtStub()
+_em = QMenu()
+sub = tray._extensions_submenu(_em)
+ck("extensions submenu appears with a stub manager", sub is not None)
+act = next((a for a in sub.actions() if a.text() == "ext.demo"), None)
+ck("extension action exists and starts checked", act is not None
+   and act.isChecked(), str(act))
+# trigger() on a checkable action flips checked and emits
+# triggered(new_state) -- the same thing a real menu click does.
+act.trigger()
+ck("first click persists the extension as disabled",
+   "ext.demo" in read_disabled_extensions(),
+   str(read_disabled_extensions()))
+act.trigger()
+ck("second click persists the extension as enabled",
+   "ext.demo" not in read_disabled_extensions(),
+   str(read_disabled_extensions()))
+write_disabled_extensions(set())
+_app.ext_manager = None
+
 if fail:
     print("FAIL %d/%d" % (len(fail), n[0]))
     for f in fail:

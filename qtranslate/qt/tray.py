@@ -182,8 +182,8 @@ class Tray:
             act.setChecked(ext_id not in disabled)
             act.setStatusTip("Takes effect after QTranslate restarts")
             act.triggered.connect(
-                lambda _c=False, on=act.isChecked(), eid=ext_id:
-                _toggle_extension(eid, on))
+                lambda checked=False, eid=ext_id:
+                _toggle_extension(eid, checked))
         return sub
 
 
