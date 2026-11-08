@@ -237,9 +237,10 @@ paths (`EXTENSION_SDK.md` §9 has the table). On top of that:
   hook install + MSAA `cursor_text` + clipboard snapshot/restore
   also verified live on Windows, and `keyboard.add_hotkey` global
   combos fire on injected chords (needs real scan codes --
-  keybd_event with sc=0 produces unmatchable events). Still
-  human-bound: audible `speak()` and real-hardware hotkey delivery
-  to foreign apps.
+  keybd_event with sc=0 produces unmatchable events). SAPI
+  `speak()` executed clean on both paths (system_tts comtypes +
+  sapi.py) -- operator can confirm audibility. Still human-bound:
+  real-hardware hotkey delivery to foreign apps (Alt+W, Ctrl+Q).
 - **macOS real-device pass**: DoubleCtrl CGEventTap flagsChanged feed
   (needs Accessibility grant), Vision mixed-direction OCR ordering
   (UNVERIFIED).
